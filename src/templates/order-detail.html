@@ -1,0 +1,41 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="#/order-list" style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Chi tiết đơn hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content" style="padding-top: var(--spacing-md);">
+      <!-- Skeleton -->
+      <div id="detail-skeleton">
+        <div class="detail-section">
+          <div class="skeleton skeleton-detail-header"></div>
+          <div class="skeleton skeleton-product"></div>
+          <div class="skeleton skeleton-product"></div>
+          <div class="skeleton skeleton-summary"></div>
+        </div>
+      </div>
+
+      <!-- Nội dung thật -->
+      <div id="detail-content" hidden>
+        <div class="detail-section">
+          <div class="detail-title">Chi tiết đơn hàng</div>
+          <div id="order-header"></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-subtitle">Thông tin sản phẩm</div>
+          <div id="product-list"></div>
+        </div>
+
+        <div class="detail-section">
+          <div id="order-summary"></div>
+        </div>
+
+        <div class="action-bar">
+          <button class="btn-edit" id="btn-edit-order">Sửa</button>
+          <button class="btn-delete" id="btn-delete-order">Xoá</button>
+        </div>
+      </div>
+    </div>
+  </main>

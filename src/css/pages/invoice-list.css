@@ -1,0 +1,61 @@
+/* invoice-list page styles (extracted from inline) */
+.invoice-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      transition: border-color var(--transition-fast), background-color var(--transition-normal);
+    }
+
+    .invoice-card:hover {
+      border-color: var(--color-border-strong);
+    }
+
+    .invoice-card .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .invoice-card .row.main {
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: var(--spacing-sm);
+      color: var(--color-text);
+    }
+
+    .invoice-card .customer {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+      margin: var(--spacing-sm) 0;
+      font-size: var(--font-size-sm);
+    }
+
+    .invoice-card .amount {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .invoice-card .status {
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .invoice-card .status.exported {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .invoice-card .status.draft {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .invoice-card .status.waiting {
+      background: #fef3c7;
+      color: #b45309;
+    }

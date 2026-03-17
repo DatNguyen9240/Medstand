@@ -1,6 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-
     (function () {
       var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
       var _avatarBase64 = ''; // base64 avatar mới (không có prefix "data:...")
@@ -107,7 +104,7 @@
 
           Alert.success(msg || 'Cập nhật thành công!');
           setTimeout(function () {
-            window.location.href = 'account-detail.html';
+            navigate('#/account-detail');
           }, 1200);
         }).catch(function (err) {
           Alert.error(err.message || 'Có lỗi xảy ra.');

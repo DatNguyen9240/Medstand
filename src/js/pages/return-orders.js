@@ -1,11 +1,7 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var LIMIT = 20;
       function renderReturn(r) {
-        return '<div class="return-card" onclick="window.location.href=\'return-order-detail.html?id=' + encodeURIComponent(r.DocumentID) + '\'" style="cursor:pointer">' +
+        return '<div class="return-card" onclick="navigate(\'#/return-order-detail?id=' + encodeURIComponent(r.DocumentID) + '\')" style="cursor:pointer">' +
           '<div class="row main"><span>' + r.DocumentID + '</span><span style="color:var(--color-text-muted)">' + r.DocumentDate + '</span></div>' +
           '<div class="customer">' + (r.ObjectName || '') + '</div>' +
           (r.LyDoTraHang ? '<div class="reason">Lý do: ' + r.LyDoTraHang + '</div>' : '') +

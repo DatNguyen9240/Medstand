@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var searchText = '';
       var fromDate, toDate;
@@ -15,7 +11,7 @@
 
       function renderOrder(o) {
         var sc = statusClass[o.StatusName] || 'waiting';
-        return '<div class="order-card" onclick="window.location.href=\'order-detail.html?id=' + encodeURIComponent(o.DocumentID) + '\'" style="cursor:pointer">' +
+        return '<div class="order-card" onclick="navigate(\'#/order-detail?id=' + encodeURIComponent(o.DocumentID) + '\')" style="cursor:pointer">' +
           '<div class="row main"><span>' + o.DocumentID + '</span><span style="color:var(--color-text-muted)">' + o.DocumentDate + '</span></div>' +
           '<div class="customer">' + (o.ObjectName || '') + '</div>' +
           '<div class="row">Nhân viên: ' + (o.EmployeeName || '') + '</div>' +

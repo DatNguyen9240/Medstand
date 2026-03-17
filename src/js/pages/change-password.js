@@ -1,6 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-
     (function () {
       // Toggle show/hide password – SVG eye swap
       $('.btn-toggle-pw').on('click', function () {
@@ -21,20 +18,20 @@
         $msg.text('').removeClass('pw-success').addClass('pw-error');
 
         // Validate
-        if (!currentPw) { $msg.text('Vui lòng nhập mật khẩu hiện tại'); return; }
-        if (!newPw) { $msg.text('Vui lòng nhập mật khẩu mới'); return; }
-        if (newPw.length < 6) { $msg.text('Mật khẩu mới tối thiểu 6 ký tự'); return; }
-        if (newPw !== confirmPw) { $msg.text('Xác nhận mật khẩu không khớp'); return; }
+        if (!currentPw) { $msg.text('Vui lòng nh?p m?t kh?u hi?n t?i'); return; }
+        if (!newPw) { $msg.text('Vui lòng nh?p m?t kh?u m?i'); return; }
+        if (newPw.length < 6) { $msg.text('M?t kh?u m?i t?i thi?u 6 ký t?'); return; }
+        if (newPw !== confirmPw) { $msg.text('Xác nh?n m?t kh?u không kh?p'); return; }
 
         ConfirmModal.show({
-          title: 'Đổi mật khẩu',
-          message: 'Bạn có chắc chắn muốn đổi mật khẩu?',
-          icon: '🔐',
-          okText: 'Xác nhận',
-          cancelText: 'Hủy',
+          title: 'Ð?i m?t kh?u',
+          message: 'B?n có ch?c ch?n mu?n d?i m?t kh?u?',
+          icon: '??',
+          okText: 'Xác nh?n',
+          cancelText: 'H?y',
           onOk: function () {
             var $btn = $('#btn-update');
-            $btn.prop('disabled', true).text('Đang xử lý...');
+            $btn.prop('disabled', true).text('Ðang x? lý...');
 
             var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
 
@@ -48,19 +45,19 @@
               var msg = data.msg || data.Msg || '';
 
               if (code === 0) {
-                $msg.text(msg || 'Đổi mật khẩu thành công!').removeClass('pw-error').addClass('pw-success');
+                $msg.text(msg || 'Ð?i m?t kh?u thành công!').removeClass('pw-error').addClass('pw-success');
                 $('#current-pw').val('');
                 $('#new-pw').val('');
                 $('#confirm-pw').val('');
               } else {
-                // code === 1: User không đúng, hoặc lỗi khác
-                $msg.text(msg || 'Đổi mật khẩu thất bại');
+                // code === 1: User không dúng, ho?c l?i khác
+                $msg.text(msg || 'Ð?i m?t kh?u th?t b?i');
               }
             }).catch(function (err) {
               console.error('Change password error', err);
-              $msg.text('Lỗi kết nối. Vui lòng thử lại.');
+              $msg.text('L?i k?t n?i. Vui lòng th? l?i.');
             }).finally(function () {
-              $btn.prop('disabled', false).text('CẬP NHẬT');
+              $btn.prop('disabled', false).text('C?P NH?T');
             });
 
           }

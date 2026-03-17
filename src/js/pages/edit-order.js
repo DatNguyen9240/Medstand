@@ -1,16 +1,12 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
-    var params = new URLSearchParams(location.search);
-    var orderId = params.get('id') || '';
+    var params = window._routeParams || {};
+    var orderId = params.id || '';
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     var rowCounter = 0;
     var _productsCache = null;
 
     // Back button: trở về order-detail nếu có id
     if (orderId) {
-      $('#btn-back').attr('href', 'order-detail.html?id=' + encodeURIComponent(orderId));
+      $('#btn-back').attr('href', '#/order-detail?id=' + encodeURIComponent(orderId));
     }
 
     if (!orderId) {
@@ -446,7 +442,7 @@
         if (msgType == 1) { Alert.error(msg || 'Có lỗi xảy ra.'); return; }
         Alert.success(msg || 'Cập nhật đơn hàng thành công!');
         setTimeout(function () {
-          window.location.href = 'order-detail.html?id=' + encodeURIComponent(orderId);
+          navigate('#/order-detail?id=' + encodeURIComponent(orderId));
         }, 1200);
       }).catch(function (err) {
         Alert.error(err.message || 'Có lỗi xảy ra.');

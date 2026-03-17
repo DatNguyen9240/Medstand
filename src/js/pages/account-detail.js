@@ -1,7 +1,3 @@
-﻿$('#sidebar-container').html(renderSidebar('account', ''));
-
-$('#nav-container').html(renderNavBar('account', ''));
-
     (function () {
       function fillProfile(data) {
         $('#profile-skeleton').prop('hidden', true);
@@ -14,17 +10,17 @@ $('#nav-container').html(renderNavBar('account', ''));
         AuthService.syncUserDisplay('', '#profile-avatar');
       }
 
-      // Gọi API lấy thông tin user mới nhất
+      // G?i API l?y thông tin user m?i nh?t
       Http.get(API_CONFIG.ENDPOINTS.AUTH.USER_INFO, { q: '{}' })
         .then(function (res) {
           var data = res.data || res;
           var user = (data.records && data.records[0]) || data;
-          // Cập nhật localStorage với data mới
+          // C?p nh?t localStorage v?i data m?i
           localStorage.setItem('auth_user', JSON.stringify(user));
           fillProfile(user);
         })
         .catch(function () {
-          // Fallback localStorage nếu API lỗi
+          // Fallback localStorage n?u API l?i
           var stored = localStorage.getItem('auth_user');
           if (stored) {
             fillProfile(JSON.parse(stored));

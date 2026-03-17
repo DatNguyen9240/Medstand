@@ -1,7 +1,4 @@
-﻿        $('#sidebar-container').html(renderSidebar('home', ''));
-        $('#theme-toggle-container').html(renderThemeToggle());
-
-        // ── Notification: load from API ──────────────────────────────────────
+        // -- Notification: load from API --------------------------------------
         (function loadNotifications() {
             var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
             var userName = user.UserName || '';
@@ -20,11 +17,11 @@
                         return;
                     }
 
-                    // Đếm chưa đọc
+                    // Ð?m chua d?c
                     var unreadCount = 0;
                     records.forEach(function (n) { if (!n.isView) unreadCount++; });
 
-                    // Hiển thị badge
+                    // Hi?n th? badge
                     if (unreadCount > 0) {
                         $badge.text(unreadCount).prop('hidden', false);
                     } else {
@@ -48,7 +45,7 @@
                     $list.html(html);
                 })
                 .catch(function () {
-                    $('#notif-list').html('<li class="notif-item" style="text-align:center;color:var(--color-text-muted);padding:16px;">Không thể tải thông báo</li>');
+                    $('#notif-list').html('<li class="notif-item" style="text-align:center;color:var(--color-text-muted);padding:16px;">Không th? t?i thông báo</li>');
                 });
 
             // Helper: escape HTML
@@ -58,17 +55,17 @@
                 return d.innerHTML;
             }
 
-            // Helper: tính thời gian trước
+            // Helper: tính th?i gian tru?c
             function _timeAgo(dateStr) {
                 if (!dateStr) return '';
                 var d = new Date(dateStr);
                 var now = new Date();
                 var diff = Math.floor((now - d) / 1000);
-                if (diff < 60) return 'Vừa xong';
-                if (diff < 3600) return Math.floor(diff / 60) + ' phút trước';
-                if (diff < 86400) return Math.floor(diff / 3600) + ' giờ trước';
+                if (diff < 60) return 'V?a xong';
+                if (diff < 3600) return Math.floor(diff / 60) + ' phút tru?c';
+                if (diff < 86400) return Math.floor(diff / 3600) + ' gi? tru?c';
                 if (diff < 172800) return 'Hôm qua';
-                return Math.floor(diff / 86400) + ' ngày trước';
+                return Math.floor(diff / 86400) + ' ngày tru?c';
             }
         })();
 

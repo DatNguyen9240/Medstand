@@ -1,0 +1,24 @@
+<header class="app-header" style="justify-content:center;gap:8px">
+    <a href="#/home"
+      style="position:absolute;left:16px;text-decoration:none;color:var(--color-text-muted);font-size:1.2rem">←</a>
+    <span style="color:var(--color-primary);font-weight:600">Tuyến của bạn</span>
+    <div style="position:absolute;right:16px" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="search-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="list">Danh sách</button>
+        <button class="segment-item" data-tab="map">Bản đồ</button>
+      </div>
+
+      <div id="tab-list" class="tab-content active" style="padding-top:16px">
+        <p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có dữ liệu để hiển thị</p>
+      </div>
+
+      <div id="tab-map" class="tab-content" style="padding-top:16px">
+        <div id="map-container"></div>
+      </div>
+      <div id="location-toast" class="location-toast"></div>
+    </div>
+  </main>

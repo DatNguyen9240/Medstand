@@ -1,9 +1,6 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-
     (function () {
       function getParam(name) {
-        return new URLSearchParams(window.location.search).get(name) || '';
+        return (window._routeParams || {})[name] || '';
       }
 
       // Drill-down params from URL
@@ -26,11 +23,11 @@
 
       // Breadcrumb
       function buildBreadcrumb() {
-        var crumbs = '<a href="sales-plan.html">Kế hoạch bán hàng</a>';
+        var crumbs = '<a href="#/sales-plan">Kế hoạch bán hàng</a>';
         if (ceoId) {
           var ceoLabel = decodeURIComponent(getParam('ceoLabel') || ceoId);
           if (managerId || employeeId) {
-            crumbs += ' <span class="sep">›</span> <a href="sales-plan-detail.html?ceoId=' + encodeURIComponent(ceoId) + '&label=' + encodeURIComponent(ceoLabel) + '&ceoLabel=' + encodeURIComponent(ceoLabel) + '">' + ceoLabel + '</a>';
+            crumbs += ' <span class="sep">›</span> <a href="#/sales-plan-detail?ceoId=' + encodeURIComponent(ceoId) + '&label=' + encodeURIComponent(ceoLabel) + '&ceoLabel=' + encodeURIComponent(ceoLabel) + '">' + ceoLabel + '</a>';
           } else {
             crumbs += ' <span class="sep">›</span> <span>' + ceoLabel + '</span>';
           }
@@ -38,7 +35,7 @@
         if (managerId) {
           var mgrLabel = decodeURIComponent(getParam('mgrLabel') || managerId);
           if (employeeId) {
-            crumbs += ' <span class="sep">›</span> <a href="sales-plan-detail.html?ceoId=' + encodeURIComponent(ceoId) + '&managerId=' + encodeURIComponent(managerId) + '&label=' + encodeURIComponent(mgrLabel) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&mgrLabel=' + encodeURIComponent(mgrLabel) + '">' + mgrLabel + '</a>';
+            crumbs += ' <span class="sep">›</span> <a href="#/sales-plan-detail?ceoId=' + encodeURIComponent(ceoId) + '&managerId=' + encodeURIComponent(managerId) + '&label=' + encodeURIComponent(mgrLabel) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&mgrLabel=' + encodeURIComponent(mgrLabel) + '">' + mgrLabel + '</a>';
           } else {
             crumbs += ' <span class="sep">›</span> <span>' + mgrLabel + '</span>';
           }
@@ -60,11 +57,11 @@
 
       // Back button logic
       if (employeeId) {
-        $('#back-btn').attr('href', 'sales-plan-detail.html?ceoId=' + encodeURIComponent(ceoId) + '&managerId=' + encodeURIComponent(managerId) + '&label=' + encodeURIComponent(getParam('mgrLabel') || managerId) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&mgrLabel=' + encodeURIComponent(getParam('mgrLabel') || managerId));
+        $('#back-btn').attr('href', '#/sales-plan-detail?ceoId=' + encodeURIComponent(ceoId) + '&managerId=' + encodeURIComponent(managerId) + '&label=' + encodeURIComponent(getParam('mgrLabel') || managerId) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&mgrLabel=' + encodeURIComponent(getParam('mgrLabel') || managerId));
       } else if (managerId) {
-        $('#back-btn').attr('href', 'sales-plan-detail.html?ceoId=' + encodeURIComponent(ceoId) + '&label=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId));
+        $('#back-btn').attr('href', '#/sales-plan-detail?ceoId=' + encodeURIComponent(ceoId) + '&label=' + encodeURIComponent(getParam('ceoLabel') || ceoId) + '&ceoLabel=' + encodeURIComponent(getParam('ceoLabel') || ceoId));
       } else {
-        $('#back-btn').attr('href', 'sales-plan.html');
+        $('#back-btn').attr('href', '#/sales-plan');
       }
 
       // Date defaults

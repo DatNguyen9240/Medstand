@@ -1,6 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
     AuthService.syncUserDisplay('.profile-name', '.profile-avatar');
 
     document.getElementById('btn-logout').addEventListener('click', function (e) {
@@ -19,7 +16,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       }).catch(function () { });
-      window.location.href = 'login.html';
+      navigate('#/login');
     });
 
     document.getElementById('logout-overlay').addEventListener('click', function (e) {

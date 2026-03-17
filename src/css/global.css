@@ -44,7 +44,6 @@ img {
 
 /* ---------- Layout ---------- */
 .app-main {
-  padding-top: var(--header-height);
   min-height: 100vh;
   transition: margin-left var(--transition-normal);
 }
@@ -189,4 +188,26 @@ select.form-control {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+
+/* ── Route transition spinner ──────────────────────────────────────── */
+.route-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  pointer-events: none;
+}
+
+.route-spinner-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  animation: route-spin 0.7s linear infinite;
+}
+
+@keyframes route-spin {
+  to { transform: rotate(360deg); }
 }

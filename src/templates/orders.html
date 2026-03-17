@@ -1,0 +1,20 @@
+﻿<header class="app-header" style="justify-content:center">
+    <span style="color:var(--color-primary);font-weight:600;font-size:var(--font-size-lg)">Đơn hàng</span>
+    <div style="position:absolute;right:16px" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <!-- Skeleton -->
+      <div id="orders-skeleton" class="orders-grid" aria-busy="true">
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+        <div class="order-menu-card skeleton" style="height: 100px;"></div>
+      </div>
+
+      <!-- Nội dung thật -->
+      <div class="orders-grid" id="orders-grid" hidden></div>
+    </div>
+  </main>

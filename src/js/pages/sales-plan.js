@@ -1,7 +1,3 @@
-﻿$('#sidebar-container').html(renderSidebar('orders', ''));
-
-$('#nav-container').html(renderNavBar('orders', ''));
-
     new SearchBar({
       container: '#search-container',
       placeholder: 'Tìm kế hoạch...',
@@ -24,7 +20,7 @@ $('#nav-container').html(renderNavBar('orders', ''));
       $to.on('change', function () { loadData(); });
       function renderCard(r) {
         var cardLabel = (r.CeoID || '') + (r.CeoName ? ' - ' + r.CeoName : '');
-        return '<a href="sales-plan-detail.html?ceoId=' + encodeURIComponent(r.CeoID || '') + '&label=' + encodeURIComponent(cardLabel) + '&ceoLabel=' + encodeURIComponent(cardLabel) + '" style="text-decoration:none;color:var(--color-text-muted)">' +
+        return '<a href="#/sales-plan-detail?ceoId=' + encodeURIComponent(r.CeoID || '') + '&label=' + encodeURIComponent(cardLabel) + '&ceoLabel=' + encodeURIComponent(cardLabel) + '" style="text-decoration:none;color:var(--color-text-muted)">' +
           '<div class="plan-card">' +
           '<div class="header">' + (r.CeoID || '') + (r.CeoName ? ' - ' + r.CeoName : '') + '</div>' +
           '<div class="row"><span>Doanh số thực hiện</span><span>' + Format.currency(r.DoanhSoThucHien) + '</span></div>' +

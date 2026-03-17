@@ -1,0 +1,41 @@
+/* order-detail page styles (extracted from inline) */
+.action-bar {
+      display: flex;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md) 4px;
+      margin-bottom: calc(var(--nav-height) + var(--spacing-lg));
+    }
+
+    .btn-edit {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius-lg);
+      background: var(--color-primary);
+      color: #fff;
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-md);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .btn-edit:hover {
+      opacity: 0.9;
+    }
+
+    .btn-delete {
+      flex: 1.5;
+      padding: 12px;
+      border: none;
+      border-radius: var(--radius-lg);
+      background: #dc2626;
+      color: #fff;
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-md);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+
+    .btn-delete:hover {
+      background: #b91c1c;
+    }

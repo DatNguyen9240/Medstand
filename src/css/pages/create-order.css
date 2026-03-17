@@ -1,0 +1,101 @@
+/* ── Create-order specific styles ─────────────────────────────────────── */
+#orderFormContainer {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-content: start;
+}
+
+@media (min-width: 480px) {
+  #orderFormContainer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  #orderFormContainer {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  #orderFormContainer {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── Order bottom bar ─────────────────────────────────────────────────── */
+.order-bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 var(--spacing-md);
+  margin: var(--spacing-md) 0 var(--spacing-xl);
+}
+
+.order-bottom-bar .total-amount-display {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.order-bottom-bar .btn-submit-order {
+  padding: 12px 32px;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.order-bottom-bar .btn-draft-order {
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.order-bottom-bar .btn-draft-order:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.order-bottom-bar .btn-draft-order:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .order-bottom-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .order-bottom-bar .total-amount-display {
+    flex: none;
+    width: 100%;
+  }
+
+  .order-bottom-bar .btn-submit-order,
+  .order-bottom-bar .btn-draft-order {
+    width: 100%;
+    text-align: center;
+  }
+}

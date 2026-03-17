@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════════
+   Order Form Shared Styles
+   Used across: create-order, edit-order
+   ═══════════════════════════════════════════ */
+
+.section-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-md);
+  color: var(--color-primary);
+  margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+  padding: 0 4px;
+}
+
+.form-group {
+  padding: 0 4px;
+  margin-bottom: var(--spacing-md);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+textarea.form-control {
+  resize: none;
+  min-height: 80px;
+}
+
+.product-list {
+  padding: 0 4px;
+  margin-bottom: 80px;
+}
+
+/* ── Responsive Grid ───────────────────── */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+
+.responsive-grid.add-product-row {
+  grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr auto;
+  gap: 6px;
+  padding: 0 4px;
+  align-items: flex-end;
+}
+
+.responsive-grid.add-product-row .form-group {
+  padding: 0;
+}
+
+.responsive-grid.add-product-row .form-control {
+  padding: 6px 4px;
+  font-size: var(--font-size-xs);
+  min-width: 0;
+}
+
+.responsive-grid.add-product-row .form-label {
+  font-size: 0.6rem;
+  margin-bottom: 2px;
+}
+
+/* ── Action Buttons ────────────────────── */
+.btn-remove-row {
+  height: 34px;
+  width: 34px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--color-danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  cursor: pointer;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-xs);
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.btn-remove-row:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── Total Amount ──────────────────────── */
+.total-amount-display {
+  padding: var(--spacing-md);
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.15);
+  margin: 0 var(--spacing-md) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-amount-display .label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.total-amount-display .value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+}
+
+/* ── Responsive ────────────────────────── */
+@media (min-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-md);
+  }
+
+  .responsive-grid .form-group {
+    padding: 0;
+  }
+
+  .responsive-grid.add-product-row {
+    grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr auto;
+  }
+}

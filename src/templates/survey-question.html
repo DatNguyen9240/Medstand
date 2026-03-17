@@ -1,0 +1,29 @@
+﻿<header class="app-header">
+    <div class="survey-header">
+      <a href="#/survey" class="back-btn" aria-label="Quay lại">←</a>
+      <span class="title">Làm khảo sát</span>
+    </div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div class="survey-content">
+        <div class="question-card">
+          <div class="question-title">Câu hỏi 1: Bạn đánh giá chất lượng dịch vụ như thế nào?</div>
+          <div class="answer-list">
+            <div class="answer-item" onclick="selectAnswer(this)">Rất tốt</div>
+            <div class="answer-item" onclick="selectAnswer(this)">Tốt</div>
+            <div class="answer-item" onclick="selectAnswer(this)">Bình thường</div>
+            <div class="answer-item" onclick="selectAnswer(this)">Kém</div>
+          </div>
+        </div>
+        <div class="question-card">
+          <div class="question-title">Câu hỏi 2: Bạn có giới thiệu nhà thuốc cho người khác không?</div>
+          <div class="answer-list">
+            <div class="answer-item" onclick="selectAnswer(this)">Có</div>
+            <div class="answer-item" onclick="selectAnswer(this)">Không</div>
+          </div>
+        </div>
+        <button class="btn-submit" onclick="Alert.success('Đã gửi khảo sát!')">Gửi khảo sát</button>
+      </div>
+    </div>
+  </main>

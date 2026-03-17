@@ -1,0 +1,59 @@
+/* account-detail page styles (extracted from inline) */
+.profile-header {
+      text-align: center;
+      padding: var(--spacing-lg) 0;
+    }
+
+    .profile-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+    }
+
+    .info-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      overflow: hidden;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-md);
+      min-height: 56px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
+    }
+
+    .info-value {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .btn-edit {
+      width: 100%;
+      padding: 14px;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: var(--spacing-md);
+    }
+
+    .btn-edit:hover {
+      opacity: 0.9;
+    }

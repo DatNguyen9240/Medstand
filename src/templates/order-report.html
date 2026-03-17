@@ -1,0 +1,27 @@
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+  <a href="#/orders" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+  <span id="page-title" style="color: var(--color-primary); font-weight: 600;">Báo cáo đơn hàng</span>
+  <div style="margin-left:auto" id="theme-toggle-container"></div>
+</header>
+<main class="app-main">
+  <div class="app-content">
+    <div id="filter-container"></div>
+    <div class="segment">
+      <button class="segment-item active" data-tab="overview">Tổng quan</button>
+      <button class="segment-item" data-tab="detail">Chi tiết SP</button>
+    </div>
+    <div id="tab-overview" class="tab-content active">
+      <div class="skeleton-group">
+        <div class="skeleton skeleton-card" style="min-height:160px;margin-bottom:12px"></div>
+        <div class="skeleton skeleton-card" style="min-height:200px"></div>
+      </div>
+    </div>
+    <div id="tab-detail" class="tab-content">
+      <div class="skeleton-group">
+        <div class="skeleton skeleton-card" style="min-height:120px;margin-bottom:12px"></div>
+        <div class="skeleton skeleton-card" style="min-height:120px;margin-bottom:12px"></div>
+        <div class="skeleton skeleton-card" style="min-height:120px"></div>
+      </div>
+    </div>
+  </div>
+</main>

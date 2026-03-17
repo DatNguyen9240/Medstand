@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Điểm hợp đồng - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/components/segment.css">
+  <link rel="stylesheet" href="src/css/components/data-table.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <style>
+    .contract-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      position: relative;
+      transition: border-color var(--transition-fast);
+    }
+
+    .contract-card .name {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .contract-card .row {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-xs);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .contract-card .points {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .detail-table .amount {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+  </style>
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+</head>
+
+<body>
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="account.html" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Điểm hợp đồng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <div id="sidebar-container"></div>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="report">Báo cáo tích điểm</button>
+        <button class="segment-item" data-tab="detail">Chi tiết tích điểm</button>
+      </div>
+      <div id="tab-report" class="tab-content active">
+        <div id="skeleton-report">
+          <div class="skeleton" style="height:120px;border-radius:var(--radius-lg);margin-bottom:16px"></div>
+          <div class="skeleton" style="height:120px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="report-list" hidden></div>
+      </div>
+      <div id="tab-detail" class="tab-content">
+        <div id="skeleton-detail">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="detail-content" hidden>
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>Sản phẩm</th>
+                <th>SL</th>
+                <th>Điểm SP</th>
+                <th>Điểm TL</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="detail-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+    <script src="src/js/pages/contract-point.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

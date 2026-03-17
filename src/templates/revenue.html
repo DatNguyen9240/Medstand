@@ -1,0 +1,49 @@
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/orders" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Doanh số</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="employee">Theo nhân viên</button>
+        <button class="segment-item" data-tab="customer">Theo khách hàng</button>
+      </div>
+      <div id="tab-employee" class="tab-content active">
+        <div id="skeleton-emp">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-employee" hidden>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Nhân viên</th>
+                <th>Doanh số</th>
+              </tr>
+            </thead>
+            <tbody id="emp-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="tab-customer" class="tab-content">
+        <div id="skeleton-cust">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-customer" hidden>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Khách hàng</th>
+                <th>Ngày</th>
+                <th>Doanh số</th>
+              </tr>
+            </thead>
+            <tbody id="cust-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>

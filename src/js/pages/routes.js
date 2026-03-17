@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('routes', ''));
-    $('#nav-container').html(renderNavBar('routes', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     var _searchText = '';
     var _filterValues = {};
@@ -112,7 +108,7 @@
     }
 
     function goToOrder(objectId) {
-      window.location.href = 'create-order.html?customerId=' + encodeURIComponent(objectId);
+      navigate('#/create-order?customerId=' + encodeURIComponent(objectId));
     }
 
     // ── Tabs + Map ──────────────────────────────────────────────────────────────

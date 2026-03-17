@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var LIMIT = 20;
       var searchText = '';
@@ -87,7 +83,7 @@
     var _districtsCache = {};
     var _wardsCache = {};
 
-    // ── Build form using FormSelect component ───────────────────────────────────
+    // -- Build form using FormSelect component -----------------------------------
     var custForm = new FormSelect({ container: '#customerFormContainer' });
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
 
@@ -200,7 +196,7 @@
       })
       .addInput({ id: 'gps', label: 'Vị trí GPS', placeholder: 'Nhập tọa độ hoặc chọn bản đồ' });
 
-    // Cascade: province → reset district + ward
+    // Cascade: province ? reset district + ward
     custForm.onListChange('province', function () {
       custForm.setListValue('district', '', '');
       custForm.setListValue('ward', '', '');
@@ -370,13 +366,13 @@
       });
     });
 
-    // ── Map Picker ───────────────────────────────────────────────────────────────
+    // -- Map Picker ---------------------------------------------------------------
     $(document).on('click', '#btn-open-map', function () {
       MapPicker.open(function (latlng) {
         custForm.setValue('gps', latlng);
       }, { value: custForm.getValue('gps') });
     });
-    // ── Birthday auto-format dd/mm/yyyy ─────────────────────────────────
+    // -- Birthday auto-format dd/mm/yyyy ---------------------------------
     $(document).on('input', '#fs-birthday', function () {
       var v = this.value.replace(/[^0-9]/g, '').substring(0, 8);
       if (v.length > 4) v = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4);

@@ -1,6 +1,4 @@
 function initDashboard() {
-  $('#nav-container').html(renderNavBar('home'));
-
   // ── User Profile ──
   AuthService.syncUserDisplay('.header-username', '.header-avatar');
 
@@ -157,5 +155,5 @@ function renderChart(chart) {
   });
 }
 
-// Auto-init khi load
-$(initDashboard);
+// Init — called directly since in SPA mode template is already in DOM
+initDashboard();

@@ -4,39 +4,23 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v1';
+const CACHE_VERSION = 'medstand-v2';
 
-// Danh sách tài nguyên cần cache ngay khi install
+// Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
   '/',
-  '/login.html',
   '/index.html',
-  '/register.html',
-  '/forgot-password.html',
-  '/account.html',
-  '/account-detail.html',
-  '/account-edit.html',
-  '/change-password.html',
-  '/contract-point.html',
-  '/create-order.html',
-  '/customer-management.html',
-  '/edit-order.html',
-  '/invoice-list.html',
-  '/order-detail.html',
-  '/order-list.html',
-  '/order-report.html',
-  '/orders.html',
-  '/product-warning.html',
-  '/return-order-detail.html',
-  '/return-orders.html',
-  '/return-product-list.html',
-  '/revenue.html',
-  '/routes.html',
-  '/sales-plan-detail.html',
-  '/sales-plan.html',
-  '/survey-history.html',
-  '/survey-question.html',
-  '/survey.html',
+
+  // Templates (loaded by router)
+  '/src/templates/login.html',
+  '/src/templates/register.html',
+  '/src/templates/forgot-password.html',
+  '/src/templates/home.html',
+  '/src/templates/routes.html',
+  '/src/templates/orders.html',
+  '/src/templates/account.html',
+
+  // Global CSS
   '/src/css/design-tokens.css',
   '/src/css/global.css',
   '/src/css/components/header.css',
@@ -47,10 +31,21 @@ const PRECACHE_URLS = [
   '/src/css/components/skeleton.css',
   '/src/css/components/loading-spinner.css',
   '/src/css/layouts/desktop.css',
-  '/images/logo/medstand-logo.png',
 
+  // Assets
+  '/images/logo/medstand-logo.png',
   '/src/pwa/manifest.json',
   '/src/pwa/pwa-register.js',
+
+  // Core JS
+  '/src/js/core/router.js',
+  '/src/js/config/api.config.js',
+  '/src/js/services/http.js',
+  '/src/js/services/auth.service.js',
+  '/src/js/components/NavBar.js',
+
+  // Offline fallback
+  '/offline.html',
 ];
 
 // ── Install: cache tất cả static assets ──────────────────────────────────────
@@ -98,7 +93,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets → cache-first
+  // Static assets → cache-first, offline fallback
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -116,6 +111,11 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
         }
         return networkResponse;
+      }).catch(() => {
+        // Mất mạng + không có cache → trả về offline page cho navigation requests
+        if (request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
+          return caches.match('/offline.html');
+        }
       });
     })
   );

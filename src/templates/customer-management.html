@@ -1,0 +1,31 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="#/account" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Quản lý khách hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div id="skeleton">
+        <div class="skeleton skeleton-card" style="margin-bottom:16px;min-height:120px"></div>
+        <div class="skeleton skeleton-card" style="min-height:120px"></div>
+      </div>
+      <div id="customer-list" hidden></div>
+    </div>
+  </main>
+  <!-- FAB -->
+  <button type="button" class="fab" id="btn-add-customer" aria-label="Thêm khách hàng">+</button>
+
+  <!-- Modal Thêm khách hàng -->
+  <div class="modal-overlay" id="modal-add-customer" role="dialog" aria-modal="true" aria-label="Thêm khách hàng">
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <button type="button" class="btn-back" id="modal-close" aria-label="Đóng">←</button>
+        <h2>Thêm khách hàng</h2>
+      </div>
+      <div class="modal-body" id="customerFormContainer"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn-confirm" id="btn-confirm-customer">XÁC NHẬN</button>
+      </div>
+    </div>
+  </div>

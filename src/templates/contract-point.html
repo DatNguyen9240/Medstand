@@ -1,0 +1,41 @@
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/account" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Điểm hợp đồng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="report">Báo cáo tích điểm</button>
+        <button class="segment-item" data-tab="detail">Chi tiết tích điểm</button>
+      </div>
+      <div id="tab-report" class="tab-content active">
+        <div id="skeleton-report">
+          <div class="skeleton" style="height:120px;border-radius:var(--radius-lg);margin-bottom:16px"></div>
+          <div class="skeleton" style="height:120px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="report-list" hidden></div>
+      </div>
+      <div id="tab-detail" class="tab-content">
+        <div id="skeleton-detail">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="detail-content" hidden>
+          <table class="detail-table">
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>Sản phẩm</th>
+                <th>SL</th>
+                <th>Điểm SP</th>
+                <th>Điểm TL</th>
+                <th>Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody id="detail-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>

@@ -1,0 +1,47 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/account"
+      style="text-decoration: none; color: var(--color-text-muted); display: flex; align-items: center;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600; font-size: var(--font-size-lg);">Thông tin tài
+      khoản</span>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content">
+      <div id="profile-skeleton" class="profile-header">
+        <div class="skeleton skeleton-avatar"
+          style="width: 96px; height: 96px; margin: 0 auto var(--spacing-md); border-radius: 50%;"></div>
+        <div class="skeleton skeleton-text" style="width: 60%; margin: 0 auto var(--spacing-sm);"></div>
+        <div class="skeleton skeleton-text" style="width: 40%; margin: 0 auto;"></div>
+      </div>
+      <div id="profile-content" hidden>
+        <div class="profile-header">
+          <img id="profile-avatar" src="https://ui-avatars.com/api/?name=User&size=96&background=3c50e0&color=fff"
+            alt="" class="profile-avatar">
+        </div>
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-label">Họ và tên</span>
+            <span class="info-value" id="info-fullName">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Số điện thoại</span>
+            <span class="info-value" id="info-phone">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Email</span>
+            <span class="info-value" id="info-email">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ngày sinh</span>
+            <span class="info-value" id="info-birthDate">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Giới tính</span>
+            <span class="info-value" id="info-gender">-</span>
+          </div>
+        </div>
+        <a href="#/account-edit" style="text-decoration: none;"><button type="button" class="btn-edit">CHỈNH SỬA
+            THÔNG TIN</button></a>
+      </div>
+    </div>
+  </main>

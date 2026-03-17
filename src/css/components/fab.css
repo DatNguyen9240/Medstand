@@ -1,0 +1,32 @@
+/* ═══════════════════════════════════════════
+   Floating Action Button (FAB)
+   Used across: order-list, create-order,
+   customer-management
+   ═══════════════════════════════════════════ */
+
+.fab {
+  position: fixed;
+  right: var(--spacing-lg);
+  bottom: calc(var(--nav-height) + var(--spacing-lg));
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.fab:hover {
+  background: var(--color-primary-hover);
+  color: white;
+  box-shadow: 0 6px 20px rgba(var(--color-primary-rgb), 0.4);
+}

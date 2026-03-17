@@ -10,8 +10,8 @@ var SURVEY_CHECK_ENABLED = false;
   if (!SURVEY_CHECK_ENABLED) return;
 
   // Không chạy trên trang login, register, survey (đang làm khảo sát)
-  var path = window.location.pathname.toLowerCase();
-  if (path.indexOf('login') !== -1 || path.indexOf('register') !== -1 || path.indexOf('survey.html') !== -1) {
+  var hash = (location.hash || '').toLowerCase();
+  if (hash.indexOf('login') !== -1 || hash.indexOf('register') !== -1 || hash.indexOf('survey') !== -1) {
     return;
   }
 
@@ -48,10 +48,7 @@ var SURVEY_CHECK_ENABLED = false;
           var btnConfirm = document.getElementById('btn-confirm-survey');
           if (btnConfirm) {
             btnConfirm.onclick = function () {
-              // Xác định đường dẫn tới survey.html
-              var isRoot = path.indexOf('/pages/') === -1 && !path.endsWith('/pages');
-              var surveyUrl = isRoot ? 'pages/survey.html' : 'survey.html';
-              window.location.href = surveyUrl;
+              navigate('#/survey');
             };
           }
         }

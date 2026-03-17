@@ -1,0 +1,51 @@
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/orders" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Sản phẩm cảnh báo</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="out">Hết hàng <span class="badge red" id="badge-out">0</span></button>
+        <button class="segment-item" data-tab="low">Sắp hết <span class="badge orange" id="badge-low">0</span></button>
+        <button class="segment-item" data-tab="warn">Cần chú ý <span class="badge yellow" id="badge-warn">0</span></button>
+      </div>
+
+      <div id="tab-out" class="tab-content active">
+        <div id="skeleton-out">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-out" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>ĐVT</th><th>SL</th></tr></thead>
+            <tbody id="out-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-low" class="tab-content">
+        <div id="skeleton-low">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-low" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>Giá</th><th>SL</th></tr></thead>
+            <tbody id="low-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-warn" class="tab-content">
+        <div id="skeleton-warn">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-warn" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>Giá</th><th>SL</th></tr></thead>
+            <tbody id="warn-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>

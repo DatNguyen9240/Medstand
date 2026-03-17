@@ -1,10 +1,5 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     function getUrlParam(name) {
-      var params = new URLSearchParams(window.location.search);
-      return params.get(name) || '';
+      return (window._routeParams || {})[name] || '';
     }
 
     // Lấy ID từ URL, DocumentID từ localStorage
@@ -105,7 +100,7 @@
           $('#detail-content').show().prop('hidden', false);
           // Kết nối nút Sửa
           $('#btn-edit-order').on('click', function () {
-            if (orderId) window.location.href = 'edit-order.html?id=' + encodeURIComponent(orderId);
+            if (orderId) navigate('#/edit-order?id=' + encodeURIComponent(orderId));
           });
           // Kết nối nút Xoá
           $('#btn-delete-order').on('click', function () {
@@ -121,7 +116,7 @@
                 var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
                 if (msgType == 1) { Alert.error(msg || 'Có lỗi xảy ra.'); $btn.prop('disabled', false).text('Xoá'); return; }
                 Alert.success(msg || 'Xoá đơn hàng thành công!');
-                setTimeout(function () { window.location.href = 'order-list.html'; }, 1200);
+                setTimeout(function () { navigate('#/order-list'); }, 1200);
               })
               .catch(function (err) {
                 Alert.error(err.message || 'Có lỗi xảy ra.');

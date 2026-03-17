@@ -2,7 +2,7 @@
   "name": "Medstand Pharma",
   "short_name": "Medstand",
   "description": "Ứng dụng quản lý bán hàng dược phẩm Medstand",
-  "start_url": "/login.html",
+  "start_url": "/#/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

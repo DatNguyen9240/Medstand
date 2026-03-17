@@ -84,7 +84,7 @@ const AuthService = (() => {
     } finally {
       deleteCookie('auth_token');
       localStorage.removeItem('auth_user');
-      window.location.href = '/login.html';
+      location.hash = '#/login';
     }
   }
 

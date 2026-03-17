@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     var ICON_MAP = {
       "Quản lý đơn hàng": "📦",
       "Hóa đơn bán hàng": "📄",
@@ -15,15 +11,15 @@
     };
 
     var HREF_MAP = {
-      "Quản lý đơn hàng": "order-list.html",
-      "Hóa đơn bán hàng": "invoice-list.html",
-      "Phiếu trả hàng": "return-orders.html",
-      "Đơn hàng chi tiết": "order-report.html",
-      "Doanh số": "revenue.html",
-      "Kế hoạch bán hàng": "sales-plan.html",
-      "Kế hoạch": "sales-plan.html",
-      "Hạng mục sản phẩm cảnh báo": "product-warning.html",
-      "Cảnh báo": "product-warning.html"
+      "Quản lý đơn hàng": "#/order-list",
+      "Hóa đơn bán hàng": "#/invoice-list",
+      "Phiếu trả hàng": "#/return-orders",
+      "Đơn hàng chi tiết": "#/order-report",
+      "Doanh số": "#/revenue",
+      "Kế hoạch bán hàng": "#/sales-plan",
+      "Kế hoạch": "#/sales-plan",
+      "Hạng mục sản phẩm cảnh báo": "#/product-warning",
+      "Cảnh báo": "#/product-warning"
     };
 
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');

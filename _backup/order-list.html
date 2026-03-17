@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Danh sách đơn hàng - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/loading-spinner.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/components/fab.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <style>
+    .order-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      transition: border-color var(--transition-fast), background-color var(--transition-normal);
+    }
+
+    .order-card:hover {
+      border-color: var(--color-border-strong);
+    }
+
+    .order-card .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .order-card .row.main {
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: var(--spacing-sm);
+      color: var(--color-text);
+    }
+
+    .order-card .customer {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+      margin: var(--spacing-sm) 0;
+    }
+
+    .order-card .amount,
+    .order-card .points {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .order-card .status {
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .order-card .status.waiting {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .order-card .status.draft {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .order-card .status.transferred {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .order-card .status.processed {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    .fab {
+      bottom: calc(var(--nav-height) + 120px);
+    }
+
+    @media (min-width: 768px) {
+      #order-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
+      }
+
+      #order-list .order-card {
+        margin-bottom: 0;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      #order-list {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body data-page="order-list">
+  <header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="orders.html" style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Danh sách đơn hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+
+      <div id="order-skeleton">
+        <div class="skeleton skeleton-card" style="margin-bottom: var(--spacing-md);"></div>
+        <div class="skeleton skeleton-card" style="margin-bottom: var(--spacing-md);"></div>
+        <div class="skeleton skeleton-card" style="margin-bottom: var(--spacing-md);"></div>
+        <div class="skeleton skeleton-card" style="margin-bottom: var(--spacing-md);"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+
+      <div id="order-list" hidden></div>
+    </div>
+  </main>
+
+  <button type="button" class="fab" aria-label="Tạo đơn mới"
+    onclick="window.location.href='create-order.html'">+</button>
+
+  <div id="sidebar-container"></div>
+  <div id="nav-container"></div>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <script src="src/js/services/order.service.js"></script>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+  <script src="src/js/config/filter-fields.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+    <script src="src/js/pages/order-list.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

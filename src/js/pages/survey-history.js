@@ -1,6 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-
     (function () {
       var LIMIT = 20;
       var searchText = '';
@@ -27,7 +24,7 @@
 
       function renderCard(r) {
         var cls = getResultClass(r.KetQua);
-        return '<div class="survey-card" onclick="localStorage.setItem(\'survey_doc_id\',\'' + r.DocumentID + '\');window.location.href=\'survey.html\'">' +
+        return '<div class="survey-card" onclick="localStorage.setItem(\'survey_doc_id\',\'' + r.DocumentID + '\');navigate(\'#/survey\')">' +
           '<div class="survey-title">' + (r.Title || 'Bài khảo sát') + '</div>' +
           '<div class="survey-time">Thời gian: ' + (r.ThoiGian || '-') + '</div>' +
           '<div class="survey-result ' + cls + '">Kết quả: ' + (r.KetQua || '0/0') + '</div>' +

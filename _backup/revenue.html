@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Doanh số - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/components/segment.css">
+  <link rel="stylesheet" href="src/css/components/data-table.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <script src="src/js/services/sales.service.js"></script>
+  <style>
+    .data-table tbody tr {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="orders.html" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Doanh số</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <div id="sidebar-container"></div>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="employee">Theo nhân viên</button>
+        <button class="segment-item" data-tab="customer">Theo khách hàng</button>
+      </div>
+      <div id="tab-employee" class="tab-content active">
+        <div id="skeleton-emp">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-employee" hidden>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Nhân viên</th>
+                <th>Doanh số</th>
+              </tr>
+            </thead>
+            <tbody id="emp-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="tab-customer" class="tab-content">
+        <div id="skeleton-cust">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-customer" hidden>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>Khách hàng</th>
+                <th>Ngày</th>
+                <th>Doanh số</th>
+              </tr>
+            </thead>
+            <tbody id="cust-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+  <script src="src/js/config/filter-fields.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+    <script src="src/js/pages/revenue.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

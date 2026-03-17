@@ -1,0 +1,17 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="#/orders" style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Phiếu trả hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div id="return-count" style="font-size:var(--font-size-sm);color:var(--color-text-muted);margin:0 0 var(--spacing-md) 0" hidden></div>
+      <div id="skeleton">
+        <div class="skeleton skeleton-card" style="margin-bottom:16px"></div>
+        <div class="skeleton skeleton-card" style="margin-bottom:16px"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+      <div id="return-list" hidden></div>
+    </div>
+  </main>

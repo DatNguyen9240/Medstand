@@ -1,0 +1,88 @@
+/* order-list page styles (extracted from inline) */
+.order-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      transition: border-color var(--transition-fast), background-color var(--transition-normal);
+    }
+
+    .order-card:hover {
+      border-color: var(--color-border-strong);
+    }
+
+    .order-card .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .order-card .row.main {
+      font-weight: var(--font-weight-semibold);
+      margin-bottom: var(--spacing-sm);
+      color: var(--color-text);
+    }
+
+    .order-card .customer {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+      margin: var(--spacing-sm) 0;
+    }
+
+    .order-card .amount,
+    .order-card .points {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .order-card .status {
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .order-card .status.waiting {
+      background: #fef3c7;
+      color: #b45309;
+    }
+
+    .order-card .status.draft {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .order-card .status.transferred {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .order-card .status.processed {
+      background: #ede9fe;
+      color: #6d28d9;
+    }
+
+    .fab {
+      bottom: calc(var(--nav-height) + 120px);
+    }
+
+    @media (min-width: 768px) {
+      #order-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-md);
+      }
+
+      #order-list .order-card {
+        margin-bottom: 0;
+      }
+    }
+
+    @media (min-width: 1200px) {
+      #order-list {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }

@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var LIMIT = 20;
       var searchText = '';

@@ -1,0 +1,20 @@
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/orders" style="text-decoration: none; color: var(--color-text-muted);">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Kế hoạch bán hàng</span>
+  </header>
+  <main class="app-main">
+    <div class="app-content">
+      <div class="filter-row">
+        <div><label style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Từ ngày</label><br><input
+            type="date" value="2025-11-01"></div>
+        <div><label style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Đến ngày</label><br><input
+            type="date" value="2025-11-30"></div>
+      </div>
+      <div id="search-container"></div>
+      <div id="skeleton">
+        <div class="skeleton skeleton-card" style="margin-bottom:16px"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+      <div id="plan-list" hidden></div>
+    </div>
+  </main>

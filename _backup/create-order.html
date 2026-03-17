@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Tạo đơn hàng - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/form-select.css">
+  <link rel="stylesheet" href="src/css/components/fab.css">
+  <link rel="stylesheet" href="src/css/pages/order-form.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/components/Alert.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <style>
+    body[data-page="create-order"] {
+      background: var(--color-surface);
+    }
+
+    .product-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-sm);
+      transition: background-color var(--transition-normal), border-color var(--transition-normal);
+    }
+
+    .product-card .row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .product-card .name {
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-md);
+      margin-bottom: 8px;
+      color: var(--color-text);
+    }
+
+    .product-card .price {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .fab {
+      font-size: 2rem;
+    }
+  </style>
+</head>
+
+<body data-page="create-order">
+  <header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="order-list.html" style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600; font-size: var(--font-size-lg);">Tạo đơn hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content" style="padding-top: var(--spacing-md);">
+
+      <div class="section-title" style="margin-top: 0;">Thông tin đơn hàng</div>
+      <div id="orderFormContainer"></div>
+      <style>
+        #orderFormContainer {
+          padding: 16px;
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 16px;
+          align-content: start
+        }
+
+        @media(min-width:480px) {
+          #orderFormContainer {
+            grid-template-columns: repeat(2, 1fr)
+          }
+        }
+
+        @media(min-width:768px) {
+          #orderFormContainer {
+            grid-template-columns: repeat(3, 1fr)
+          }
+        }
+
+        @media(min-width:1200px) {
+          #orderFormContainer {
+            grid-template-columns: repeat(4, 1fr)
+          }
+        }
+      </style>
+
+      <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Thêm dòng tạo đơn</span>
+        <button type="button"
+          style="background: transparent; border: 1px solid var(--color-primary); color: var(--color-primary); width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer;"
+          onclick="appendProductRow()">+</button>
+      </div>
+
+      <div id="dynamicProductRowsContainer"></div>
+
+      <style>
+        .order-bottom-bar {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 0 var(--spacing-md);
+          margin: var(--spacing-md) 0 var(--spacing-xl);
+        }
+
+        .order-bottom-bar .total-amount-display {
+          margin: 0;
+          flex: 1;
+          min-width: 0;
+          padding: 12px 16px;
+          background: var(--color-surface);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+        }
+
+        .order-bottom-bar .btn-submit-order {
+          padding: 12px 32px;
+          background: var(--color-primary);
+          color: #fff;
+          border: none;
+          border-radius: var(--radius-md);
+          font-size: 0.9rem;
+          font-weight: 700;
+          letter-spacing: .04em;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .order-bottom-bar .btn-draft-order {
+          padding: 12px 24px;
+          background: transparent;
+          color: var(--color-primary);
+          border: 2px solid var(--color-primary);
+          border-radius: var(--radius-md);
+          font-size: 0.9rem;
+          font-weight: 700;
+          letter-spacing: .04em;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: background var(--transition-fast), color var(--transition-fast);
+        }
+
+        .order-bottom-bar .btn-draft-order:hover {
+          background: rgba(var(--color-primary-rgb), 0.08);
+        }
+
+        .order-bottom-bar .btn-draft-order:disabled {
+          opacity: .6;
+          cursor: not-allowed;
+        }
+
+        @media (max-width: 480px) {
+          .order-bottom-bar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .order-bottom-bar .total-amount-display {
+            flex: none;
+            width: 100%;
+          }
+
+          .order-bottom-bar .btn-submit-order,
+          .order-bottom-bar .btn-draft-order {
+            width: 100%;
+            text-align: center;
+          }
+        }
+      </style>
+      <div class="order-bottom-bar">
+        <div class="total-amount-display">
+          <span class="label">Tổng tiền hàng:</span>
+          <span class="value" id="totalAmountText">0 đ</span>
+        </div>
+        <button type="button" id="btnDraftOrder" class="btn-draft-order">LƯU NHÁP</button>
+        <button type="button" id="btnSubmitOrder" class="btn-submit-order">TẠO ĐƠN HÀNG</button>
+      </div>
+
+    </div>
+  </main>
+
+  <div id="sidebar-container"></div>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/FormSelect.js"></script>
+    <script src="src/js/pages/create-order.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Sản phẩm cảnh báo - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/components/segment.css">
+  <link rel="stylesheet" href="src/css/components/data-table.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <style>
+    .segment-item .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .segment-item .badge.red { background: #fee2e2; color: #dc2626; }
+    .segment-item .badge.orange { background: #fff7ed; color: #ea580c; }
+    .segment-item .badge.yellow { background: #fef9c3; color: #ca8a04; }
+
+    .product-table .sl-zero {
+      color: #dc2626;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .sl-low {
+      color: #ea580c;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .sl-warn {
+      color: #ca8a04;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .item-id {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+
+    .product-table .price {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+  </style>
+</head>
+
+<body>
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="orders.html" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Sản phẩm cảnh báo</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+  <div id="sidebar-container"></div>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div class="segment">
+        <button class="segment-item active" data-tab="out">Hết hàng <span class="badge red" id="badge-out">0</span></button>
+        <button class="segment-item" data-tab="low">Sắp hết <span class="badge orange" id="badge-low">0</span></button>
+        <button class="segment-item" data-tab="warn">Cần chú ý <span class="badge yellow" id="badge-warn">0</span></button>
+      </div>
+
+      <div id="tab-out" class="tab-content active">
+        <div id="skeleton-out">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-out" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>ĐVT</th><th>SL</th></tr></thead>
+            <tbody id="out-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-low" class="tab-content">
+        <div id="skeleton-low">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-low" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>Giá</th><th>SL</th></tr></thead>
+            <tbody id="low-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-warn" class="tab-content">
+        <div id="skeleton-warn">
+          <div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div>
+        </div>
+        <div id="content-warn" hidden>
+          <table class="product-table">
+            <thead><tr><th>STT</th><th>Mã SP</th><th>Tên sản phẩm</th><th>Giá</th><th>SL</th></tr></thead>
+            <tbody id="warn-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+    <script src="src/js/pages/product-warning.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

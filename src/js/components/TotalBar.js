@@ -104,6 +104,14 @@ var TotalBar = (function () {
     show(opts);
   }
 
+  function destroy() {
+    var $el = $('#' + containerId);
+    if ($el.length) $el.remove();
+    $('body').removeClass('has-total-bar');
+    _state = {};
+    _onPageChange = null;
+  }
+
   function _goPage(p) {
     if (p >= 1 && p <= (_state.totalPages || 1) && p !== _state.currentPage) {
       _state.currentPage = p;
@@ -111,5 +119,5 @@ var TotalBar = (function () {
     }
   }
 
-  return { init: init, show: show, hide: hide, update: update, _goPage: _goPage };
+  return { init: init, show: show, hide: hide, update: update, destroy: destroy, _goPage: _goPage };
 })();

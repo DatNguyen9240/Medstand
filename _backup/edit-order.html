@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Sửa đơn hàng - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/form-select.css">
+  <link rel="stylesheet" href="src/css/pages/order-form.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/components/Alert.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <style>
+    body[data-page="edit-order"] {
+      background: var(--color-surface);
+    }
+
+    .btn-save-row {
+      height: 34px;
+      width: 34px;
+      border-radius: var(--radius-md);
+      background: rgba(22, 163, 74, 0.08);
+      color: #16a34a;
+      border: 1px solid rgba(22, 163, 74, 0.25);
+      cursor: pointer;
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-xs);
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+
+    .btn-save-row:hover {
+      background: rgba(22, 163, 74, 0.15);
+    }
+
+    .btn-update-row {
+      height: 34px;
+      width: 34px;
+      border-radius: var(--radius-md);
+      background: rgba(37,99,235,0.08);
+      color: #2563eb;
+      border: 1px solid rgba(37,99,235,0.25);
+      cursor: pointer;
+      font-weight: var(--font-weight-bold);
+      font-size: var(--font-size-xs);
+      transition: all var(--transition-fast);
+      flex-shrink: 0;
+      margin-bottom: 2px;
+    }
+
+    .btn-update-row:hover {
+      background: rgba(37,99,235,0.15);
+    }
+
+    #orderFormContainer {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      align-content: start;
+    }
+
+    @media(min-width:480px) {
+      #orderFormContainer {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media(min-width:768px) {
+      #orderFormContainer {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media(min-width:1200px) {
+      #orderFormContainer {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body data-page="edit-order">
+  <header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a id="btn-back" href="order-list.html"
+      style="text-decoration:none;color:var(--color-text-muted);font-size:1.2rem">←</a>
+    <span style="color:var(--color-primary);font-weight:600;font-size:var(--font-size-lg)">Sửa đơn hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content" style="padding-top:var(--spacing-md)">
+      <div id="loading-state" style="text-align:center;padding:48px 0;color:var(--color-text-muted)">Đang tải dữ liệu
+        đơn hàng...</div>
+      <div id="edit-form-wrap" hidden>
+        <div class="section-title" style="margin-top:0">Thông tin đơn hàng</div>
+        <div id="orderFormContainer"></div>
+
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Danh sách sản phẩm</span>
+          <button type="button"
+            style="background:transparent;border:1px solid var(--color-primary);color:var(--color-primary);width:28px;height:28px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer"
+            onclick="appendProductRow()">+</button>
+        </div>
+
+        <div id="dynamicProductRowsContainer"></div>
+
+        <div
+          style="display:flex;align-items:center;flex-wrap:wrap;gap:16px;padding:0 var(--spacing-md);margin:var(--spacing-md) 0 var(--spacing-xl)">
+          <div class="total-amount-display"
+            style="margin:0;flex:1;padding:12px 16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md)">
+            <span class="label">Tổng tiền hàng:</span>
+            <span class="value" id="totalAmountText">0 đ</span>
+          </div>
+          <button type="button" id="btnUpdateOrder"
+            style="padding:12px 32px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:0.9rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap">
+            CẬP NHẬT ĐƠN
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="sidebar-container"></div>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/FormSelect.js"></script>
+  <script src="src/js/services/order.service.js"></script>
+    <script src="src/js/pages/edit-order.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

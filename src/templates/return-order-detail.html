@@ -1,0 +1,42 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a href="#/return-orders" style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Chi tiết phiếu trả hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content" style="padding-top: var(--spacing-md);">
+      <!-- Search -->
+      <div class="search-wrap">
+        <span class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" id="search-input" placeholder="Tìm theo mã SP, tên SP...">
+      </div>
+
+      <!-- Skeleton -->
+      <div id="detail-skeleton">
+        <div class="detail-section">
+          <div class="skeleton skeleton-detail-header"></div>
+          <div class="skeleton skeleton-product"></div>
+          <div class="skeleton skeleton-product"></div>
+          <div class="skeleton skeleton-summary"></div>
+        </div>
+      </div>
+
+      <!-- Nội dung -->
+      <div id="detail-content" hidden>
+        <div class="detail-section">
+          <div class="detail-title">Chi tiết phiếu trả hàng</div>
+          <div id="return-header"></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-subtitle">Danh sách sản phẩm</div>
+          <div id="product-list"></div>
+        </div>
+
+        <div id="return-summary"></div>
+      </div>
+    </div>
+  </main>

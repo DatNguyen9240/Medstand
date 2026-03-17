@@ -1,0 +1,42 @@
+/* product-warning page styles (extracted from inline) */
+.segment-item .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: var(--radius-full);
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .segment-item .badge.red { background: #fee2e2; color: #dc2626; }
+    .segment-item .badge.orange { background: #fff7ed; color: #ea580c; }
+    .segment-item .badge.yellow { background: #fef9c3; color: #ca8a04; }
+
+    .product-table .sl-zero {
+      color: #dc2626;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .sl-low {
+      color: #ea580c;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .sl-warn {
+      color: #ca8a04;
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .product-table .item-id {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+    }
+
+    .product-table .price {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }

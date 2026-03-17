@@ -14,10 +14,10 @@ var THEME_ICONS = {
 
 function getNavTabs(activeTab) {
   return [
-    { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: 'index.html' },
-    { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: 'routes.html' },
-    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: 'orders.html' },
-    { id: 'account', label: 'Tài khoản', icon: NAV_ICONS.account, href: 'account.html' }
+    { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
+    { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: '#/routes' },
+    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: '#/orders' },
+    { id: 'account', label: 'Tài khoản', icon: NAV_ICONS.account, href: '#/account' }
   ];
 }
 

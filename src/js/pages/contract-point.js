@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('account', ''));
-    $('#nav-container').html(renderNavBar('account', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var LIMIT = 20;
       var dateFrom = '';
@@ -67,7 +63,7 @@
       var emptyMsg = '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có dữ liệu</p>';
 
       function renderContract(c) {
-        return '<div class="contract-card" style="cursor:pointer" onclick="location.href=\'order-report.html?objectId=' + encodeURIComponent(c.ObjectID || '') + '&tab=detail\'">' +
+        return '<div class="contract-card" style="cursor:pointer" onclick="navigate(\'#/order-report?objectId=' + encodeURIComponent(c.ObjectID || '') + '&tab=detail\')">' +
           '<div class="name">' + (c.ObjectName || '-') + '</div>' +
           (c.Phone ? '<div class="row"><span>SĐT</span><span>' + c.Phone + '</span></div>' : '') +
           (c.SoHopDong ? '<div class="row"><span>Số HĐ</span><span>' + c.SoHopDong + '</span></div>' : '') +

@@ -83,7 +83,7 @@ const Http = (() => {
       _alert('warning', 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       localStorage.removeItem('auth_user');
-      window.location.href = '/login.html';
+      location.hash = '#/login';
       return;
     }
 
@@ -115,7 +115,7 @@ const Http = (() => {
       _alert('warning', data.msg || 'Phiên đăng nhập đã hết hạn.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       localStorage.removeItem('auth_user');
-      window.location.href = '/login.html';
+      location.hash = '#/login';
       return;
     }
 
@@ -185,60 +185,85 @@ const Http = (() => {
       return cached;
     }
 
-    console.log('[HTTP] Cache MISS:', url);
-    const res = await _fetchWithTimeout(url, {
-      method: 'GET',
-      headers: _headers(),
-    });
-    const data = await _handleResponse(res);
+    showGlobalSpinner();
+    try {
+      console.log('[HTTP] Cache MISS:', url);
+      const res = await _fetchWithTimeout(url, {
+        method: 'GET',
+        headers: _headers(),
+      });
+      const data = await _handleResponse(res);
 
-    // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
-    const recs = data?.records || data?.data?.records;
-    const hasData = !Array.isArray(recs) || recs.length > 0;
-    if (data && data.code === 0 && hasData) _setCache(_cacheKey(url), data);
+      // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
+      const recs = data?.records || data?.data?.records;
+      const hasData = !Array.isArray(recs) || recs.length > 0;
+      if (data && data.code === 0 && hasData) _setCache(_cacheKey(url), data);
 
-    return data;
+      return data;
+    } finally {
+      hideGlobalSpinner();
+    }
   }
 
   async function post(endpoint, body = {}) {
-    clearCache(); // Dữ liệu đã thay đổi → xóa cache
-    const res = await _fetchWithTimeout(_url(endpoint), {
-      method: 'POST',
-      headers: _headers(),
-      body: JSON.stringify(body),
-    });
-    return _handleResponse(res);
+    showGlobalSpinner();
+    try {
+      clearCache(); // Dữ liệu đã thay đổi → xóa cache
+      const res = await _fetchWithTimeout(_url(endpoint), {
+        method: 'POST',
+        headers: _headers(),
+        body: JSON.stringify(body),
+      });
+      return _handleResponse(res);
+    } finally {
+      hideGlobalSpinner();
+    }
   }
 
   async function put(endpoint, body = {}) {
-    clearCache(); // Dữ liệu đã thay đổi → xóa cache
-    const res = await _fetchWithTimeout(_url(endpoint), {
-      method: 'PUT',
-      headers: _headers(),
-      body: JSON.stringify(body),
-    });
-    return _handleResponse(res);
+    showGlobalSpinner();
+    try {
+      clearCache(); // Dữ liệu đã thay đổi → xóa cache
+      const res = await _fetchWithTimeout(_url(endpoint), {
+        method: 'PUT',
+        headers: _headers(),
+        body: JSON.stringify(body),
+      });
+      return _handleResponse(res);
+    } finally {
+      hideGlobalSpinner();
+    }
   }
 
   async function del(endpoint) {
-    clearCache(); // Dữ liệu đã thay đổi → xóa cache
-    const res = await _fetchWithTimeout(_url(endpoint), {
-      method: 'DELETE',
-      headers: _headers(),
-    });
-    return _handleResponse(res);
+    showGlobalSpinner();
+    try {
+      clearCache(); // Dữ liệu đã thay đổi → xóa cache
+      const res = await _fetchWithTimeout(_url(endpoint), {
+        method: 'DELETE',
+        headers: _headers(),
+      });
+      return _handleResponse(res);
+    } finally {
+      hideGlobalSpinner();
+    }
   }
 
   /** POST dạng form (multipart) — dùng cho upload ảnh */
   async function postForm(endpoint, formData) {
-    clearCache(); // Dữ liệu đã thay đổi → xóa cache
-    const token = _getToken();
-    const res = await _fetchWithTimeout(_url(endpoint), {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-    return _handleResponse(res);
+    showGlobalSpinner();
+    try {
+      clearCache(); // Dữ liệu đã thay đổi → xóa cache
+      const token = _getToken();
+      const res = await _fetchWithTimeout(_url(endpoint), {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      return _handleResponse(res);
+    } finally {
+      hideGlobalSpinner();
+    }
   }
 
   return { get, post, put, del, postForm, clearCache };

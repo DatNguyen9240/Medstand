@@ -14,12 +14,8 @@
     display: none !important;
   }
 
-  .app-header {
-    left: var(--sidebar-width);
-    transition: left var(--transition-normal);
-  }
-
-  .app-main {
+  /* #app-content gets the sidebar offset only when sidebar is visible */
+  body.has-sidebar #app-content {
     margin-left: var(--sidebar-width);
     transition: margin-left var(--transition-normal);
   }
@@ -67,14 +63,10 @@
   }
 
   /* Collapsed sidebar adjustments */
-  body.sidebar-collapsed .app-header,
-  html.sidebar-collapsed-init .app-header {
-    left: var(--sidebar-collapsed-width);
-  }
-
-  body.sidebar-collapsed .app-main,
-  html.sidebar-collapsed-init .app-main {
+  body.sidebar-collapsed #app-content,
+  html.sidebar-collapsed-init #app-content {
     margin-left: var(--sidebar-collapsed-width);
+    transition: margin-left var(--transition-normal);
   }
 }
 
@@ -103,6 +95,7 @@
 
 /* ≥ 1104px: sidebar thu (80px) + content ≥ 1024px → side by side */
 @media (min-width: 1104px) {
+
   body.sidebar-collapsed .top-row,
   html.sidebar-collapsed-init .top-row {
     flex-direction: row;

@@ -1,0 +1,74 @@
+/* register page styles (extracted from inline) */
+body {
+      padding: var(--spacing-lg) var(--spacing-lg) calc(var(--spacing-lg) + 24px);
+    }
+
+    .auth-card {
+      max-width: 440px;
+    }
+
+    .auth-logo {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    /* Password strength indicator */
+    .pw-strength-bar {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--color-border);
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .pw-strength-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      transition: width .3s, background .3s;
+    }
+
+    .pw-strength-label {
+      font-size: 0.7rem;
+      color: var(--color-text-muted);
+      margin-top: 4px;
+    }
+
+    /* Inline error */
+    .field-error {
+      font-size: 0.72rem;
+      color: #ef4444;
+      margin-top: 4px;
+      display: none;
+    }
+
+    /* 2 cột */
+    .form-row-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-sm);
+    }
+
+    /* Terms */
+    .terms-wrap {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: var(--spacing-md);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+
+    .terms-wrap input[type=checkbox] {
+      accent-color: var(--color-primary);
+      width: 16px;
+      height: 16px;
+      margin-top: 2px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    @media (max-width: 480px) {
+      .form-row-2 {
+        grid-template-columns: 1fr;
+      }
+    }

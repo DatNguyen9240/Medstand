@@ -1,0 +1,64 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="#/account-detail"
+      style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600; font-size: var(--font-size-lg);">Chỉnh sửa tài khoản</span>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content">
+      <div class="edit-wrap">
+
+        <!-- Avatar -->
+        <div class="avatar-picker">
+          <img id="avatarPreview"
+            src="https://ui-avatars.com/api/?name=User&size=96&background=3c50e0&color=fff"
+            alt="Avatar" class="avatar-preview"
+            onclick="document.getElementById('avatarInput').click()">
+          <input type="file" id="avatarInput" accept="image/*">
+          <span class="avatar-hint">Nhấn vào ảnh để thay đổi avatar</span>
+        </div>
+
+        <!-- Họ và tên -->
+        <div class="field-group">
+          <label class="field-label" for="fieldDisplayName">Họ và tên</label>
+          <input type="text" class="field-input" id="fieldDisplayName" placeholder="Họ và tên">
+        </div>
+
+        <!-- Tên đăng nhập (readonly) -->
+        <div class="field-group">
+          <label class="field-label" for="fieldUserName">Tên đăng nhập</label>
+          <input type="text" class="field-input" id="fieldUserName" placeholder="Tên đăng nhập" readonly>
+        </div>
+
+        <!-- Email -->
+        <div class="field-group">
+          <label class="field-label" for="fieldEmail">Email</label>
+          <input type="email" class="field-input" id="fieldEmail" placeholder="Email">
+        </div>
+
+        <!-- Ngày sinh -->
+        <div class="field-group">
+          <label class="field-label" for="fieldNgaySinh">Ngày sinh</label>
+          <input type="date" class="field-input" id="fieldNgaySinh">
+        </div>
+
+        <!-- Giới tính -->
+        <div class="field-group">
+          <label class="field-label">Giới tính</label>
+          <div class="gender-row">
+            <label class="gender-option">
+              <input type="radio" name="gioiTinh" value="Nam"> Nam
+            </label>
+            <label class="gender-option">
+              <input type="radio" name="gioiTinh" value="Nữ"> Nữ
+            </label>
+            <label class="gender-option">
+              <input type="radio" name="gioiTinh" value="Khác"> Khác
+            </label>
+          </div>
+        </div>
+
+        <button type="button" class="btn-save" id="btnSave">LƯU THAY ĐỔI</button>
+      </div>
+    </div>
+  </main>

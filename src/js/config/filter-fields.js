@@ -11,9 +11,9 @@
  *   });
  */
 var FilterFields = (function () {
-  var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
 
   function getDefault() {
+    var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
     return [
       {
         key: 'status', label: 'Trạng thái', options: [], loadOptions: function (cb) {

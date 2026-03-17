@@ -1,7 +1,3 @@
-﻿    $('#sidebar-container').html(renderSidebar('orders', ''));
-    $('#nav-container').html(renderNavBar('orders', ''));
-    $('#theme-toggle-container').html(renderThemeToggle());
-
     (function () {
       var searchText = '';
       var fromDate, toDate;
@@ -50,13 +46,13 @@
             $('#skeleton-emp').prop('hidden', true);
             $('#content-employee').prop('hidden', false);
             $('#emp-body').html(byEmp.map(function (r) {
-              return '<tr onclick="window.location.href=\'order-list.html\'">' + '<td>' + r.STT + '</td><td>' + r.EmployeeName + '</td><td style="color:var(--color-primary);font-weight:600">' + Format.currency(r.DoanhSo) + '</td></tr>';
+              return '<tr onclick="navigate(\'#/order-list\')">'+  '<td>' + r.STT + '</td><td>' + r.EmployeeName + '</td><td style="color:var(--color-primary);font-weight:600">' + Format.currency(r.DoanhSo) + '</td></tr>';
             }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--color-text-muted);padding:24px">Không có dữ liệu</td></tr>');
             var byCust = data.records2 || [];
             $('#skeleton-cust').prop('hidden', true);
             $('#content-customer').prop('hidden', false);
             $('#cust-body').html(byCust.map(function (r) {
-              return '<tr onclick="window.location.href=\'order-list.html\'">' + '<td>' + r.STT + '</td><td>' + r.ObjectName + '</td><td>' + (r.DocumentDate || '') + '</td><td style="color:var(--color-primary);font-weight:600">' + Format.currency(r.DoanhSo) + '</td></tr>';
+              return '<tr onclick="navigate(\'#/order-list\')">'+  '<td>' + r.STT + '</td><td>' + r.ObjectName + '</td><td>' + (r.DocumentDate || '') + '</td><td style="color:var(--color-primary);font-weight:600">' + Format.currency(r.DoanhSo) + '</td></tr>';
             }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--color-text-muted);padding:24px">Không có dữ liệu</td></tr>');
             var totalValue = '';
             var records3 = data.records3 || [];

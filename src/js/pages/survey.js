@@ -1,10 +1,6 @@
-﻿$('#sidebar-container').html(renderSidebar('account', ''));
-
-$('#nav-container').html(renderNavBar('account', ''));
-
     // determine if quiz or detail
-    const params = new URLSearchParams(window.location.search);
-    const startQuiz = params.get('start') === '1';
+    const params = (window._routeParams || {});
+    const startQuiz = params.start === '1';
     const content = $('#content-area')[0];
     let questions = [];
     let current = 0;
@@ -83,7 +79,7 @@ $('#nav-container').html(renderNavBar('account', ''));
           '  <div class="info-row"><span class="info-label">Số câu:</span><span class="info-value">' + (info.SoCauHoi || 0) + '</span></div>' +
           '  <div class="info-row"><span class="info-label">Thời gian làm bài:</span><span class="info-value">' + (info.ThoiGianLamBai || '-') + ' phút</span></div>' +
           '  <div class="info-row"><span class="info-label">Hạn thi:</span><span class="info-value">' + (info.HanThi || '-') + '</span></div>' +
-          '  <button class="btn-start" onclick="window.location.href=\'survey.html?start=1\'">BẮT ĐẦU</button>' +
+          '  <button class="btn-start" onclick="navigate(\'#/survey?start=1\')">BẮT ĐẦU</button>' +
           '</div>';
       }).catch(function (err) {
         console.error('Failed to start survey', err);
@@ -173,7 +169,7 @@ $('#nav-container').html(renderNavBar('account', ''));
         '    <div>Không trả lời: ' + unanswered + '</div>' +
         '    <div style="background:var(--color-border);height:8px;border-radius:4px;margin:4px 0;width:' + (total > 0 ? Math.round(unanswered / total * 100) : 0) + '%"></div>' +
         '  </div>' +
-        '  <button class="btn-start" onclick="window.location.href=\'survey.html\'">TIẾP THEO</button>' +
+        '  <button class="btn-start" onclick="navigate(\'#/survey\')">TIẾP THEO</button>' +
         '</div>';
     }
 

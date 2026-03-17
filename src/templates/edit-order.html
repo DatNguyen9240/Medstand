@@ -1,0 +1,39 @@
+﻿<header class="app-header" style="justify-content: flex-start; gap: 12px; padding: 0 16px;">
+    <a id="btn-back" href="#/order-list"
+      style="text-decoration:none;color:var(--color-text-muted);font-size:1.2rem">←</a>
+    <span style="color:var(--color-primary);font-weight:600;font-size:var(--font-size-lg)">Sửa đơn hàng</span>
+    <div style="margin-left:auto" id="theme-toggle-container"></div>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content" style="padding-top:var(--spacing-md)">
+      <div id="loading-state" style="text-align:center;padding:48px 0;color:var(--color-text-muted)">Đang tải dữ liệu
+        đơn hàng...</div>
+      <div id="edit-form-wrap" hidden>
+        <div class="section-title" style="margin-top:0">Thông tin đơn hàng</div>
+        <div id="orderFormContainer"></div>
+
+        <div class="section-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Danh sách sản phẩm</span>
+          <button type="button"
+            style="background:transparent;border:1px solid var(--color-primary);color:var(--color-primary);width:28px;height:28px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;font-size:1.2rem;cursor:pointer"
+            onclick="appendProductRow()">+</button>
+        </div>
+
+        <div id="dynamicProductRowsContainer"></div>
+
+        <div
+          style="display:flex;align-items:center;flex-wrap:wrap;gap:16px;padding:0 var(--spacing-md);margin:var(--spacing-md) 0 var(--spacing-xl)">
+          <div class="total-amount-display"
+            style="margin:0;flex:1;padding:12px 16px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md)">
+            <span class="label">Tổng tiền hàng:</span>
+            <span class="value" id="totalAmountText">0 đ</span>
+          </div>
+          <button type="button" id="btnUpdateOrder"
+            style="padding:12px 32px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);font-size:0.9rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap">
+            CẬP NHẬT ĐƠN
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
