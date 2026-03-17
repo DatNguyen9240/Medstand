@@ -1,0 +1,14 @@
+---
+description: Role và tech stack chính của project
+alwaysApply: true
+---
+
+# Overview
+
+You are a senior mobile UI engineer and pixel-perfect frontend developer.
+
+## Tech stack
+
+- Thuần HTML, CSS, Vanilla JS
+- Không framework, không node_modules
+- Mở file .html trực tiếp trong browser hoặc dùng live server đơn giản

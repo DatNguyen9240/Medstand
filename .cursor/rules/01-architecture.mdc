@@ -1,0 +1,116 @@
+---
+description: Project structure, layout, components, design tokens
+alwaysApply: true
+---
+
+# Architecture & Conventions
+
+## Project structure (Chuẩn – dễ mở rộng, bảo trì)
+
+```
+src/
+├── index.html              # Entry (home)
+├── pages/                  # Màn hình – mỗi page 1 file HTML
+│   ├── home.html
+│   ├── routes.html         # Tuyến của bạn
+│   ├── orders.html
+│   └── account.html
+│
+├── css/
+│   ├── design-tokens.css   # màu, spacing, font, radius, shadow
+│   ├── global.css
+│   └── components/         # CSS cho từng component
+│       ├── header.css
+│       ├── card.css
+│       ├── nav-bar.css
+│       ├── skeleton.css
+│       └── loading-spinner.css
+│
+├── js/
+│   ├── app.js              # init, routing đơn giản
+│   ├── components/         # render components (template + data)
+│   │   ├── Header.js
+│   │   ├── Card.js
+│   │   ├── NavBar.js
+│   │   └── LoadingSpinner.js
+│   └── utils/              # debounce, formatters
+│
+└── data/
+    └── mock/               # JSON mock data cho test
+        ├── dashboard.json
+        ├── birthdays.json
+        ├── routes.json
+        └── orders.json
+```
+
+**Flow:**
+- `pages/*.html` → link `css/`, `js/`, load data từ `data/mock/*.json` (fetch)
+- Components: hàm JS nhận data, trả HTML string hoặc dùng `<template>` + cloneNode
+- `design-tokens.css` → single source of truth
+- Thêm page: tạo `pages/new.html`, copy cấu trúc từ page có sẵn
+
+## Layout (Facebook-style)
+
+- Main content: center, max-width ~600px desktop
+- Mobile: full-width, padding 16px
+- Structure: header → main (scroll) → nav (bottom)
+
+## Responsive
+
+- Breakpoints: mobile (<768px), tablet (768–1024px), desktop (>1024px)
+- Touch targets ≥ 44px
+- Tránh horizontal scroll trên mobile
+
+## Components (Reusable)
+
+- Class `.card`, `.list-item`, `.app-nav`, `.app-header`, `.search-bar`
+- Mỗi component = 1 file JS + 1 file CSS
+- Luôn dùng variables từ `css/design-tokens.css`
+
+## HTML / CSS mapping
+
+| UI element | Class |
+|------------|-------|
+| Stat cards | `.card` |
+| Lists | `ul.list`, `li.list-item` |
+| Bottom nav | `nav.app-nav`, `.nav-item` |
+| Header | `header.app-header` |
+| Search | `input.search-bar` |
+| Tab switcher | `.segment`, `.segment-item` |
+| Avatar | `.avatar` |
+| Badge | `.badge` |
+| Call button | `button.btn-call` |
+| Skeleton | `.skeleton`, `.skeleton-text`, `.skeleton-card` |
+| Spinner | `.loading-spinner`, `#global-spinner` |
+
+## Loading states
+
+### Global loading spinner
+
+- Thêm `#global-spinner` cố định (fixed, center màn hình, z-index cao)
+- Class `.loading-spinner`: spinner tròn xoay (CSS animation)
+- Hiển thị khi: fetch API, submit form, chuyển page
+- JS: `showGlobalSpinner()` / `hideGlobalSpinner()` – toggle class `.active` hoặc `[hidden]`
+
+```html
+<div id="global-spinner" class="loading-spinner" hidden aria-live="polite">
+  <span class="spinner-dot"></span>
+</div>
+```
+
+### Skeleton loading
+
+Dùng skeleton thay vì spinner khi có layout cố định:
+
+| Vị trí | Skeleton | Ghi chú |
+|--------|----------|---------|
+| Stat cards (3 cột) | `.skeleton-card` × 3 | Giữ layout 3 cột |
+| List items | `.skeleton-list-item` × N | 5–8 item placeholder |
+| Chart area | `.skeleton-chart` | Hình chữ nhật + grid lines mờ |
+| Card list (đơn hàng, hóa đơn, v.v.) | `.skeleton-card` × N | Giống card thật |
+| Bảng (Doanh số) | `.skeleton-table` | Hàng + cột placeholder |
+| Profile header | `.skeleton-avatar` + `.skeleton-text` | Avatar tròn + 2 dòng text |
+
+- Skeleton: `background: linear-gradient(90deg, var(--color-skeleton) 25%, var(--color-skeleton-shine) 50%, var(--color-skeleton) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite`
+- Thêm `--color-skeleton`, `--color-skeleton-shine` vào design-tokens.css
+- **Global spinner** dùng khi: submit form, chuyển trang, action không có layout cố định

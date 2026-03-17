@@ -1,0 +1,87 @@
+---
+description: Spec desktop layout – sidebar, responsive, multi-column
+globs: **/*.html **/*.css
+alwaysApply: false
+---
+
+# Desktop Layout Spec
+
+## Mục tiêu
+
+Tạo phiên bản desktop cho Medstand: layout sidebar + main content, thay bottom nav bằng sidebar navigation.
+
+## Layout tổng thể
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  header.app-header (fixed top, full width)              │
+├──────────┬──────────────────────────────────────────────┤
+│ sidebar  │  main.app-main                                │
+│ (fixed)  │  ┌──────────────────────────────────────────┐│
+│          │  │ app-content (max-width, centered)         ││
+│ - Trang  │  │                                          ││
+│ - Tuyến  │  │  [page content]                          ││
+│ - Đơn    │  │                                          ││
+│ - Tài khoản│                                          ││
+│          │  └──────────────────────────────────────────┘│
+└──────────┴──────────────────────────────────────────────┘
+```
+
+## Breakpoints
+
+- **Mobile** (<768px): layout hiện tại – header + main + bottom nav
+- **Desktop** (≥768px): header + sidebar trái + main content, ẩn bottom nav
+
+## Desktop structure
+
+```html
+<body class="desktop">
+  <header class="app-header">...</header>
+  <aside class="app-sidebar">
+    <nav class="sidebar-nav">
+      <a href="..." class="sidebar-item active">Trang chủ</a>
+      <a href="..." class="sidebar-item">Tuyến</a>
+      <a href="..." class="sidebar-item">Đơn hàng</a>
+      <a href="..." class="sidebar-item">Tài khoản</a>
+    </nav>
+  </aside>
+  <main class="app-main app-main--with-sidebar">...</main>
+</body>
+```
+
+## CSS variables (bổ sung vào design-tokens.css)
+
+```css
+/* Desktop */
+--sidebar-width: 240px;
+--header-height: 56px;
+--content-max-width-desktop: 900px;
+```
+
+## Desktop rules
+
+1. **Sidebar**: fixed left, width 240px, background `--color-surface`, shadow right
+2. **Main**: `margin-left: var(--sidebar-width)`, `padding-top: var(--header-height)`
+3. **Content**: max-width 900px desktop, có thể 2–3 cột cho grid
+4. **Nav**: class `.sidebar-item` – padding 12px 16px, active = nền xanh nhạt + chữ xanh
+5. **Media query**:
+
+```css
+@media (min-width: 768px) {
+  .app-nav { display: none; }
+  .app-sidebar { display: block; }
+  .app-main { margin-left: var(--sidebar-width); }
+  .app-content { max-width: var(--content-max-width-desktop); }
+}
+```
+
+## Tách file
+
+- `css/layouts/desktop.css` – toàn bộ desktop layout
+- Hoặc thêm section `/* Desktop */` vào `global.css`
+
+## Giữ nguyên
+
+- Màu sắc, font, component class (.card, .list-item, ...)
+- Mock data, logic JS
+- Chỉ thay đổi layout, không đổi nội dung page

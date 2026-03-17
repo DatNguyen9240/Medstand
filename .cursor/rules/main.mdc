@@ -1,0 +1,1249 @@
+You are a senior mobile UI engineer and pixel-perfect frontend developer.
+
+Tech stack: Thuần HTML, CSS, Vanilla JS. Không framework, không node_modules. Mở file .html trực tiếp trong browser hoặc dùng live server đơn giản.
+
+Your task is to recreate the exact mobile dashboard UI from the provided screenshot with 99% visual accuracy.
+
+Requirements:
+
+1. Analyze the screenshot carefully and extract:
+- Layout structure
+- Spacing and margins
+- Colors (exact hex values)
+- Font sizes and weights
+- Icons and shapes
+- Card components
+- Chart style
+- Bottom navigation bar
+
+2. Build a mobile dashboard screen that includes:
+
+Header section
+- Avatar image on the left
+- Greeting text: "Xin chào"
+- Username: "Tài khoản test app"
+- Notification bell icon on the right
+
+Statistics cards (3 cards in one row)
+- Card 1: "Đơn hàng" with number 12
+- Card 2: "Khách hàng giao dịch" with number 11/862
+- Card 3: "Độ phủ ngành hàng" with number 19/308
+Each card should have soft background colors and rounded corners.
+
+Revenue section
+- Title: "Doanh số"
+- Display revenue value: 23,919,000 in red
+- Date range picker with calendar icon
+
+Chart section
+- Line chart showing sales values
+- Green line with circular points
+- Y-axis values: 0 → 20 triệu
+- X-axis values: days (1, 3, 4, 5)
+
+Bottom navigation bar
+4 tabs with icons:
+- Trang chủ (active, green)
+- Tuyến
+- Đơn hàng
+- Tài khoản
+
+Design details
+- Mobile-first responsive layout
+- Soft shadows
+- Rounded cards
+- Clean modern Vietnamese business app style
+- Spacing consistent with modern mobile apps
+
+---
+
+# Architecture & Conventions
+
+## Project structure (Chuẩn – dễ mở rộng, bảo trì)
+
+```
+src/
+├── index.html              # Entry (home)
+├── pages/                  # Màn hình – mỗi page 1 file HTML
+│   ├── home.html
+│   ├── routes.html         # Tuyến của bạn
+│   ├── orders.html
+│   └── account.html
+│
+├── css/
+│   ├── design-tokens.css   # màu, spacing, font, radius, shadow
+│   ├── global.css
+│   └── components/         # CSS cho từng component
+│       ├── header.css
+│       ├── card.css
+│       ├── nav-bar.css
+│       └── ...
+│
+├── js/
+│   ├── app.js              # init, routing đơn giản
+│   ├── components/         # render components (template + data)
+│   │   ├── Header.js
+│   │   ├── Card.js
+│   │   └── NavBar.js
+│   └── utils/              # debounce, formatters
+│
+└── data/
+    └── mock/               # JSON mock data cho test
+        ├── dashboard.json
+        ├── birthdays.json
+        ├── routes.json
+        └── orders.json
+```
+
+**Flow:**
+- `pages/*.html` → link `css/`, `js/`, load data từ `data/mock/*.json` (fetch)
+- Components: hàm JS nhận data, trả HTML string hoặc dùng `<template>` + cloneNode
+- `design-tokens.css` → single source of truth, mọi file CSS tham chiếu
+- Thêm page: tạo `pages/new.html`, copy cấu trúc từ page có sẵn
+
+## Layout (Facebook-style)
+
+- Main content: center of viewport, max-width ~600px on desktop
+- Left/right: empty hoặc sidebar khi desktop
+- Mobile: full-width, content trung tâm, padding 16px
+- Structure: header → main (scroll) → nav (bottom)
+
+```html
+<body>
+  <header class="app-header">...</header>
+  <main class="app-main">
+    <div class="app-content">  <!-- max-width + centered -->
+      <div class="card">...</div>
+      <ul class="list">...</ul>
+    </div>
+  </main>
+  <nav class="app-nav">...</nav>
+</body>
+```
+
+## Responsive
+
+- Breakpoints rõ ràng: mobile (<768px), tablet (768–1024px), desktop (>1024px)
+- Spacing, font-size scale theo viewport (clamp, vw, vmin)
+- Touch targets ≥ 44px
+- Tránh horizontal scroll trên mobile
+
+## Components (Reusable)
+
+- HTML: class `.card`, `.list-item`, `.app-nav`, `.app-header`, `.search-bar`, v.v.
+- Mỗi component = 1 file JS (render HTML từ data) + 1 file CSS (nếu cần)
+- Đặt trong `js/components/`, `css/components/`
+- Load data: fetch từ `data/mock/*.json`, truyền vào hàm render
+- Màu sắc, kích thước, spacing: luôn dùng variables từ `css/design-tokens.css`
+
+## Design tokens (File chung – đồng bộ UI)
+
+Tạo file riêng `css/design-tokens.css` chứa tất cả:
+
+**Màu sắc**
+- --color-primary, --color-primary-rgb
+- --color-surface, --color-background
+- --color-text, --color-text-muted, --color-border
+- Không hardcode hex/rgb trong component
+
+**Kích thước**
+- --spacing-xs, --spacing-sm, --spacing-md, --spacing-lg (4, 8, 16, 24px)
+- --font-size-xs, --font-size-sm, --font-size-md, --font-size-lg
+- --radius-sm, --radius-md, --radius-lg (border-radius)
+- --touch-min: 44px
+
+**Thuộc tính khác**
+- --shadow-sm, --shadow-md, --shadow-lg
+- --transition-fast, --transition-normal
+```css
+/* css/design-tokens.css */
+:root {
+  --color-primary: #2E7D32;
+  --spacing-md: 16px;
+  --radius-md: 12px;
+  --font-size-title: 1.125rem;
+  /* ... */
+}
+```
+
+Link trong HTML: `<link rel="stylesheet" href="css/design-tokens.css">`. Mọi file CSS khác tham chiếu variables, không hardcode.
+
+## Mock data (Folder riêng cho test)
+
+- Tạo folder `data/mock/` chứa mock data theo loại
+- Mỗi loại data có file riêng để test UI độc lập
+
+```
+data/
+  mock/
+    dashboard.json      # stats, revenue
+    birthdays.json      # danh sách sinh nhật
+    routes.json         # tuyến đường
+    orders.json         # đơn hàng
+    user.json           # tài khoản
+```
+
+- Load bằng fetch: `fetch('data/mock/birthdays.json')` trong JS
+- Dùng khi chưa có API hoặc test UI offline
+- Cấu trúc mock phải giống response API thật
+
+## JavaScript (Tránh memory leak & lag)
+
+- Remove event listeners khi component unmount (hoặc dùng `{ once: true }`)
+- Hủy `setInterval`/`setTimeout` khi không dùng
+- Tránh closure giữ reference lớn; null hóa khi cleanup
+- Debounce/throttle cho scroll, resize, input
+- Dùng `requestAnimationFrame` cho animations, tránh `setInterval`
+- WeakMap/WeakSet nếu cần cache gắn với DOM
+- Không lưu DOM reference lâu dài nếu node có thể bị xóa
+
+```js
+// Ví dụ cleanup - phải lưu reference để removeEventListener đúng
+const fn = debounce(handler, 100);
+el.addEventListener('scroll', fn);
+// Khi unmount:
+el.removeEventListener('scroll', fn);
+clearTimeout(timerId);  // nếu có setTimeout/setInterval
+```
+
+## HTML / CSS mapping
+
+| UI element | Class / element |
+|------------|-----------------|
+| Stat cards | `.card` |
+| Lists (Sinh nhật, Tuyến) | `ul.list`, `li.list-item` |
+| Bottom nav 4 tabs | `nav.app-nav`, `.nav-item` |
+| Header | `header.app-header` |
+| Search box | `input` với class `.search-bar` |
+| Tab switcher (Danh sách/Bản đồ) | `.segment`, `.segment-item` |
+| Avatar | `.avatar` hoặc `img` |
+| Badge count | `.badge` |
+| Call button | `button.btn-call` + icon (SVG hoặc emoji) |
+
+Output:
+- Full working UI code
+- Component structure (reusable)
+- Styling (colors in separate file)
+- Chart implementation (cleanup on unmount)
+
+Continue the dashboard UI and add a new section called "Sinh nhật".
+
+Section design:
+
+Header
+- Title: "Sinh nhật"
+- Green vertical line on the left
+- Gift icon 🎁 on the right with number "8"
+
+List of pharmacy customers
+
+Each list item includes:
+
+Title (bold)
+Example:
+Nhà thuốc Tô Hiệu 1 - Nguyễn Thị Xuyến
+
+Subtitle (address text)
+Example:
+Số 147 Tô Hiệu, Nghĩa Tân, Cầu Giấy, Hà Nội
+
+Trailing action button
+- Circular light green background
+- Phone icon inside
+- Used for calling customer
+
+Divider line between items
+
+Items to display:
+
+1.
+Nhà thuốc Tô Hiệu 1 - Nguyễn Thị Xuyến
+Số 147 Tô Hiệu, Nghĩa Tân, Cầu Giấy, Hà Nội
+
+2.
+Nhà thuốc Minh An
+Số 80 Mễ Trì Hạ, Quận Nam Từ Liêm, Hà Nội
+
+3.
+Nhà Thuốc Quỳnh Anh
+Số 37 Ngõ 20 Mỹ Đình, Từ Liêm, Hà Nội
+
+4.
+Nhà Thuốc Thu Trang
+Số 85, Ngõ 230, Mễ Trì Thượng, Nam Từ Liêm, Hà Nội
+
+5.
+Nhà Thuốc Hồng Vân
+Số 36 ngách 63/5 Lê Đức Thọ, Mỹ Đình 1, Nam Từ Liêm, Hà Nội
+
+Design rules:
+
+- Mobile friendly layout
+- List item padding 16px
+- Divider between items
+- Phone button color #E6F4EA background
+- Phone icon color #2E7D32
+- Title font weight: 600
+- Address text color: grey
+- Rounded call button
+
+Create a mobile screen called "Tuyến của bạn" (Route page).
+
+Layout structure:
+
+Header
+- Title: "Tuyến của bạn"
+- Green primary color
+- On the right side add two icons:
+  - Filter icon
+  - Chart/statistics icon
+
+Search section
+- Rounded search box
+- Placeholder text: "Tìm kiếm"
+- Search icon inside the field on the right
+- Border color: green
+- Large rounded radius (mobile style)
+
+Tab section
+- Two tabs:
+  1. Danh sách
+  2. Bản đồ
+- Active tab: Danh sách
+- Green underline indicator
+- Inactive tab text color: grey
+
+Content section
+
+If no data:
+Show empty state message centered:
+
+"Không có dữ liệu để hiển thị"
+
+Design style
+- Mobile-first layout
+- Padding 16px
+- Soft green theme
+- Rounded UI
+- Clean Vietnamese business app style
+
+Bottom navigation bar
+4 tabs:
+
+Trang chủ
+Tuyến (active)
+Đơn hàng
+Tài khoản
+
+Active icon color: green
+Inactive icon color: grey
+
+Create a mobile screen called "Đơn hàng" (Orders page).
+
+Layout
+
+Header
+- Title: "Đơn hàng"
+- Green primary color
+- Large spacing above
+
+Menu grid
+
+Create a grid menu with 2 columns (mobile layout).
+
+Each item is a card with:
+- White background
+- Rounded corners
+- Soft shadow
+- Centered icon
+- Text label under icon
+
+Menu items:
+
+1.
+Icon: settings / gear
+Title: Quản lý đơn hàng
+
+2.
+Icon: shopping cart
+Title: Hóa đơn bán hàng
+
+3.
+Icon: return / undo
+Title: Phiếu trả hàng
+
+4.
+Icon: settings
+Title: Đơn hàng chi tiết
+
+5.
+Icon: fire / percent
+Title: Doanh số
+
+6.
+Icon: calendar / schedule
+Title: Kế hoạch bán hàng
+
+7.
+Icon: warning box
+Title: Hạng mục sản phẩm cảnh báo
+
+Design
+
+- Grid spacing: 16px
+- Card radius: 16px
+- Icon size: 48px
+- Text centered
+- Card shadow soft
+
+Interaction
+
+Each card is clickable and navigates to its own screen.
+
+Bottom navigation bar
+
+4 tabs:
+
+Trang chủ
+Tuyến
+Đơn hàng (active)
+Tài khoản
+
+Active color: green
+Inactive color: grey
+
+Create a mobile screen called "Tài khoản" (Account page).
+
+Layout structure
+
+Profile header
+- Circular avatar image centered
+- Username text below avatar: "Tài khoản test app"
+- Background light pattern (same as dashboard style)
+
+Account menu card
+
+Create a rounded container card with light background and shadow.
+
+Inside the card display a vertical menu list.
+
+Each item includes:
+- Icon on the left
+- Title text
+- Divider line below
+
+Menu items
+
+1. Thông tin cá nhân
+2. Quản lý khách hàng
+3. Điểm / Hợp đồng
+4. Lịch sử khảo sát
+5. Khảo sát
+6. Đổi mật khẩu
+7. Xóa tài khoản
+8. Chính sách
+9. Đăng xuất
+
+Design
+
+- Padding 16px
+- Card radius 20px
+- Divider between items
+- Icon size 24px
+- Clean Vietnamese business app style
+- Light grey card background
+
+Bottom navigation
+
+4 tabs:
+
+Trang chủ  
+Tuyến  
+Đơn hàng  
+Tài khoản (active)
+
+Active color: green
+Inactive color: grey
+
+Create a mobile screen called "Danh sách đơn hàng".
+
+Header
+- Back button on the left
+- Title: "Danh sách đơn hàng"
+- Floating + button on the right to create new order
+
+Search section
+- Rounded search box
+- Placeholder: "Tìm kiếm"
+- Search icon inside
+- Filter icon on the right
+
+Order list
+
+Display a vertical list of order cards.
+
+Each card contains:
+
+Top row
+- Order code (example: DMB1125/6711)
+- Date and time on the right
+
+Customer name
+Example:
+"Hộ Kinh Doanh Nhà Thuốc Tây Hồ"
+
+Information rows
+
+Nhân viên: Hoàng Văn Cường
+
+Trạng thái:
+Status can be one of 4:
+
+- Chờ duyệt
+- Đơn nháp
+- Đã chuyển xuống kho
+- Đã xử lý chưa chuyển kho
+
+Ghi chú
+
+Tổng tiền
+
+Điểm
+
+Style
+
+- Card with rounded corners
+- Soft shadow
+- Padding 16px
+- Green numbers for money and points
+- Red color for status warning
+
+Create a mobile screen called "Hóa đơn bán hàng".
+
+Header
+- Back button
+- Title: "Hóa đơn bán hàng"
+
+Search section
+- Rounded search box
+- Placeholder: "Tìm kiếm"
+- Search icon inside
+- Filter icon next to search box
+
+Invoice list
+
+Display a vertical list of invoice cards.
+
+Each card contains:
+
+Row 1
+Invoice code on the left
+Example: BMB1125/0486
+
+Date on the right
+Example: 06/11/2025
+
+Row 2
+Customer name
+Example:
+"Hộ Kinh Doanh Nhà Thuốc Tây Hồ"
+
+Row 3
+Total money
+Example:
+"Tổng tiền: 240.000"
+
+Style
+
+- Card with rounded corners
+- Soft shadow
+- Padding 16px
+- Money text color green
+- Clean business mobile UI
+
+Create two mobile screens for a sales management app.
+
+Screen 1: "Phiếu trả hàng"
+
+Header
+- Back button
+- Title: Phiếu trả hàng
+- Right text: SL trả lại: 19
+
+Search section
+- Search box with placeholder "Tìm kiếm"
+- Filter icon
+
+Return order list
+
+Each card contains:
+
+Return code
+Example: BTMN0326/0004
+
+Date
+
+Customer name
+
+Employees:
+Nhân viên
+Quản lý
+Tổng quản lý
+
+Total money
+
+Return reason
+
+Button: "Danh sách sản phẩm"
+
+Click card -> open product list screen.
+
+---
+
+Screen 2: "Danh sách sản phẩm"
+
+Display list of products in the return order.
+
+Each product card contains:
+
+Product code + name
+
+Đơn giá
+Số lượng
+Tổng tiền
+Chiết khấu
+Thành tiền
+Điểm tích lũy
+
+Style
+- Rounded cards
+- Soft shadow
+- Clean business UI
+- Green color for totals
+
+Create a mobile screen called "Báo cáo đơn hàng".
+
+Header
+- Back button
+- Title: Báo cáo đơn hàng
+- Filter icon on the right
+
+Search bar
+Placeholder: Tìm kiếm
+
+Tabs
+1. Tổng quan
+2. Chi tiết
+
+Tab: Tổng quan
+
+Display monthly summary card
+
+Title:
+Tháng 11
+
+Rows:
+Doanh số
+Tiền CK
+Doanh thu
+Điểm tích lũy
+
+Tab: Chi tiết
+
+Display list of order report cards
+
+Each card contains:
+
+Date
+Customer code + name
+Address
+Employee name
+Manager name
+
+Numbers:
+Doanh số
+Doanh thu
+Điểm tích lũy
+
+Button:
+Danh sách sản phẩm
+
+Create a mobile screen called "Doanh số".
+
+Header
+- Back button
+- Title: Doanh số
+- Filter icon
+
+Search bar
+Placeholder: Tìm kiếm
+
+Tabs:
+1. Theo nhân viên
+2. Theo khách hàng
+
+Tab: Theo nhân viên
+
+Table columns:
+STT
+Nhân viên
+Từ ngày đến ngày
+Doanh số
+
+Bottom summary:
+Từ ngày
+Đến ngày
+Tổng doanh số
+
+Tab: Theo khách hàng
+
+Table columns:
+STT
+Khách hàng
+Doanh số
+
+Add pagination:
+<<
+< Trước
+1
+Sau >
+>>
+
+Create a mobile app screen called "Kế hoạch bán hàng" for a sales management application.
+
+Header
+- Back arrow icon on the left
+- Title: Kế hoạch bán hàng
+- Background color: light green theme
+
+Filter section
+- Two date pickers:
+  - "Từ ngày"
+  - "Đến ngày"
+- Each date field has a calendar icon.
+
+Search bar
+- Placeholder text: "Tìm kiếm"
+- Search icon on the right
+
+Content
+Display a list of employee sales plan cards.
+
+Each card contains:
+
+Employee code and name
+Example:
+NVBH001 - Hoàng Văn Cường
+
+Sales KPI metrics:
+
+Doanh số thực hiện
+Doanh số kế hoạch
+% Thực hiện DS
+Độ phủ KH
+Độ phủ KH thực hiện
+% Độ phủ KH thực hiện
+SL KH hợp đồng
+SL KHHD phát sinh doanh số
+% Thực hiện KHHD
+SL KH mở mới
+
+Design
+- White card with rounded corners
+- Soft shadow
+- Metrics displayed in two columns
+- Numbers aligned to the right
+
+Interaction
+When the user taps a card,
+navigate to a detail screen showing:
+
+Title:
+"1. Tổng kế hoạch cả miền"
+
+Display the same KPI metrics but as a detailed report summary.
+
+Style
+- Clean enterprise mobile UI
+- Green accent color
+- Simple typography
+- Spacing optimized for readability
+
+Create a reusable mobile filter component for a React Native sales application.
+
+Screen: "Bộ lọc"
+
+Design:
+- Clean enterprise mobile UI
+- Green primary color
+- Rounded input fields
+- Light gray background
+- Large green button at bottom: "ÁP DỤNG"
+
+Layout:
+1. Date range row
+   - "Từ ngày" with date picker
+   - "Đến ngày" with date picker
+   - Each field has a calendar icon
+
+2. Filter fields (reusable component)
+Each field includes:
+- Label
+- Touchable input box
+- Placeholder text
+- Right arrow icon
+
+Fields:
+- Trạng thái
+- Chi nhánh
+- Khách hàng
+- Sản phẩm
+
+Behavior:
+Create a reusable component called FilterSelectItem.
+
+When the user taps a field:
+- open a modal / bottom sheet
+- show searchable list
+- allow selecting one item
+- close modal after selection
+- update value in filter field
+
+Modal UI:
+Header title
+Search input
+Scrollable list of options
+
+Example lists:
+
+Trạng thái:
+- TDV Kiểm tra lại
+- Đơn nháp
+- Chờ duyệt
+- Nhận đơn
+- Đã chuyển xuống kho
+- Đã xuất hàng
+- Đơn đã xử lý chưa chuyển kho
+- Đã đi gửi hàng
+
+Chi nhánh:
+- Miền Bắc
+- Miền Bắc - ONLINE
+- Miền Nam
+- Miền Trung
+
+Sản phẩm:
+List of products with long names and promotions.
+
+Technical requirements:
+- React Native
+- Typescript
+- reusable components
+- use state to open/close modal
+- support search filtering
+- clean component structure
+
+Components:
+FilterScreen
+FilterSelectItem
+SelectModal
+
+Create a reusable "Add Product" component for a React Native sales order app.
+
+Main Screen: "Tạo đơn hàng"
+
+Sections:
+
+Order Information Form
+- Ngày CT (date picker)
+- Chi nhánh (select modal)
+- Tên khách hàng (select modal)
+- Phường/Xã (select modal)
+- Địa chỉ (text input)
+- Tuyến thứ (select modal)
+- Số điện thoại (text input)
+- Ghi chú (text input)
+- Diễn giải (multiline text area)
+
+Product List Section
+Title: "Danh sách sản phẩm"
+
+Display:
+- total amount
+- list of selected products
+
+Floating Action Button or "+" button
+When user taps "+" open a modal to add product.
+
+Add Product Modal (Bottom Sheet)
+
+Fields inside modal:
+- Sản phẩm (select product)
+- Số lượng
+- Đơn giá
+- Chiết khấu %
+- Thành tiền (auto calculate)
+
+Actions:
+- Hủy
+- Thêm sản phẩm
+
+After submitting:
+- close modal
+- append product to product list
+- update total amount
+
+Component architecture:
+
+components/
+AddProductModal
+ProductListItem
+OrderFormInput
+SelectInput
+
+screens/
+CreateOrderScreen
+
+Technical requirements:
+React Native
+Typescript
+useState / useReducer
+FlatList for product list
+BottomSheet modal
+reusable form inputs
+
+Create a React Native screen called "AccountDetailScreen".
+
+Navigation flow:
+AccountScreen → tap "Thông tin cá nhân" → navigate to AccountDetailScreen.
+
+UI Design:
+Enterprise mobile app
+Green primary color
+Light background
+Minimal style
+
+Header:
+Back button
+Title: "Thông tin tài khoản"
+
+Profile section:
+- Center avatar image (circle)
+- User profile picture
+
+Information list:
+
+Row layout:
+Label on left
+Value on right (green text)
+
+Fields:
+Họ và tên
+Số điện thoại
+Email
+Ngày sinh
+Giới tính
+
+Example values:
+Họ và tên: Tài khoản test app
+Số điện thoại: 03789001356
+
+Design:
+Divider line between rows
+Padding horizontal 16
+Row height 56
+
+Bottom button:
+Large green button
+Text: "CHỈNH SỬA THÔNG TIN"
+
+Behavior:
+When user taps "CHỈNH SỬA THÔNG TIN"
+→ navigate to EditProfileScreen
+
+Component structure:
+
+components/
+ProfileAvatar
+ProfileInfoItem
+PrimaryButton
+
+screens/
+AccountScreen
+AccountDetailScreen
+EditProfileScreen
+
+Create a mobile screen called "CustomerManagementScreen".
+
+Navigation:
+HomeScreen → tap "Quản lý khách hàng" → open CustomerManagementScreen.
+
+UI Layout:
+
+Header
+- Back button
+- Title: "Quản lý khách hàng"
+- Right icons:
+   filter icon
+   add customer button (+)
+
+Search section
+- Search input placeholder: "Tìm kiếm"
+- search icon inside input
+
+Customer list
+Scrollable vertical list.
+
+Each item is a card with shadow and rounded corners.
+
+Customer card layout:
+
+Tên KH: highlighted in green
+Địa chỉ
+Số điện thoại
+Sinh nhật
+Tuyến thứ
+Trạng thái
+Vị trí (latitude - longitude)
+
+Example:
+
+Tên KH: Nhà thuốc Việt Bảo
+Địa chỉ: Số 30 Doãn Kế Thiện, Cầu Giấy, Hà Nội
+Số điện thoại: 0982968042
+Sinh nhật:
+Tuyến thứ: Thứ 6
+Trạng thái: Đã tạo khách hàng
+Vị trí: 10.84803812646490 - 106.68897747509600
+
+Right side:
+Floating circular call button with phone icon.
+
+Design style:
+- Enterprise mobile app
+- White background
+- Green primary color
+- Material design cards
+- padding 16
+- spacing between cards
+
+Interactions:
+Tap card → open CustomerDetailScreen
+Tap "+" → open AddCustomerScreen
+Tap call icon → open phone dialer
+Tap filter → open filter modal
+
+Create a mobile screen called "ContractPointScreen".
+
+Navigation:
+HomeScreen → tap "Điểm hợp đồng" → open ContractPointScreen.
+
+UI Layout:
+
+Header
+
+Back button
+
+Title: "Điểm hợp đồng"
+
+Right icon: Filter
+
+Search section
+Search input placeholder: "Tìm kiếm"
+Search icon inside the input.
+
+Tabs (Top Tab Navigation):
+Tab 1: "Báo cáo tích điểm"
+Tab 2: "Báo cáo tích điểm chi tiết"
+
+Tab 1 – Báo cáo tích điểm:
+Show a list of contract cards.
+
+Card layout:
+Title: Contract code + pharmacy name
+
+Fields:
+Ngày tham gia
+Ngày hết hạn
+Ngày nhận hợp đồng
+Điểm tích lũy
+
+Example:
+
+HNNTL213 - HKD NHÀ THUỐC MỸ ĐÌNH PEARL
+
+Ngày tham gia: 08/01/2025
+Ngày hết hạn:
+Ngày nhận hợp đồng: 19/03/2025
+Điểm tích lũy: 159
+
+Use card style:
+rounded corners
+shadow
+padding 16
+spacing between cards
+
+Tab 2 – Báo cáo tích điểm chi tiết:
+Show product point details.
+
+Card layout:
+Product name
+
+Fields:
+Số lượng
+Điểm sản phẩm
+Điểm tích lũy
+Điểm còn lại
+Đơn giá
+Phần trăm điểm tích
+
+Example:
+
+DD VSPN Hakisa - Trầu không (Chai 120ml)
+
+Số lượng: 5
+Điểm sản phẩm: 9
+Điểm tích lũy: 45
+Điểm còn lại: 45
+Đơn giá: 45000
+
+Design:
+Enterprise mobile app
+White background
+Primary color: green
+Material style cards
+
+Interactions:
+Swipe or tap tab to switch content
+Tap filter icon → open filter modal
+Search filters the list results
+
+Create a mobile screen called "SurveyHistoryScreen".
+
+Navigation:
+HomeScreen → tap "Lịch sử khảo sát" → open SurveyHistoryScreen.
+
+Header:
+Back button
+Title: "Lịch sử khảo sát"
+
+Search section:
+Search input field
+Placeholder: "Tìm kiếm"
+Search icon inside the input
+Rounded border with green color.
+
+Content:
+Scrollable list of survey history cards.
+
+Card layout:
+
+Title:
+Tên bài
+
+Fields:
+Thời gian
+Kết quả
+
+Example:
+
+Tên bài: Khảo sát khách hàng
+Thời gian: 07/11/2025 14:57
+Kết quả: 0/3
+
+Another example:
+
+Tên bài: Khảo sát sản phẩm
+Thời gian: 07/11/2025 10:46
+Kết quả: 3/3
+
+Design:
+Card style
+Rounded corners
+Soft shadow
+Padding 16
+Spacing between cards
+
+Colors:
+Primary color: green
+Background: light grey
+
+Interactions:
+Tap card → open SurveyResultDetailScreen
+
+Create a mobile screen called "SurveyScreen".
+
+Navigation flow:
+AccountScreen → tap "Khảo sát" → open SurveyScreen.
+
+Layout:
+
+Header:
+Back button
+Title: "Khảo sát"
+
+Below header create 2 tabs:
+
+Tab 1:
+"Bài khảo sát của bạn"
+
+Content:
+List of available surveys.
+
+Each card shows:
+
+Survey title
+
+Short description
+
+Button: "Làm khảo sát"
+
+Tap card → open SurveyQuestionScreen.
+
+Tab 2:
+"Lịch sử khảo sát"
+
+Content:
+Search bar with placeholder "Tìm kiếm".
+
+Below the search bar show a scrollable list of history cards.
+
+Card layout:
+
+Title: Tên bài
+
+Fields:
+
+Thời gian
+
+Kết quả
+
+Example card:
+
+Tên bài: Khảo sát khách hàng
+Thời gian: 07/11/2025 14:57
+Kết quả: 0/3
+
+Another example:
+
+Tên bài: Khảo sát sản phẩm
+Thời gian: 07/11/2025 10:46
+Kết quả: 3/3
+
+UI design:
+
+Card style layout
+
+Rounded corners
+
+Light shadow
+
+Padding 16
+
+Green primary color theme
+
+Clean mobile CRM style
+
+Interactions:
+Search filters survey history
+Tap card → open SurveyResultDetailScreen

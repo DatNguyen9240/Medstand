@@ -1,0 +1,69 @@
+---
+description: Specs cho các page: Tuyến, Đơn hàng, Tài khoản, Danh sách đơn, Hóa đơn, Phiếu trả, v.v.
+globs: **/pages/**/*.html
+alwaysApply: false
+---
+
+# Page Specs
+
+## Tuyến của bạn
+
+- Header: title xanh, filter + chart icon
+- Search: placeholder "Tìm kiếm", border xanh
+- Tabs: Danh sách | Bản đồ (underline xanh)
+- Empty: "Không có dữ liệu để hiển thị"
+- **Skeleton:** list `.skeleton-list-item` hoặc map placeholder
+
+## Đơn hàng
+
+- Header xanh
+- Grid 2 cột, mỗi card: icon (48px), title
+- Menu: Quản lý đơn hàng, Hóa đơn bán hàng, Phiếu trả hàng, Đơn hàng chi tiết, Doanh số, Kế hoạch bán hàng, Hạng mục sản phẩm cảnh báo
+
+## Tài khoản
+
+- Avatar tròn giữa, username bên dưới
+- Card menu: Thông tin cá nhân, Quản lý khách hàng, Điểm/Hợp đồng, Lịch sử khảo sát, Khảo sát, Đổi mật khẩu, Xóa tài khoản, Chính sách, Đăng xuất
+
+## Danh sách đơn hàng
+
+- Back + title + nút + nổi
+- Search + filter
+- Card: mã đơn, ngày, tên KH, nhân viên, trạng thái (Chờ duyệt/Đơn nháp/Đã chuyển xuống kho/Đã xử lý chưa chuyển kho), ghi chú, tổng tiền, điểm
+- **Skeleton:** `.skeleton-card` × 5–8
+
+## Hóa đơn bán hàng
+
+- Card: mã HĐ, ngày, tên KH, tổng tiền (xanh)
+- **Skeleton:** `.skeleton-card` × 5–8
+
+## Phiếu trả hàng + Danh sách sản phẩm
+
+- Phiếu: mã, ngày, KH, nhân viên/quản lý, tổng tiền, lý do, nút "Danh sách sản phẩm"
+- Sản phẩm: mã+tên, đơn giá, SL, tổng, CK, thành tiền, điểm
+
+## Báo cáo đơn hàng
+
+- Tabs: Tổng quan | Chi tiết
+- Tổng quan: Tháng 11, Doanh số, Tiền CK, Doanh thu, Điểm
+- Chi tiết: card với ngày, KH, địa chỉ, NV, QL, số liệu, nút "Danh sách sản phẩm"
+- **Skeleton:** tab Tổng quan: skeleton 4 row; tab Chi tiết: skeleton card list
+
+## Doanh số
+
+- Tabs: Theo nhân viên | Theo khách hàng
+- Bảng + pagination
+- **Skeleton:** `.skeleton-table` (hàng + cột placeholder)
+
+## Kế hoạch bán hàng
+
+- Filter: Từ ngày, Đến ngày
+- Card: mã NV + tên, KPI (DS thực hiện, DS kế hoạch, % thực hiện, độ phủ...)
+- **Skeleton:** `.skeleton-card` × 5
+
+## Bộ lọc (Filter)
+
+- Date range, fields: Trạng thái, Chi nhánh, Khách hàng, Sản phẩm
+- Nút "ÁP DỤNG" xanh
+- FilterSelectItem: tap → modal/bottom sheet, list searchable
+- **Global spinner** khi load danh sách trong modal (Trạng thái, Chi nhánh, Sản phẩm)

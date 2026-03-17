@@ -1,0 +1,49 @@
+---
+description: Account flow: Thông tin cá nhân, Quản lý KH, Điểm hợp đồng, Khảo sát
+globs: **/account*.html **/customer*.html **/survey*.html
+alwaysApply: false
+---
+
+# Account & CRM Screens
+
+## Thông tin tài khoản (AccountDetailScreen)
+
+- **Skeleton:** avatar tròn + 5 dòng `.skeleton-text` khi load
+- Avatar tròn giữa
+- List: Họ tên, SĐT, Email, Ngày sinh, Giới tính (label trái, value xanh phải)
+- Nút "CHỈNH SỬA THÔNG TIN" → EditProfileScreen
+
+## Quản lý khách hàng
+
+- **Skeleton:** `.skeleton-card` × 6 khi load list
+- Header: back, title, filter + nút +
+- Search "Tìm kiếm"
+- Card KH: Tên (xanh), địa chỉ, SĐT, sinh nhật, tuyến, trạng thái, vị trí
+- Nút gọi tròn bên phải
+- Tap card → CustomerDetailScreen, tap + → AddCustomerScreen
+
+## Điểm hợp đồng (ContractPointScreen)
+
+- **Skeleton:** tab 1: skeleton card list; tab 2: skeleton card list
+- Tabs: Báo cáo tích điểm | Báo cáo tích điểm chi tiết
+- Tab 1: card hợp đồng (mã+pharmacy, ngày tham gia/hết hạn/nhận, điểm)
+- Tab 2: card sản phẩm (tên, SL, điểm SP, tích lũy, còn lại, đơn giá)
+
+## Lịch sử khảo sát
+
+- **Skeleton:** `.skeleton-card` × 5
+- List card: Tên bài, Thời gian, Kết quả (vd: 0/3, 3/3)
+- Tap → SurveyResultDetailScreen
+
+## Khảo sát (SurveyScreen)
+
+- **Skeleton:** tab 1: skeleton card × 3; tab 2: skeleton list
+- Tab 1 "Bài khảo sát của bạn": card (title, mô tả, nút "Làm khảo sát")
+- Tab 2 "Lịch sử khảo sát": search + list card (Tên bài, Thời gian, Kết quả)
+
+## Tạo đơn hàng (CreateOrderScreen)
+
+- **Global spinner** khi submit hoặc load modal Sản phẩm
+- Form: Ngày CT, Chi nhánh, Tên KH, Phường/Xã, Địa chỉ, Tuyến, SĐT, Ghi chú, Diễn giải
+- Danh sách sản phẩm + tổng
+- Nút + → AddProductModal (Sản phẩm, SL, Đơn giá, CK%, Thành tiền)

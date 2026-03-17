@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Chi tiết kế hoạch - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <style>
+    .filter-row {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+      flex-wrap: wrap;
+    }
+
+    .filter-row input {
+      flex: 1;
+      min-width: 120px;
+      padding: 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-family: var(--font-family);
+      font-size: var(--font-size-sm);
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-md);
+      flex-wrap: wrap;
+    }
+
+    .breadcrumb a {
+      color: var(--color-primary);
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .breadcrumb .sep {
+      color: var(--color-text-muted);
+    }
+
+    .plan-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .plan-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .plan-card.no-drill {
+      cursor: default;
+    }
+
+    .plan-card.no-drill:hover {
+      border-color: var(--color-border);
+      box-shadow: none;
+    }
+
+    .plan-card .header {
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .plan-card .row {
+      display: flex;
+      justify-content: space-between;
+      font-size: var(--font-size-sm);
+      margin-bottom: var(--spacing-xs);
+      color: var(--color-text);
+    }
+
+    .plan-card .row span:last-child {
+      text-align: right;
+      font-weight: var(--font-weight-medium);
+    }
+
+    .level-label {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--spacing-sm);
+      font-style: italic;
+    }
+  </style>
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+</head>
+
+<body>
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a id="back-btn" href="sales-plan.html" style="text-decoration: none; color: var(--color-text-muted);">←</a>
+    <span id="page-title" style="color: var(--color-primary); font-weight: 600;">Chi tiết kế hoạch</span>
+  </header>
+  <div id="sidebar-container"></div>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="breadcrumb" class="breadcrumb"></div>
+      <div class="filter-row">
+        <div><label style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Từ ngày</label><br><input
+            type="date" id="from-date"></div>
+        <div><label style="font-size:var(--font-size-sm);color:var(--color-text-muted)">Đến ngày</label><br><input
+            type="date" id="to-date"></div>
+      </div>
+      <div id="search-container"></div>
+      <div id="level-label" class="level-label"></div>
+      <div id="skeleton">
+        <div class="skeleton skeleton-card" style="margin-bottom:16px"></div>
+        <div class="skeleton skeleton-card"></div>
+      </div>
+      <div id="plan-list" hidden></div>
+    </div>
+  </main>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/SearchBar.js"></script>
+    <script src="src/js/pages/sales-plan-detail.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

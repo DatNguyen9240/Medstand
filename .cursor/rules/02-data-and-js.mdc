@@ -1,0 +1,18 @@
+---
+description: Mock data và JavaScript best practices
+alwaysApply: true
+---
+
+# Mock data
+
+- Folder `data/mock/`: dashboard.json, birthdays.json, routes.json, orders.json, user.json
+- Load: `fetch('data/mock/birthdays.json')`
+- Cấu trúc mock giống response API thật
+
+# JavaScript (Tránh memory leak & lag)
+
+- Remove event listeners khi unmount
+- Hủy setInterval/setTimeout khi không dùng
+- Debounce/throttle cho scroll, resize, input
+- Dùng requestAnimationFrame cho animations
+- Lưu reference để removeEventListener đúng

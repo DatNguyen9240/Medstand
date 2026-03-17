@@ -1,0 +1,208 @@
+Create a mobile survey/quiz application UI similar to the provided design.
+
+Primary color: green (#1B8A4B)
+
+The app contains 4 screens:
+
+------------------------------------------------
+
+SCREEN 1: Survey Detail
+
+Header:
+- Back button on the top left
+- Title: "Khảo sát"
+
+Content:
+
+Survey title:
+"Bài khảo sát ngày 27/11/2025 14:50"
+
+Information section with divider lines:
+
+Row 1:
+"Số câu:" -> 3
+
+Row 2:
+"Thời gian làm bài:" -> 5
+
+Row 3:
+"Hạn thi:" -> 27/11/2025
+
+Bottom:
+Large green button:
+"BẮT ĐẦU"
+
+When clicking "BẮT ĐẦU" navigate to Quiz screen.
+
+------------------------------------------------
+
+SCREEN 2: Quiz Screen
+
+Header:
+Title: "Khảo sát"
+
+Tabs:
+- Bài khảo sát của bạn
+- Lịch sử khảo sát
+
+Show timer with icon:
+
+"Thời gian làm: 4 phút 53 giây"
+
+Timer starts from **5 minutes countdown**.
+
+If timer reaches 0:
+Automatically submit the quiz.
+
+------------------------------------------------
+
+Question navigation:
+
+Display circle indicators for questions:
+
+[1] [2] [3]
+
+Current question is green.
+
+Users can tap to switch questions.
+
+------------------------------------------------
+
+Question area:
+
+Example:
+
+"Câu hỏi số 1"
+
+Question text displayed in paragraph style.
+
+Answer options displayed as radio buttons:
+
+○ 22.5 triệu đồng  
+○ 23 triệu đồng  
+○ 23.5 triệu đồng  
+○ 24 triệu đồng  
+
+Only one option selectable.
+
+------------------------------------------------
+
+Bottom navigation bar:
+
+Left button:
+"Trước"
+
+Center circular button:
+"NỘP BÀI"
+
+Right button:
+"Sau"
+
+------------------------------------------------
+
+Logic:
+
+- Save answers in state
+- Allow navigating between questions
+- When clicking "NỘP BÀI"
+  calculate score.
+
+------------------------------------------------
+
+SCREEN 3: History Screen
+
+Search bar:
+
+"Tìm kiếm"
+
+List of survey cards:
+
+Card contains:
+
+Title:
+"Tên bài"
+
+Time:
+"10/03/2026 10:25"
+
+Result:
+0/3
+
+Card style:
+rounded
+shadow
+white background
+
+Pagination at bottom:
+
+<<  <  1  >  >>
+
+------------------------------------------------
+
+SCREEN 4: Result Screen
+
+Title:
+"Kết quả"
+
+Large score circle in center:
+
+Text:
+"Điểm"
+
+Score number large:
+
+0
+
+Below:
+0/3
+
+------------------------------------------------
+
+Statistics:
+
+"Trả lời đúng: 0"
+
+Progress bar
+
+"Trả lời sai: 3"
+
+Red progress bar
+
+"Không trả lời: 0"
+
+Progress bar
+
+------------------------------------------------
+
+Bottom button:
+
+"TIẾP THEO"
+
+------------------------------------------------
+
+Timer Logic:
+
+Start countdown from 5:00.
+
+Update every second.
+
+Display format:
+
+"4 phút 53 giây"
+
+If timer reaches 0:
+
+Automatically submit quiz
+Navigate to Result Screen.
+
+------------------------------------------------
+
+UI Style:
+
+Minimal design
+Material mobile style
+Rounded components
+Green accent color
+Soft shadows
+White background
+Large touch areas

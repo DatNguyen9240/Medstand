@@ -1,0 +1,118 @@
+/* ═══════════════════════════════════════════
+   Design Tokens — TailAdmin‑inspired
+   Supports Light / Dark via [data-theme="dark"]
+   ═══════════════════════════════════════════ */
+
+/* ---------- Light (default) ---------- */
+:root {
+  /* Brand */
+  --color-primary: #3c50e0;
+  --color-primary-hover: #3345c4;
+  --color-primary-rgb: 60, 80, 224;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Surfaces */
+  --color-background: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-header: #ffffff;
+
+  /* Text */
+  --color-text: #1c2434;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+
+  /* Borders */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Revenue / Red accent */
+  --color-revenue: #ef4444;
+
+  /* Phone / green */
+  --color-phone-bg: #ecfdf5;
+  --color-phone-icon: #10b981;
+
+  /* Skeleton */
+  --color-skeleton: #e2e8f0;
+  --color-skeleton-shine: #f1f5f9;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+
+  /* Typography */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-title: 1.5rem;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --content-max-width: 800px;
+  --content-max-width-desktop: 1280px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 80px;
+  --touch-min: 44px;
+  --header-height: 64px;
+  --nav-height: 64px;
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+  --transition-slow: 0.35s ease;
+}
+
+/* ---------- Dark ---------- */
+[data-theme="dark"] {
+  --color-background: #1a222c;
+  --color-surface: #1c2536;
+  --color-sidebar: #1c2536;
+  --color-header: #1c2536;
+
+  --color-text: #dee4ee;
+  --color-text-secondary: #a1aec0;
+  --color-text-muted: #8a99af;
+
+  --color-border: #2e3a47;
+  --color-border-strong: #3d4d5f;
+
+  --color-phone-bg: #1a332a;
+  --color-phone-icon: #10b981;
+
+  --color-skeleton: #2e3a47;
+  --color-skeleton-shine: #3d4d5f;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+}

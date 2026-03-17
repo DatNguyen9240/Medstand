@@ -1,0 +1,143 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Thông tin tài khoản - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/list.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/loading-spinner.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <style>
+    .profile-header {
+      text-align: center;
+      padding: var(--spacing-lg) 0;
+    }
+
+    .profile-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+    }
+
+    .info-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      overflow: hidden;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-md);
+      min-height: 56px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
+    }
+
+    .info-value {
+      color: var(--color-primary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .btn-edit {
+      width: 100%;
+      padding: 14px;
+      background: var(--color-primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: var(--spacing-md);
+    }
+
+    .btn-edit:hover {
+      opacity: 0.9;
+    }
+  </style>
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+  <script src="src/js/services/auth.service.js"></script>
+</head>
+
+<body data-page="account-detail">
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="account.html"
+      style="text-decoration: none; color: var(--color-text-muted); display: flex; align-items: center;">←</a>
+    <span style="color: var(--color-primary); font-weight: 600; font-size: var(--font-size-lg);">Thông tin tài
+      khoản</span>
+  </header>
+
+  <main class="app-main">
+    <div class="app-content">
+      <div id="profile-skeleton" class="profile-header">
+        <div class="skeleton skeleton-avatar"
+          style="width: 96px; height: 96px; margin: 0 auto var(--spacing-md); border-radius: 50%;"></div>
+        <div class="skeleton skeleton-text" style="width: 60%; margin: 0 auto var(--spacing-sm);"></div>
+        <div class="skeleton skeleton-text" style="width: 40%; margin: 0 auto;"></div>
+      </div>
+      <div id="profile-content" hidden>
+        <div class="profile-header">
+          <img id="profile-avatar" src="https://ui-avatars.com/api/?name=User&size=96&background=3c50e0&color=fff"
+            alt="" class="profile-avatar">
+        </div>
+        <div class="info-card">
+          <div class="info-row">
+            <span class="info-label">Họ và tên</span>
+            <span class="info-value" id="info-fullName">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Số điện thoại</span>
+            <span class="info-value" id="info-phone">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Email</span>
+            <span class="info-value" id="info-email">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Ngày sinh</span>
+            <span class="info-value" id="info-birthDate">-</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Giới tính</span>
+            <span class="info-value" id="info-gender">-</span>
+          </div>
+        </div>
+        <a href="account-edit.html" style="text-decoration: none;"><button type="button" class="btn-edit">CHỈNH SỬA
+            THÔNG TIN</button></a>
+      </div>
+    </div>
+  </main>
+
+  <div id="sidebar-container"></div>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+    <script src="src/js/pages/account-detail.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

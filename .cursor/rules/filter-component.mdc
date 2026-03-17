@@ -1,0 +1,60 @@
+Create a mobile UI component.
+
+Requirements:
+
+1. At the top, create a search bar with:
+- Rounded border
+- Placeholder text: "Tìm kiếm"
+- A search icon inside the input
+- A filter icon on the right side of the search bar
+
+2. When the user presses the filter icon, open a bottom modal (filter modal).
+
+3. The filter modal should contain the following fields:
+
+- Date range
+   - "Từ ngày" (From date)
+   - "Đến ngày" (To date)
+   - Each field has a calendar icon
+
+- Dropdown selectors:
+   - Trạng thái (Status)
+   - Chi nhánh (Branch)
+   - Khách hàng (Customer)
+   - Sản phẩm (Product)
+
+4. Each selector should navigate to a selection screen with:
+- Search bar at the top
+- List of options
+- Touchable rows
+- Divider between items
+
+Example options:
+Status:
+- TDV Kiểm tra lại
+- Đơn nháp
+- Chờ duyệt
+- Nhận đơn
+- Đã chuyển xuống kho
+- Đã xuất hàng
+- Đã đi gửi hàng
+- Khách đã nhận hàng
+
+Branch:
+- Miền Bắc
+- Miền Bắc - ONLINE
+- Miền Nam
+- Miền Trung
+
+Product:
+Display a scrollable list of products.
+
+5. At the bottom of the modal add a full width button:
+"ÁP DỤNG"
+
+6. Design style:
+- Primary color: green
+- Rounded inputs
+- Minimal mobile design
+- Similar to pharmacy/order management apps
+- Modal should slide up from bottom

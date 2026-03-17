@@ -1,0 +1,114 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="src/pwa/manifest.json">
+    <meta name="theme-color" content="#3c50e0">
+    <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <title>Lịch sử khảo sát - Medstand</title>
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/search-bar.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+  <style>
+    .survey-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .survey-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+      padding: var(--spacing-md);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .survey-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-md);
+    }
+
+    .survey-title {
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text);
+    }
+
+    .survey-time {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+
+    .survey-result {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .survey-result.perfect {
+      color: var(--color-success, #16a34a);
+    }
+
+    .survey-result.partial {
+      color: var(--color-warning, #f59e0b);
+    }
+
+    .survey-result.zero {
+      color: var(--color-danger, #dc2626);
+    }
+
+    .empty-msg {
+      text-align: center;
+      color: var(--color-text-muted);
+      padding: 48px 0;
+    }
+
+    @media (min-width:768px) {
+      .app-content { max-width: 600px; margin: auto; }
+    }
+  </style>
+  <script src="src/js/utils/theme.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+  <script src="src/js/config/api.config.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/components/SurveyCheck.js"></script>
+</head>
+
+<body data-page="survey-history">
+  <header class="app-header" style="justify-content: flex-start; gap: 12px;">
+    <a href="account.html" style="text-decoration: none; color: var(--color-text-muted); font-size:1.2rem">←</a>
+    <span style="color: var(--color-primary); font-weight: 600;">Lịch sử khảo sát</span>
+  </header>
+  <div id="sidebar-container"></div>
+  <main class="app-main">
+    <div class="app-content">
+      <div id="filter-container"></div>
+      <div id="skeleton-list">
+        <div class="skeleton" style="height:80px;border-radius:var(--radius-lg);margin-bottom:12px"></div>
+        <div class="skeleton" style="height:80px;border-radius:var(--radius-lg);margin-bottom:12px"></div>
+        <div class="skeleton" style="height:80px;border-radius:var(--radius-lg)"></div>
+      </div>
+      <div id="survey-list" class="survey-list" hidden></div>
+    </div>
+  </main>
+  <div id="nav-container"></div>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+    <script src="src/js/pages/survey-history.js"></script>
+    <script src="src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

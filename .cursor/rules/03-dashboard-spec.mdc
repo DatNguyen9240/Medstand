@@ -1,0 +1,54 @@
+---
+description: Dashboard UI requirements
+globs: **/home.html **/index.html
+alwaysApply: false
+---
+
+# Dashboard UI
+
+## Yêu cầu chung
+
+- Mobile-first responsive, soft shadows, rounded cards
+- Vietnamese business app style
+- Phân tích screenshot: layout, spacing, colors, fonts, icons
+
+## Header
+
+- Avatar bên trái
+- "Xin chào" + "Tài khoản test app"
+- Icon thông báo bên phải
+
+## Statistics cards (3 cột)
+
+- Đơn hàng: 12
+- Khách hàng giao dịch: 11/862
+- Độ phủ ngành hàng: 19/308
+
+## Doanh số
+
+- Tiêu đề "Doanh số"
+- Giá trị 23,919,000 màu đỏ
+- Date picker + icon lịch
+
+## Chart
+
+- Line chart, đường xanh, điểm tròn
+- Trục Y: 0 → 20 triệu
+- Trục X: ngày (1, 3, 4, 5)
+
+## Bottom nav (4 tabs)
+
+Trang chủ (active, xanh) | Tuyến | Đơn hàng | Tài khoản
+
+## Section Sinh nhật
+
+- Tiêu đề + gạch xanh trái + icon 🎁 + số "8"
+- List nhà thuốc: title (bold), địa chỉ, nút gọi (nền #E6F4EA, icon #2E7D32)
+- Padding 16px, divider giữa items
+- **Skeleton:** `.skeleton-list-item` × 5 khi đang load
+
+## Loading
+
+- **Stat cards:** skeleton 3 card trước khi data về
+- **Chart:** `.skeleton-chart` (rect + grid mờ)
+- **Sinh nhật list:** skeleton list items

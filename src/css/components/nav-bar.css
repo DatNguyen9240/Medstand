@@ -1,0 +1,216 @@
+/* ═══════════════════════════════════════════
+   Nav Bar + Sidebar — TailAdmin‑style
+   ═══════════════════════════════════════════ */
+
+/* ── Bottom Navigation (mobile) ── */
+.app-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--nav-height);
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  min-height: var(--touch-min);
+  border: none;
+  background: none;
+  cursor: pointer;
+  transition: color var(--transition-fast);
+  font-weight: var(--font-weight-medium);
+}
+
+.nav-item:hover {
+  color: var(--color-text-secondary);
+}
+
+.nav-item.active {
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.nav-item .nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 2px;
+}
+
+/* ── Sidebar (desktop) ── */
+.app-sidebar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
+  z-index: 90;
+  padding-top: var(--header-height);
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--transition-normal), background-color var(--transition-normal),
+    border-color var(--transition-normal);
+}
+
+/* Sidebar toggle */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.sidebar-toggle:hover {
+  background: var(--color-background);
+  color: var(--color-primary);
+}
+
+.sidebar-toggle svg {
+  transition: transform var(--transition-normal);
+}
+
+.app-sidebar.collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+/* Sidebar label (MENU) */
+.sidebar-heading {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+/* Sidebar nav */
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm);
+  gap: 2px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: 10px var(--spacing-md);
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sidebar-item:hover {
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+.sidebar-item.active {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.sidebar-item .sidebar-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-item .sidebar-label {
+  transition: opacity var(--transition-normal);
+}
+
+/* ── Collapsed Sidebar ── */
+.app-sidebar.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+.app-sidebar.collapsed .sidebar-nav {
+  padding: var(--spacing-xs);
+}
+
+.app-sidebar.collapsed .sidebar-item {
+  justify-content: center;
+  padding: 12px;
+  gap: 0;
+}
+
+.app-sidebar.collapsed .sidebar-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+.app-sidebar.collapsed .sidebar-heading {
+  text-align: center;
+  padding: var(--spacing-sm);
+  font-size: 0;
+}
+
+/* Tooltip on hover when collapsed */
+.app-sidebar.collapsed .sidebar-item:hover::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--color-text);
+  color: var(--color-surface);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-normal);
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+
+.app-sidebar.collapsed .sidebar-item:hover::before {
+  content: '';
+  position: absolute;
+  left: calc(100% + 2px);
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: var(--color-text);
+  z-index: 200;
+  pointer-events: none;
+}

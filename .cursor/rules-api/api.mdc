@@ -1,0 +1,25 @@
+USE [MedApp]
+GO
+/****** Object:  StoredProcedure [dbo].[API_UsertokenFirebase]    Script Date: 3/11/2026 12:25:26 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER  PROCEDURE [dbo].[API_UsertokenFirebase]
+@User VARCHAR(50),
+@tokenFirebase VARCHAR(500)
+AS
+
+SET NOCOUNT ON
+
+ 
+--IF (@tokenFirebase IS NULL OR @tokenFirebase = '' )
+--BEGIN
+--	SELECT N'TokenFirebase  is null'  AS Msg, 0 MsgType 
+--	RETURN
+--END
+UPDATE SY_User SET tokenFirebase = @tokenFirebase, tokenFirebaseDate = GETDATE()
+WHERE UserName = @User
+
+SELECT N'Cập nhật token thành công ' + @tokenFirebase AS Msg, 5 MsgType 
+ 

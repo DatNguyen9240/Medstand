@@ -1,0 +1,66 @@
+/* ═══════════════════════════════════════════
+   Skeleton loading — TailAdmin‑style
+   ═══════════════════════════════════════════ */
+
+.skeleton {
+  background: var(--color-skeleton);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--color-skeleton-shine) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.8s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-text {
+  height: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-skeleton);
+  margin-bottom: var(--spacing-sm);
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+}
+
+.skeleton-card {
+  height: 120px;
+}
+
+.skeleton-chart {
+  height: 200px;
+}
+
+.skeleton-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.skeleton-list-item:last-child {
+  border-bottom: none;
+}
+
+/* Stat card skeleton */
+.stat-card.skeleton {
+  min-height: 90px;
+}
