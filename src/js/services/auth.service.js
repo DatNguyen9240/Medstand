@@ -119,8 +119,8 @@ const AuthService = (() => {
       if (avatarSelector) {
         const $avatar = $(avatarSelector);
         if (user.Avatar) {
-          const avatarSrc = user.Avatar.startsWith('data:') 
-            ? user.Avatar 
+          const avatarSrc = user.Avatar.startsWith('data:')
+            ? user.Avatar
             : `data:image/jpeg;base64,${user.Avatar}`;
           $avatar.attr('src', avatarSrc);
         } else if (user.DisplayName) {

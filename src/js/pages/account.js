@@ -10,13 +10,7 @@
     });
 
     document.getElementById('btn-confirm-logout').addEventListener('click', function () {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      fetch(API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.AUTH.LOGOUT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).catch(function () { });
-      navigate('#/login');
+      AuthService.logout();
     });
 
     document.getElementById('logout-overlay').addEventListener('click', function (e) {

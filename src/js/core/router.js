@@ -13,6 +13,7 @@ const Router = (() => {
     // Main app pages (need auth + nav)
     { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
     { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
+    { path: 'chatbot', template: 'src/templates/chatbot.html', scripts: ['src/js/pages/chatbot.js'], css: ['src/css/pages/chatbot.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
     { path: 'orders', template: 'src/templates/orders.html', scripts: ['src/js/pages/orders.js'], css: ['src/css/pages/orders.css'], auth: true, nav: 'orders', title: 'Đơn hàng' },
     { path: 'account', template: 'src/templates/account.html', scripts: ['src/js/pages/account.js'], css: ['src/css/pages/account.css'], auth: true, nav: 'account', title: 'Tài khoản' },
@@ -78,6 +79,7 @@ const Router = (() => {
   }
 
   // ── Loading spinner ───────────────────────────────────────────────────
+  let _spinnerTimer = null;
   function _showSpinner($content) {
     if (!$content) return;
     const existing = $content.querySelector('.route-spinner');
@@ -87,8 +89,20 @@ const Router = (() => {
     spinner.setAttribute('aria-label', 'Đang tải...');
     spinner.innerHTML = '<div class="route-spinner-dot"></div>';
     $content.appendChild(spinner);
+
+    // 15s timeout
+    _spinnerTimer = setTimeout(() => {
+      _hideSpinner($content);
+      $content.innerHTML =
+        '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:40vh;padding:48px 24px;text-align:center">' +
+        '<div style="font-size:3rem;margin-bottom:16px;opacity:.4">⏱️</div>' +
+        '<p style="color:var(--color-text-muted);margin:0 0 16px;font-size:var(--font-size-sm)">Trang tải quá lâu, vui lòng thử lại</p>' +
+        '<button onclick="location.reload()" style="padding:10px 24px;background:var(--color-primary);color:#fff;border:none;border-radius:var(--radius-md);cursor:pointer;font-family:var(--font-family);font-weight:600">Tải lại</button>' +
+        '</div>';
+    }, 15000);
   }
   function _hideSpinner($content) {
+    if (_spinnerTimer) { clearTimeout(_spinnerTimer); _spinnerTimer = null; }
     if (!$content) return;
     const s = $content.querySelector('.route-spinner');
     if (s) s.remove();
@@ -274,6 +288,12 @@ const Router = (() => {
     // Expose params globally
     window._routeParams = params;
 
+    // Inject theme toggle if container exists
+    const $themeContainer = document.getElementById('theme-toggle-container');
+    if ($themeContainer && typeof renderThemeToggle === 'function') {
+      $themeContainer.innerHTML = renderThemeToggle();
+    }
+
     // Load and execute page scripts (with error boundary)
     for (const src of (route.scripts || [])) {
       const oldScript = document.querySelector(`script[src="${src}"]`);
@@ -312,6 +332,7 @@ const Router = (() => {
 
   // ── Init ───────────────────────────────────────────────────────────────
   function init() {
+
     // Listen for hash changes (wrap async in error handler)
     window.addEventListener('hashchange', function () {
       _handleRoute().catch(function (err) {
