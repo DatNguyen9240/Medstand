@@ -2,7 +2,7 @@
 
 .total-bar {
   position: fixed;
-  bottom: var(--nav-height);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: var(--color-surface);

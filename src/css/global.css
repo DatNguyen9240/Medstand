@@ -20,7 +20,7 @@ body {
   color: var(--color-text);
   background: var(--color-background);
   min-height: 100vh;
-  padding-bottom: var(--nav-height);
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -60,7 +60,11 @@ img {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: 20px;
+}
+
+.top-row .revenue-section {
+  margin-bottom: 0;
 }
 
 /* ---------- Form Controls ---------- */
@@ -161,7 +165,6 @@ select.form-control {
 .customer-card,
 .data-table,
 .chart-section,
-.notification-dropdown,
 .filter-modal,
 .filter-overlay,
 .select-modal {
@@ -209,5 +212,7 @@ select.form-control {
 }
 
 @keyframes route-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

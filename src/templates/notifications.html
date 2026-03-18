@@ -1,0 +1,57 @@
+<!-- Notifications Page -->
+<header class="app-header">
+    <button type="button" class="header-icon" id="btn-back" aria-label="Quay lại"
+        onclick="history.back()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5"></path>
+            <path d="M12 19l-7-7 7-7"></path>
+        </svg>
+    </button>
+    <div class="header-info">
+        <p class="header-username" style="font-size:var(--font-size-md)">Thông báo</p>
+    </div>
+    <button type="button" class="header-icon notif-mark-all" id="btn-mark-read" aria-label="Đọc tất cả">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+    </button>
+</header>
+
+<div class="app-content">
+    <!-- Skeleton loading -->
+    <ul class="notif-page-list" id="notif-skeleton">
+        <li class="notif-page-item skeleton-notif">
+            <div class="skeleton skeleton-avatar" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:6px"></div>
+            <div style="flex:1">
+                <div class="skeleton" style="height:1em;width:80%;margin-bottom:6px;border-radius:4px"></div>
+                <div class="skeleton" style="height:0.8em;width:40%;border-radius:4px"></div>
+            </div>
+        </li>
+        <li class="notif-page-item skeleton-notif">
+            <div class="skeleton skeleton-avatar" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:6px"></div>
+            <div style="flex:1">
+                <div class="skeleton" style="height:1em;width:70%;margin-bottom:6px;border-radius:4px"></div>
+                <div class="skeleton" style="height:0.8em;width:50%;border-radius:4px"></div>
+            </div>
+        </li>
+        <li class="notif-page-item skeleton-notif">
+            <div class="skeleton skeleton-avatar" style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:6px"></div>
+            <div style="flex:1">
+                <div class="skeleton" style="height:1em;width:90%;margin-bottom:6px;border-radius:4px"></div>
+                <div class="skeleton" style="height:0.8em;width:35%;border-radius:4px"></div>
+            </div>
+        </li>
+    </ul>
+
+    <!-- Actual list -->
+    <ul class="notif-page-list" id="notif-list" hidden></ul>
+
+    <!-- Empty state -->
+    <div class="notif-empty" id="notif-empty" hidden>
+        <div class="notif-empty-icon">🔔</div>
+        <p class="notif-empty-text">Không có thông báo</p>
+    </div>
+</div>

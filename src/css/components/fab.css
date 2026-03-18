@@ -7,7 +7,7 @@
 .fab {
   position: fixed;
   right: var(--spacing-lg);
-  bottom: calc(var(--nav-height) + var(--spacing-lg));
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px) + var(--spacing-lg));
   width: 56px;
   height: 56px;
   border-radius: var(--radius-full);

@@ -1,0 +1,101 @@
+/* ═══════════════════════════════════════════
+   Notifications Page
+   ═══════════════════════════════════════════ */
+
+/* ── List ── */
+.notif-page-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notif-page-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+  transition: background var(--transition-fast);
+}
+
+.notif-page-item:last-child {
+  border-bottom: none;
+}
+
+.notif-page-item.unread {
+  background: rgba(var(--color-primary-rgb), 0.04);
+  margin: 0 calc(var(--spacing-md) * -1);
+  padding-left: var(--spacing-md);
+  padding-right: var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+
+/* ── Dot ── */
+.notif-page-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  flex-shrink: 0;
+  margin-top: 7px;
+}
+
+.notif-page-item.unread .notif-page-dot {
+  background: var(--color-primary);
+}
+
+/* ── Content ── */
+.notif-page-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-page-text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  color: var(--color-text-secondary);
+}
+
+.notif-page-text strong {
+  color: var(--color-text);
+}
+
+.notif-page-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  margin-top: 4px;
+  display: block;
+}
+
+/* ── Skeleton ── */
+.skeleton-notif {
+  pointer-events: none;
+}
+
+/* ── Empty state ── */
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+}
+
+.notif-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.4;
+}
+
+.notif-empty-text {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  margin: 0;
+}
+
+/* ── Mark all read button ── */
+.notif-mark-all {
+  color: var(--color-primary) !important;
+}
