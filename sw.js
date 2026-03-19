@@ -4,17 +4,19 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v2';
+const CACHE_VERSION = 'medstand-v3';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
   '/',
   '/index.html',
 
+  // Standalone auth pages
+  '/login.html',
+  '/register.html',
+  '/forgot-password.html',
+
   // Templates (loaded by router)
-  '/src/templates/login.html',
-  '/src/templates/register.html',
-  '/src/templates/forgot-password.html',
   '/src/templates/home.html',
   '/src/templates/routes.html',
   '/src/templates/orders.html',

@@ -5,10 +5,8 @@
 const Router = (() => {
   // ── Route definitions ──────────────────────────────────────────────────
   const ROUTES = [
-    // Auth pages (no nav, no auth guard)
-    { path: 'login', template: 'src/templates/login.html', scripts: ['src/js/pages/login.js'], css: ['src/css/pages/auth.css'], auth: false, nav: false, title: 'Đăng nhập' },
-    { path: 'register', template: 'src/templates/register.html', scripts: ['src/js/pages/register.js'], css: ['src/css/pages/auth.css', 'src/css/pages/register.css'], auth: false, nav: false, title: 'Đăng ký' },
-    { path: 'forgot-password', template: 'src/templates/forgot-password.html', scripts: ['src/js/pages/forgot-password.js'], css: ['src/css/pages/auth.css', 'src/css/pages/forgot-password.css'], auth: false, nav: false, title: 'Quên mật khẩu' },
+    // Auth pages (login, register, forgot-password) are standalone HTML pages
+    // See: login.html, register.html, forgot-password.html
 
     // Main app pages (need auth + nav)
     { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
@@ -71,7 +69,7 @@ const Router = (() => {
 
   // ── Preload common templates in background ────────────────────────────
   function _preloadTemplates() {
-    const priority = ['home', 'orders', 'account', 'routes', 'login'];
+    const priority = ['home', 'orders', 'account', 'routes'];
     priority.forEach(p => {
       const route = _findRoute(p);
       if (route) _fetchTemplate(route.template).catch(() => { });
@@ -220,15 +218,9 @@ const Router = (() => {
       return;
     }
 
-    // Auth guard
+    // Auth guard — redirect to standalone login page
     if (route.auth && !_isLoggedIn()) {
-      navigate('login');
-      return;
-    }
-
-    // Already logged in trying to access login/register
-    if (!route.auth && _isLoggedIn() && (path === 'login' || path === 'register')) {
-      navigate('home');
+      window.location.href = 'login.html';
       return;
     }
 
@@ -342,7 +334,11 @@ const Router = (() => {
 
     // Initial route
     if (!location.hash || location.hash === '#' || location.hash === '#/') {
-      location.hash = _isLoggedIn() ? '#/home' : '#/login';
+      if (!_isLoggedIn()) {
+        window.location.href = 'login.html';
+        return;
+      }
+      location.hash = '#/home';
     }
     _handleRoute().catch(function (err) {
       console.error('[Router] init handleRoute error:', err);
