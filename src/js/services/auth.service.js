@@ -110,11 +110,21 @@ const AuthService = (() => {
    * @param {string} nameSelector Selector cho element hiển thị tên
    * @param {string} avatarSelector Selector cho element hiển thị avatar
    */
+  /**
+   * Rút gọn tên — giữ tối đa 2 từ cuối
+   * "Tài khoản test app" → "test app"
+   */
+  function truncateName(name, maxWords = 2) {
+    if (!name) return '';
+    const words = name.trim().split(/\s+/);
+    return words.length <= maxWords ? name : words.slice(-maxWords).join(' ');
+  }
+
   function syncUserDisplay(nameSelector, avatarSelector) {
     try {
       const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
       if (user.DisplayName && nameSelector) {
-        $(nameSelector).text(user.DisplayName);
+        $(nameSelector).text(truncateName(user.DisplayName));
       }
       if (avatarSelector) {
         const $avatar = $(avatarSelector);

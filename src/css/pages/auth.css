@@ -290,9 +290,11 @@ body {
   cursor: pointer;
   color: var(--color-text-muted);
   box-shadow: var(--shadow-sm);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), transform 0.6s ease;
 }
 
 .theme-btn:hover {
+  background: var(--color-background);
   color: var(--color-primary);
+  transform: rotate(360deg);
 }
