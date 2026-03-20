@@ -93,7 +93,13 @@ const Http = (() => {
     try {
       data = JSON.parse(raw);
     } catch {
-      console.log('[HTTP] Raw response:', raw);
+      // Backend đôi khi trả "code":A003 (không quote) → fix rồi parse lại
+      try {
+        var fixed = raw.replace(/"code"\s*:\s*([A-Za-z0-9]+)(?=[,\s}])/g, '"code":"$1"');
+        data = JSON.parse(fixed);
+      } catch {
+        console.log('[HTTP] Raw response (unparseable):', raw.substring(0, 200));
+      }
     }
 
     // Response rỗng hoặc parse JSON thất bại
@@ -119,8 +125,8 @@ const Http = (() => {
       return;
     }
 
-    // Server trả code lỗi (code !== 0)
-    if (data.code !== undefined && data.code !== 0) {
+    // Server trả code lỗi (chỉ số != 0 mới là lỗi, string code như "A003" = OK)
+    if (data.code !== undefined && typeof data.code === 'number' && data.code !== 0) {
       const msg = data.msg || data.message || 'Có lỗi xảy ra từ máy chủ.';
       console.warn('[HTTP] Server error code:', data.code, msg);
       _alert('error', msg);

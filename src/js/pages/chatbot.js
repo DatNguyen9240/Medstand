@@ -100,9 +100,124 @@
     }
 
     function _formatAI(text) {
+        // Split by code blocks first to avoid formatting inside them
+        var parts = text.split(/(```[\s\S]*?```)/g);
+        var html = '';
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i].match(/^```/)) {
+                // Code block
+                var code = parts[i].replace(/^```(\w*)\n?/, '').replace(/\n?```$/, '');
+                html += '<pre class="ai-code-block"><code>' + _esc(code) + '</code></pre>';
+            } else {
+                html += _formatAIBlock(parts[i]);
+            }
+        }
+        return html;
+    }
+
+    function _formatAIBlock(text) {
+        // Split into paragraphs by double newline
+        var paragraphs = text.split(/\n\n+/);
+        var result = [];
+
+        paragraphs.forEach(function (para) {
+            para = para.trim();
+            if (!para) return;
+
+            // Check if it's a table block
+            var lines = para.split('\n');
+            if (lines.length >= 2 && lines[0].indexOf('|') !== -1 && lines[1].match(/^\s*\|[\s\-:|]+\|\s*$/)) {
+                result.push(_formatTable(lines));
+                return;
+            }
+
+            // Check if it's a list block (all lines start with - or * or 1.)
+            var isList = lines.every(function (l) {
+                return l.trim() === '' || /^(\s*[-*•]\s|^\s*\d+[.)]\s)/.test(l);
+            });
+            if (isList && lines.length > 0) {
+                result.push(_formatList(lines));
+                return;
+            }
+
+            // Process line by line for headers & normal text
+            var lineResults = [];
+            lines.forEach(function (line) {
+                var trimmed = line.trim();
+                if (!trimmed) return;
+
+                // Horizontal rule
+                if (/^[-*_]{3,}$/.test(trimmed)) {
+                    lineResults.push('<hr class="ai-hr">');
+                    return;
+                }
+
+                // Headers
+                var hMatch = trimmed.match(/^(#{1,6})\s+(.*)/);
+                if (hMatch) {
+                    var level = hMatch[1].length;
+                    lineResults.push('<h' + level + ' class="ai-heading">' + _inlineFormat(hMatch[2]) + '</h' + level + '>');
+                    return;
+                }
+
+                // Normal line
+                lineResults.push(_inlineFormat(trimmed));
+            });
+
+            if (lineResults.length > 0) {
+                result.push('<p class="ai-para">' + lineResults.join('<br>') + '</p>');
+            }
+        });
+
+        return result.join('');
+    }
+
+    function _inlineFormat(text) {
         return _esc(text)
+            // Bold + italic
+            .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+            // Bold
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\n/g, '<br>');
+            // Italic
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
+    }
+
+    function _formatList(lines) {
+        var isOrdered = /^\s*\d+[.)]\s/.test(lines[0].trim());
+        var tag = isOrdered ? 'ol' : 'ul';
+        var items = [];
+        lines.forEach(function (line) {
+            var trimmed = line.trim();
+            if (!trimmed) return;
+            var content = trimmed.replace(/^[-*•]\s+/, '').replace(/^\d+[.)]\s+/, '');
+            items.push('<li>' + _inlineFormat(content) + '</li>');
+        });
+        return '<' + tag + ' class="ai-list">' + items.join('') + '</' + tag + '>';
+    }
+
+    function _formatTable(lines) {
+        var html = '<div class="ai-table-wrap"><table class="ai-table">';
+        // Header row
+        var headers = lines[0].split('|').map(function (c) { return c.trim(); }).filter(function (c) { return c !== ''; });
+        html += '<thead><tr>';
+        headers.forEach(function (h) {
+            html += '<th>' + _inlineFormat(h) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        // Data rows (skip separator line at index 1)
+        for (var i = 2; i < lines.length; i++) {
+            var cells = lines[i].split('|').map(function (c) { return c.trim(); }).filter(function (c) { return c !== ''; });
+            if (cells.length === 0) continue;
+            html += '<tr>';
+            cells.forEach(function (c) {
+                html += '<td>' + _inlineFormat(c) + '</td>';
+            });
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+        return html;
     }
 
     function _esc(s) {
@@ -389,13 +504,261 @@
         $input.style.height = Math.min($input.scrollHeight, 120) + 'px';
     }
 
+    // ══════════════════════════════════════════
+    //  @MENTION AUTOCOMPLETE
+    // ══════════════════════════════════════════
+
+    var MENTION_TRIGGERS = {
+        'sanpham': { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
+        'khachhang': { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
+        'donhang': { type: 'donhang', label: 'Đơn hàng', icon: '📋' },
+        'khohang': { type: 'khohang', label: 'Kho hàng', icon: '🏭' }
+    };
+    var MENTION_DEBOUNCE = 300;
+    var MENTION_MAX_ITEMS = 8;
+
+    var mentionState = {
+        active: false,       // đang hiển thị dropdown
+        triggerKey: '',       // 'sanpham' | 'khachhang' | 'donhang'
+        triggerStart: -1,     // vị trí @ trong textarea
+        searchText: '',       // text sau @trigger
+        items: [],            // kết quả API
+        selectedIndex: -1,    // keyboard nav index
+        loading: false
+    };
+    var mentionTimer = null;
+    var $mentionDropdown = null;
+
+    function _mentionCreate() {
+        if ($mentionDropdown) return;
+        $mentionDropdown = document.createElement('div');
+        $mentionDropdown.className = 'mention-dropdown';
+        $mentionDropdown.style.display = 'none';
+        $mentionDropdown.addEventListener('mousedown', function (e) {
+            e.preventDefault(); // giữ focus trên textarea
+        });
+        document.querySelector('.chat-input-bar').appendChild($mentionDropdown);
+    }
+
+    function _mentionShow(html) {
+        $mentionDropdown.innerHTML = html;
+        $mentionDropdown.style.display = '';
+        mentionState.active = true;
+    }
+
+    function _mentionHide() {
+        if (!$mentionDropdown) return;
+        $mentionDropdown.style.display = 'none';
+        $mentionDropdown.innerHTML = '';
+        mentionState.active = false;
+        mentionState.selectedIndex = -1;
+        mentionState.items = [];
+        if (mentionTimer) { clearTimeout(mentionTimer); mentionTimer = null; }
+    }
+
+    /** Parse textarea text → tìm @trigger pattern */
+    function _mentionParse() {
+        var text = $input.value;
+        var cursor = $input.selectionStart;
+        // Tìm @ gần nhất trước cursor
+        var before = text.substring(0, cursor);
+        var match = before.match(/@(sanpham|khachhang|donhang|khohang)(\s(.*))?$/i);
+        if (!match) return null;
+        return {
+            triggerKey: match[1].toLowerCase(),
+            triggerStart: before.lastIndexOf('@'),
+            searchText: (match[3] || '').trim(),
+            fullMatch: match[0]
+        };
+    }
+
+    /** Gọi API_DanhMuc_AI */
+    function _mentionFetch(type, searchText) {
+        mentionState.loading = true;
+        var trigger = MENTION_TRIGGERS[type];
+        _mentionShow(
+            '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>'
+            + '<div class="mention-loading">Đang tải...</div>'
+        );
+
+        Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
+            q: JSON.stringify({ Type: type, SearchText: searchText })
+        }).then(function (res) {
+            mentionState.loading = false;
+            var records = [];
+            if (res && res.data && Array.isArray(res.data.records)) {
+                records = res.data.records;
+            } else if (res && Array.isArray(res.records)) {
+                records = res.records;
+            } else if (Array.isArray(res.data)) {
+                records = res.data;
+            } else if (Array.isArray(res)) {
+                records = res;
+            }
+            mentionState.items = records.slice(0, MENTION_MAX_ITEMS);
+            _mentionRender(type);
+        }).catch(function () {
+            mentionState.loading = false;
+            _mentionShow(
+                '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>'
+                + '<div class="mention-empty">Lỗi tải dữ liệu</div>'
+            );
+        });
+    }
+
+    /** Render danh sách kết quả */
+    function _mentionRender(type) {
+        var trigger = MENTION_TRIGGERS[type];
+        var items = mentionState.items;
+
+        if (!items.length) {
+            _mentionShow(
+                '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>'
+                + '<div class="mention-empty">Không tìm thấy</div>'
+            );
+            return;
+        }
+
+        var html = '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>';
+        items.forEach(function (item, idx) {
+            var name = item.Name || item.ObjectName || item.ItemName || '';
+            var code = item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
+            var rightHtml = '<span class="mention-item-code">' + _esc(code) + '</span>';
+
+            if (item.UnitPrice) {
+                rightHtml += '<span class="mention-item-price">'
+                    + Number(item.UnitPrice).toLocaleString('vi-VN') + 'đ</span>';
+            }
+            if (item.BaseTotal !== undefined) {
+                rightHtml += '<span class="mention-item-price">'
+                    + Number(item.BaseTotal).toLocaleString('vi-VN') + 'đ</span>';
+            }
+
+            var activeCls = idx === mentionState.selectedIndex ? ' active' : '';
+            html += '<div class="mention-item' + activeCls + '" data-idx="' + idx + '">'
+                + '<span class="mention-item-name">' + _esc(name) + '</span>'
+                + '<div class="mention-item-right">' + rightHtml + '</div>'
+                + '</div>';
+        });
+
+        _mentionShow(html);
+
+        // Click handler cho items
+        $mentionDropdown.querySelectorAll('.mention-item').forEach(function (el) {
+            el.addEventListener('click', function () {
+                var idx = parseInt(el.getAttribute('data-idx'));
+                _mentionSelect(idx);
+            });
+        });
+    }
+
+    /** Chèn kết quả vào textarea */
+    function _mentionSelect(idx) {
+        var item = mentionState.items[idx];
+        if (!item) return;
+
+        var name = item.Name || item.ObjectName || item.ItemName || '';
+        var code = item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
+        var insertText = name + ' (' + code + ')';
+
+        var text = $input.value;
+        var before = text.substring(0, mentionState.triggerStart);
+        var after = text.substring($input.selectionStart);
+        $input.value = before + insertText + ' ' + after;
+        // Set cursor after inserted text
+        var newPos = before.length + insertText.length + 1;
+        $input.setSelectionRange(newPos, newPos);
+        $input.focus();
+
+        _mentionHide();
+        _autoResize();
+        _updateSendBtn();
+    }
+
+    /** Highlight item trong dropdown */
+    function _mentionHighlight(idx) {
+        mentionState.selectedIndex = idx;
+        var items = $mentionDropdown.querySelectorAll('.mention-item');
+        items.forEach(function (el, i) {
+            el.classList.toggle('active', i === idx);
+        });
+        // Scroll vào view
+        if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+    }
+
+    /** Input handler — detect @mention */
+    function _mentionOnInput() {
+        var parsed = _mentionParse();
+        if (!parsed) {
+            _mentionHide();
+            return;
+        }
+
+        mentionState.triggerKey = parsed.triggerKey;
+        mentionState.triggerStart = parsed.triggerStart;
+        mentionState.searchText = parsed.searchText;
+        mentionState.selectedIndex = -1;
+
+        // Debounce API call
+        if (mentionTimer) clearTimeout(mentionTimer);
+        mentionTimer = setTimeout(function () {
+            _mentionFetch(parsed.triggerKey, parsed.searchText);
+        }, MENTION_DEBOUNCE);
+    }
+
+    /** Keyboard handler cho mention dropdown */
+    function _mentionOnKeydown(e) {
+        if (!mentionState.active) return false;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            var next = mentionState.selectedIndex + 1;
+            if (next >= mentionState.items.length) next = 0;
+            _mentionHighlight(next);
+            return true;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            var prev = mentionState.selectedIndex - 1;
+            if (prev < 0) prev = mentionState.items.length - 1;
+            _mentionHighlight(prev);
+            return true;
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (mentionState.selectedIndex >= 0) {
+                _mentionSelect(mentionState.selectedIndex);
+            } else if (mentionState.items.length > 0) {
+                _mentionSelect(0);
+            }
+            return true;
+        }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            _mentionHide();
+            return true;
+        }
+        return false;
+    }
+
+    // Close dropdown on click outside
+    document.addEventListener('click', function (e) {
+        if ($mentionDropdown && !$mentionDropdown.contains(e.target) && e.target !== $input) {
+            _mentionHide();
+        }
+    });
+
     // ── Events ──
     $input.addEventListener('input', function () {
         _autoResize();
         _updateSendBtn();
+        _mentionOnInput();
     });
 
     $input.addEventListener('keydown', function (e) {
+        // Mention dropdown intercepts keys first
+        if (_mentionOnKeydown(e)) return;
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             if ($input.value.trim() || selectedFile) _send();
@@ -411,6 +774,7 @@
         $messages.innerHTML = '';
         $welcome.style.display = '';
         _clearFile();
+        _mentionHide();
     });
 
     // ── Suggestion chips ──
@@ -425,6 +789,7 @@
     });
 
     // ── Init ──
+    _mentionCreate();
     _renderHistory();
     $input.focus();
 })();

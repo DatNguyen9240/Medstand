@@ -118,6 +118,11 @@ const API_CONFIG = {
       CHANNELS: '/api/API_KenhBan',
       ROUTE_DAYS: '/api/API_ThuDiTuyen',
     },
+
+    // AI Chatbot
+    AI: {
+      CATALOG: '/api/API_DanhMuc_AI',
+    },
   },
 };
 
