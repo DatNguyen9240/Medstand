@@ -61,6 +61,9 @@
     var selectedFile = null;   // File object đang chọn
     var recognition = null;    // SpeechRecognition instance
     var isRecording = false;
+    var mediaRecorder = null;  // Cho ghi âm trực tiếp
+    var audioChunks = [];      // Chứa dữ liệu audio
+    var recordingMode = 'text'; // 'text' (SpeechAPI) hoặc 'audio' (MediaRecorder)
 
     // ── Render cached messages ──
     function _renderHistory() {
@@ -374,12 +377,19 @@
         });
 
         recognition.addEventListener('error', function (e) {
-            if (e.error === 'no-speech') {
-                // Im lặng quá lâu → bỏ qua, sẽ auto-restart ở event 'end'
-                return;
-            }
+            if (e.error === 'no-speech') return;
+            
+            console.error('[Voice] Recognition error:', e.error);
             isRecording = false;
             $btnMic.classList.remove('recording');
+
+            if (e.error === 'network') {
+                console.warn('[Voice] Network error, switching to MediaRecorder fallback...');
+                recordingMode = 'audio';
+                _startAudioRecording(); // Tự động chuyển và bắt đầu ghi âm file
+                return;
+            }
+
             if (e.error === 'not-allowed') {
                 alert('Vui lòng cho phép truy cập micro để sử dụng ghi âm.');
             }
@@ -387,26 +397,90 @@
 
         $btnMic.addEventListener('click', function () {
             if (isRecording) {
-                // Dừng ghi
-                isRecording = false;
-                recognition.stop();
+                _stopRecording();
             } else {
-                // Bắt đầu ghi
-                textBeforeRecording = $input.value;
-                finalTranscript = '';
-                isRecording = true;
-                $btnMic.classList.add('recording');
-                try {
-                    recognition.start();
-                } catch (e) {
-                    isRecording = false;
-                    $btnMic.classList.remove('recording');
-                }
+                _startRecording();
             }
         });
     } else {
-        // Trình duyệt không hỗ trợ → ẩn nút mic
-        $btnMic.style.display = 'none';
+        // Trình duyệt không hỗ trợ Web Speech -> Thử MediaRecorder trực tiếp
+        recordingMode = 'audio';
+        $btnMic.addEventListener('click', function () {
+            if (isRecording) _stopRecording();
+            else _startRecording();
+        });
+    }
+
+    function _startRecording() {
+        if (recordingMode === 'text' && recognition) {
+            textBeforeRecording = $input.value;
+            finalTranscript = '';
+            isRecording = true;
+            $btnMic.classList.add('recording');
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('[Voice] recognition.start fail:', e);
+                recordingMode = 'audio';
+                _startAudioRecording();
+            }
+        } else {
+            _startAudioRecording();
+        }
+    }
+
+    function _stopRecording() {
+        isRecording = false;
+        $btnMic.classList.remove('recording');
+        if (recordingMode === 'text' && recognition) {
+            recognition.stop();
+        } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+    }
+
+    function _startAudioRecording() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert('Trình duyệt của bạn không hỗ trợ ghi âm.');
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+                audioChunks = [];
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.addEventListener('dataavailable', function (e) {
+                    audioChunks.push(e.data);
+                });
+                mediaRecorder.addEventListener('stop', function () {
+                    var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    var file = new File([audioBlob], "voice_recording_" + Date.now() + ".webm", { type: 'audio/webm' });
+                    
+                    // Gán vào selectedFile và gửi luôn
+                    selectedFile = file;
+                    $fileName.textContent = "Ghi âm giọng nói";
+                    $fileSize.textContent = _formatFileSize(file.size);
+                    $filePreview.style.display = 'flex';
+                    _updateSendBtn();
+                    
+                    // Tự động gửi sau khi dừng ghi âm file
+                    setTimeout(_send, 500);
+
+                    // Tắt stream
+                    stream.getTracks().forEach(t => t.stop());
+                });
+
+                isRecording = true;
+                $btnMic.classList.add('recording');
+                mediaRecorder.start();
+                console.log('[Voice] MediaRecorder started');
+            })
+            .catch(function (err) {
+                console.error('[Voice] getUserMedia error:', err);
+                alert('Không thể truy cập máy ảnh/micro: ' + err.message);
+                isRecording = false;
+                $btnMic.classList.remove('recording');
+            });
     }
 
     // ══════════════════════════════════════════
@@ -430,6 +504,11 @@
         $input.value = '';
         _autoResize();
         $btnSend.disabled = true;
+
+        // Reset keyboard/scroll sau khi gửi
+        if (window.innerWidth <= 768) {
+            $input.blur();
+        }
 
         // Show typing
         _showTyping();
@@ -503,6 +582,29 @@
     function _autoResize() {
         $input.style.height = 'auto';
         $input.style.height = Math.min($input.scrollHeight, 120) + 'px';
+        _scrollBottom();
+    }
+
+    // ── Keyboard / Focus handling ──
+    $input.addEventListener('focus', function() {
+        // Cuộn xuống cuối để thấy tin nhắn mới nhất
+        setTimeout(_scrollBottom, 300);
+        
+        // Trên iOS/Android, đôi khi cần scrollIntoView cho chính input
+        if (window.innerWidth <= 768) {
+            setTimeout(function() {
+                $input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 400);
+        }
+    });
+
+    // Theo dõi visualViewport để đẩy UI (cho các trình duyệt hiện đại)
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', function() {
+            if (document.activeElement === $input) {
+                _scrollBottom();
+            }
+        });
     }
 
     // ══════════════════════════════════════════
