@@ -556,23 +556,99 @@
         if (mentionTimer) { clearTimeout(mentionTimer); mentionTimer = null; }
     }
 
-    /** Parse textarea text → tìm @trigger pattern */
+    /** Parse textarea text → tìm @trigger pattern HOẶC @ chưa hoàn tất */
     function _mentionParse() {
         var text = $input.value;
         var cursor = $input.selectionStart;
-        // Tìm @ gần nhất trước cursor
         var before = text.substring(0, cursor);
-        var match = before.match(/@(sanpham|khachhang|donhang|khohang)(\s(.*))?$/i);
-        if (!match) return null;
-        return {
-            triggerKey: match[1].toLowerCase(),
-            triggerStart: before.lastIndexOf('@'),
-            searchText: (match[3] || '').trim(),
-            fullMatch: match[0]
-        };
+
+        // Phase 2: đã gõ đầy đủ @trigger (+ optional search text)
+        var fullMatch = before.match(/@(sanpham|khachhang|donhang|khohang)(\s(.*))?$/i);
+        if (fullMatch) {
+            return {
+                phase: 'search',
+                triggerKey: fullMatch[1].toLowerCase(),
+                triggerStart: before.lastIndexOf('@'),
+                searchText: (fullMatch[3] || '').trim(),
+                fullMatch: fullMatch[0]
+            };
+        }
+
+        // Phase 1: mới gõ @ (+ optional partial text để lọc category)
+        var partialMatch = before.match(/@([a-zA-Z]*)$/);
+        if (partialMatch) {
+            return {
+                phase: 'category',
+                partialText: partialMatch[1].toLowerCase(),
+                triggerStart: before.lastIndexOf('@')
+            };
+        }
+
+        return null;
     }
 
-    /** Gọi API_DanhMuc_AI */
+    /** Hiển thị danh sách category gợi ý khi gõ @ */
+    function _mentionShowCategories(partialText) {
+        var keys = Object.keys(MENTION_TRIGGERS);
+        // Lọc theo partial text (nếu có)
+        if (partialText) {
+            keys = keys.filter(function (k) {
+                return k.indexOf(partialText) === 0
+                    || MENTION_TRIGGERS[k].label.toLowerCase().indexOf(partialText) !== -1;
+            });
+        }
+
+        if (!keys.length) {
+            _mentionHide();
+            return;
+        }
+
+        mentionState.items = keys;
+        mentionState.selectedIndex = -1;
+
+        var html = '<div class="mention-header">📌 Chọn danh mục</div>';
+        keys.forEach(function (key, idx) {
+            var t = MENTION_TRIGGERS[key];
+            var activeCls = idx === mentionState.selectedIndex ? ' active' : '';
+            html += '<div class="mention-item mention-category-item' + activeCls + '" data-key="' + key + '" data-idx="' + idx + '">'
+                + '<span class="mention-item-name">' + t.icon + ' ' + t.label + '</span>'
+                + '<span class="mention-item-code" style="opacity:0.5">@' + key + '</span>'
+                + '</div>';
+        });
+
+        _mentionShow(html);
+
+        // Click handler cho category items
+        $mentionDropdown.querySelectorAll('.mention-category-item').forEach(function (el) {
+            el.addEventListener('click', function () {
+                var key = el.getAttribute('data-key');
+                _mentionSelectCategory(key);
+            });
+        });
+    }
+
+    /** Chèn @trigger vào textarea khi chọn category */
+    function _mentionSelectCategory(key) {
+        var text = $input.value;
+        var before = text.substring(0, mentionState.triggerStart);
+        var after = text.substring($input.selectionStart);
+        var insertText = '@' + key + ' ';
+        $input.value = before + insertText + after;
+        var newPos = before.length + insertText.length;
+        $input.setSelectionRange(newPos, newPos);
+        $input.focus();
+        _autoResize();
+        _updateSendBtn();
+
+        // Trigger fetch ngay sau khi chọn category
+        mentionState.triggerKey = key;
+        mentionState.triggerStart = before.length;
+        mentionState.searchText = '';
+        mentionState.selectedIndex = -1;
+        _mentionFetch(key, '');
+    }
+
+    /** Gọi API_DanhMuc_AI — dùng fetch trực tiếp, không hiện global spinner */
     function _mentionFetch(type, searchText) {
         mentionState.loading = true;
         var trigger = MENTION_TRIGGERS[type];
@@ -581,9 +657,16 @@
             + '<div class="mention-loading">Đang tải...</div>'
         );
 
-        Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
-            q: JSON.stringify({ Type: type, SearchText: searchText })
-        }).then(function (res) {
+        var qs = encodeURIComponent(JSON.stringify({ Type: type, SearchText: searchText }));
+        var url = API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
+        var token = _getToken();
+
+        fetch(url, {
+            method: 'GET',
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
             mentionState.loading = false;
             var records = [];
             if (res && res.data && Array.isArray(res.data.records)) {
@@ -694,10 +777,18 @@
             return;
         }
 
-        mentionState.triggerKey = parsed.triggerKey;
         mentionState.triggerStart = parsed.triggerStart;
-        mentionState.searchText = parsed.searchText;
         mentionState.selectedIndex = -1;
+
+        if (parsed.phase === 'category') {
+            // Phase 1: hiện danh sách category gợi ý
+            _mentionShowCategories(parsed.partialText);
+            return;
+        }
+
+        // Phase 2: đã chọn category → fetch dữ liệu
+        mentionState.triggerKey = parsed.triggerKey;
+        mentionState.searchText = parsed.searchText;
 
         // Debounce API call
         if (mentionTimer) clearTimeout(mentionTimer);
@@ -726,10 +817,14 @@
         }
         if (e.key === 'Enter') {
             e.preventDefault();
-            if (mentionState.selectedIndex >= 0) {
-                _mentionSelect(mentionState.selectedIndex);
-            } else if (mentionState.items.length > 0) {
-                _mentionSelect(0);
+            var selIdx = mentionState.selectedIndex >= 0 ? mentionState.selectedIndex : 0;
+            if (mentionState.items.length > 0) {
+                // Kiểm tra phase: nếu items là string (category key) thì chọn category
+                if (typeof mentionState.items[0] === 'string') {
+                    _mentionSelectCategory(mentionState.items[selIdx]);
+                } else {
+                    _mentionSelect(selIdx);
+                }
             }
             return true;
         }

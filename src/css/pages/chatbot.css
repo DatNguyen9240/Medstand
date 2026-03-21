@@ -457,9 +457,11 @@
 /* ── Mention autocomplete dropdown ── */
 .mention-dropdown {
   position: fixed;
-  left: var(--spacing-md);
-  right: var(--spacing-md);
+  left: 50%;
+  transform: translateX(-50%);
   bottom: calc(42px + var(--nav-height) + var(--spacing-sm) * 2 + 8px);
+  width: calc(100% - var(--spacing-md) * 2);
+  max-width: 400px;
   max-height: 260px;
   overflow-y: auto;
   background: var(--color-surface);
