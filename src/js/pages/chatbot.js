@@ -508,8 +508,15 @@
     //  @MENTION AUTOCOMPLETE
     // ══════════════════════════════════════════
 
-    var MENTION_TRIGGERS = {};
-    var mentionKeysPattern = null; // dynamic regex pattern
+    // Khởi tạo mặc định ngay — đảm bảo @mention luôn hoạt động
+    var MENTION_TRIGGERS = {
+        'sanpham': { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
+        'khachhang': { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
+        'donhang': { type: 'donhang', label: 'Đơn hàng', icon: '📋' },
+        'khohang': { type: 'khohang', label: 'Kho hàng', icon: '🏭' },
+        'nhanvien': { type: 'nhanvien', label: 'Nhân viên', icon: '👨‍💼' }
+    };
+    var mentionKeysPattern = /@(sanpham|khachhang|donhang|khohang|nhanvien)(\s(.*))?$/i;
     var MENTION_CACHE_KEY = 'mention_categories';
     var MENTION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 giờ
 
@@ -552,36 +559,36 @@
             method: 'GET',
             headers: token ? { 'Authorization': 'Bearer ' + token } : {}
         })
-        .then(function (r) { return r.json(); })
-        .then(function (res) {
-            var records = [];
-            if (res && res.data && Array.isArray(res.data.records)) records = res.data.records;
-            else if (res && Array.isArray(res.records)) records = res.records;
-            else if (Array.isArray(res.data)) records = res.data;
-            else if (Array.isArray(res)) records = res;
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var records = [];
+                if (res && res.data && Array.isArray(res.data.records)) records = res.data.records;
+                else if (res && Array.isArray(res.records)) records = res.records;
+                else if (Array.isArray(res.data)) records = res.data;
+                else if (Array.isArray(res)) records = res;
 
-            _mentionApplyCategories(records);
+                _mentionApplyCategories(records);
 
-            // Lưu cache
-            try {
-                localStorage.setItem(MENTION_CACHE_KEY, JSON.stringify({
-                    data: records,
-                    timestamp: Date.now()
-                }));
-            } catch (e) { /* localStorage đầy → bỏ qua */ }
-        })
-        .catch(function () {
-            // Fallback nếu API lỗi và chưa có data từ cache
-            if (Object.keys(MENTION_TRIGGERS).length === 0) {
-                _mentionApplyCategories([
-                    { type: 'sanpham',    label: 'Sản phẩm',    icon: '💊' },
-                    { type: 'khachhang',  label: 'Khách hàng',  icon: '👤' },
-                    { type: 'donhang',    label: 'Đơn hàng',    icon: '📋' },
-                    { type: 'khohang',    label: 'Kho hàng',    icon: '🏭' },
-                    { type: 'nhanvien',   label: 'Nhân viên',   icon: '👨‍💼' }
-                ]);
-            }
-        });
+                // Lưu cache
+                try {
+                    localStorage.setItem(MENTION_CACHE_KEY, JSON.stringify({
+                        data: records,
+                        timestamp: Date.now()
+                    }));
+                } catch (e) { /* localStorage đầy → bỏ qua */ }
+            })
+            .catch(function () {
+                // Fallback nếu API lỗi và chưa có data từ cache
+                if (Object.keys(MENTION_TRIGGERS).length === 0) {
+                    _mentionApplyCategories([
+                        { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
+                        { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
+                        { type: 'donhang', label: 'Đơn hàng', icon: '📋' },
+                        { type: 'khohang', label: 'Kho hàng', icon: '🏭' },
+                        { type: 'nhanvien', label: 'Nhân viên', icon: '👨‍💼' }
+                    ]);
+                }
+            });
     }
     var MENTION_DEBOUNCE = 300;
     var MENTION_MAX_ITEMS = 8;
@@ -736,28 +743,28 @@
             method: 'GET',
             headers: token ? { 'Authorization': 'Bearer ' + token } : {}
         })
-        .then(function (r) { return r.json(); })
-        .then(function (res) {
-            mentionState.loading = false;
-            var records = [];
-            if (res && res.data && Array.isArray(res.data.records)) {
-                records = res.data.records;
-            } else if (res && Array.isArray(res.records)) {
-                records = res.records;
-            } else if (Array.isArray(res.data)) {
-                records = res.data;
-            } else if (Array.isArray(res)) {
-                records = res;
-            }
-            mentionState.items = records.slice(0, MENTION_MAX_ITEMS);
-            _mentionRender(type);
-        }).catch(function () {
-            mentionState.loading = false;
-            _mentionShow(
-                '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>'
-                + '<div class="mention-empty">Lỗi tải dữ liệu</div>'
-            );
-        });
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                mentionState.loading = false;
+                var records = [];
+                if (res && res.data && Array.isArray(res.data.records)) {
+                    records = res.data.records;
+                } else if (res && Array.isArray(res.records)) {
+                    records = res.records;
+                } else if (Array.isArray(res.data)) {
+                    records = res.data;
+                } else if (Array.isArray(res)) {
+                    records = res;
+                }
+                mentionState.items = records.slice(0, MENTION_MAX_ITEMS);
+                _mentionRender(type);
+            }).catch(function () {
+                mentionState.loading = false;
+                _mentionShow(
+                    '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>'
+                    + '<div class="mention-empty">Lỗi tải dữ liệu</div>'
+                );
+            });
     }
 
     /** Render danh sách kết quả */
