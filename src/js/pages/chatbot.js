@@ -241,7 +241,8 @@
 
     function _scrollBottom() {
         setTimeout(function () {
-            $container.scrollTop = $container.scrollHeight;
+            var extra = window.innerWidth <= 768 ? 2 : 0;
+            $container.scrollTop = $container.scrollHeight + extra;
         }, 50);
     }
 
