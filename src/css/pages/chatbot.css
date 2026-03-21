@@ -583,3 +583,43 @@
     position: sticky;
   }
 }
+
+/* ── Mobile: shrink buttons for more textarea space ── */
+@media (max-width: 480px) {
+  .chat-action-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .chat-action-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat-send-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .chat-send-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .chat-input {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 14px;
+    overflow-y: auto;
+    scrollbar-width: none;         /* Firefox */
+    -ms-overflow-style: none;      /* IE/Edge */
+  }
+
+  .chat-input::-webkit-scrollbar {
+    display: none;                 /* Chrome/Safari */
+  }
+
+  .chat-input-wrap {
+    gap: 4px;
+  }
+}

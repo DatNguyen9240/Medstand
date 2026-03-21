@@ -508,12 +508,81 @@
     //  @MENTION AUTOCOMPLETE
     // ══════════════════════════════════════════
 
-    var MENTION_TRIGGERS = {
-        'sanpham': { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
-        'khachhang': { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
-        'donhang': { type: 'donhang', label: 'Đơn hàng', icon: '📋' },
-        'khohang': { type: 'khohang', label: 'Kho hàng', icon: '🏭' }
-    };
+    var MENTION_TRIGGERS = {};
+    var mentionKeysPattern = null; // dynamic regex pattern
+    var MENTION_CACHE_KEY = 'mention_categories';
+    var MENTION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 giờ
+
+    /** Apply categories vào MENTION_TRIGGERS + build regex */
+    function _mentionApplyCategories(records) {
+        MENTION_TRIGGERS = {};
+        records.forEach(function (r) {
+            var key = r.type || r.MaDanhMuc || '';
+            if (key) {
+                MENTION_TRIGGERS[key] = {
+                    type: key,
+                    label: r.label || r.TenDanhMuc || key,
+                    icon: r.icon || r.Icon || '📁'
+                };
+            }
+        });
+        var keys = Object.keys(MENTION_TRIGGERS);
+        if (keys.length) {
+            mentionKeysPattern = new RegExp('@(' + keys.join('|') + ')(\\s(.*))?$', 'i');
+        }
+    }
+
+    /** Load categories — ưu tiên cache, fetch API nếu hết hạn */
+    function _mentionLoadCategories() {
+        // 1. Đọc cache trước
+        try {
+            var cached = JSON.parse(localStorage.getItem(MENTION_CACHE_KEY));
+            if (cached && cached.data && (Date.now() - cached.timestamp < MENTION_CACHE_TTL)) {
+                _mentionApplyCategories(cached.data);
+                return; // cache còn hạn → không cần gọi API
+            }
+        } catch (e) { /* cache lỗi → bỏ qua, fetch API */ }
+
+        // 2. Fetch từ API
+        var qs = encodeURIComponent(JSON.stringify({ Type: 'categories', SearchText: '' }));
+        var url = API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
+        var token = _getToken();
+
+        fetch(url, {
+            method: 'GET',
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+            var records = [];
+            if (res && res.data && Array.isArray(res.data.records)) records = res.data.records;
+            else if (res && Array.isArray(res.records)) records = res.records;
+            else if (Array.isArray(res.data)) records = res.data;
+            else if (Array.isArray(res)) records = res;
+
+            _mentionApplyCategories(records);
+
+            // Lưu cache
+            try {
+                localStorage.setItem(MENTION_CACHE_KEY, JSON.stringify({
+                    data: records,
+                    timestamp: Date.now()
+                }));
+            } catch (e) { /* localStorage đầy → bỏ qua */ }
+        })
+        .catch(function () {
+            // Fallback nếu API lỗi và chưa có data từ cache
+            if (Object.keys(MENTION_TRIGGERS).length === 0) {
+                _mentionApplyCategories([
+                    { type: 'sanpham',    label: 'Sản phẩm',    icon: '💊' },
+                    { type: 'khachhang',  label: 'Khách hàng',  icon: '👤' },
+                    { type: 'donhang',    label: 'Đơn hàng',    icon: '📋' },
+                    { type: 'khohang',    label: 'Kho hàng',    icon: '🏭' },
+                    { type: 'nhanvien',   label: 'Nhân viên',   icon: '👨‍💼' }
+                ]);
+            }
+        });
+    }
     var MENTION_DEBOUNCE = 300;
     var MENTION_MAX_ITEMS = 8;
 
@@ -563,15 +632,17 @@
         var before = text.substring(0, cursor);
 
         // Phase 2: đã gõ đầy đủ @trigger (+ optional search text)
-        var fullMatch = before.match(/@(sanpham|khachhang|donhang|khohang)(\s(.*))?$/i);
-        if (fullMatch) {
-            return {
-                phase: 'search',
-                triggerKey: fullMatch[1].toLowerCase(),
-                triggerStart: before.lastIndexOf('@'),
-                searchText: (fullMatch[3] || '').trim(),
-                fullMatch: fullMatch[0]
-            };
+        if (mentionKeysPattern) {
+            var fullMatch = before.match(mentionKeysPattern);
+            if (fullMatch) {
+                return {
+                    phase: 'search',
+                    triggerKey: fullMatch[1].toLowerCase(),
+                    triggerStart: before.lastIndexOf('@'),
+                    searchText: (fullMatch[3] || '').trim(),
+                    fullMatch: fullMatch[0]
+                };
+            }
         }
 
         // Phase 1: mới gõ @ (+ optional partial text để lọc category)
@@ -815,7 +886,7 @@
             _mentionHighlight(prev);
             return true;
         }
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
             var selIdx = mentionState.selectedIndex >= 0 ? mentionState.selectedIndex : 0;
             if (mentionState.items.length > 0) {
@@ -885,6 +956,38 @@
 
     // ── Init ──
     _mentionCreate();
+    _mentionLoadCategories();
     _renderHistory();
+
+    // Responsive placeholder
+    function _updatePlaceholder() {
+        $input.placeholder = window.innerWidth <= 480
+            ? 'Nhập tin nhắn...'
+            : 'Nhập tin nhắn... (@ tra cứu)';
+    }
+    _updatePlaceholder();
+    window.addEventListener('resize', _updatePlaceholder);
+
+    // Mobile: ẩn navbar + scroll input khi bàn phím ảo mở
+    var $nav = document.querySelector('.app-nav');
+    var $inputBar = document.getElementById('chat-input-bar');
+
+    $input.addEventListener('focus', function () {
+        if (window.innerWidth <= 768 && $nav) {
+            $nav.style.display = 'none';
+            $inputBar.style.paddingBottom = 'var(--spacing-sm)';
+        }
+        setTimeout(function () {
+            $input.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 300);
+    });
+
+    $input.addEventListener('blur', function () {
+        if ($nav) {
+            $nav.style.display = '';
+            $inputBar.style.paddingBottom = '';
+        }
+    });
+
     $input.focus();
 })();
