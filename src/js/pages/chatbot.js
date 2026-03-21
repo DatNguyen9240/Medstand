@@ -986,6 +986,7 @@
             $inputBar.style.paddingBottom = 'var(--spacing-sm)';
         }
         setTimeout(function () {
+            $container.scrollTop = $container.scrollHeight + 2;
             $input.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }, 300);
     });
