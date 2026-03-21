@@ -64,6 +64,12 @@
     var mediaRecorder = null;  // Cho ghi âm trực tiếp
     var audioChunks = [];      // Chứa dữ liệu audio
     var recordingMode = 'text'; // 'text' (SpeechAPI) hoặc 'audio' (MediaRecorder)
+    var silenceTimer = null;    // Bộ đếm thời gian im lặng
+    var silenceDelay = 2500;    // 2.5 giây tự động tắt
+    var audioContext = null;    // Theo dõi âm lượng
+    var analyser = null;
+    var microphone = null;
+    var scriptProcessor = null;
 
     // ── Render cached messages ──
     function _renderHistory() {
@@ -358,6 +364,9 @@
             $input.value = display;
             _autoResize();
             _updateSendBtn();
+
+            // Reset silence timer khi có kết quả mới
+            _resetSilenceTimer();
         });
 
         recognition.addEventListener('end', function () {
@@ -419,6 +428,7 @@
             $btnMic.classList.add('recording');
             try {
                 recognition.start();
+                _resetSilenceTimer(); // Bắt đầu đếm ngược
             } catch (e) {
                 console.error('[Voice] recognition.start fail:', e);
                 recordingMode = 'audio';
@@ -432,11 +442,31 @@
     function _stopRecording() {
         isRecording = false;
         $btnMic.classList.remove('recording');
+        
+        if (silenceTimer) {
+            clearTimeout(silenceTimer);
+            silenceTimer = null;
+        }
+
+        // Tắt AudioContext nếu có (cho MediaRecorder fallback)
+        if (audioContext) {
+            audioContext.close();
+            audioContext = null;
+        }
+
         if (recordingMode === 'text' && recognition) {
             recognition.stop();
         } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
         }
+    }
+
+    function _resetSilenceTimer() {
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(function() {
+            console.log('[Voice] Silence timeout reached (2.5s). Stopping...');
+            _stopRecording();
+        }, silenceDelay);
     }
 
     function _startAudioRecording() {
@@ -449,6 +479,37 @@
             .then(function (stream) {
                 audioChunks = [];
                 mediaRecorder = new MediaRecorder(stream);
+                
+                // --- Silence Detection bằng AudioContext (cho MediaRecorder) ---
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
+
+                analyser.smoothingTimeConstant = 0.8;
+                analyser.fftSize = 1024;
+
+                microphone.connect(analyser);
+                analyser.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+
+                scriptProcessor.onaudioprocess = function() {
+                    var array = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(array);
+                    var values = 0;
+                    var length = array.length;
+                    for (var i = 0; i < length; i++) {
+                        values += array[i];
+                    }
+                    var average = values / length;
+
+                    // Ngưỡng âm thanh (threshold) để coi là đang nói
+                    if (average > 15) { 
+                        _resetSilenceTimer();
+                    }
+                };
+                // -------------------------------------------------------------
+
                 mediaRecorder.addEventListener('dataavailable', function (e) {
                     audioChunks.push(e.data);
                 });
