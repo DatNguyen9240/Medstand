@@ -622,7 +622,7 @@
         var html = '<div class="mention-header">' + trigger.icon + ' ' + trigger.label + '</div>';
         items.forEach(function (item, idx) {
             var name = item.Name || item.ObjectName || item.ItemName || '';
-            var code = item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
+            var code = item.MaDanhMuc || item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
             var rightHtml = '<span class="mention-item-code">' + _esc(code) + '</span>';
 
             if (item.UnitPrice) {
@@ -658,7 +658,7 @@
         if (!item) return;
 
         var name = item.Name || item.ObjectName || item.ItemName || '';
-        var code = item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
+        var code = item.MaDanhMuc || item.Code || item.ObjectID || item.ItemID || item.DocumentID || '';
         var insertText = name + ' (' + code + ')';
 
         var text = $input.value;
