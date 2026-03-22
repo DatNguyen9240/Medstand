@@ -70,6 +70,8 @@
     var analyser = null;
     var microphone = null;
     var scriptProcessor = null;
+    var speechRetryCount = 0;   // Đếm số lần retry Speech API
+    var MAX_SPEECH_RETRIES = 3; // Tối đa 3 lần retry
 
     // ── Render cached messages ──
     function _renderHistory() {
@@ -393,9 +395,26 @@
             $btnMic.classList.remove('recording');
 
             if (e.error === 'network') {
-                console.warn('[Voice] Network error, switching to MediaRecorder fallback...');
-                recordingMode = 'audio';
-                _startAudioRecording(); // Tự động chuyển và bắt đầu ghi âm file
+                if (speechRetryCount < MAX_SPEECH_RETRIES) {
+                    speechRetryCount++;
+                    console.warn('[Voice] Network error, retrying Speech API (' + speechRetryCount + '/' + MAX_SPEECH_RETRIES + ')...');
+                    isRecording = true;
+                    $btnMic.classList.add('recording');
+                    setTimeout(function() {
+                        try {
+                            recognition.start();
+                        } catch (ex) {
+                            console.error('[Voice] Retry failed:', ex);
+                            isRecording = false;
+                            $btnMic.classList.remove('recording');
+                            alert('Không thể nhận diện giọng nói. Vui lòng kiểm tra:\n• Kết nối mạng\n• Trang web đang chạy trên HTTPS\n• Đã cấp quyền micro');
+                        }
+                    }, 500);
+                } else {
+                    console.error('[Voice] Speech API failed after ' + MAX_SPEECH_RETRIES + ' retries');
+                    speechRetryCount = 0;
+                    alert('Không thể nhận diện giọng nói. Vui lòng kiểm tra:\n• Kết nối mạng\n• Trang web đang chạy trên HTTPS\n• Đã cấp quyền micro');
+                }
                 return;
             }
 
@@ -424,6 +443,7 @@
         if (recordingMode === 'text' && recognition) {
             textBeforeRecording = $input.value;
             finalTranscript = '';
+            speechRetryCount = 0;  // Reset retry counter
             isRecording = true;
             $btnMic.classList.add('recording');
             try {
@@ -431,8 +451,9 @@
                 _resetSilenceTimer(); // Bắt đầu đếm ngược
             } catch (e) {
                 console.error('[Voice] recognition.start fail:', e);
-                recordingMode = 'audio';
-                _startAudioRecording();
+                isRecording = false;
+                $btnMic.classList.remove('recording');
+                alert('Không thể khởi động nhận diện giọng nói. Vui lòng thử lại.');
             }
         } else {
             _startAudioRecording();
