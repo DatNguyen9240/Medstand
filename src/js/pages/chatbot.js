@@ -713,13 +713,6 @@
     $input.addEventListener('focus', function() {
         // Cuộn xuống cuối để thấy tin nhắn mới nhất
         setTimeout(_scrollBottom, 300);
-        
-        // Trên iOS/Android, đôi khi cần scrollIntoView cho chính input
-        if (window.innerWidth <= 768) {
-            setTimeout(function() {
-                $input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 400);
-        }
     });
 
     // Theo dõi visualViewport để đẩy UI (cho các trình duyệt hiện đại)
