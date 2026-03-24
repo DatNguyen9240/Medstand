@@ -391,7 +391,7 @@
 
         recognition.addEventListener('error', function (e) {
             if (e.error === 'no-speech') return;
-            
+
             console.error('[Voice] Recognition error:', e.error);
             isRecording = false;
             $btnMic.classList.remove('recording');
@@ -402,7 +402,7 @@
                     console.warn('[Voice] Network error, retrying Speech API (' + speechRetryCount + '/' + MAX_SPEECH_RETRIES + ')...');
                     isRecording = true;
                     $btnMic.classList.add('recording');
-                    setTimeout(function() {
+                    setTimeout(function () {
                         try {
                             recognition.start();
                         } catch (ex) {
@@ -465,7 +465,7 @@
     function _stopRecording() {
         isRecording = false;
         $btnMic.classList.remove('recording');
-        
+
         if (silenceTimer) {
             clearTimeout(silenceTimer);
             silenceTimer = null;
@@ -486,7 +486,7 @@
 
     function _resetSilenceTimer() {
         if (silenceTimer) clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(function() {
+        silenceTimer = setTimeout(function () {
             console.log('[Voice] Silence timeout reached (2.5s). Stopping...');
             _stopRecording();
         }, silenceDelay);
@@ -502,7 +502,7 @@
             .then(function (stream) {
                 audioChunks = [];
                 mediaRecorder = new MediaRecorder(stream);
-                
+
                 // --- Silence Detection bằng AudioContext (cho MediaRecorder) ---
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
@@ -516,7 +516,7 @@
                 analyser.connect(scriptProcessor);
                 scriptProcessor.connect(audioContext.destination);
 
-                scriptProcessor.onaudioprocess = function() {
+                scriptProcessor.onaudioprocess = function () {
                     var array = new Uint8Array(analyser.frequencyBinCount);
                     analyser.getByteFrequencyData(array);
                     var values = 0;
@@ -527,7 +527,7 @@
                     var average = values / length;
 
                     // Ngưỡng âm thanh (threshold) để coi là đang nói
-                    if (average > 15) { 
+                    if (average > 15) {
                         _resetSilenceTimer();
                     }
                 };
@@ -539,14 +539,14 @@
                 mediaRecorder.addEventListener('stop', function () {
                     var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     var file = new File([audioBlob], "voice_recording_" + Date.now() + ".webm", { type: 'audio/webm' });
-                    
+
                     // Gán vào selectedFile và gửi luôn
                     selectedFile = file;
                     $fileName.textContent = "Ghi âm giọng nói";
                     $fileSize.textContent = _formatFileSize(file.size);
                     $filePreview.style.display = 'flex';
                     _updateSendBtn();
-                    
+
                     // Tự động gửi sau khi dừng ghi âm file
                     setTimeout(_send, 500);
 
@@ -710,14 +710,14 @@
     }
 
     // ── Keyboard / Focus handling ──
-    $input.addEventListener('focus', function() {
+    $input.addEventListener('focus', function () {
         // Cuộn xuống cuối để thấy tin nhắn mới nhất
         setTimeout(_scrollBottom, 300);
     });
 
     // Theo dõi visualViewport để đẩy UI (cho các trình duyệt hiện đại)
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', function() {
+        window.visualViewport.addEventListener('resize', function () {
             if (document.activeElement === $input) {
                 _scrollBottom();
             }
@@ -1178,19 +1178,93 @@
         }
     });
 
+    // ══════════════════════════════════════════
+    //  INLINE GHOST TEXT (Tab autocomplete)
+    // ══════════════════════════════════════════
+
+    var ghostText = '';
+    var ghostFull = '';
+    var $ghost = null;
+
+    function _ghostCreate() {
+        $ghost = document.createElement('div');
+        $ghost.className = 'chat-ghost-text';
+        $ghost.setAttribute('aria-hidden', 'true');
+        // Bọc textarea trong wrapper riêng để ghost căn đúng vị trí
+        var $ghostWrap = document.createElement('div');
+        $ghostWrap.className = 'chat-input-ghost-wrap';
+        $input.parentNode.insertBefore($ghostWrap, $input);
+        $ghostWrap.appendChild($input);
+        $ghostWrap.appendChild($ghost);
+    }
+
+    function _ghostUpdate() {
+        if (mentionState.active) { _ghostClear(); return; }
+        var text = $input.value;
+        if (text.length < 2 || text.charAt(0) === '@') { _ghostClear(); return; }
+        var lower = text.toLowerCase();
+        var suggestions = window.CHAT_SUGGESTIONS || [];
+        var match = null;
+        for (var i = 0; i < suggestions.length; i++) {
+            if (suggestions[i].text.toLowerCase().indexOf(lower) === 0) {
+                match = suggestions[i]; break;
+            }
+        }
+        if (!match) { _ghostClear(); return; }
+        ghostFull = match.text;
+        ghostText = match.text.substring(text.length);
+        // Hiện: phần user gõ (ẩn) + phần gợi ý (mờ)
+        $ghost.innerHTML = '<span style="visibility:hidden">' + _esc(text) + '</span>' + _esc(ghostText);
+        $ghost.style.display = '';
+        $ghost.scrollTop = $input.scrollTop;
+    }
+
+    function _ghostAccept() {
+        if (!ghostText) return false;
+        var pos = ghostFull.length;
+        $input.value = ghostFull;
+        _ghostClear();
+        _autoResize();
+        _updateSendBtn();
+        $input.setSelectionRange(pos, pos);
+        return true;
+    }
+
+    function _ghostClear() {
+        ghostText = '';
+        ghostFull = '';
+        if ($ghost) { $ghost.innerHTML = ''; $ghost.style.display = 'none'; }
+    }
+
+    _ghostCreate();
+
     // ── Events ──
     $input.addEventListener('input', function () {
         _autoResize();
         _updateSendBtn();
         _mentionOnInput();
+        _ghostUpdate();
     });
 
     $input.addEventListener('keydown', function (e) {
         // Mention dropdown intercepts keys first
         if (_mentionOnKeydown(e)) return;
 
+        // Tab → accept ghost text
+        if (e.key === 'Tab' && ghostText) {
+            e.preventDefault();
+            _ghostAccept();
+            return;
+        }
+
+        // Escape → clear ghost
+        if (e.key === 'Escape' && ghostText) {
+            _ghostClear();
+        }
+
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
+            _ghostClear();
             if ($input.value.trim() || selectedFile) _send();
         }
     });
