@@ -32,8 +32,15 @@
 }
 
 @keyframes welcome-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .chat-welcome-title {
@@ -105,8 +112,15 @@
 }
 
 @keyframes bubble-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.96); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* User bubble */
@@ -141,12 +155,23 @@
   line-height: 1.3;
 }
 
-.chat-bubble.ai h1.ai-heading { font-size: 1.25em; }
-.chat-bubble.ai h2.ai-heading { font-size: 1.15em; }
-.chat-bubble.ai h3.ai-heading { font-size: 1.05em; }
+.chat-bubble.ai h1.ai-heading {
+  font-size: 1.25em;
+}
+
+.chat-bubble.ai h2.ai-heading {
+  font-size: 1.15em;
+}
+
+.chat-bubble.ai h3.ai-heading {
+  font-size: 1.05em;
+}
+
 .chat-bubble.ai h4.ai-heading,
 .chat-bubble.ai h5.ai-heading,
-.chat-bubble.ai h6.ai-heading { font-size: 1em; }
+.chat-bubble.ai h6.ai-heading {
+  font-size: 1em;
+}
 
 .chat-bubble.ai .ai-inline-code {
   background: rgba(0, 0, 0, 0.06);
@@ -268,12 +293,27 @@
   animation: typing-dot 1.4s ease-in-out infinite;
 }
 
-.chat-typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.chat-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+.chat-typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chat-typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes typing-dot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-  30% { transform: translateY(-4px); opacity: 1; }
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 /* ── Input bar ── */
@@ -360,8 +400,15 @@
 }
 
 @keyframes stop-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
 }
 
 /* ── Action buttons (attach & mic) ── */
@@ -397,8 +444,15 @@
 }
 
 @keyframes mic-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-  50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5);
+  }
+
+  50% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
 }
 
 /* ── File preview ── */
@@ -422,8 +476,15 @@
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chat-file-preview-info {
@@ -473,16 +534,15 @@
 /* ── Mention autocomplete dropdown ── */
 .mention-dropdown {
   position: fixed;
-  left: 16px;
-  right: 16px;
+  left: 0;
+  right: 0;
   bottom: 0;
   margin: 0 auto;
   max-width: 400px;
   max-height: 260px;
-  overflow-y: scroll;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -492,8 +552,15 @@
 }
 
 @keyframes mention-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .mention-header {
@@ -584,7 +651,9 @@
 }
 
 @keyframes mention-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Desktop adjustments ── */
@@ -636,12 +705,15 @@
     padding: 8px 10px;
     font-size: 14px;
     overflow-y: auto;
-    scrollbar-width: none;         /* Firefox */
-    -ms-overflow-style: none;      /* IE/Edge */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
   }
 
   .chat-input::-webkit-scrollbar {
-    display: none;                 /* Chrome/Safari */
+    display: none;
+    /* Chrome/Safari */
   }
 
   .chat-input-wrap {
