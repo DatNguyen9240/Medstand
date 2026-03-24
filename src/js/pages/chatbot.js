@@ -4,6 +4,8 @@
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút
+    var USER_PHRASES_KEY = 'ai_user_phrases';
+    var MAX_USER_PHRASES = 50;
     var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
@@ -40,6 +42,31 @@
 
     function _clearCache() {
         sessionStorage.removeItem(CACHE_KEY);
+    }
+
+    // ── User Phrase Cache (localStorage, persistent) ──
+    function _loadUserPhrases() {
+        try {
+            var raw = localStorage.getItem(USER_PHRASES_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+
+    function _saveUserPhrase(text) {
+        if (!text || text.length < 3) return;
+        // Bỏ qua nếu chỉ là file attachment
+        if (text.charAt(0) === '📎') return;
+        try {
+            var phrases = _loadUserPhrases();
+            // Xóa duplicate (case-insensitive)
+            var lower = text.toLowerCase();
+            phrases = phrases.filter(function (p) { return p.toLowerCase() !== lower; });
+            // Thêm vào đầu (mới nhất trước)
+            phrases.unshift(text);
+            // Giới hạn số lượng
+            if (phrases.length > MAX_USER_PHRASES) phrases = phrases.slice(0, MAX_USER_PHRASES);
+            localStorage.setItem(USER_PHRASES_KEY, JSON.stringify(phrases));
+        } catch (e) { /* localStorage đầy */ }
     }
 
     // ── DOM ──
@@ -615,6 +642,9 @@
 
         var attachedFileName = selectedFile ? selectedFile.name : null;
         var displayText = text || ('📎 ' + attachedFileName);
+
+        // Cache user phrase cho ghost text
+        _saveUserPhrase(text);
 
         // Add user message
         _addMessage('user', displayText, attachedFileName);
@@ -1203,16 +1233,29 @@
         var text = $input.value;
         if (text.length < 2 || text.charAt(0) === '@') { _ghostClear(); return; }
         var lower = text.toLowerCase();
+
+        // 1. Tìm trong static suggestions trước
         var suggestions = window.CHAT_SUGGESTIONS || [];
-        var match = null;
+        var matchText = null;
         for (var i = 0; i < suggestions.length; i++) {
             if (suggestions[i].text.toLowerCase().indexOf(lower) === 0) {
-                match = suggestions[i]; break;
+                matchText = suggestions[i].text; break;
             }
         }
-        if (!match) { _ghostClear(); return; }
-        ghostFull = match.text;
-        ghostText = match.text.substring(text.length);
+
+        // 2. Nếu không tìm thấy → tìm trong user phrases cache
+        if (!matchText) {
+            var phrases = _loadUserPhrases();
+            for (var j = 0; j < phrases.length; j++) {
+                if (phrases[j].toLowerCase().indexOf(lower) === 0 && phrases[j].length > text.length) {
+                    matchText = phrases[j]; break;
+                }
+            }
+        }
+
+        if (!matchText) { _ghostClear(); return; }
+        ghostFull = matchText;
+        ghostText = matchText.substring(text.length);
         // Hiện: phần user gõ (ẩn) + phần gợi ý (mờ)
         $ghost.innerHTML = '<span style="visibility:hidden">' + _esc(text) + '</span>' + _esc(ghostText);
         $ghost.style.display = '';
