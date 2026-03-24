@@ -741,31 +741,14 @@
     }
 
     // ── Keyboard / Focus handling ──
-    // Dùng visualViewport API để xử lý keyboard trên iOS/Android
-    var _initialVVHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-
-    function _handleViewportResize() {
-        if (!window.visualViewport) return;
-        var vv = window.visualViewport;
-        var keyboardHeight = _initialVVHeight - vv.height;
-
-        if (keyboardHeight > 50 && document.activeElement === $input) {
-            // Keyboard đang mở
-            $inputBar.style.bottom = keyboardHeight + 'px';
-            $container.style.height = 'calc(100vh - var(--header-height) - 64px - ' + keyboardHeight + 'px)';
-            $container.classList.add('keyboard-open');
-            _scrollBottom();
-        } else {
-            // Keyboard đã đóng
-            $inputBar.style.bottom = '';
-            $container.style.height = '';
-            $container.classList.remove('keyboard-open');
-        }
-    }
-
+    // interactive-widget=resizes-content đã tự thu viewport khi keyboard mở
+    // → chỉ cần scroll xuống cuối, KHÔNG đẩy input bar thủ công
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', _handleViewportResize);
-        window.visualViewport.addEventListener('scroll', _handleViewportResize);
+        window.visualViewport.addEventListener('resize', function () {
+            if (document.activeElement === $input) {
+                _scrollBottom();
+            }
+        });
     }
 
     $input.addEventListener('focus', function () {
@@ -1375,10 +1358,7 @@
     $input.addEventListener('focus', function () {
         if (window.innerWidth <= 768 && $nav) {
             $nav.style.display = 'none';
-            // Chỉ set bottom = 0 khi KHÔNG có visualViewport (fallback)
-            if (!window.visualViewport) {
-                $inputBar.style.bottom = '0';
-            }
+            $inputBar.style.bottom = '0';
         }
     });
 
@@ -1391,10 +1371,7 @@
         if ($nav) {
             $nav.style.display = '';
         }
-        // Reset input bar và container khi keyboard đóng
         $inputBar.style.bottom = '';
-        $container.style.height = '';
-        $container.classList.remove('keyboard-open');
     });
 
     $input.focus();
