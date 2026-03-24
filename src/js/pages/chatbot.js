@@ -1171,6 +1171,11 @@
     });
 
     $input.addEventListener('blur', function () {
+        // Nếu mention dropdown đang mở, giữ nguyên layout và refocus
+        if (mentionState.active) {
+            setTimeout(function () { $input.focus(); }, 0);
+            return;
+        }
         if ($nav) {
             $nav.style.display = '';
             $inputBar.style.bottom = '';
