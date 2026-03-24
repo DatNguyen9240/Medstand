@@ -847,13 +847,24 @@
             if (Date.now() - lastTouchTime < 500) return;
             e.preventDefault(); // Desktop mouse: giữ focus
         });
-        document.querySelector('.chat-input-bar').appendChild($mentionDropdown);
+        // Append to body (tránh bug iOS scroll trong fixed parent)
+        document.body.appendChild($mentionDropdown);
+    }
+
+    function _mentionPosition() {
+        if (!$mentionDropdown) return;
+        var bar = document.getElementById('chat-input-bar');
+        if (bar) {
+            var rect = bar.getBoundingClientRect();
+            $mentionDropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+        }
     }
 
     function _mentionShow(html) {
         $mentionDropdown.innerHTML = html;
         $mentionDropdown.style.display = '';
         mentionState.active = true;
+        _mentionPosition();
     }
 
     function _mentionHide() {
