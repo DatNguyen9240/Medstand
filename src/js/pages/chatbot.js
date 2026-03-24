@@ -830,17 +830,32 @@
         $mentionDropdown = document.createElement('div');
         $mentionDropdown.className = 'mention-dropdown';
         $mentionDropdown.style.display = 'none';
-        // Giữ focus trên textarea khi click, cho phép touch scroll
-        var lastTouchTime = 0;
-        $mentionDropdown.addEventListener('touchstart', function () {
-            lastTouchTime = Date.now();
+
+        // ── JS touch scroll (Android/iOS đều hoạt động) ──
+        var touchY = 0;
+        var scrollY = 0;
+        var isSwiping = false;
+
+        $mentionDropdown.addEventListener('touchstart', function (e) {
+            touchY = e.touches[0].clientY;
+            scrollY = $mentionDropdown.scrollTop;
+            isSwiping = false;
         }, { passive: true });
+
+        $mentionDropdown.addEventListener('touchmove', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            isSwiping = true;
+            var dy = touchY - e.touches[0].clientY;
+            $mentionDropdown.scrollTop = scrollY + dy;
+        }, { passive: false });
+
+        // Desktop: giữ focus trên textarea
         $mentionDropdown.addEventListener('mousedown', function (e) {
-            // Bỏ qua mousedown giả từ touch (cho phép scroll)
-            if (Date.now() - lastTouchTime < 500) return;
-            e.preventDefault(); // Desktop mouse: giữ focus
+            e.preventDefault();
         });
-        // Append to body (tránh bug iOS scroll trong fixed parent)
+
+        // Append to body
         document.body.appendChild($mentionDropdown);
     }
 
