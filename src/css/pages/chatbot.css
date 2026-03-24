@@ -6,7 +6,7 @@
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--header-height) - 72px - var(--nav-height));
+  height: calc(100vh - var(--header-height) - 64px - var(--nav-height));
   overflow-y: auto;
   padding: var(--spacing-md);
   padding-bottom: var(--spacing-lg);
@@ -279,11 +279,10 @@
 /* ── Input bar ── */
 .chat-input-bar {
   position: fixed;
-  bottom: 0;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   padding: var(--spacing-sm) var(--spacing-md);
-  padding-bottom: calc(var(--nav-height) + var(--spacing-sm));
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   z-index: 50;
@@ -402,7 +401,7 @@
   border-top: 1px solid var(--color-border);
   animation: slide-up 0.2s ease-out;
   /* Sits right above the input bar */
-  bottom: calc(42px + var(--nav-height) + var(--spacing-sm) * 2);
+  bottom: calc(64px + var(--nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 @keyframes slide-up {

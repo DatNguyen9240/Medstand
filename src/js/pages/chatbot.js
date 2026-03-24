@@ -1167,6 +1167,7 @@
     $input.addEventListener('focus', function () {
         if (window.innerWidth <= 768 && $nav) {
             $nav.style.display = 'none';
+            $inputBar.style.bottom = '0';
             $inputBar.style.paddingBottom = 'var(--spacing-sm)';
         }
         setTimeout(function () {
@@ -1178,6 +1179,7 @@
     $input.addEventListener('blur', function () {
         if ($nav) {
             $nav.style.display = '';
+            $inputBar.style.bottom = '';
             $inputBar.style.paddingBottom = '';
         }
     });
