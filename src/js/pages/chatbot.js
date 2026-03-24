@@ -72,6 +72,8 @@
     var scriptProcessor = null;
     var speechRetryCount = 0;   // Đếm số lần retry Speech API
     var MAX_SPEECH_RETRIES = 3; // Tối đa 3 lần retry
+    var abortController = null; // AbortController cho fetch
+    var isWaitingAI = false;    // Đang chờ AI phản hồi
 
     // ── Render cached messages ──
     function _renderHistory() {
@@ -569,7 +571,40 @@
     //  SEND MESSAGE
     // ══════════════════════════════════════════
 
+    // ── Stop AI icon SVG ──
+    var STOP_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>';
+    var SEND_ICON = $btnSend.innerHTML;
+
+    function _setStopMode(on) {
+        isWaitingAI = on;
+        if (on) {
+            $btnSend.innerHTML = STOP_ICON;
+            $btnSend.disabled = false;
+            $btnSend.classList.add('stop-mode');
+        } else {
+            $btnSend.innerHTML = SEND_ICON;
+            $btnSend.classList.remove('stop-mode');
+            _updateSendBtn();
+        }
+    }
+
+    function _stopAI() {
+        if (abortController) {
+            abortController.abort();
+            abortController = null;
+        }
+        _hideTyping();
+        _setStopMode(false);
+        _addMessage('ai', '⏹ Đã dừng phản hồi.');
+    }
+
     function _send() {
+        // Nếu đang chờ AI → dừng
+        if (isWaitingAI) {
+            _stopAI();
+            return;
+        }
+
         var text = $input.value.trim();
         if (!text && !selectedFile) return;
 
@@ -585,15 +620,16 @@
         _addMessage('user', displayText, attachedFileName);
         $input.value = '';
         _autoResize();
-        $btnSend.disabled = true;
 
         // Reset keyboard/scroll sau khi gửi
         if (window.innerWidth <= 768) {
             $input.blur();
         }
 
-        // Show typing
+        // Show typing + stop button
         _showTyping();
+        abortController = new AbortController();
+        _setStopMode(true);
 
         // Gửi request
         if (selectedFile) {
@@ -612,7 +648,8 @@
                     'Authorization': 'Bearer ' + _getToken(),
                     'x-api-key': CHAT_API_KEY
                 },
-                body: formData
+                body: formData,
+                signal: abortController.signal
             })
                 .then(function (res) { return res.json().catch(function () { return res.text(); }); })
                 .then(_handleReply)
@@ -630,7 +667,8 @@
                     action: 'chat',
                     username: userName || 'Demo',
                     text: text
-                })
+                }),
+                signal: abortController.signal
             })
                 .then(function (res) { return res.json().catch(function () { return res.text(); }); })
                 .then(_handleReply)
@@ -640,6 +678,7 @@
 
     function _handleReply(res) {
         _hideTyping();
+        _setStopMode(false);
         var reply = '';
         if (typeof res === 'string') {
             reply = res;
@@ -655,8 +694,11 @@
         _addMessage('ai', reply);
     }
 
-    function _handleError() {
+    function _handleError(err) {
+        // Nếu bị abort (user bấm dừng) → không hiện lỗi
+        if (err && err.name === 'AbortError') return;
         _hideTyping();
+        _setStopMode(false);
         _addMessage('ai', 'Xin lỗi, tôi không thể phản hồi lúc này. Vui lòng thử lại sau.');
     }
 
@@ -795,6 +837,10 @@
         $mentionDropdown = document.createElement('div');
         $mentionDropdown.className = 'mention-dropdown';
         $mentionDropdown.style.display = 'none';
+        // Desktop: giữ focus trên textarea khi click dropdown
+        $mentionDropdown.addEventListener('mousedown', function (e) {
+            e.preventDefault();
+        });
         document.querySelector('.chat-input-bar').appendChild($mentionDropdown);
     }
 
@@ -1171,9 +1217,8 @@
     });
 
     $input.addEventListener('blur', function () {
-        // Nếu mention dropdown đang mở, giữ nguyên layout và refocus
+        // Nếu mention dropdown đang mở → giữ nguyên layout (không refocus để cho touch scroll hoạt động)
         if (mentionState.active) {
-            setTimeout(function () { $input.focus(); }, 0);
             return;
         }
         if ($nav) {

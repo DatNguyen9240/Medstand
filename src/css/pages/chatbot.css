@@ -349,6 +349,21 @@
   transform: scale(0.95);
 }
 
+/* Stop mode — khi đang chờ AI */
+.chat-send-btn.stop-mode {
+  background: #ef4444;
+  animation: stop-pulse 1.5s ease-in-out infinite;
+}
+
+.chat-send-btn.stop-mode:hover {
+  background: #dc2626;
+}
+
+@keyframes stop-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
 /* ── Action buttons (attach & mic) ── */
 .chat-action-btn {
   width: 38px;
