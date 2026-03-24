@@ -623,3 +623,40 @@
     gap: 4px;
   }
 }
+
+/* ── Very small screens: shrink further to fit all buttons ── */
+@media (max-width: 320px) {
+  .chat-input-bar {
+    padding: 4px 8px;
+  }
+
+  .chat-action-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+  .chat-action-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .chat-send-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .chat-send-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .chat-input {
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .chat-input-wrap {
+    gap: 2px;
+  }
+}
