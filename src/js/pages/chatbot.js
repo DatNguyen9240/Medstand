@@ -280,10 +280,11 @@
     }
 
     function _scrollBottom() {
-        setTimeout(function () {
-            var extra = window.innerWidth <= 768 ? 2 : 0;
-            $container.scrollTop = $container.scrollHeight + extra;
-        }, 50);
+        requestAnimationFrame(function () {
+            setTimeout(function () {
+                $container.scrollTop = $container.scrollHeight;
+            }, 80);
+        });
     }
 
     // ── Add message ──
@@ -740,19 +741,38 @@
     }
 
     // ── Keyboard / Focus handling ──
-    $input.addEventListener('focus', function () {
-        // Cuộn xuống cuối để thấy tin nhắn mới nhất
-        setTimeout(_scrollBottom, 300);
-    });
+    // Dùng visualViewport API để xử lý keyboard trên iOS/Android
+    var _initialVVHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
 
-    // Theo dõi visualViewport để đẩy UI (cho các trình duyệt hiện đại)
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', function () {
-            if (document.activeElement === $input) {
-                _scrollBottom();
-            }
-        });
+    function _handleViewportResize() {
+        if (!window.visualViewport) return;
+        var vv = window.visualViewport;
+        var keyboardHeight = _initialVVHeight - vv.height;
+
+        if (keyboardHeight > 50 && document.activeElement === $input) {
+            // Keyboard đang mở
+            $inputBar.style.bottom = keyboardHeight + 'px';
+            $container.style.height = 'calc(100vh - var(--header-height) - 64px - ' + keyboardHeight + 'px)';
+            $container.classList.add('keyboard-open');
+            _scrollBottom();
+        } else {
+            // Keyboard đã đóng
+            $inputBar.style.bottom = '';
+            $container.style.height = '';
+            $container.classList.remove('keyboard-open');
+        }
     }
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', _handleViewportResize);
+        window.visualViewport.addEventListener('scroll', _handleViewportResize);
+    }
+
+    $input.addEventListener('focus', function () {
+        // Cuộn xuống cuối — đợi keyboard mở xong
+        setTimeout(_scrollBottom, 400);
+        setTimeout(_scrollBottom, 800);
+    });
 
     // ══════════════════════════════════════════
     //  @MENTION AUTOCOMPLETE
@@ -1355,11 +1375,11 @@
     $input.addEventListener('focus', function () {
         if (window.innerWidth <= 768 && $nav) {
             $nav.style.display = 'none';
-            $inputBar.style.bottom = '0';
+            // Chỉ set bottom = 0 khi KHÔNG có visualViewport (fallback)
+            if (!window.visualViewport) {
+                $inputBar.style.bottom = '0';
+            }
         }
-        setTimeout(function () {
-            $container.scrollTop = $container.scrollHeight + 2;
-        }, 300);
     });
 
     $input.addEventListener('blur', function () {
@@ -1370,8 +1390,11 @@
         }
         if ($nav) {
             $nav.style.display = '';
-            $inputBar.style.bottom = '';
         }
+        // Reset input bar và container khi keyboard đóng
+        $inputBar.style.bottom = '';
+        $container.style.height = '';
+        $container.classList.remove('keyboard-open');
     });
 
     $input.focus();
