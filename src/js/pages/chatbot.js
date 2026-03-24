@@ -1159,28 +1159,21 @@
     }
     _updatePlaceholder();
     window.addEventListener('resize', _updatePlaceholder);
-
-    // Mobile: ẩn navbar + scroll input khi bàn phím ảo mở
+    // Mobile: ẩn navbar khi bàn phím ảo mở (giữ nguyên layout input bar)
     var $nav = document.querySelector('.app-nav');
-    var $inputBar = document.getElementById('chat-input-bar');
 
     $input.addEventListener('focus', function () {
         if (window.innerWidth <= 768 && $nav) {
             $nav.style.display = 'none';
-            $inputBar.style.bottom = '0';
-            $inputBar.style.paddingBottom = 'var(--spacing-sm)';
         }
         setTimeout(function () {
             $container.scrollTop = $container.scrollHeight + 2;
-            $input.scrollIntoView({ behavior: 'smooth', block: 'end' });
         }, 300);
     });
 
     $input.addEventListener('blur', function () {
         if ($nav) {
             $nav.style.display = '';
-            $inputBar.style.bottom = '';
-            $inputBar.style.paddingBottom = '';
         }
     });
 
