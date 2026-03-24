@@ -795,24 +795,6 @@
         $mentionDropdown = document.createElement('div');
         $mentionDropdown.className = 'mention-dropdown';
         $mentionDropdown.style.display = 'none';
-
-        // Giữ focus trên textarea khi click, nhưng cho phép vuốt scroll
-        var isTouchScrolling = false;
-        $mentionDropdown.addEventListener('touchstart', function () {
-            isTouchScrolling = false;
-        }, { passive: true });
-        $mentionDropdown.addEventListener('touchmove', function () {
-            isTouchScrolling = true;
-        }, { passive: true });
-        $mentionDropdown.addEventListener('touchend', function (e) {
-            if (!isTouchScrolling) {
-                // Tap (không vuốt) → giữ focus
-                e.preventDefault();
-            }
-        });
-        $mentionDropdown.addEventListener('mousedown', function (e) {
-            e.preventDefault(); // Desktop: giữ focus trên textarea
-        });
         document.querySelector('.chat-input-bar').appendChild($mentionDropdown);
     }
 
