@@ -864,7 +864,11 @@
         var bar = document.getElementById('chat-input-bar');
         if (bar) {
             var rect = bar.getBoundingClientRect();
-            $mentionDropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+            var bottomOffset = window.innerHeight - rect.top + 4;
+            $mentionDropdown.style.bottom = bottomOffset + 'px';
+            // Giới hạn max-height theo không gian còn lại (trừ 60px cho thanh trạng thái)
+            var available = rect.top - 60;
+            $mentionDropdown.style.maxHeight = Math.min(260, Math.max(120, available)) + 'px';
         }
     }
 
