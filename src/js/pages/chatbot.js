@@ -1234,8 +1234,9 @@
     });
 
     $input.addEventListener('blur', function () {
-        // Nếu mention dropdown đang mở → giữ nguyên layout (không refocus để cho touch scroll hoạt động)
+        // Nếu mention dropdown đang mở → giữ keyboard mở (Android cần refocus)
         if (mentionState.active) {
+            setTimeout(function () { $input.focus(); }, 10);
             return;
         }
         if ($nav) {
