@@ -1227,9 +1227,9 @@
     });
 
     $input.addEventListener('blur', function () {
-        // Nếu mention dropdown đang mở → giữ keyboard mở (Android cần refocus)
+        // Nếu mention dropdown đang mở → giữ layout, để keyboard tự đóng
+        // (khi chọn item, _mentionSelect sẽ gọi $input.focus() mở lại)
         if (mentionState.active) {
-            setTimeout(function () { $input.focus(); }, 10);
             return;
         }
         if ($nav) {
