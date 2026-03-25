@@ -17,6 +17,17 @@
         return match ? match[1] : '';
     }
 
+    // Get or create session ID for chat
+    function _getSessionId() {
+        var key = 'ai_chat_session_id';
+        var sid = sessionStorage.getItem(key);
+        if (!sid) {
+            sid = userName + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            sessionStorage.setItem(key, sid);
+        }
+        return sid;
+    }
+
     // ── SessionStorage cache with TTL ──
     function _loadCache() {
         try {
@@ -662,31 +673,48 @@
         abortController = new AbortController();
         _setStopMode(true);
 
+        // Session ID — duy nhất cho mỗi phiên chat
+        var sessionId = _getSessionId();
+
         // Gửi request
         if (selectedFile) {
-            // Gửi qua FormData nếu có file
-            var formData = new FormData();
-            formData.append('action', 'chat');
-            formData.append('username', userName || 'Demo');
-            formData.append('text', text || '');
-            formData.append('file', selectedFile);
-
+            // Chuyển ảnh sang base64 rồi gửi JSON
+            var fileToSend = selectedFile;
             _clearFile();
 
-            fetch(CHAT_API, {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + _getToken(),
-                    'x-api-key': CHAT_API_KEY
-                },
-                body: formData,
-                signal: abortController.signal
-            })
-                .then(function (res) { return res.json().catch(function () { return res.text(); }); })
-                .then(_handleReply)
-                .catch(_handleError);
+            var reader = new FileReader();
+            reader.onload = function () {
+                var base64DataUrl = reader.result; // data:image/jpeg;base64,...
+                var chatText = text || '(hình ảnh)';
+
+                fetch(CHAT_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + _getToken(),
+                        'x-api-key': CHAT_API_KEY
+                    },
+                    body: JSON.stringify({
+                        action: 'chat',
+                        chatInput: chatText,
+                        text: chatText,
+                        image_url: base64DataUrl,
+                        username: userName || 'Demo',
+                        sessionId: sessionId,
+                        session_id: sessionId
+                    }),
+                    signal: abortController.signal
+                })
+                    .then(function (res) { return res.json().catch(function () { return res.text(); }); })
+                    .then(_handleReply)
+                    .catch(_handleError);
+            };
+            reader.onerror = function () {
+                _handleError(new Error('Không thể đọc file'));
+            };
+            reader.readAsDataURL(fileToSend);
         } else {
-            // Gửi JSON như cũ
+            // Gửi JSON text
             fetch(CHAT_API, {
                 method: 'POST',
                 headers: {
@@ -696,8 +724,11 @@
                 },
                 body: JSON.stringify({
                     action: 'chat',
+                    chatInput: text,
+                    text: text,
                     username: userName || 'Demo',
-                    text: text
+                    sessionId: sessionId,
+                    session_id: sessionId
                 }),
                 signal: abortController.signal
             })
