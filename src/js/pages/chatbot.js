@@ -1432,17 +1432,13 @@
     });
 
     $input.addEventListener('blur', function () {
-        // Nếu mention dropdown đang mở → giữ layout
         if (mentionState.active) {
             return;
         }
-        // Delay để button click kịp xử lý trước khi layout shift
+        // Delay để button click (gửi, đính kèm, mic) kịp xử lý
         setTimeout(function () {
-            // Nếu focus chuyển sang element trong input bar (nút gửi, đính kèm, mic...) → skip
-            var active = document.activeElement;
-            if ($inputBar && $inputBar.contains(active)) return;
             // Nếu focus quay lại input → skip
-            if (active === $input) return;
+            if (document.activeElement === $input) return;
             if ($nav) {
                 $nav.style.display = '';
             }
