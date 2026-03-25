@@ -1432,15 +1432,22 @@
     });
 
     $input.addEventListener('blur', function () {
-        // Nếu mention dropdown đang mở → giữ layout, để keyboard tự đóng
-        // (khi chọn item, _mentionSelect sẽ gọi $input.focus() mở lại)
+        // Nếu mention dropdown đang mở → giữ layout
         if (mentionState.active) {
             return;
         }
-        if ($nav) {
-            $nav.style.display = '';
-        }
-        $inputBar.style.bottom = '';
+        // Delay để button click kịp xử lý trước khi layout shift
+        setTimeout(function () {
+            // Nếu focus chuyển sang element trong input bar (nút gửi, đính kèm, mic...) → skip
+            var active = document.activeElement;
+            if ($inputBar && $inputBar.contains(active)) return;
+            // Nếu focus quay lại input → skip
+            if (active === $input) return;
+            if ($nav) {
+                $nav.style.display = '';
+            }
+            $inputBar.style.bottom = '';
+        }, 300);
     });
 
     $input.focus();

@@ -345,11 +345,12 @@ const Router = (() => {
       if (window.innerWidth > 768) return;
       if (document.body.getAttribute('data-page') === 'chatbot') return;
       if (_inputTags.indexOf(e.target.tagName) === -1) return;
+      // Delay đủ lâu để button click kịp xử lý trước khi layout shift
       setTimeout(function () {
         var active = document.activeElement;
         if (active && _inputTags.indexOf(active.tagName) !== -1) return;
         _toggleFixed(true);
-      }, 100);
+      }, 300);
     });
 
     // Listen for hash changes (wrap async in error handler)
