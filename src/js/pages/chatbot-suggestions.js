@@ -60,7 +60,7 @@ window.CHAT_SUGGESTIONS = [
     { text: 'Tạo đơn hàng mới', icon: '🛒' },
     { text: 'Đơn hàng hôm nay', icon: '📋' },
     { text: 'Đơn hàng chờ xác nhận', icon: '📋' },
-    { text: 'Đơn hàng chưa giao', icon: '📋' },
+    { text: 'Đơn hàng chờ duyệt', icon: '📋' },
     { text: 'Đơn hàng đã giao hôm nay', icon: '📋' },
 
     // ══════════════════════════════════════
