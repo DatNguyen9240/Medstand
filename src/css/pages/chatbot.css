@@ -486,8 +486,8 @@
 
 /* ── File preview ── */
 .chat-file-preview {
-  position: fixed;
-  bottom: 0;
+  position: absolute;
+  bottom: 100%;
   left: 0;
   right: 0;
   z-index: 51;
@@ -496,12 +496,9 @@
   justify-content: space-between;
   gap: var(--spacing-sm);
   padding: 8px var(--spacing-md);
-  padding-bottom: 8px;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   animation: slide-up 0.2s ease-out;
-  /* Sits right above the input bar */
-  bottom: calc(64px + var(--nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 @keyframes slide-up {
@@ -704,9 +701,6 @@
     left: var(--sidebar-collapsed-width);
   }
 
-  .chat-file-preview {
-    position: sticky;
-  }
 }
 
 /* ── Mobile: shrink buttons for more textarea space ── */
