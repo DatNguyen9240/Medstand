@@ -678,14 +678,17 @@
 
         // Gửi request
         if (selectedFile) {
-            // Chuyển ảnh sang base64 rồi gửi JSON
+            // Chuyển file sang base64 rồi gửi JSON
             var fileToSend = selectedFile;
+            var fileType = fileToSend.type.startsWith('image/') ? 'image'
+                         : fileToSend.type.startsWith('audio/') ? 'audio'
+                         : 'file';
             _clearFile();
 
             var reader = new FileReader();
             reader.onload = function () {
                 var base64DataUrl = reader.result; // data:image/jpeg;base64,...
-                var chatText = text || '(hình ảnh)';
+                var chatText = text || (fileType === 'image' ? '(hình ảnh)' : '(file đính kèm)');
 
                 fetch(CHAT_API, {
                     method: 'POST',
@@ -699,8 +702,8 @@
                         chatInput: chatText,
                         text: chatText,
                         image_url: base64DataUrl,
+                        file_type: fileType,
                         username: userName || 'Demo',
-                        sessionId: sessionId,
                         session_id: sessionId
                     }),
                     signal: abortController.signal
@@ -726,8 +729,8 @@
                     action: 'chat',
                     chatInput: text,
                     text: text,
+                    file_type: 'text',
                     username: userName || 'Demo',
-                    sessionId: sessionId,
                     session_id: sessionId
                 }),
                 signal: abortController.signal
