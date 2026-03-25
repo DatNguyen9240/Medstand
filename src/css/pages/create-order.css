@@ -1,4 +1,7 @@
 /* ── Create-order specific styles ─────────────────────────────────────── */
+body[data-page="create-order"] {
+  background: var(--color-surface);
+}
 #orderFormContainer {
   padding: 16px;
   display: grid;

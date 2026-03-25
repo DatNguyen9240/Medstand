@@ -325,6 +325,33 @@ const Router = (() => {
   // ── Init ───────────────────────────────────────────────────────────────
   function init() {
 
+    // ── Global: ẩn nav + header + total-bar khi input được focus (mobile) ──
+    // Chatbot page tự xử lý riêng, nên skip
+    var _inputTags = ['INPUT', 'TEXTAREA', 'SELECT'];
+    var _fixedSels = ['.app-nav', '.app-header', '.total-bar'];
+    function _toggleFixed(show) {
+      _fixedSels.forEach(function (sel) {
+        var el = document.querySelector(sel);
+        if (el) el.style.display = show ? '' : 'none';
+      });
+    }
+    document.addEventListener('focusin', function (e) {
+      if (window.innerWidth > 768) return;
+      if (document.body.getAttribute('data-page') === 'chatbot') return;
+      if (_inputTags.indexOf(e.target.tagName) === -1) return;
+      _toggleFixed(false);
+    });
+    document.addEventListener('focusout', function (e) {
+      if (window.innerWidth > 768) return;
+      if (document.body.getAttribute('data-page') === 'chatbot') return;
+      if (_inputTags.indexOf(e.target.tagName) === -1) return;
+      setTimeout(function () {
+        var active = document.activeElement;
+        if (active && _inputTags.indexOf(active.tagName) !== -1) return;
+        _toggleFixed(true);
+      }, 100);
+    });
+
     // Listen for hash changes (wrap async in error handler)
     window.addEventListener('hashchange', function () {
       _handleRoute().catch(function (err) {
