@@ -55,12 +55,22 @@ window.CHAT_SUGGESTIONS = [
     { text: 'Xuất nhập tồn hôm nay', icon: '📦' },
 
     // ══════════════════════════════════════
-    //  🛒 ĐƠN HÀNG (API_DonHangChiTiet_Insert_AI + DanhMuc)
+    //  🛒 ĐƠN HÀNG (API_DonHang_AI)
     // ══════════════════════════════════════
     { text: 'Tạo đơn hàng mới', icon: '🛒' },
     { text: 'Đơn hàng hôm nay', icon: '📋' },
-    { text: 'Đơn hàng chờ xác nhận', icon: '📋' },
+    { text: 'Đơn hàng tháng này', icon: '📋' },
     { text: 'Đơn hàng chờ duyệt', icon: '📋' },
+    { text: 'Đơn hàng chờ duyệt hôm nay', icon: '📋' },
+    { text: 'Đơn hàng nhận đơn', icon: '📋' },
+    { text: 'Đơn hàng đã chuyển xuống kho', icon: '📋' },
+    { text: 'Đơn hàng đã xuất hàng', icon: '📋' },
+    { text: 'Đơn hàng đã đi gửi hàng', icon: '🚚' },
+    { text: 'Đơn hàng khách đã nhận hàng', icon: '✅' },
+    { text: 'Đơn hàng đã thu tiền', icon: '💵' },
+    { text: 'Đơn hàng đã hủy', icon: '❌' },
+    { text: 'Đơn hàng nháp', icon: '📝' },
+    { text: 'Đơn hàng TDV kiểm tra lại', icon: '⚠️' },
     { text: 'Đơn hàng đã giao hôm nay', icon: '📋' },
 
     // ══════════════════════════════════════
