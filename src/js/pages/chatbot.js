@@ -685,11 +685,39 @@
                          : 'file';
             _clearFile();
 
-            var reader = new FileReader();
-            reader.onload = function () {
-                var base64DataUrl = reader.result; // data:image/jpeg;base64,...
-                var chatText = text || (fileType === 'image' ? '(hình ảnh)' : '(file đính kèm)');
+            // ── Nén hình ảnh trước khi gửi ──
+            function _compressImage(file, maxSize, quality, callback) {
+                var img = new Image();
+                var url = URL.createObjectURL(file);
+                img.onload = function () {
+                    URL.revokeObjectURL(url);
+                    var w = img.width;
+                    var h = img.height;
+                    // Resize nếu lớn hơn maxSize
+                    if (w > maxSize || h > maxSize) {
+                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else { w = Math.round(w * maxSize / h); h = maxSize; }
+                    }
+                    var canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    var dataUrl = canvas.toDataURL('image/jpeg', quality);
+                    callback(dataUrl);
+                };
+                img.onerror = function () {
+                    URL.revokeObjectURL(url);
+                    // Fallback: đọc nguyên gốc nếu không nén được
+                    var reader = new FileReader();
+                    reader.onload = function () { callback(reader.result); };
+                    reader.readAsDataURL(file);
+                };
+                img.src = url;
+            }
 
+            function _sendFile(base64DataUrl) {
+                var chatText = text || (fileType === 'image' ? '(hình ảnh)' : '(file đính kèm)');
                 fetch(CHAT_API, {
                     method: 'POST',
                     headers: {
@@ -711,11 +739,18 @@
                     .then(function (res) { return res.json().catch(function () { return res.text(); }); })
                     .then(_handleReply)
                     .catch(_handleError);
-            };
-            reader.onerror = function () {
-                _handleError(new Error('Không thể đọc file'));
-            };
-            reader.readAsDataURL(fileToSend);
+            }
+
+            if (fileType === 'image') {
+                // Nén: max 1024px, quality 70%
+                _compressImage(fileToSend, 1024, 0.7, _sendFile);
+            } else {
+                // Audio/file khác: đọc nguyên gốc
+                var reader = new FileReader();
+                reader.onload = function () { _sendFile(reader.result); };
+                reader.onerror = function () { _handleError(new Error('Không thể đọc file')); };
+                reader.readAsDataURL(fileToSend);
+            }
         } else {
             // Gửi JSON text
             fetch(CHAT_API, {
