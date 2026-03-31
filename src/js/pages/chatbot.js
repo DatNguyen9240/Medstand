@@ -1,6 +1,6 @@
 // -- AI Chatbot Page ----------------------------------------------------------
 (function () {
-    var CHAT_API = 'https://chienthangg.app.n8n.cloud/webhook/api-nha-thuoc';
+    var CHAT_API = 'https://nhuyen.app.n8n.cloud/webhook/api-nha-thuoc';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút
@@ -681,8 +681,8 @@
             // Chuyển file sang base64 rồi gửi JSON
             var fileToSend = selectedFile;
             var fileType = fileToSend.type.startsWith('image/') ? 'image'
-                         : fileToSend.type.startsWith('audio/') ? 'audio'
-                         : 'file';
+                : fileToSend.type.startsWith('audio/') ? 'audio'
+                    : 'file';
             _clearFile();
 
             // ── Nén hình ảnh trước khi gửi ──
