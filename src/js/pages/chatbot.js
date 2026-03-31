@@ -800,9 +800,20 @@
     // interactive-widget=resizes-content đã tự thu viewport khi keyboard mở
     // → chỉ cần scroll xuống cuối, KHÔNG đẩy input bar thủ công
     if (window.visualViewport) {
+        var _lastVH = window.visualViewport.height;
         window.visualViewport.addEventListener('resize', function () {
+            var newVH = window.visualViewport.height;
+            var grew = newVH - _lastVH;
+            _lastVH = newVH;
+
             if (document.activeElement === $input) {
-                _scrollBottom();
+                if (grew > 100) {
+                    // Keyboard closed via Back button
+                    $input.blur();
+                } else {
+                    // Keyboard might be opening or other resize
+                    _scrollBottom();
+                }
             }
         });
     }
