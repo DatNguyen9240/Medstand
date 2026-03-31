@@ -373,58 +373,46 @@
     // ══════════════════════════════════════════
 
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var textBeforeRecording = '';  // Text có sẵn trước khi bắt đầu ghi
-    var finalTranscript = '';      // Text đã xác nhận (final)
+    var textBeforeRecording = '';  // Nội dung gốc trước khi bắt đầu hoặc trước khi restart phiên ghi âm
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.lang = 'vi-VN';
-        recognition.interimResults = true;   // Hiển thị real-time khi đang nói
-        recognition.continuous = true;       // Ghi liên tục cho đến khi bấm dừng
-        recognition.maxAlternatives = 3;     // Chọn kết quả chính xác nhất
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognition.maxAlternatives = 1;
 
         recognition.addEventListener('result', function (e) {
-            var interim = '';
-            for (var i = e.resultIndex; i < e.results.length; i++) {
-                var text = e.results[i][0].transcript;
-                if (e.results[i].isFinal) {
-                    // Kết quả đã xác nhận → lưu vĩnh viễn
-                    finalTranscript += (finalTranscript ? ' ' : '') + text;
-                } else {
-                    // Kết quả tạm → hiển thị preview (sẽ bị thay thế)
-                    interim += text;
-                }
+            var sessionPart = '';
+            for (var i = 0; i < e.results.length; i++) {
+                sessionPart += e.results[i][0].transcript;
             }
 
-            // Cập nhật textarea: text cũ + final + interim (preview)
             var display = textBeforeRecording;
-            if (finalTranscript) {
-                display += (display ? ' ' : '') + finalTranscript;
+            if (sessionPart.trim()) {
+                display = textBeforeRecording
+                    ? textBeforeRecording.trim() + ' ' + sessionPart.trim()
+                    : sessionPart.trim();
             }
-            if (interim) {
-                display += (display ? ' ' : '') + interim;
-            }
+
             $input.value = display;
             _autoResize();
             _updateSendBtn();
-
-            // Reset silence timer khi có kết quả mới
             _resetSilenceTimer();
         });
 
         recognition.addEventListener('end', function () {
             if (isRecording) {
-                // Bị ngắt do im lặng → tự restart để tiếp tục ghi
+                // Khi tự động restart do im lặng: cập nhật lại nội dung gốc
+                textBeforeRecording = $input.value;
                 try {
                     recognition.start();
                 } catch (e) {
-                    // Nếu không restart được thì dừng hẳn
                     isRecording = false;
                     $btnMic.classList.remove('recording');
                 }
                 return;
             }
-            // Người dùng bấm dừng → kết thúc
             $btnMic.classList.remove('recording');
         });
 
@@ -483,13 +471,12 @@
     function _startRecording() {
         if (recordingMode === 'text' && recognition) {
             textBeforeRecording = $input.value;
-            finalTranscript = '';
-            speechRetryCount = 0;  // Reset retry counter
+            speechRetryCount = 0;      // Reset bộ đếm retry
             isRecording = true;
             $btnMic.classList.add('recording');
             try {
                 recognition.start();
-                _resetSilenceTimer(); // Bắt đầu đếm ngược
+                _resetSilenceTimer();
             } catch (e) {
                 console.error('[Voice] recognition.start fail:', e);
                 isRecording = false;
