@@ -134,6 +134,10 @@
         var timeStr = time ? _formatTime(time) : '';
         var text = role === 'user' ? _esc(content) : _formatAI(content);
 
+        // Nếu AI trả về bảng → mở rộng bubble hết màn hình
+        var hasTable = role === 'ai' && text.indexOf('ai-table') !== -1;
+        if (hasTable) cls += ' has-table';
+
         var fileTag = '';
         if (fileName) {
             fileTag = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;opacity:0.85">'
@@ -1381,6 +1385,33 @@
             if ($input.value.trim() || selectedFile) _send();
         }
     });
+
+    // ── Double-tap trên mobile → accept ghost text (giống Tab trên PC) ──
+    var _lastTapTime = 0;
+    $input.addEventListener('touchend', function (e) {
+        if (!ghostText) return; // Không có ghost → bỏ qua
+        var now = Date.now();
+        var gap = now - _lastTapTime;
+        _lastTapTime = now;
+        if (gap < 300 && gap > 30) {
+            // Double-tap detected!
+            e.preventDefault();
+            _ghostAccept();
+            // Hiện visual feedback nhỏ
+            _ghostFlash();
+        }
+    }, { passive: false });
+
+    /** Flash nhẹ để báo hiệu ghost đã được chấp nhận */
+    function _ghostFlash() {
+        var $bar = document.getElementById('chat-input-bar');
+        if (!$bar) return;
+        $bar.style.transition = 'background 0.1s';
+        $bar.style.background = 'rgba(var(--color-primary-rgb), 0.08)';
+        setTimeout(function () {
+            $bar.style.background = '';
+        }, 180);
+    }
 
     $btnSend.addEventListener('click', _send);
 
