@@ -1,0 +1,154 @@
+IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
+GO
+CREATE PROCEDURE API_TichLuy_AI
+   @Username  VARCHAR(50)  = '',
+   @ObjectID  VARCHAR(50)  = '',
+   @MucTieu   FLOAT        = 10000000, -- Mức 1 phần quà
+   @ProgramID VARCHAR(50)  = '',
+   @FromDate  DATETIME     = NULL,
+   @ToDate    DATETIME     = NULL,
+   @ItemIDs   VARCHAR(500) = ''
+AS
+BEGIN
+   SET NOCOUNT ON
+   
+   -- 1. KIỂM TRA ObjectID HỢP LỆ (Nếu có truyền vào)
+   IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+   BEGIN
+       SELECT 'N/A' AS ObjectID, N'❌ Không tìm thấy mã khách hàng này.' AS TenCuaHang, 0 AS TichLuyDatDuoc, @MucTieu AS MucDieuMotPhanQua, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
+       RETURN;
+   END
+   
+   -- 1. KIỂM TRA QUYỀN
+   IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+   BEGIN
+       SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
+   END
+
+
+
+
+   DECLARE @SYSBranchID VARCHAR(50) = ''
+   SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+
+
+
+
+   -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH & KỲ TÍNH
+   IF @ProgramID = ''
+       SELECT TOP 1 @ProgramID = DocumentID FROM AR_SanPhamTrongTamTbl ORDER BY ToDate DESC
+   
+   IF @FromDate IS NULL OR @ToDate IS NULL
+       SELECT @FromDate = FromDate, @ToDate = ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+
+
+
+
+   -- 3. DANH SÁCH SẢN PHẨM TRỌNG TÂM
+   SELECT DISTINCT ItemID INTO #TrongTam FROM (
+       SELECT CAST(value AS VARCHAR(50)) AS ItemID FROM STRING_SPLIT(@ItemIDs, ',') WHERE @ItemIDs != ''
+       UNION ALL
+       SELECT ItemID FROM AR_SanPhamTrongTamDetailTbl WHERE @ItemIDs = '' AND DocumentID = @ProgramID
+   ) X
+
+
+
+
+   -- 4. TỔNG MUA (SẠCH)
+   SELECT I.ObjectID, SUM(D.TotalAmount) AS TongHoaDon INTO #HoaDon
+   FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+   JOIN #TrongTam T ON D.ItemID = T.ItemID JOIN CF_ItemTbl ITM ON D.ItemID = ITM.ItemID
+   WHERE I.DocumentDate BETWEEN @FromDate AND @ToDate AND ISNULL(I.StatusID, 0) != 10
+     AND ISNULL(ITM.ItemGroupID, '') NOT IN ('KM', 'DV')
+     AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+   GROUP BY I.ObjectID
+
+
+
+
+   -- 5. TRỪ TIỀN TRẢ HÀNG
+   SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
+   FROM AR_ReturnTbl R JOIN AR_ReturnDetailTbl D ON R.DocumentID = D.DocumentID
+   JOIN #TrongTam T ON D.ItemID = T.ItemID
+   WHERE R.DocumentDate BETWEEN @FromDate AND @ToDate AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
+   GROUP BY R.ObjectID
+
+
+
+
+   -- 6. TÍNH TOÁN LŨY TIẾN
+   SELECT H.ObjectID, H.TongHoaDon - ISNULL(T.TongTraHang, 0) AS TongDat INTO #TichLuy
+   FROM #HoaDon H LEFT JOIN #TraHang T ON H.ObjectID = T.ObjectID
+
+
+
+
+    -- KẾT QUẢ TRẢ VỀ CHO AI
+    -- Bảng 0: Chương trình
+    SELECT DocumentID AS ProgramID, ISNULL(Memo, N'Tích lũy trọng tâm tháng ' + CAST(MONTH(FromDate) AS VARCHAR)) AS TenChuongTrinh,
+           FromDate, ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+
+
+
+
+    -- Bảng 1: Trạng thái quà tặng (Dùng LEFT JOIN để luôn hiện khách hàng)
+    SELECT * FROM (
+        SELECT KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone,
+            CAST(ISNULL(TL.TongDat,0) AS BIGINT) AS TichLuyDatDuoc,
+            CAST(@MucTieu AS BIGINT) AS MucDieuMotPhanQua,
+            CAST(FLOOR(ISNULL(TL.TongDat,0) / @MucTieu) AS INT) AS SoQuaDaDat,
+            -- Số tiền còn thiếu cho quà tiếp
+            CAST(@MucTieu - (CAST(ISNULL(TL.TongDat,0) AS BIGINT) % CAST(@MucTieu AS BIGINT)) AS BIGINT) AS ConThieuChoQuaTiep,
+            CASE
+                WHEN ISNULL(TL.TongDat,0) >= @MucTieu
+                    THEN N'🏆 Đạt thưởng (Đạt ' + FORMAT(ISNULL(TL.TongDat,0), 'N0') + N'đ). Thiếu ' + FORMAT(@MucTieu - (CAST(ISNULL(TL.TongDat,0) AS BIGINT) % CAST(@MucTieu AS BIGINT)), 'N0') + N'đ cho quà tiếp.'
+                ELSE N'🔴 Đạt: ' + FORMAT(ISNULL(TL.TongDat,0), 'N0') + N'đ. Còn thiếu: ' + FORMAT(@MucTieu - ISNULL(TL.TongDat,0), 'N0') + N'đ để nhận Voucher 500k.'
+            END AS TrangThaiAI
+        FROM CF_ObjectTbl KH
+        LEFT JOIN #TichLuy TL ON KH.ObjectID = TL.ObjectID
+        WHERE (@ObjectID != '' AND KH.ObjectID = @ObjectID)
+           OR (@ObjectID = '' AND ISNULL(TL.TongDat,0) >= @MucTieu * 0.7)
+    ) Result ORDER BY TichLuyDatDuoc DESC;
+
+
+
+
+    -- Bảng 2: Gợi ý bán thêm (Chỉ chọn hàng trọng tâm CÒN KHO)
+    IF @ObjectID != ''
+    BEGIN
+        SELECT TOP 5 T.ItemID, CF.ItemName, N'Gợi ý hàng trọng tâm còn kho' AS GhiChu
+        FROM #TrongTam T
+        JOIN CF_ItemTbl CF ON T.ItemID = CF.ItemID
+        JOIN IV_StockTbl S ON T.ItemID = S.ItemID -- Kiểm tra tồn kho thực tế
+        WHERE S.QuantityinStock > 0
+          AND T.ItemID NOT IN (
+              SELECT D.ItemID
+              FROM AR_InvoiceDetailTbl D
+              JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
+              WHERE I.ObjectID = @ObjectID
+                AND I.DocumentDate BETWEEN @FromDate AND @ToDate
+                AND ISNULL(I.StatusID, 0) != 10
+          );
+    END
+
+
+
+
+    DROP TABLE #HoaDon; DROP TABLE #TraHang; DROP TABLE #TrongTam; DROP TABLE #TichLuy;
+END
+GO
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

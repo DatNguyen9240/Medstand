@@ -1,0 +1,137 @@
+IF OBJECT_ID('API_GoiYDonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonHang_AI;
+GO
+
+CREATE PROCEDURE API_GoiYDonHang_AI
+    @Username  VARCHAR(50) = '',
+    @ObjectID  VARCHAR(50) = '',
+    @TopN      INT         = 10
+AS
+BEGIN
+    SET NOCOUNT ON
+
+    -- ═══ 1. Validate User ═══
+    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
+        RETURN
+    END
+
+    -- 0. KIỂM TRA ObjectID HỢP LỆ (Nếu có truyền vào)
+    IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+    BEGIN
+        SELECT 'N/A' AS ItemID, N'❌ Không tìm thấy mã khách hàng này.' AS TenSanPham, 0 AS DoanhSoDaMua, NULL AS LanMuaCuoi, 0 AS ChuKyTrungBinh, 0 AS SoNgayDuKienConLai, N'Vui lòng kiểm tra lại mã khách hàng.' AS LyDoGoiY;
+        RETURN;
+    END
+
+    -- ═══ 2. Phân quyền ═══
+    DECLARE @SYSBranchID   VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+
+    -- ═══════════════════════════════════════════════════
+    -- KHÔNG TRUYỀN ObjectID → Top sản phẩm bán chạy nhất
+    -- ═══════════════════════════════════════════════════
+    IF @ObjectID = ''
+    BEGIN
+        SELECT TOP (@TopN)
+            D.ItemID,
+            CF.ItemName                                  AS TenSanPham,
+            COUNT(DISTINCT I.DocumentID)                 AS SoHoaDon,
+            CAST(SUM(D.TotalAmount) AS BIGINT)           AS TongDoanhSo,
+            N'📊 Bán chạy trong chi nhánh'               AS LyDoGoiY
+        FROM AR_InvoiceTbl I
+        JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        JOIN CF_ItemTbl CF         ON CF.ItemID    = D.ItemID
+        WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
+          AND ISNULL(I.StatusID, 0) != 10
+          AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
+        GROUP BY D.ItemID, CF.ItemName
+        ORDER BY TongDoanhSo DESC
+        RETURN
+    END
+
+    -- ═══════════════════════════════════════════════════
+    -- CÓ ObjectID → Gợi ý cá nhân hóa (Personalized)
+    -- ═══════════════════════════════════════════════════
+
+    -- TIÊU CHÍ 1: Lịch sử mua hàng (6 tháng gần nhất)
+    SELECT
+        D.ItemID,
+        COUNT(DISTINCT I.DocumentID)                    AS SoLanMua,
+        SUM(D.TotalAmount)                              AS TongTien,
+        MAX(I.DocumentDate)                             AS LanMuaCuoi,
+        DATEDIFF(DAY, MAX(I.DocumentDate), GETDATE())   AS SoNgayTuLanCuoi
+    INTO #LichSu
+    FROM AR_InvoiceTbl I
+    JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    WHERE I.ObjectID = @ObjectID
+      AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
+      AND ISNULL(I.StatusID, 0) != 10
+    GROUP BY D.ItemID
+
+    -- TIÊU CHÍ 2: Chu kỳ mua hàng trung bình (Average Purchase Cycle)
+    -- Sửa logic: Khoảng cách trung bình = (MaxDate - MinDate) / (Số lần mua - 1)
+    SELECT
+        L.ItemID,
+        CASE
+            WHEN L.SoLanMua >= 2
+            THEN DATEDIFF(DAY, 
+                    (SELECT MIN(I2.DocumentDate) 
+                     FROM AR_InvoiceTbl I2 
+                     JOIN AR_InvoiceDetailTbl D2 ON I2.DocumentID = D2.DocumentID 
+                     WHERE I2.ObjectID = @ObjectID AND D2.ItemID = L.ItemID AND I2.DocumentDate >= DATEADD(MONTH,-6,GETDATE())), 
+                    L.LanMuaCuoi) 
+                 / (L.SoLanMua - 1)
+            ELSE 30 -- Mặc định 30 ngày nếu chỉ mua 1 lần
+        END AS ChuKyTrungBinh
+    INTO #ChuKy
+    FROM #LichSu L
+
+    -- TIÊU CHÍ 3: Mùa vụ (Cùng tháng này năm trước)
+    SELECT D.ItemID INTO #MuaVu
+    FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    WHERE I.ObjectID = @ObjectID AND MONTH(I.DocumentDate) = MONTH(GETDATE()) AND YEAR(I.DocumentDate) = YEAR(GETDATE()) - 1
+    GROUP BY D.ItemID
+
+    -- TIÊU CHÍ 4: Khuyến mãi đang chạy
+    SELECT DISTINCT PD.ItemID INTO #KhuyenMai
+    FROM AR_PromotionTbl P JOIN AR_PromotionDetailTbl PD ON P.DocumentID = PD.DocumentID
+    WHERE GETDATE() BETWEEN P.FromDate AND P.ToDate AND ISNULL(P.isDisable, 0) = 0
+
+    -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
+    SELECT TOP (@TopN)
+        L.ItemID,
+        CF.ItemName                                     AS TenSanPham,
+        CAST(L.TongTien AS BIGINT)                      AS DoanhSoDaMua,
+        L.LanMuaCuoi,
+        CK.ChuKyTrungBinh,
+        -- Dự kiến còn lại: Nếu < 0 (đã quá hạn) thì hiện 0 cho trực quan
+        CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
+             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS SoNgayDuKienConLai,
+        CONCAT(
+            CASE 
+                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh 
+                THEN N'☢️ Quá hạn mua ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
+                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 
+                THEN N'⏳ Sắp hết hàng (Còn ~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
+                ELSE N'📦 Chu kỳ ổn định'
+            END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N' | 📅 Có tính Mùa vụ' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N' | 🎁 Đang Khuyến mãi' ELSE '' END
+        )                                               AS LyDoGoiY
+    FROM #LichSu L
+    JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
+    LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
+    LEFT JOIN #KhuyenMai KM ON L.ItemID = KM.ItemID
+    LEFT JOIN CF_ItemTbl CF ON L.ItemID = CF.ItemID
+    WHERE ISNULL(CF.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI') -- Lọc rác
+      AND CF.ItemID NOT LIKE 'KM%' AND CF.ItemID NOT LIKE 'BB%'
+    ORDER BY (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 
+             (CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
+             L.SoLanMua DESC
+
+    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai;
+END
+GO
+
+
+

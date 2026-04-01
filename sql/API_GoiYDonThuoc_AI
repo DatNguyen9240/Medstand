@@ -1,0 +1,62 @@
+IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
+GO
+CREATE PROCEDURE API_GoiYDonThuoc_AI
+    @Keyword NVARCHAR(500) = ''
+AS
+BEGIN
+    SET NOCOUNT ON
+   
+    SELECT CAST(value AS NVARCHAR(100)) AS TuKhoa INTO #Keys
+    FROM STRING_SPLIT(REPLACE(@Keyword, ';', ','), ',') WHERE value != ''
+
+
+    -- BẢNG 1: Tìm sản phẩm thay thế (Isolated Word Search)
+    SELECT DISTINCT TOP 10
+        CF.ItemID, CF.ItemName, CF.Unit, CF.TuKhoa,
+        N'✨ Gợi ý Medstand cho: ' + K.TuKhoa AS LyDoGoiY
+    FROM CF_ItemTbl CF JOIN #Keys K ON (
+        N' ' + REPLACE(REPLACE(REPLACE(CF.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
+        OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(CF.TuKhoa,''), ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
+    )
+    WHERE ISNULL(CF.isDisable, 0) = 0
+      AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
+    ORDER BY CF.ItemName ASC;
+
+
+    -- BẢNG 2: Bán chéo thông minh
+    IF EXISTS (SELECT 1 FROM #Keys WHERE TuKhoa LIKE N'%Amox%' OR TuKhoa LIKE N'%Cefu%' OR TuKhoa LIKE N'%Kháng sinh%')
+    BEGIN
+        -- SỬA LỖI: Thêm NOT LIKE để loại bỏ "Bộ vỏ" (Bao bì)
+        SELECT TOP 3 ItemID, ItemName, Unit,
+            N'⚠️ AI CẢNH BÁO: Đơn có Kháng sinh → Tư vấn thêm Men vi sinh tránh loạn khuẩn!' AS CanhBaoAI
+        FROM CF_ItemTbl
+        WHERE (ItemName LIKE N'%Men vi sinh%' OR ItemName LIKE N'%Men sống%' OR ItemName LIKE N'%Bio%')
+          AND ItemName NOT LIKE N'%Bộ vỏ%' -- SỬA LỖI: Loại bỏ bao bì
+          AND ItemName NOT LIKE N'%Vỏ hộp%'
+          AND ISNULL(isDisable, 0) = 0
+          AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
+    END
+    ELSE
+    BEGIN
+        -- SỬA LỖI: Mở rộng điều kiện tìm sản phẩm Tăng đề kháng
+        SELECT TOP 3 ItemID, ItemName, Unit,
+            N'💡 GỢI Ý BÁN THÊM: Sản phẩm tăng đề kháng hỗ trợ phục hồi nhanh' AS CanhBaoAI
+        FROM CF_ItemTbl
+        WHERE (
+            ItemName LIKE N'%Đề kháng%' OR ItemName LIKE N'%Vitamin%'
+            OR ItemName LIKE N'%Canxi%' OR ItemName LIKE N'%Sâm%'
+            OR TuKhoa LIKE N'%Đề kháng%' OR TuKhoa LIKE N'%Vitamin%'
+        )
+          AND ISNULL(isDisable, 0) = 0
+          AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
+    END
+
+
+    DROP TABLE #Keys;
+END
+
+
+
+
+
+
