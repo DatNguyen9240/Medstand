@@ -1,6 +1,6 @@
 // -- AI Chatbot Page ----------------------------------------------------------
 (function () {
-    var CHAT_API = 'https://chienthangg.app.n8n.cloud/webhook/api-nha-thuoc';
+    var CHAT_API = 'https://nhuyen.app.n8n.cloud/webhook/api-nha-thuoc';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút
@@ -133,6 +133,10 @@
         var cls = role === 'user' ? 'user' : 'ai';
         var timeStr = time ? _formatTime(time) : '';
         var text = role === 'user' ? _esc(content) : _formatAI(content);
+
+        // Nếu AI trả về bảng → mở rộng bubble hết màn hình
+        var hasTable = role === 'ai' && text.indexOf('ai-table') !== -1;
+        if (hasTable) cls += ' has-table';
 
         var fileTag = '';
         if (fileName) {
@@ -373,58 +377,46 @@
     // ══════════════════════════════════════════
 
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var textBeforeRecording = '';  // Text có sẵn trước khi bắt đầu ghi
-    var finalTranscript = '';      // Text đã xác nhận (final)
+    var textBeforeRecording = '';  // Nội dung gốc trước khi bắt đầu hoặc trước khi restart phiên ghi âm
 
     if (SpeechRecognition) {
         recognition = new SpeechRecognition();
         recognition.lang = 'vi-VN';
-        recognition.interimResults = true;   // Hiển thị real-time khi đang nói
-        recognition.continuous = true;       // Ghi liên tục cho đến khi bấm dừng
-        recognition.maxAlternatives = 3;     // Chọn kết quả chính xác nhất
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognition.maxAlternatives = 1;
 
         recognition.addEventListener('result', function (e) {
-            var interim = '';
-            for (var i = e.resultIndex; i < e.results.length; i++) {
-                var text = e.results[i][0].transcript;
-                if (e.results[i].isFinal) {
-                    // Kết quả đã xác nhận → lưu vĩnh viễn
-                    finalTranscript += (finalTranscript ? ' ' : '') + text;
-                } else {
-                    // Kết quả tạm → hiển thị preview (sẽ bị thay thế)
-                    interim += text;
-                }
+            var sessionPart = '';
+            for (var i = 0; i < e.results.length; i++) {
+                sessionPart += e.results[i][0].transcript;
             }
 
-            // Cập nhật textarea: text cũ + final + interim (preview)
             var display = textBeforeRecording;
-            if (finalTranscript) {
-                display += (display ? ' ' : '') + finalTranscript;
+            if (sessionPart.trim()) {
+                display = textBeforeRecording
+                    ? textBeforeRecording.trim() + ' ' + sessionPart.trim()
+                    : sessionPart.trim();
             }
-            if (interim) {
-                display += (display ? ' ' : '') + interim;
-            }
+
             $input.value = display;
             _autoResize();
             _updateSendBtn();
-
-            // Reset silence timer khi có kết quả mới
             _resetSilenceTimer();
         });
 
         recognition.addEventListener('end', function () {
             if (isRecording) {
-                // Bị ngắt do im lặng → tự restart để tiếp tục ghi
+                // Khi tự động restart do im lặng: cập nhật lại nội dung gốc
+                textBeforeRecording = $input.value;
                 try {
                     recognition.start();
                 } catch (e) {
-                    // Nếu không restart được thì dừng hẳn
                     isRecording = false;
                     $btnMic.classList.remove('recording');
                 }
                 return;
             }
-            // Người dùng bấm dừng → kết thúc
             $btnMic.classList.remove('recording');
         });
 
@@ -483,13 +475,12 @@
     function _startRecording() {
         if (recordingMode === 'text' && recognition) {
             textBeforeRecording = $input.value;
-            finalTranscript = '';
-            speechRetryCount = 0;  // Reset retry counter
+            speechRetryCount = 0;      // Reset bộ đếm retry
             isRecording = true;
             $btnMic.classList.add('recording');
             try {
                 recognition.start();
-                _resetSilenceTimer(); // Bắt đầu đếm ngược
+                _resetSilenceTimer();
             } catch (e) {
                 console.error('[Voice] recognition.start fail:', e);
                 isRecording = false;
@@ -681,8 +672,8 @@
             // Chuyển file sang base64 rồi gửi JSON
             var fileToSend = selectedFile;
             var fileType = fileToSend.type.startsWith('image/') ? 'image'
-                         : fileToSend.type.startsWith('audio/') ? 'audio'
-                         : 'file';
+                : fileToSend.type.startsWith('audio/') ? 'audio'
+                    : 'file';
             _clearFile();
 
             // ── Nén hình ảnh trước khi gửi ──
@@ -813,9 +804,20 @@
     // interactive-widget=resizes-content đã tự thu viewport khi keyboard mở
     // → chỉ cần scroll xuống cuối, KHÔNG đẩy input bar thủ công
     if (window.visualViewport) {
+        var _lastVH = window.visualViewport.height;
         window.visualViewport.addEventListener('resize', function () {
+            var newVH = window.visualViewport.height;
+            var grew = newVH - _lastVH;
+            _lastVH = newVH;
+
             if (document.activeElement === $input) {
-                _scrollBottom();
+                if (grew > 100) {
+                    // Keyboard closed via Back button
+                    $input.blur();
+                } else {
+                    // Keyboard might be opening or other resize
+                    _scrollBottom();
+                }
             }
         });
     }
@@ -1383,6 +1385,33 @@
             if ($input.value.trim() || selectedFile) _send();
         }
     });
+
+    // ── Double-tap trên mobile → accept ghost text (giống Tab trên PC) ──
+    var _lastTapTime = 0;
+    $input.addEventListener('touchend', function (e) {
+        if (!ghostText) return; // Không có ghost → bỏ qua
+        var now = Date.now();
+        var gap = now - _lastTapTime;
+        _lastTapTime = now;
+        if (gap < 300 && gap > 30) {
+            // Double-tap detected!
+            e.preventDefault();
+            _ghostAccept();
+            // Hiện visual feedback nhỏ
+            _ghostFlash();
+        }
+    }, { passive: false });
+
+    /** Flash nhẹ để báo hiệu ghost đã được chấp nhận */
+    function _ghostFlash() {
+        var $bar = document.getElementById('chat-input-bar');
+        if (!$bar) return;
+        $bar.style.transition = 'background 0.1s';
+        $bar.style.background = 'rgba(var(--color-primary-rgb), 0.08)';
+        setTimeout(function () {
+            $bar.style.background = '';
+        }, 180);
+    }
 
     $btnSend.addEventListener('click', _send);
 

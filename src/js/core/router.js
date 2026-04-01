@@ -353,6 +353,30 @@ const Router = (() => {
       }, 300);
     });
 
+    // ── Fix: Android Back button đóng keyboard nhưng KHÔNG fire focusout ──
+    // Dùng visualViewport để phát hiện keyboard đóng, rồi blur + restore layout
+    if (window.visualViewport) {
+      var _lastVH = window.visualViewport.height;
+      window.visualViewport.addEventListener('resize', function () {
+        var newVH = window.visualViewport.height;
+        var grew = newVH - _lastVH;
+        _lastVH = newVH;
+
+        // Keyboard vừa đóng (viewport mở rộng > 100px)
+        if (grew > 100 && window.innerWidth <= 768) {
+          if (document.body.getAttribute('data-page') === 'chatbot') return;
+          var active = document.activeElement;
+          // Nếu vẫn còn input đang focused → blur nó (fire focusout → _toggleFixed)
+          if (active && _inputTags.indexOf(active.tagName) !== -1) {
+            active.blur();
+          } else {
+            // Không có focusout được fire → restore thủ công
+            _toggleFixed(true);
+          }
+        }
+      });
+    }
+
     // Listen for hash changes (wrap async in error handler)
     window.addEventListener('hashchange', function () {
       _handleRoute().catch(function (err) {

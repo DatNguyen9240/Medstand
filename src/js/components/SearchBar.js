@@ -15,11 +15,11 @@ function SearchBar(opts) {
 
   var placeholder = opts.placeholder || 'Tìm kiếm...';
   var debounceMs = opts.debounce || 300;
-  var onSearch = opts.onSearch || function () {};
+  var onSearch = opts.onSearch || function () { };
 
   $container.html(
     '<div class="search-bar">' +
-      '<input type="search" class="search-input" placeholder="' + placeholder + '">' +
+    '<input type="search" class="search-input" placeholder="' + placeholder + '">' +
     '</div>'
   );
 
