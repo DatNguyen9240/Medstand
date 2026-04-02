@@ -50,7 +50,7 @@
       })
       .catch(function (err) {
         console.error('Failed to load orders data', err);
-        $('#orders-grid').html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không tải được dữ liệu</p>');
+        $('#orders-grid').html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không tải được dữ liệu</p>');
       })
       .finally(function () {
         $('#orders-skeleton').hide();

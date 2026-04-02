@@ -1,4 +1,4 @@
-﻿<header class="app-header" style="justify-content: flex-start; gap: 12px;">
+<header class="app-header" style="justify-content: flex-start; gap: 12px;">
     <a href="#/account-detail"
       style="text-decoration: none; color: var(--color-text-muted); font-size: 1.2rem;">←</a>
     <span style="color: var(--color-primary); font-weight: 600; font-size: var(--font-size-lg);">Chỉnh sửa tài khoản</span>
@@ -18,31 +18,11 @@
           <span class="avatar-hint">Nhấn vào ảnh để thay đổi avatar</span>
         </div>
 
-        <!-- Họ và tên -->
-        <div class="field-group">
-          <label class="field-label" for="fieldDisplayName">Họ và tên</label>
-          <input type="text" class="field-input" id="fieldDisplayName" placeholder="Họ và tên">
+        <div id="account-fields-container">
+          <!-- Rendered by Input.js in account-edit.js -->
         </div>
 
-        <!-- Tên đăng nhập (readonly) -->
-        <div class="field-group">
-          <label class="field-label" for="fieldUserName">Tên đăng nhập</label>
-          <input type="text" class="field-input" id="fieldUserName" placeholder="Tên đăng nhập" readonly>
-        </div>
-
-        <!-- Email -->
-        <div class="field-group">
-          <label class="field-label" for="fieldEmail">Email</label>
-          <input type="email" class="field-input" id="fieldEmail" placeholder="Email">
-        </div>
-
-        <!-- Ngày sinh -->
-        <div class="field-group">
-          <label class="field-label" for="fieldNgaySinh">Ngày sinh</label>
-          <input type="date" class="field-input" id="fieldNgaySinh">
-        </div>
-
-        <!-- Giới tính -->
+        <!-- Giới tính (Tạm thời giữ nguyên hoặc render sau) -->
         <div class="field-group">
           <label class="field-label">Giới tính</label>
           <div class="gender-row">

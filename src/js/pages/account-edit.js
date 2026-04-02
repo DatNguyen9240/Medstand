@@ -2,7 +2,18 @@
       var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
       var _avatarBase64 = ''; // base64 avatar mới (không có prefix "data:...")
 
-      // ── Prefill ─────────────────────────────────────────────────────────
+      // ── Render Fields dùng Input component ──
+      var $container = $('#account-fields-container');
+      if ($container.length) {
+        $container.html(
+          Input.renderField({ label: 'Họ và tên', id: 'fieldDisplayName', value: user.DisplayName || '', placeholder: 'Nhập họ và tên' }) +
+          Input.renderField({ label: 'Tên đăng nhập', id: 'fieldUserName', value: user.UserName || '', readonly: true }) +
+          Input.renderField({ label: 'Email', id: 'fieldEmail', type: 'email', value: user.Email || '', placeholder: 'example@mail.com' }) +
+          Input.renderDate({ label: 'Ngày sinh', id: 'fieldNgaySinh', value: (user.NgaySinh || '').substring(0, 10) })
+        );
+      }
+
+      // ── Prefill ──
       function prefill(data) {
         $('#fieldDisplayName').val(data.DisplayName || '');
         $('#fieldUserName').val(data.UserName || '');

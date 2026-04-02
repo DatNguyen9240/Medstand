@@ -16,9 +16,9 @@
   margin-bottom: var(--spacing-md);
 }
 
-.form-label {
+.form-group .form-field label {
   display: block;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 2px;
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-muted);
@@ -40,70 +40,132 @@ textarea.form-control {
 .responsive-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 0;
+  gap: var(--spacing-md);
 }
 
+/* Mặc định: Dùng đơn vị `fr` để TỰ ĐỘNG dãn theo màn hình (Responsive) */
 .responsive-grid.add-product-row {
-  grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr auto;
-  gap: 6px;
-  padding: 0 4px;
+  grid-template-columns: 3fr 1.2fr 1.8fr 1.2fr 1.8fr 35px;
+  gap: 4px;
+  /* Giảm gap dọc xíu */
+  padding: 4px 0;
+  /* Giảm padding từ 8px xuống 4px */
   align-items: flex-end;
+  border-bottom: 1px solid var(--color-border);
 }
+
+#dynamicProductRowsContainer {
+  overflow-x: auto;
+  /* An toàn: Cuộn ngang nếu số quá lớn không fit màn hình mobile cực nhỏ */
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+
+/* Biến thể 2 nút cho trang Edit */
+.responsive-grid.add-product-row.edit-mode {
+  grid-template-columns: minmax(60px, 1fr) 35px 50px 35px 60px 65px;
+}
+
+
+.product-header-row .grid-header {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
 
 .responsive-grid.add-product-row .form-group {
   padding: 0;
-}
-
-.responsive-grid.add-product-row .form-control {
-  padding: 6px 4px;
-  font-size: var(--font-size-xs);
+  margin-bottom: 0;
   min-width: 0;
+  /* Cho phép co lại để hiện dấu ba chấm */
 }
 
-.responsive-grid.add-product-row .form-label {
-  font-size: 0.6rem;
-  margin-bottom: 2px;
+
+.responsive-grid.add-product-row .field-input {
+  padding: 8px 6px;
+  font-size: 13px;
+  /* Font đủ to để đọc số */
+  min-width: 40px;
+  /* Chặn việc co quá đà làm mất số */
+  height: 38px;
+  min-height: auto;
+}
+
+.responsive-grid.add-product-row .form-field {
+  margin-bottom: 0;
 }
 
 /* ── Action Buttons ────────────────────── */
-.btn-remove-row {
-  height: 34px;
-  width: 34px;
+.btn-remove-row,
+.btn-save-row,
+.btn-update-row {
+  height: 30px;
+  width: 30px;
   border-radius: var(--radius-md);
-  background: rgba(239, 68, 68, 0.08);
-  color: var(--color-danger);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  cursor: pointer;
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  font-size: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
 }
+
+.btn-remove-row {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-save-row,
+.btn-update-row {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: var(--color-primary);
+  border-color: rgba(var(--color-primary-rgb), 0.2);
+}
+
+.btn-remove-row:hover {
+  background: #fecaca;
+}
+
+.btn-save-row:hover,
+.btn-update-row:hover {
+  background: rgba(var(--color-primary-rgb), 0.2);
+}
+
 
 .btn-remove-row:hover {
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* ── Total Amount ──────────────────────── */
+/* ── Total Amount (Dùng chung, thực tế bị create-order.css đè nhưng cần sạch) ── */
 .total-amount-display {
-  padding: var(--spacing-md);
-  background: rgba(var(--color-primary-rgb), 0.06);
-  border: 1px solid rgba(var(--color-primary-rgb), 0.15);
-  margin: 0 var(--spacing-md) var(--spacing-md);
-  border-radius: var(--radius-lg);
+  padding: 12px var(--spacing-md);
+  background: rgba(var(--color-primary-rgb), 0.05);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+  margin: var(--spacing-md);
+  border-radius: var(--radius-md);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-width: 0;
 }
 
 .total-amount-display .label {
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 
 .total-amount-display .value {
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
+  font-weight: 700;
   color: var(--color-primary);
 }
 
@@ -119,7 +181,14 @@ textarea.form-control {
     padding: 0;
   }
 
+  /* Desktop: Rộng rãi hơn đáng kể */
   .responsive-grid.add-product-row {
-    grid-template-columns: 2fr 1fr 1.5fr 1fr 1.5fr auto;
+    grid-template-columns: 4fr 1fr 1.5fr 1fr 1.5fr 40px;
+    gap: 12px;
+  }
+
+  .responsive-grid.add-product-row .field-input {
+    padding: 8px 12px;
+    font-size: var(--font-size-sm);
   }
 }

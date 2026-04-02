@@ -22,5 +22,20 @@ var Format = {
     if (!dateStr) return '';
     var parts = dateStr.split('-');
     return parts[2] + '/' + parts[1] + '/' + parts[0];
+  },
+
+  /**
+   * Loại bỏ dấu tiếng Việt để tìm kiếm không dấu
+   * @param {string} str
+   * @returns {string}
+   */
+  removeAccents: function (str) {
+    if (!str) return '';
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .toLowerCase();
   }
 };

@@ -18,9 +18,7 @@ function SearchBar(opts) {
   var onSearch = opts.onSearch || function () { };
 
   $container.html(
-    '<div class="search-bar">' +
-    '<input type="search" class="search-input" placeholder="' + placeholder + '">' +
-    '</div>'
+    Input.renderSearch({ placeholder: placeholder })
   );
 
   var timeout;

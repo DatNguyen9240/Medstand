@@ -20,25 +20,36 @@ var MapPicker = (function () {
 
   // ── CSS ──────────────────────────────────────────────────────────────────
   var CSS = [
-    '.mp-overlay{display:none;position:fixed;inset:0;z-index:9999;flex-direction:column;background:var(--color-surface,#fff)}',
+    '.mp-overlay{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;padding:12px;backdrop-filter:blur(2px)}',
     '.mp-overlay.active{display:flex}',
+    '.mp-sheet{background:var(--color-surface,#fff);width:95%;max-width:800px;height:90vh;display:flex;flex-direction:column;border-radius:var(--radius-xl,16px);overflow:hidden;box-shadow:var(--shadow-xl);animation:mp-fade-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)}',
+    '@keyframes mp-fade-in{from{opacity:0;transform:scale(0.95) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}',
     '.mp-header{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--color-border,#e5e7eb);flex-shrink:0}',
     '.mp-header h3{margin:0;font-size:1rem;font-weight:700;color:var(--color-primary,#1a7c3e)}',
-    '.mp-btn-back{background:none;border:none;cursor:pointer;color:var(--color-primary,#1a7c3e);font-size:1.2rem;padding:4px 8px;line-height:1}',
+    '.mp-btn-back{background:none;border:none;cursor:pointer;color:var(--color-text-muted,#6b7280);font-size:1.2rem;padding:4px 8px;line-height:1}',
     '.mp-info{font-size:.75rem;color:var(--color-text-muted,#6b7280);padding:7px 16px;background:var(--color-background,#f9fafb);border-bottom:1px solid var(--color-border,#e5e7eb);min-height:32px;display:flex;align-items:center}',
-    '#mp-map{flex:1}',
-    '.mp-footer{padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--color-border,#e5e7eb);display:flex;gap:10px;flex-shrink:0}',
-    '.mp-btn-cancel{padding:13px 20px;border:1px solid var(--color-border,#e5e7eb);background:var(--color-surface,#fff);color:var(--color-text,#111);border-radius:var(--radius-md,8px);font-size:.875rem;font-weight:600;cursor:pointer}',
-    '.mp-btn-confirm{flex:1;padding:13px;background:var(--color-primary,#1a7c3e);color:#fff;border:none;border-radius:var(--radius-md,8px);font-size:.875rem;font-weight:700;cursor:pointer;transition:opacity .15s}',
+    '.mp-search-box{padding:10px 16px;background:var(--color-surface,#fff);border-bottom:1px solid var(--color-border,#e5e7eb);position:relative;z-index:10}',
+    '.mp-search-input{width:100%;padding:10px 12px;padding-left:36px;border:1.5px solid var(--color-border,#e5e7eb);border-radius:var(--radius-md,8px);font-size:.875rem;font-family:inherit;outline:none;transition:border-color .2s}',
+    '.mp-search-input:focus{border-color:var(--color-primary,#1a7c3e)}',
+    '.mp-search-icon{position:absolute;left:28px;top:50%;transform:translateY(-50%);color:var(--color-text-muted,#9ca3af)}',
+    '#mp-map{flex:1;min-height:300px}',
+    '.mp-footer{padding:12px 16px;border-top:1px solid var(--color-border,#e5e7eb);display:flex;gap:10px;flex-shrink:0;background:var(--color-surface)}',
+    '.mp-btn-cancel{padding:12px 20px;border:1px solid var(--color-border,#e5e7eb);background:var(--color-surface,#fff);color:var(--color-text,#111);border-radius:var(--radius-md,8px);font-size:.875rem;font-weight:600;cursor:pointer}',
+    '.mp-btn-confirm{flex:1;padding:12px;background:var(--color-primary,#1a7c3e);color:#fff;border:none;border-radius:var(--radius-md,8px);font-size:.875rem;font-weight:700;cursor:pointer;transition:opacity .15s}',
     '.mp-btn-confirm:disabled{opacity:.5;cursor:not-allowed}',
   ].join('');
 
   // ── HTML ─────────────────────────────────────────────────────────────────
   var HTML = [
     '<div class="mp-overlay" id="mp-overlay">',
+    ' <div class="mp-sheet">',
     '  <div class="mp-header">',
     '    <button class="mp-btn-back" id="mp-back" aria-label="Quay lại">←</button>',
     '    <h3>Chọn vị trí trên bản đồ</h3>',
+    '  </div>',
+    '  <div class="mp-search-box">',
+    '    <span class="mp-search-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></span>',
+    '    <input type="text" class="mp-search-input" id="mp-search" placeholder="Tìm địa chỉ hoặc địa điểm...">',
     '  </div>',
     '  <div class="mp-info" id="mp-info">Nhấn vào bản đồ để chọn vị trí</div>',
     '  <div id="mp-map"></div>',
@@ -46,6 +57,7 @@ var MapPicker = (function () {
     '    <button class="mp-btn-cancel" id="mp-cancel">Hủy</button>',
     '    <button class="mp-btn-confirm" id="mp-confirm" disabled>Xác nhận vị trí</button>',
     '  </div>',
+    ' </div>',
     '</div>',
   ].join('');
 
@@ -77,12 +89,72 @@ var MapPicker = (function () {
     // Inject HTML
     var wrapper = document.createElement('div');
     wrapper.innerHTML = HTML;
-    document.body.appendChild(wrapper.firstChild);
+    var overlay = wrapper.firstChild;
+    document.body.appendChild(overlay);
 
     // Event listeners
     document.getElementById('mp-back').addEventListener('click', close);
     document.getElementById('mp-cancel').addEventListener('click', close);
     document.getElementById('mp-confirm').addEventListener('click', confirm);
+
+    // Search Logic
+    var searchInput = document.getElementById('mp-search');
+    var searchTimeout = null;
+    searchInput.addEventListener('input', function() {
+      var kw = this.value.trim();
+      if (kw.length < 3) return;
+
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(function() {
+        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(kw) + '&accept-language=vi&countrycodes=vn')
+          .then(function(r) { return r.json(); })
+          .then(function(results) {
+            if (results && results.length > 0) {
+              var first = results[0];
+              var lat = parseFloat(first.lat);
+              var lng = parseFloat(first.lon);
+              
+              _map.flyTo([lat, lng], 16);
+              
+              // Simulate click to select this location
+              updateSelection(lat, lng, first.display_name);
+            }
+          }).catch(function(e) { console.error('MapPicker search error', e); });
+      }, 800);
+    });
+  }
+
+  function updateSelection(lat, lng, address) {
+    _selectedLatLng = lat.toFixed(6) + ', ' + lng.toFixed(6);
+
+    if (_marker) _map.removeLayer(_marker);
+    _marker = L.marker([lat, lng]).addTo(_map);
+
+    if (address) {
+      _selectedAddr = address;
+      _marker.bindPopup('<strong>' + _selectedAddr + '</strong><br><small>' + _selectedLatLng + '</small>').openPopup();
+      document.getElementById('mp-info').textContent = _selectedAddr;
+      document.getElementById('mp-confirm').disabled = false;
+    } else {
+      document.getElementById('mp-info').textContent = 'Đang tìm địa chỉ...';
+      document.getElementById('mp-confirm').disabled = true;
+      _marker.bindPopup('Đang tìm địa chỉ...').openPopup();
+
+      fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat + '&lon=' + lng + '&accept-language=vi')
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          _selectedAddr = data.display_name || _selectedLatLng;
+          _marker.setPopupContent('<strong>' + _selectedAddr + '</strong><br><small>' + _selectedLatLng + '</small>').openPopup();
+          document.getElementById('mp-info').textContent = _selectedAddr;
+          document.getElementById('mp-confirm').disabled = false;
+        })
+        .catch(function () {
+          _selectedAddr = _selectedLatLng;
+          _marker.setPopupContent(_selectedLatLng).openPopup();
+          document.getElementById('mp-info').textContent = 'Vị trí: ' + _selectedLatLng;
+          document.getElementById('mp-confirm').disabled = false;
+        });
+    }
   }
 
   // ── Init map ──────────────────────────────────────────────────────────────
@@ -99,36 +171,7 @@ var MapPicker = (function () {
     }).addTo(_map);
 
     _map.on('click', function (e) {
-      var lat = e.latlng.lat.toFixed(6);
-      var lng = e.latlng.lng.toFixed(6);
-      _selectedLatLng = lat + ', ' + lng;
-
-      if (_marker) _map.removeLayer(_marker);
-      _marker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(_map)
-        .bindPopup('Đang tìm địa chỉ...').openPopup();
-
-      document.getElementById('mp-info').textContent = 'Đang tìm địa chỉ...';
-      document.getElementById('mp-confirm').disabled = true;
-
-      fetch(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=' + lat +
-        '&lon=' + lng + '&accept-language=vi'
-      )
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          _selectedAddr = data.display_name || _selectedLatLng;
-          _marker.setPopupContent(
-            '<strong>' + _selectedAddr + '</strong><br><small>' + _selectedLatLng + '</small>'
-          ).openPopup();
-          document.getElementById('mp-info').textContent = _selectedAddr;
-          document.getElementById('mp-confirm').disabled = false;
-        })
-        .catch(function () {
-          _selectedAddr = _selectedLatLng;
-          _marker.setPopupContent(_selectedLatLng).openPopup();
-          document.getElementById('mp-info').textContent = 'Vị trí: ' + _selectedLatLng;
-          document.getElementById('mp-confirm').disabled = false;
-        });
+      updateSelection(e.latlng.lat, e.latlng.lng);
     });
   }
 

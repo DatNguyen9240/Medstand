@@ -123,9 +123,7 @@ FilterComponent.prototype._restoreState = function () {
 
 FilterComponent.prototype._renderSearchRow = function () {
   return '<div class="search-filter-row">' +
-    '<div class="search-bar">' +
-    '<input type="search" class="search-input" placeholder="Tìm kiếm">' +
-    '</div>' +
+    Input.renderSearch({ value: this._savedSearch || '', placeholder: 'Tìm kiếm' }) +
     '<button type="button" class="btn-filter" aria-label="Bộ lọc">' +
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>' +
     '</button>' +
@@ -135,41 +133,37 @@ FilterComponent.prototype._renderSearchRow = function () {
 FilterComponent.prototype._renderModal = function () {
   var self = this;
   var fieldsHtml = self.fields.map(function (f) {
-    var displayText = f.locked
+    var valText = f.locked
       ? (f.defaultLabel || f.defaultValue || '')
       : (self.labels[f.key] || self.values[f.key] || 'Tất cả');
-    var lockedClass = f.locked ? ' locked' : '';
-    var lockIcon = f.locked ? ' 🔒' : '';
-    return '<div class="filter-select-item' + lockedClass + '" data-field="' + f.key + '">' +
-      '<span class="filter-select-label">' + f.label + '</span>' +
-      '<span class="filter-select-value">' +
-      '<span class="filter-value-text" data-key="' + f.key + '">' + displayText + lockIcon + '</span>' +
-      (f.locked ? '' : '<span class="arrow">›</span>') +
-      '</span>' +
-      '</div>';
+
+    return Input.renderSelect({
+      key: f.key,
+      label: f.label,
+      value: valText,
+      locked: f.locked
+    });
   }).join('');
 
+  var dateHtml = '';
+  if (self.singleDate) {
+    dateHtml = '<div class="filter-date-row">' +
+      Input.renderDate({ label: 'Ngày', className: 'style="flex:1"', id: 'filter-date-single', value: self.dateFrom }) +
+      '</div>';
+  } else {
+    dateHtml = '<div class="filter-date-row">' +
+      Input.renderDate({ label: 'Từ ngày', id: 'filter-date-from', value: self.dateFrom }) +
+      '<span class="filter-date-separator">→</span>' +
+      Input.renderDate({ label: 'Đến ngày', id: 'filter-date-to', value: self.dateTo }) +
+      '</div>';
+  }
+
   return '<div class="filter-modal-header">' +
-    '<h3>Bộ lọc</h3>' +
     '<button type="button" class="filter-modal-close" aria-label="Đóng">&times;</button>' +
+    '<h3>Bộ lọc</h3>' +
     '</div>' +
     '<div class="filter-modal-body">' +
-    (self.singleDate ?
-      '<div class="filter-date-row">' +
-      '<div class="filter-date-field" style="flex:1">' +
-      '<label>Ngày</label>' +
-      '<input type="date" class="filter-date-single">' +
-      '</div></div>' :
-      '<div class="filter-date-row">' +
-      '<div class="filter-date-field">' +
-      '<label>Từ ngày</label>' +
-      '<input type="date" class="filter-date-from">' +
-      '</div>' +
-      '<span class="filter-date-separator">→</span>' +
-      '<div class="filter-date-field">' +
-      '<label>Đến ngày</label>' +
-      '<input type="date" class="filter-date-to">' +
-      '</div></div>') +
+    dateHtml +
     fieldsHtml +
     '<button type="button" class="btn-filter-apply">ÁP DỤNG</button>' +
     '</div>';
@@ -181,7 +175,7 @@ FilterComponent.prototype._renderSelectModal = function (field) {
     '<h3>' + field.label + '</h3>' +
     '</div>' +
     '<div class="select-modal-search">' +
-    '<input type="search" placeholder="Tìm kiếm">' +
+    Input.renderSearch({ placeholder: 'Tìm kiếm' }) +
     '</div>' +
     '<ul class="select-modal-list">' +
     '<li data-value="">Tất cả</li>' +
@@ -219,7 +213,7 @@ FilterComponent.prototype._bindEvents = function ($container) {
 
   // Select items -> open select modal (lazy-load options nếu có)
   self.$modal.find('.filter-select-item').on('click', function () {
-    var key = $(this).attr('data-field');
+    var key = $(this).closest('.form-field').attr('data-field');
     var field = self.fields.find(function (f) { return f.key === key; });
     if (!field || field.locked) return;
 
@@ -282,11 +276,11 @@ FilterComponent.prototype._openSelectModal = function (field) {
   });
 
   // Search within options
-  self.$select.find('.select-modal-search input').on('input', function () {
-    var keyword = $(this).val().toLowerCase();
+  self.$select.find('.search-input').on('input', function () {
+    var keyword = Format.removeAccents($(this).val());
     self.$select.find('.select-modal-list li').each(function () {
       var $li = $(this);
-      var text = $li.text().toLowerCase();
+      var text = Format.removeAccents($li.text());
       $li.css('display', text.indexOf(keyword) !== -1 ? '' : 'none');
     });
   });

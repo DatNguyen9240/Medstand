@@ -29,13 +29,30 @@ const Alert = (() => {
   }
 
   function _fire(icon, title, text, opts) {
+    const isMobile = window.innerWidth < 768;
+    
+    var baseConfig = {
+      icon: icon,
+      title: title,
+      text: text,
+      confirmButtonColor: PRIMARY,
+      timer: 2000,
+      timerProgressBar: true,
+      showClass: { popup: '' }, // Tắt hiệu ứng nhảy/rung khi hiện
+      hideClass: { popup: '' }, // Tắt hiệu ứng khi đóng
+    };
+
+    if (isMobile) {
+      // Trên mobile: Hiện Toast ở trên đầu cho gọn
+      Object.assign(baseConfig, {
+        toast: true,
+        position: 'top',
+        showConfirmButton: false,
+      });
+    }
+
     return _ensureLoaded().then(function () {
-      return Swal.fire(Object.assign({
-        icon: icon,
-        title: title,
-        text: text,
-        confirmButtonColor: PRIMARY,
-      }, opts || {}));
+      return Swal.fire(Object.assign(baseConfig, opts || {}));
     });
   }
 

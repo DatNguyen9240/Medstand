@@ -8,12 +8,21 @@
       var searchText = '';
       var now = new Date();
       var y = now.getFullYear(), m = String(now.getMonth() + 1).padStart(2, '0'), d = String(now.getDate()).padStart(2, '0');
+      var defaultFrom = y + '-' + m + '-01';
+      var defaultTo = y + '-' + m + '-' + d;
 
-      // Set default date inputs to current month
-      var $from = $('input[type=date]').eq(0);
-      var $to = $('input[type=date]').eq(1);
-      $from.val(y + '-' + m + '-01');
-      $to.val(y + '-' + m + '-' + d);
+      // ── Render Date Inputs dùng Input component ──
+      var $dateContainer = $('#date-filters-container');
+      if ($dateContainer.length) {
+        $dateContainer.html(
+          Input.renderDate({ label: 'Từ ngày', id: 'plan-date-from', value: defaultFrom }) +
+          '<div class="filter-date-separator">→</div>' +
+          Input.renderDate({ label: 'Đến ngày', id: 'plan-date-to', value: defaultTo })
+        );
+      }
+
+      var $from = $('#plan-date-from');
+      var $to = $('#plan-date-to');
 
       // Reload on date change
       $from.on('change', function () { loadData(); });

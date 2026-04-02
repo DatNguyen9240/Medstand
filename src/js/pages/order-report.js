@@ -16,9 +16,10 @@ new FilterComponent({
 
 function filterProducts(keyword) {
   if (!_allItems.length) return;
-  keyword = (keyword || '').toLowerCase();
-  var filtered = keyword ? _allItems.filter(function (r) {
-    return ((r.ItemName || '') + ' ' + (r.ItemID || '')).toLowerCase().indexOf(keyword) !== -1;
+  var kw = Format.removeAccents(keyword);
+  var filtered = kw ? _allItems.filter(function (r) {
+    var text = Format.removeAccents((r.ItemName || '') + ' ' + (r.ItemID || ''));
+    return text.indexOf(kw) !== -1;
   }) : _allItems;
   renderDetailTab(filtered);
 }

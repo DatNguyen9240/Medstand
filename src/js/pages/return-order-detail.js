@@ -13,6 +13,14 @@
     return;
   }
 
+  // ── Render Search dùng Input component ──────────────────────
+  var $searchContainer = $('#search-input-container');
+  if ($searchContainer.length) {
+    $searchContainer.html(
+      Input.renderSearch({ id: 'search-input', placeholder: 'Tìm theo mã SP, tên SP...' })
+    );
+  }
+
   // Search debounce
   $('#search-input').on('input', function () {
     clearTimeout(searchTimeout);

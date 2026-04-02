@@ -10,10 +10,28 @@ function initDashboard() {
   var defaultFrom = y + '-' + m + '-01';
   var defaultTo = y + '-' + m + '-' + d;
 
+  // ── Khôi phục ngày từ localStorage (nếu có) ──
+  var storageKey = 'dashboard_dates';
+  var savedDates = {};
+  try {
+    savedDates = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  } catch (e) { }
+
+  var currentFrom = savedDates.fromDate || defaultFrom;
+  var currentTo = savedDates.toDate || defaultTo;
+
+  // ── Render Date Inputs dùng Input component ──
+  var $dateContainer = $('#revenue-date-container');
+  if ($dateContainer.length) {
+    $dateContainer.html(
+      Input.renderDate({ label: 'Từ ngày', id: 'chart-date-from', value: currentFrom }) +
+      '<span class="revenue-arrow">→</span>' +
+      Input.renderDate({ label: 'Đến ngày', id: 'chart-date-to', value: currentTo })
+    );
+  }
+
   var elFrom = document.getElementById('chart-date-from');
   var elTo = document.getElementById('chart-date-to');
-  if (elFrom) elFrom.value = defaultFrom;
-  if (elTo) elTo.value = defaultTo;
 
   // ── Load data theo dates ──
   function getFromDate() { return elFrom ? elFrom.value : defaultFrom; }
@@ -22,6 +40,12 @@ function initDashboard() {
   function loadAll() {
     var fromDate = getFromDate();
     var toDate = getToDate();
+
+    // Lưu lại vào localStorage
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ fromDate: fromDate, toDate: toDate }));
+    } catch (e) { }
+
     loadStats(fromDate, toDate);
     loadChart(fromDate, toDate);
     loadRevenue(fromDate, toDate);
@@ -141,11 +165,9 @@ function initDashboard() {
 
 function renderStats(stats) {
   $('#stats-content').html(
-    '<div class="stats-row">' +
     stats.map(function (s) {
       return '<div class="stat-card"><div class="stat-label">' + s.label + '</div><div class="stat-value">' + s.value + '</div></div>';
-    }).join('') +
-    '</div>'
+    }).join('')
   );
 }
 

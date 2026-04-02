@@ -37,13 +37,13 @@
             $('#order-skeleton').prop('hidden', true);
             var $el = $('#order-list');
             $el.prop('hidden', false);
-            $el.html(orders.length ? orders.map(renderOrder).join('') : '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có đơn hàng</p>');
+            $el.html(orders.length ? orders.map(renderOrder).join('') : '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không có đơn hàng</p>');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           })
           .catch(function (err) {
             console.error('Failed to load orders', err);
             $('#order-skeleton').prop('hidden', true);
-            $('#order-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không tải được dữ liệu</p>');
+            $('#order-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không tải được dữ liệu</p>');
           });
       }
 

@@ -21,6 +21,7 @@ orderForm
   .addInput({ id: 'orderDate', label: 'Ngày CT', type: 'date', required: true, value: todayStr() })
   .addList({
     id: 'branch', label: 'Chi nhánh', required: true, placeholder: 'Chọn chi nhánh',
+    locked: !!user.BranchID,
     loadFn: function (done) {
       Http.get(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { q: JSON.stringify({ BranchID: '', SearchText: '' }) })
         .then(function (res) {
@@ -80,13 +81,14 @@ orderForm
 if (user.BranchID) {
   Http.get(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { q: JSON.stringify({ BranchID: '', SearchText: '' }) })
     .then(function (res) {
-      var records = (res.data || res).records || res.data || res || [];
-      var match = records.find(function (r) { return (r.BranchID || '') === user.BranchID; });
-      if (match) {
-        orderForm.setListValue('branch', match.BranchID, match.BranchName || match.BranchID);
-        // Lock: không cho click
-        $('#fs-branch').off('click').css({ opacity: '0.7', pointerEvents: 'none' });
-      }
+      setTimeout(function() {
+        var records = (res.data || res).records || res.data || res || [];
+        var match = records.find(function (r) { return (r.BranchID || '') == user.BranchID; });
+        if (match) {
+          orderForm.setListValue('branch', match.BranchID, match.BranchName || match.BranchID);
+          orderForm.setLocked('branch', true);
+        }
+      }, 100);
     });
 }
 
@@ -108,39 +110,53 @@ function buildProductOptions(items) {
 }
 
 function openProductPicker(rowId) {
-  var $picker = $('#productPicker_' + rowId);
-  var origPlaceholder = $picker.attr('placeholder');
-  $picker.attr('placeholder', 'Đang tải...').prop('disabled', true).css('opacity', '.6');
+  var $pickerContainer = $('#productPickerContainer_' + rowId);
+  var $pickerText = $pickerContainer.find('.filter-value-text');
+  var origText = $pickerText.text();
+
+  $pickerText.text('Đang tải...');
   loadProducts(function (items) {
-    $picker.attr('placeholder', origPlaceholder).prop('disabled', false).css('opacity', '');
+    $pickerText.text(origText);
 
     var options = buildProductOptions(items);
-    var currentVal = $picker.attr('data-value') || '';
+    var currentVal = $pickerContainer.attr('data-value') || '';
     var html = '<div class="filter-modal-header">' +
       '<button type="button" class="filter-modal-close" aria-label="Đóng" id="pp-close">&times;</button>' +
       '<h3>Chọn sản phẩm</h3></div>' +
-      '<div style="padding:12px"><input type="search" class="fs-input" id="pp-search" placeholder="Tìm kiếm sản phẩm"></div>' +
+      '<div style="padding:12px">' +
+      Input.renderSearch({ id: 'pp-search', placeholder: 'Tìm kiếm sản phẩm' }) +
+      '</div>' +
       '<ul class="select-modal-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
       options.map(function (o) {
         var sel = currentVal === o.value ? ' class="selected"' : '';
         return '<li data-value="' + o.value + '" data-price="' + o.price + '" data-name="' + o.name + '"' + sel + '>' + o.label + '</li>';
       }).join('') + '</ul>';
-    var $overlay = $('<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:flex-end"></div>');
-    var $sheet = $('<div style="width:100%;max-height:80vh;background:var(--color-surface,#fff);border-radius:var(--radius-lg) var(--radius-lg) 0 0;display:flex;flex-direction:column;overflow-y:auto"></div>').html(html);
+
+    var $overlay = $('<div class="picker-overlay"></div>');
+    var $sheet = $('<div class="picker-sheet"></div>').html(html);
     $overlay.append($sheet).appendTo('body');
+    
+    // Trigger animation
+    setTimeout(function() {
+      $overlay.addClass('active');
+      $sheet.addClass('active');
+    }, 10);
     $overlay.find('#pp-close').on('click', function () { $overlay.remove(); });
     $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
     $overlay.find('#pp-search').on('input', function () {
-      var kw = $(this).val().toLowerCase();
-      $overlay.find('#pp-list li').each(function () { $(this).toggle($(this).text().toLowerCase().indexOf(kw) !== -1); });
+      var kw = Format.removeAccents($(this).val());
+      $overlay.find('#pp-list li').each(function () {
+        var text = Format.removeAccents($(this).text());
+        $(this).toggle(text.indexOf(kw) !== -1);
+      });
     });
     $overlay.find('#pp-list li').on('click', function () {
       var val = $(this).attr('data-value');
       var price = $(this).attr('data-price');
       var name = $(this).attr('data-name');
-      $picker.attr('data-value', val).attr('data-price', price).attr('data-name', name);
-      $picker.val(name);
-      $picker.addClass('has-value');
+      $pickerContainer.attr('data-value', val).attr('data-price', price).attr('data-name', name);
+      $pickerText.text(name);
+      $pickerContainer.addClass('has-value');
       $overlay.remove();
       calculateRowTotal(rowId);
     });
@@ -148,11 +164,11 @@ function openProductPicker(rowId) {
 }
 
 function calculateRowTotal(rowId) {
-  var $picker = $('#productPicker_' + rowId);
-  var itemId = $picker.attr('data-value') || '';
+  var $pickerContainer = $('#productPickerContainer_' + rowId);
+  var itemId = $pickerContainer.attr('data-value') || '';
   if (!itemId) return null;
-  var price = parseFloat($picker.attr('data-price') || 0);
-  var name = $picker.attr('data-name') || '';
+  var price = parseFloat($pickerContainer.attr('data-price') || 0);
+  var name = $pickerContainer.attr('data-name') || '';
   var qty = parseInt($('#qty_' + rowId).val() || 0);
   var discount = parseFloat($('#discount_' + rowId).val() || 0);
   $('#price_' + rowId).val(price);
@@ -165,10 +181,12 @@ function calculateRowTotal(rowId) {
 
 function updateLiveTotal() {
   var total = 0;
-  $('#dynamicProductRowsContainer .add-product-row').each(function () {
-    var rowId = $(this).attr('id').split('_')[1];
-    var $picker = $('#productPicker_' + rowId);
-    var price = parseFloat($picker.attr('data-price') || 0);
+  $('#dynamicProductRowsContainer .add-product-row:not(.product-header-row)').each(function () {
+    var idAttr = $(this).attr('id');
+    if (!idAttr) return; // Bỏ qua header hoặc hàng lỗi
+    var rowId = idAttr.split('_')[1];
+    var $pickerContainer = $('#productPickerContainer_' + rowId);
+    var price = parseFloat($pickerContainer.attr('data-price') || 0);
     var qty = parseInt($('#qty_' + rowId).val() || 0);
     var discount = parseFloat($('#discount_' + rowId).val() || 0);
     var subtotal = price * qty;
@@ -190,21 +208,28 @@ function collectProducts() {
 function appendProductRow() {
   rowCounter++;
   var rowId = rowCounter;
-  var rowHtml = '<div class="responsive-grid add-product-row" id="row_' + rowId + '" style="margin-bottom:8px;padding-bottom:16px;border-bottom:1px solid var(--color-border)">' +
-    '<div class="form-group"><label class="form-label">Sản phẩm</label>' +
-    '<input type="text" class="form-control" id="productPicker_' + rowId + '" data-value="" data-price="0" data-name="" readonly placeholder="Chọn sản phẩm" onclick="openProductPicker(' + rowId + ')" style="cursor:pointer"></div>' +
-    '<div class="form-group"><label class="form-label">SL</label>' +
-    '<input type="number" class="form-control" id="qty_' + rowId + '" value="1" min="1" oninput="calculateRowTotal(' + rowId + ')"></div>' +
-    '<div class="form-group"><label class="form-label">Đơn giá</label>' +
-    '<input type="number" class="form-control" id="price_' + rowId + '" readonly></div>' +
-    '<div class="form-group"><label class="form-label">CK(%)</label>' +
-    '<input type="number" class="form-control" id="discount_' + rowId + '" value="0" min="0" max="100" oninput="calculateRowTotal(' + rowId + ')"></div>' +
-    '<div class="form-group"><label class="form-label">Thành tiền</label>' +
-    '<input type="text" class="form-control" id="total_' + rowId + '" readonly style="font-weight:600;color:var(--color-primary)"></div>' +
-    '<div class="form-group" style="display:flex;align-items:flex-end;justify-content:center">' +
-    '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">🗑</button></div>' +
+
+  var productSelect = Input.renderSelect({ key: 'p_' + rowId, label: 'Sản phẩm', value: 'Chọn sản phẩm' });
+  var qtyField = Input.renderField({ id: 'qty_' + rowId, label: 'SL', type: 'number', value: '1' });
+  var priceField = Input.renderField({ id: 'price_' + rowId, label: 'Giá', type: 'number', readonly: true });
+  var discountField = Input.renderField({ id: 'discount_' + rowId, label: 'CK', type: 'number', value: '0' });
+  var totalField = Input.renderField({ id: 'total_' + rowId, label: 'Tiền', readonly: true, className: 'amount-field' });
+
+  var rowHtml = '<div class="responsive-grid add-product-row" id="row_' + rowId + '" style="margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid var(--color-border)">' +
+    '<div id="productPickerContainer_' + rowId + '" class="form-group" style="cursor:pointer" data-value="" data-price="0" data-name="">' + productSelect + '</div>' +
+    qtyField +
+    priceField +
+    discountField +
+    totalField +
+    '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">🗑️</button>' +
     '</div>';
+
   $('#dynamicProductRowsContainer').prepend(rowHtml);
+
+  // Bind click for product picker
+  $('#productPickerContainer_' + rowId).on('click', function () { openProductPicker(rowId); });
+  // Bind input for calculations
+  $('#qty_' + rowId + ', #discount_' + rowId).on('input', function () { calculateRowTotal(rowId); });
 }
 
 function removeProductRow(rowId) {

@@ -122,8 +122,9 @@
         markersLayer.clearLayers();
         records.forEach(function (r) {
           if (r.Latitude && r.Longitude && (r.Latitude !== 0 || r.Longitude !== 0)) {
-            L.marker([r.Latitude, r.Longitude])
-              .bindPopup('<strong>' + (r.ObjectName || '') + '</strong><br><small>' + (r.Address || '') + '</small>')
+            var marker = L.marker([r.Latitude, r.Longitude]);
+            marker.customerName = r.ObjectName || ''; // Store for searching
+            marker.bindPopup('<strong>' + (r.ObjectName || '') + '</strong><br><small>' + (r.Address || '') + '</small>')
               .addTo(markersLayer);
           }
         });
@@ -146,6 +147,51 @@
           }).addTo(map);
           markersLayer = L.layerGroup().addTo(map);
           renderMapMarkers(_routeData);
+
+          // ── Map Search Bar Logic (with Geocoding fallback) ──
+          var $searchContainer = $('#map-search-container');
+          if ($searchContainer.length) {
+            $searchContainer.html(Input.renderSearch({ id: 'map-search-input', placeholder: 'Tìm khách hàng hoặc địa điểm...' }));
+            
+            var searchTimeout = null;
+            $('#map-search-input').on('input', function() {
+              var kw = $(this).val().toLowerCase().trim();
+              if (kw.length < 2) return;
+              
+              clearTimeout(searchTimeout);
+              searchTimeout = setTimeout(function() {
+                var found = false;
+                
+                // 1. Tìm trong markers khách hàng nội bộ trước
+                markersLayer.eachLayer(function(layer) {
+                  if (found) return;
+                  if (layer.customerName && layer.customerName.toLowerCase().indexOf(kw) !== -1) {
+                    map.flyTo(layer.getLatLng(), 16);
+                    layer.openPopup();
+                    found = true;
+                  }
+                });
+
+                // 2. Nếu không thấy khách hàng, tìm kiếm địa chỉ toàn cầu (Ưu tiên Việt Nam)
+                if (!found) {
+                  fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(kw) + '&accept-language=vi&countrycodes=vn')
+                    .then(function(r) { return r.json(); })
+                    .then(function(results) {
+                      if (results && results.length > 0) {
+                        var first = results[0];
+                        map.flyTo([parseFloat(first.lat), parseFloat(first.lon)], 14);
+                        
+                        // Tạo marker tạm cho địa danh tìm thấy (nếu muốn)
+                        L.popup()
+                          .setLatLng([parseFloat(first.lat), parseFloat(first.lon)])
+                          .setContent('<strong>' + first.display_name + '</strong>')
+                          .openOn(map);
+                      }
+                    }).catch(function(e) { console.error('Geocoding error', e); });
+                }
+              }, 600); // Đợi gõ xong 600ms trước khi gọi API
+            });
+          }
 
           // Hiện vị trí hiện tại
           if (navigator.geolocation) {

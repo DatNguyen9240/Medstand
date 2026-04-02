@@ -34,42 +34,8 @@ body[data-page="account-edit"] {
 
     #avatarInput { display: none; }
 
-    /* Form fields */
+    /* Form fields are now handled globally by input.css */
     .field-group { margin-bottom: 16px; }
-
-    .field-label {
-      display: block;
-      font-size: var(--font-size-xs);
-      font-weight: var(--font-weight-medium);
-      color: var(--color-text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-bottom: 6px;
-    }
-
-    .field-input {
-      display: block;
-      width: 100%;
-      padding: 11px 14px;
-      background: var(--color-surface);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      font-size: var(--font-size-sm);
-      color: var(--color-text);
-      box-sizing: border-box;
-      transition: border-color var(--transition-fast);
-    }
-
-    .field-input:focus {
-      outline: none;
-      border-color: var(--color-primary);
-    }
-
-    .field-input[readonly] {
-      opacity: 0.55;
-      cursor: not-allowed;
-      background: var(--color-border);
-    }
 
     /* Gender radio */
     .gender-row { display: flex; gap: 16px; flex-wrap: wrap; }

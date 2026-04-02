@@ -60,13 +60,13 @@
         $('#skeleton').prop('hidden', true);
         var $el = $('#invoice-list');
         $el.prop('hidden', false);
-        $el.html(invoices.length ? invoices.map(renderInvoice).join('') : '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có hóa đơn</p>');
+        $el.html(invoices.length ? invoices.map(renderInvoice).join('') : '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không có hóa đơn</p>');
         window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(function (err) {
         console.error('Failed to load invoices', err);
         $('#skeleton').prop('hidden', true);
-        $('#invoice-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không tải được dữ liệu</p>');
+        $('#invoice-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không tải được dữ liệu</p>');
       });
   }
 

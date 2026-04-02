@@ -34,11 +34,10 @@
       function renderPage(page) {
         var filtered = allRecords;
         if (searchText) {
-          var kw = searchText.toLowerCase();
+          var kw = Format.removeAccents(searchText);
           filtered = allRecords.filter(function (r) {
-            return (r.Title || '').toLowerCase().indexOf(kw) >= 0 ||
-                   (r.ThoiGian || '').indexOf(kw) >= 0 ||
-                   (r.KetQua || '').indexOf(kw) >= 0;
+            var text = Format.removeAccents((r.Title || '') + ' ' + (r.ThoiGian || '') + ' ' + (r.KetQua || ''));
+            return text.indexOf(kw) >= 0;
           });
         }
 
