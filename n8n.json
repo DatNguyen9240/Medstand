@@ -1,0 +1,960 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api-nha-thuoc",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "23a0df7d-61d4-44a4-93d2-3e281d1e1ae4",
+      "name": "Webhook Mobile App",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -3568,
+        6000
+      ],
+      "webhookId": "8c0a45c1-5f3b-4c88-b686-a79866e17d76",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y8Ue31wHVyG8PgAK",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "id": "97acb0e6-9a66-4e1c-9e5f-fd61b4f34a56",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -3360,
+        6192
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "pPuLBDUmaUqo464D",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Nhiệm vụ: Đọc câu hỏi của người dùng và phân loại thành ĐÚNG 1 MÃ ACTION (chữ thường) trong danh sách sau. TUYỆT ĐỐI CHỈ TRẢ VỀ MÃ ACTION, KHÔNG GIẢI THÍCH GÌ THÊM.\n\nDanh sách mã Action:\n1. 'quan_gia' : nhắc việc cá nhân, lịch làm việc chung.\n2. 'mat_than' : gợi ý nhập hàng định kỳ, đứt hàng.\n3. 'tuyen_ban_hang' : ghé thăm khách hàng nào hôm nay, lịch tuyến.\n4. 'cham_diem_kh' : phân loại khách hàng, chấm điểm, khách VIP, nguy cơ.\n5. 'moc_thuong' : mốc thưởng, tích lũy, tiến độ quà tặng.\n6. 'ceo_insights' : báo cáo tổng quan giám đốc, chiến lược xả hàng, đọng vốn.\n7. 'catalog' : tra cứu giá niêm yết, danh mục sản phẩm.\n8. 'goi_y_don_thuoc' : phân tích đơn thuốc, kê toa thay thế thuốc, kháng sinh.\n9. 'ai_google_sale' : triệu chứng bệnh, tư vấn y khoa (ho, sốt, đau...).\n10. 'chat_history' : xem lịch sử chat.\n11. 'greeting' : chào hỏi thông thường.\n12. 'ai_sale' : tồn kho, công nợ, doanh thu, doanh số, tra cứu đơn hàng, tạo đơn, thông báo, tài liệu, xem thông tin nhân viên, khách hàng chung chung.\n\nCâu hỏi từ người dùng: \"{{ $json.body?.text || '' }}\""
+      },
+      "id": "f93e3acb-f67e-44a5-ab1f-4ccf0c9180b5",
+      "name": "AI Lễ Tân (Phân Loại)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        -3360,
+        6000
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook Mobile App').first()?.json || {};\nconst aiOutput = ($input.first()?.json?.text || '').toLowerCase();\n\n// 1. CHUẨN HÓA DATA ĐẦU VÀO\nlet body = { ...(webhookData.body || {}), ...(webhookData.query || {}) };\nbody.text = (body.text || body.query || '').trim();\nbody.username = body.username || 'guest';\n\n// 2. PHÂN LOẠI NHANH (FAST PATH)\nlet action = 'ai_sale'; \nconst validActions = ['ai_sale', 'quan_gia', 'mat_than', 'tuyen_ban_hang', 'cham_diem_kh', 'moc_thuong', 'ceo_insights', 'catalog', 'goi_y_don_thuoc', 'ai_google_sale', 'chat_history', 'greeting'];\n\n// Tìm action từ output của AI\nconst aiWords = aiOutput.replace(/[^a-z_]/g, ' ').split(/\\s+/);\nconst matchedAction = validActions.find(v => aiWords.includes(v));\nif (matchedAction) action = matchedAction;\n\n// 3. LOGIC CỨNG (OVERRIDE AI) - ƯU TIÊN ĐỘ CHÍNH XÁC\nfunction removeAccents(str) {\n  return str.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');\n}\n\nconst cleanText = removeAccents(body.text.toLowerCase());\n\n// --- CÁC LUẬT ƯU TIÊN CAO --- \nif (body.image_url) {\n    action = 'goi_y_don_thuoc'; \n} \nelse if (/\\b(lich su|chat history|tin nhan)\\b/i.test(cleanText)) {\n    action = 'chat_history';\n}\nelse if (/^(alo|hi|hello|chao|xin chao|hi sếp)$/i.test(cleanText)) {\n    action = 'greeting';\n}\n// --- CÁC NGHIỆP VỤ CHUYÊN BIỆT (REGEX CHẶT CHẼ) --- \nelse if (/\\b(don thuoc|toa thuoc|goi y thuoc|thay the|khang sinh|amox|cefu|para|augmentin|klamentin)\\b/i.test(cleanText)) {\n    action = 'goi_y_don_thuoc';\n} \nelse if (/\\b(ho|sot|dau|viem|trieu chung|tu van thuoc|benh|cam cum|nhuc dau|dau bung)\\b/i.test(cleanText)) {\n    action = 'ai_google_sale';\n} \nelse if (/\\b(ceo|insight|tong quan|dong von|xa hang|can date|ban cham|khuyen mai|combo|chien luoc|phan tich|tap trung|nen ban gi|uu tien|ban gi hom nay)\\b/i.test(cleanText)) {\n    action = 'ceo_insights';\n} \nelse if (/\\b(moc thuong|tich luy|tien do|dat moc|thieu bao nhieu|chuong trinh thuong)\\b/i.test(cleanText)) {\n    action = 'moc_thuong';\n} \nelse if (/\\b(cham diem|rot nhom|vip|tiem nang|hang a|hang b|hang c|nguy co|phan loai kh)\\b/i.test(cleanText)) {\n    action = 'cham_diem_kh';\n} \nelse if (/\\b(tuyen|lich trinh|di dau|hom nay di|lich ghe|danh sach tuyen|lo trinh)\\b/i.test(cleanText)) {\n    action = 'tuyen_ban_hang';\n} \nelse if (/\\b(mat than|dut hang|nhap thêm|gợi ý nhập|cần nhập gì|het hang)\\b/i.test(cleanText)) {\n    action = 'mat_than';\n} \nelse if (/\\b(quan gia|nhac viec|lich lam viec|lich hen|cong viec)\\b/i.test(cleanText)) {\n    action = 'quan_gia';\n}\nelse if (/\\b(catalog|gia ban|thong tin thuoc|danh muc|gia niem yet|tim gia)\\b/i.test(cleanText)) {\n    action = 'catalog';\n}\n// --- CÁC LỆNH TỔNG HỢP (MEGA-ROUTER) --- \nelse if (/\\b(ton kho|cong no|doanh thu|doanh so|don hang|tao don|len don|nhan vien|khach hang|tai lieu|chinh sach|thong bao|ban chay)\\b/i.test(cleanText)) {\n    action = 'ai_sale';\n}\n\nbody.action = action;\n\n// 4. CHUẨN HÓA TOKEN VÀ SECURITY\nlet rawToken = webhookData.headers?.authorization || webhookData.headers?.Authorization || body.token || '';\nif (rawToken && !rawToken.toLowerCase().startsWith('bearer')) {\n    rawToken = 'Bearer ' + rawToken.trim();\n}\nbody.token = rawToken;\n\nbody._processed_at = new Date().toISOString();\n\nreturn [{ json: { body: body } }];"
+      },
+      "id": "d60833c0-4187-4ba3-9b01-f6d1b8d6f2bb",
+      "name": "Chuẩn Hóa Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3120,
+        6000
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "quan_gia",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF3 - Quan Gia"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "mat_than",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF1 - Mat Than"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "tuyen_ban_hang",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF4 - Dieu Phoi Tuyen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "cham_diem_kh",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF5 - Cham Diem"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "moc_thuong",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF6 - Moc Thuong"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "ceo_insights",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF7 - CEO Insights"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "catalog",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF8 - Catalog"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "chat_history",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Admin Lich Su"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "ai_google_sale",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF9 - Google AI"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "goi_y_don_thuoc",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF10 - Don Thuoc"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "ai_sale",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF2 - AI Sale"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "greeting",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Chao Hoi"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Fallback (Mặc định)"
+        }
+      },
+      "id": "682d1f0b-9898-44c3-a269-70fe3b0d0783",
+      "name": "Phan loai lenh (Switch)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2608,
+        6000
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "kwb7isXd84oD5E3J",
+        "options": {}
+      },
+      "id": "d9f492f6-8aae-491f-b620-e916d7ebfc80",
+      "name": "Goi Workflow QUAN GIA (WF3)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        5312
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "5ObVIuwivMrook1X",
+        "options": {}
+      },
+      "id": "9758e13f-9900-4b47-97d1-253510559f5e",
+      "name": "Goi Workflow MAT THAN (WF1)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        5472
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "gB1YfuwQgV7bXxjo",
+        "options": {}
+      },
+      "id": "95e9a6d9-512c-44e5-9b84-baf77569d42b",
+      "name": "Goi Workflow DIEU PHOI TUYEN (WF4)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        5632
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "Yy6wSIkKO3Tgx6nF",
+        "options": {}
+      },
+      "id": "f6aa8df9-429c-4144-9763-94d1c2d9117f",
+      "name": "Goi Workflow CHAM DIEM (WF5)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        5792
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "3asEvfqGlO8l4u9v",
+        "options": {}
+      },
+      "id": "61b478a0-f6f9-4cb0-b6a7-c66d02860d49",
+      "name": "Goi Workflow MOC THUONG (WF6)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        5952
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "VnYiHDw7D0qylOzf",
+        "options": {}
+      },
+      "id": "a05fb198-d23d-40f3-b4f6-6295f8cfd9e6",
+      "name": "Goi Workflow CEO INSIGHTS (WF7)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        6112
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "hhbiIe6D1M3lwrRz",
+        "options": {}
+      },
+      "id": "35ff2f34-291b-40c1-8508-ee28cf84e34b",
+      "name": "Goi Workflow CATALOG (WF8)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        6272
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "4osRbU28hxWH3OAz",
+        "options": {}
+      },
+      "id": "bf978639-b74a-4f4f-a2ec-33e4e9f05d6a",
+      "name": "Goi Workflow AI GOOGLE (WF9)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        6592
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "Kuk9jE8U5E0F0WUx",
+        "options": {}
+      },
+      "id": "53711fec-9ba4-4f63-aebc-ec20921ba327",
+      "name": "Goi Workflow DON THUOC (WF10)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        6752
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "d6hiPLCdwyZFf2jk",
+        "options": {}
+      },
+      "id": "1f4f337d-3356-40c9-a744-b80722a12089",
+      "name": "Goi Workflow AI SALE (WF2)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        6912
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.username }}",
+              "rightValue": "admin",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7bb9ec6b-6f8a-423f-a224-0b0a445d2330",
+      "name": "Kiem tra Admin",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2208,
+        6432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=chat_history:{{ $now.setZone('Asia/Ho_Chi_Minh').toFormat('yyyy-MM-dd') }}",
+        "options": {}
+      },
+      "id": "3e7a43de-f9f0-48cd-8b19-469dc6250cd9",
+      "name": "Admin Lay Lich Su",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        6352
+      ],
+      "credentials": {
+        "redis": {
+          "id": "N36xqjZnDesY5DEp",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let historyString = $input.first()?.json?.value || ''; \nlet chatLog = 'LỊCH SỬ CHAT TRONG NGÀY:\\n-------------------\\n'; \nif (!historyString) historyString = 'Hôm nay chưa có ai chat với trợ lý hệ thống cả sếp ơi!';\nreturn [{ json: { formatted_chat: chatLog + historyString, action: 'chat' } }];"
+      },
+      "id": "ec7bbac6-179d-4bfb-bf6d-febc6fc973a9",
+      "name": "Xep Chu Cho Admin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        6352
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "output",
+              "value": "⛔ Chỉ Admin mới có quyền xem lịch sử tổng!"
+            },
+            {
+              "name": "action",
+              "value": "chat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8bfbd299-469b-42f1-bb13-f564101c8ea6",
+      "name": "Bao Loi Phan Quyen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1952,
+        6512
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "output",
+              "value": "Chào sếp! Tôi là Trợ lý AI Hệ Thống. Sếp cần hỗ trợ gì hôm nay ạ?"
+            },
+            {
+              "name": "action",
+              "value": "chat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "80533d55-609e-40e6-b3fb-260c908b65b5",
+      "name": "Cau tra loi tinh",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        7072
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: ($json.status || 'success'),\n  action: ($json.action || $json.body?.action || 'chat'),\n  message: ($json.text || $json.baoCao || $json.finalText || $json.output || $json.formatted_chat || $json.body?.text || $json.message || 'Đã xử lý xong!'),\n  data: ($json.data || $json.items || {})\n}) }}",
+        "options": {}
+      },
+      "id": "02b3cf55-5450-48fe-8f62-db33b9e11b94",
+      "name": "Tra ket qua ve App",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -1200,
+        6000
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Mobile App": {
+      "main": [
+        [
+          {
+            "node": "AI Lễ Tân (Phân Loại)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Lễ Tân (Phân Loại)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Lễ Tân (Phân Loại)": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn Hóa Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn Hóa Action": {
+      "main": [
+        [
+          {
+            "node": "Phan loai lenh (Switch)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phan loai lenh (Switch)": {
+      "main": [
+        [
+          {
+            "node": "Goi Workflow QUAN GIA (WF3)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow MAT THAN (WF1)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow DIEU PHOI TUYEN (WF4)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow CHAM DIEM (WF5)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow MOC THUONG (WF6)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow CEO INSIGHTS (WF7)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow CATALOG (WF8)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Kiem tra Admin",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow AI GOOGLE (WF9)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow DON THUOC (WF10)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow AI SALE (WF2)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cau tra loi tinh",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Goi Workflow AI SALE (WF2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow QUAN GIA (WF3)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow MAT THAN (WF1)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow DIEU PHOI TUYEN (WF4)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow CHAM DIEM (WF5)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow MOC THUONG (WF6)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow CEO INSIGHTS (WF7)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow CATALOG (WF8)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow AI GOOGLE (WF9)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow DON THUOC (WF10)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow AI SALE (WF2)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiem tra Admin": {
+      "main": [
+        [
+          {
+            "node": "Admin Lay Lich Su",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bao Loi Phan Quyen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Admin Lay Lich Su": {
+      "main": [
+        [
+          {
+            "node": "Xep Chu Cho Admin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Xep Chu Cho Admin": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bao Loi Phan Quyen": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cau tra loi tinh": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "53db64188a97b683f45ff3a8cd1c4cf51d7346e300df8ba5cb4c5ad507a4b106"
+  }
+}

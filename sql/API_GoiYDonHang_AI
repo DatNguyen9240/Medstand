@@ -102,7 +102,7 @@ BEGIN
         L.ItemID,
         CF.ItemName                                     AS TenSanPham,
         CAST(L.TongTien AS BIGINT)                      AS DoanhSoDaMua,
-        L.LanMuaCuoi,
+        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS LanMuaCuoi,
         CK.ChuKyTrungBinh,
         -- Dự kiến còn lại: Nếu < 0 (đã quá hạn) thì hiện 0 cho trực quan
         CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 

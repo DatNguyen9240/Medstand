@@ -104,8 +104,8 @@ BEGIN
     -- ═══════════════════════════════════════════════════════
     SELECT TOP (@TopN)
         KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone, KH.Address,
-        KH.ZoneID AS Tuyen, KH.ThuTrongTuan AS LichGhe, L.LanMuaCuoi, L.SoNgayKhongMua,
-        L.ChuKyMuaTB_Ngay, L.NgayDuDoanHetHang,
+        KH.ZoneID AS Tuyen, KH.ThuTrongTuan AS LichGhe, FORMAT(L.LanMuaCuoi, 'MM/dd') AS LanMuaCuoi, L.SoNgayKhongMua,
+        L.ChuKyMuaTB_Ngay, FORMAT(L.NgayDuDoanHetHang, 'MM/dd') AS NgayDuDoanHetHang,
         CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS NgayConLaiHetHang,
         L.DiemUuTien,
         CONCAT(
@@ -126,7 +126,7 @@ BEGIN
     -- KẾT QUẢ 2: CẢNH BÁO RỜI BỎ
     -- ═══════════════════════════════════════════════════════
     SELECT KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone, KH.ZoneID AS Tuyen, KH.ThuTrongTuan AS LichGhe,
-           L.LanMuaCuoi, L.SoNgayKhongMua,
+           FORMAT(L.LanMuaCuoi, 'MM/dd') AS LanMuaCuoi, L.SoNgayKhongMua,
            CASE
                 WHEN L.SoNgayKhongMua >= @SoNgayVangMat THEN N'🔴 NGUY CƠ RỜI BỎ'
                 ELSE N'🟡 CẦN CHĂM SÓC'

@@ -85,8 +85,8 @@ BEGIN
 
     -- KẾT QUẢ TRẢ VỀ CHO AI
     -- Bảng 0: Chương trình
-    SELECT DocumentID AS ProgramID, ISNULL(Memo, N'Tích lũy trọng tâm tháng ' + CAST(MONTH(FromDate) AS VARCHAR)) AS TenChuongTrinh,
-           FromDate, ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+     SELECT DocumentID AS ProgramID, ISNULL(Memo, N'Tích lũy trọng tâm tháng ' + CAST(MONTH(FromDate) AS VARCHAR)) AS TenChuongTrinh,
+            FORMAT(FromDate, 'dd/MM') AS FromDate, FORMAT(ToDate, 'dd/MM') AS ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
 
 
 
