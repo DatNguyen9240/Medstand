@@ -173,43 +173,4 @@
     transform: rotate(0deg);
   }
 }
-
-/* ── AI Chat Robot Icon ── */
-.ai-chat-btn {
-  overflow: visible !important;
-}
-
-.ai-hand {
-  transition: transform var(--transition-fast);
-}
-
-.ai-chat-btn:hover .ai-hand {
-  animation: wave-hand 0.6s ease-in-out infinite alternate;
-  transform-origin: 40px 30px;
-}
-
-@keyframes wave-hand {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  25% {
-    transform: rotate(-20deg);
-  }
-
-  50% {
-    transform: rotate(15deg);
-  }
-
-  75% {
-    transform: rotate(-15deg);
-  }
-
-  100% {
-    transform: rotate(10deg);
-  }
-}
-
-.ai-chat-btn:hover .ai-robot {
-  filter: drop-shadow(0 0 4px rgba(var(--color-primary-rgb), 0.3));
-}
+
