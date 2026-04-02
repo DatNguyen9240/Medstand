@@ -47,7 +47,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Nhiệm vụ: Đọc câu hỏi của người dùng và phân loại thành ĐÚNG 1 MÃ ACTION (chữ thường) trong danh sách sau. TUYỆT ĐỐI CHỈ TRẢ VỀ MÃ ACTION, KHÔNG GIẢI THÍCH GÌ THÊM.\n\nDanh sách mã Action:\n1. 'quan_gia' : nhắc việc cá nhân, lịch làm việc chung.\n2. 'mat_than' : gợi ý nhập hàng định kỳ, đứt hàng.\n3. 'tuyen_ban_hang' : ghé thăm khách hàng nào hôm nay, lịch tuyến.\n4. 'cham_diem_kh' : phân loại khách hàng, chấm điểm, khách VIP, nguy cơ.\n5. 'moc_thuong' : mốc thưởng, tích lũy, tiến độ quà tặng.\n6. 'ceo_insights' : báo cáo tổng quan giám đốc, chiến lược xả hàng, đọng vốn.\n7. 'catalog' : tra cứu giá niêm yết, danh mục sản phẩm.\n8. 'goi_y_don_thuoc' : phân tích đơn thuốc, kê toa thay thế thuốc, kháng sinh.\n9. 'ai_google_sale' : triệu chứng bệnh, tư vấn y khoa (ho, sốt, đau...).\n10. 'chat_history' : xem lịch sử chat.\n11. 'greeting' : chào hỏi thông thường.\n12. 'ai_sale' : tồn kho, công nợ, doanh thu, doanh số, tra cứu đơn hàng, tạo đơn, thông báo, tài liệu, xem thông tin nhân viên, khách hàng chung chung.\n\nCâu hỏi từ người dùng: \"{{ $json.body?.text || '' }}\""
+        "text": "=Nhiệm vụ: Đọc câu hỏi của người dùng và phân loại thành ĐÚNG 1 MÃ ACTION (chữ thường) trong danh sách sau. TUYỆT ĐỐI CHỈ TRẢ VỀ MÃ ACTION, KHÔNG GIẢI THÍCH GÌ THÊM.\n\nDanh sách mã Action:\n1. 'quan_gia' : nhắc việc cá nhân, lịch làm việc chung.\n2. 'mat_than' : gợi ý nhập hàng định kỳ, đứt hàng, sắp hết hàng cần đặt thêm.\n3. 'goi_y_don_hang' : gợi ý đơn hàng bán cho 1 khách cụ thể, khách nên mua gì hôm nay, hàng bán chạy toàn chi nhánh, sản phẩm ưu tiên bán. VÍ DỤ: 'Hôm nay bán gì cho khách HB106?', 'Hàng bán chạy nhất hôm nay?', 'Top hàng nên đẩy'.\n4. 'tuyen_ban_hang' : ghé thăm khách hàng nào hôm nay, lịch tuyến, khách lâu chưa mua, khách nào cần ghé.\n5. 'cham_diem_kh' : phân loại khách hàng, chấm điểm, khách VIP, nguy cơ, nhóm A/B/C.\n6. 'moc_thuong' : mốc thưởng, tích lũy, tiến độ quà tặng, khách sắp đạt thưởng, còn thiếu bao nhiêu để nhận thưởng.\n7. 'ceo_insights' : báo cáo tổng quan giám đốc, chiến lược xả hàng, đọng vốn, hàng tồn kho bán chậm, đề xuất khuyến mãi toàn hệ thống. KHÔNG bao gồm gợi ý đơn cho khách cụ thể.\n8. 'catalog' : tra cứu giá niêm yết, danh mục sản phẩm, giá bán của thuốc.\n9. 'goi_y_don_thuoc' : phân tích đơn thuốc, kê toa thay thế thuốc, kháng sinh, tên thuốc cụ thể (Amoxicillin, Paracetamol...).\n10. 'ai_google_sale' : triệu chứng bệnh, tư vấn y khoa (ho, sốt, đau đầu...), bán thêm gì cho khách có triệu chứng, upsell theo bệnh.\n11. 'chat_history' : xem lịch sử chat.\n12. 'greeting' : chào hỏi thông thường.\n13. 'ai_sale' : tồn kho, công nợ, doanh thu, doanh số, tra cứu đơn hàng, tạo đơn, thông báo, tài liệu, xem thông tin nhân viên, khách hàng chung chung.\n\nVí dụ:\n- 'Hôm nay bán gì cho khách HB106?' → goi_y_don_hang\n- 'Khách nào tôi cần ghé hôm nay?' → tuyen_ban_hang\n- 'Khách ho lâu bán gì?' → ai_google_sale\n- 'CEO cần thấy hàng nào cần xả?' → ceo_insights\n- 'Khách HB106 tích lũy bao nhiêu?' → moc_thuong\n\nCâu hỏi từ người dùng: \"{{ $json.body?.text || '' }}\""
       },
       "id": "f93e3acb-f67e-44a5-ab1f-4ccf0c9180b5",
       "name": "AI Lễ Tân (Phân Loại)",
@@ -60,7 +60,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const webhookData = $('Webhook Mobile App').first()?.json || {};\nconst aiOutput = ($input.first()?.json?.text || '').toLowerCase();\n\n// 1. CHUẨN HÓA DATA ĐẦU VÀO\nlet body = { ...(webhookData.body || {}), ...(webhookData.query || {}) };\nbody.text = (body.text || body.query || '').trim();\nbody.username = body.username || 'guest';\n\n// 2. PHÂN LOẠI NHANH (FAST PATH)\nlet action = 'ai_sale'; \nconst validActions = ['ai_sale', 'quan_gia', 'mat_than', 'tuyen_ban_hang', 'cham_diem_kh', 'moc_thuong', 'ceo_insights', 'catalog', 'goi_y_don_thuoc', 'ai_google_sale', 'chat_history', 'greeting'];\n\n// Tìm action từ output của AI\nconst aiWords = aiOutput.replace(/[^a-z_]/g, ' ').split(/\\s+/);\nconst matchedAction = validActions.find(v => aiWords.includes(v));\nif (matchedAction) action = matchedAction;\n\n// 3. LOGIC CỨNG (OVERRIDE AI) - ƯU TIÊN ĐỘ CHÍNH XÁC\nfunction removeAccents(str) {\n  return str.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');\n}\n\nconst cleanText = removeAccents(body.text.toLowerCase());\n\n// --- CÁC LUẬT ƯU TIÊN CAO --- \nif (body.image_url) {\n    action = 'goi_y_don_thuoc'; \n} \nelse if (/\\b(lich su|chat history|tin nhan)\\b/i.test(cleanText)) {\n    action = 'chat_history';\n}\nelse if (/^(alo|hi|hello|chao|xin chao|hi sếp)$/i.test(cleanText)) {\n    action = 'greeting';\n}\n// --- CÁC NGHIỆP VỤ CHUYÊN BIỆT (REGEX CHẶT CHẼ) --- \nelse if (/\\b(don thuoc|toa thuoc|goi y thuoc|thay the|khang sinh|amox|cefu|para|augmentin|klamentin)\\b/i.test(cleanText)) {\n    action = 'goi_y_don_thuoc';\n} \nelse if (/\\b(ho|sot|dau|viem|trieu chung|tu van thuoc|benh|cam cum|nhuc dau|dau bung)\\b/i.test(cleanText)) {\n    action = 'ai_google_sale';\n} \nelse if (/\\b(ceo|insight|tong quan|dong von|xa hang|can date|ban cham|khuyen mai|combo|chien luoc|phan tich|tap trung|nen ban gi|uu tien|ban gi hom nay)\\b/i.test(cleanText)) {\n    action = 'ceo_insights';\n} \nelse if (/\\b(moc thuong|tich luy|tien do|dat moc|thieu bao nhieu|chuong trinh thuong)\\b/i.test(cleanText)) {\n    action = 'moc_thuong';\n} \nelse if (/\\b(cham diem|rot nhom|vip|tiem nang|hang a|hang b|hang c|nguy co|phan loai kh)\\b/i.test(cleanText)) {\n    action = 'cham_diem_kh';\n} \nelse if (/\\b(tuyen|lich trinh|di dau|hom nay di|lich ghe|danh sach tuyen|lo trinh)\\b/i.test(cleanText)) {\n    action = 'tuyen_ban_hang';\n} \nelse if (/\\b(mat than|dut hang|nhap thêm|gợi ý nhập|cần nhập gì|het hang)\\b/i.test(cleanText)) {\n    action = 'mat_than';\n} \nelse if (/\\b(quan gia|nhac viec|lich lam viec|lich hen|cong viec)\\b/i.test(cleanText)) {\n    action = 'quan_gia';\n}\nelse if (/\\b(catalog|gia ban|thong tin thuoc|danh muc|gia niem yet|tim gia)\\b/i.test(cleanText)) {\n    action = 'catalog';\n}\n// --- CÁC LỆNH TỔNG HỢP (MEGA-ROUTER) --- \nelse if (/\\b(ton kho|cong no|doanh thu|doanh so|don hang|tao don|len don|nhan vien|khach hang|tai lieu|chinh sach|thong bao|ban chay)\\b/i.test(cleanText)) {\n    action = 'ai_sale';\n}\n\nbody.action = action;\n\n// 4. CHUẨN HÓA TOKEN VÀ SECURITY\nlet rawToken = webhookData.headers?.authorization || webhookData.headers?.Authorization || body.token || '';\nif (rawToken && !rawToken.toLowerCase().startsWith('bearer')) {\n    rawToken = 'Bearer ' + rawToken.trim();\n}\nbody.token = rawToken;\n\nbody._processed_at = new Date().toISOString();\n\nreturn [{ json: { body: body } }];"
+        "jsCode": "const webhookData = $('Webhook Mobile App').first()?.json || {};\nconst aiOutput = ($input.first()?.json?.text || '').toLowerCase();\n\n// 1. CHUẨN HÓA DATA ĐẦU VÀO\nlet body = { ...(webhookData.body || {}), ...(webhookData.query || {}) };\nbody.text = (body.text || body.query || '').trim();\nbody.username = body.username || 'guest';\n\n// 2. PHÂN LOẠI NHANH (FAST PATH — từ AI output)\nlet action = 'ai_sale';\nconst validActions = ['ai_sale', 'goi_y_don_hang', 'quan_gia', 'mat_than', 'tuyen_ban_hang', 'cham_diem_kh', 'moc_thuong', 'ceo_insights', 'catalog', 'goi_y_don_thuoc', 'ai_google_sale', 'chat_history', 'greeting'];\nconst aiWords = aiOutput.replace(/[^a-z_]/g, ' ').split(/\\s+/);\nconst matchedAction = validActions.find(v => aiWords.includes(v));\nif (matchedAction) action = matchedAction;\n\n// 3. HELPER — bỏ dấu tiếng Việt\nfunction removeAccents(str) {\n  return str.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');\n}\nconst cleanText = removeAccents(body.text.toLowerCase());\n\n// 4. LOGIC CỨNG (OVERRIDE AI) — ƯU TIÊN CAO NHẤT\nif (body.image_url) {\n    action = 'goi_y_don_thuoc';\n}\nelse if (/\\b(lich su|chat history|tin nhan cu)\\b/.test(cleanText)) {\n    action = 'chat_history';\n}\nelse if (/^(alo|hi|hello|chao|xin chao|hi sep|good morning)$/.test(cleanText)) {\n    action = 'greeting';\n}\n// MODULE 7 — ĐƠN THUỐC / KHÁNG SINH (không dấu)\nelse if (/\\b(don thuoc|toa thuoc|goi y thuoc|thay the thuoc|khang sinh|amox|cefu|para|augmentin|klamentin|bromhexin|amoxicillin|paracetamol)\\b/.test(cleanText)) {\n    action = 'goi_y_don_thuoc';\n}\n// MODULE 5 — TRIỆU CHỨNG Y KHOA (không dấu)\nelse if (/\\b(thuoc ho|bi ho|ho lau|thuoc sot|bi sot|sot cao|dau dau|nhuc dau|dau bung|tieu chay|viem hong|cam cum|di ung|rat hong|nghet mui|kho tho|mat ngu|bo than kinh|xuong khop|tieu duong|huyet ap)\\b/.test(cleanText)) {\n    action = 'ai_google_sale';\n}\n// MODULE 6 — CEO INSIGHTS (chiến lược tổng, không phải khách cụ thể)\nelse if (/\\b(ceo|tong quan|dong von|xa hang|can date|ban cham kho|chien luoc kinh doanh|phan tich ton kho|khuyen mai gi|chien luoc)\\b/.test(cleanText)) {\n    action = 'ceo_insights';\n}\n// MODULE 4 — TÍCH LŨY / MỐC THƯỞNG\nelse if (/\\b(moc thuong|tich luy|tien do thuong|dat moc|thieu bao nhieu de dat|chuong trinh thuong|sap dat thuong|qua tang|con thieu)\\b/.test(cleanText)) {\n    action = 'moc_thuong';\n}\n// MODULE 3 — CHẤM ĐIỂM KH\nelse if (/\\b(cham diem|phan loai khach|rot nhom|nhom a|nhom b|nhom c|hang a|hang b|hang c|nguy co roi bo|sap nghi mua|khach vip)\\b/.test(cleanText)) {\n    action = 'cham_diem_kh';\n}\n// MODULE 2 — TUYẾN BÁN HÀNG\nelse if (/\\b(tuyen hom nay|lich ghe|ghe khach nao|khach nao nen ghe|danh sach tuyen|lo trinh hom nay|lau chua ghe|lau chua mua)\\b/.test(cleanText)) {\n    action = 'tuyen_ban_hang';\n}\n// MODULE 1b — MẠT THẦN (nhập hàng định kỳ — không dấu)\nelse if (/\\b(mat than|dut hang|nhap them|goi y nhap|can nhap gi|sap het hang|can dat hang)\\b/.test(cleanText)) {\n    action = 'mat_than';\n}\n// MODULE 1a — GỢI Ý ĐƠN HÀNG cho khách / bán chạy (không dấu)\nelse if (/\\b(goi y don hang|nen ban gi cho|khach nen mua gi|ban chay nhat chi nhanh|nen tap trung ban gi|top hang ban|sp uu tien|don hang goi y)\\b/.test(cleanText)) {\n    action = 'goi_y_don_hang';\n}\n// ADMIN / CATALOG\nelse if (/\\b(quan gia|nhac viec|lich lam viec|lich hen ca nhan|cong viec ca nhan)\\b/.test(cleanText)) {\n    action = 'quan_gia';\n}\nelse if (/\\b(catalog|gia ban|thong tin thuoc|danh muc sp|gia niem yet|tim gia|gia bao nhieu)\\b/.test(cleanText)) {\n    action = 'catalog';\n}\n// TỔNG HỢP — AI SALE\nelse if (/\\b(ton kho|cong no|doanh thu|doanh so|don hang|tao don|len don|nhan vien|tai lieu|chinh sach|thong bao|ban chay chung|xem khach)\\b/.test(cleanText)) {\n    action = 'ai_sale';\n}\n\nbody.action = action;\n\n// 5. TRÍCH XUẤT THAM SỐ SQL\n// A. ObjectID — Mã khách hàng\nbody.objectID = body.object_id || body.objectid || body.khach_hang || body.ma_kh || '';\nif (!body.objectID) {\n  const objMatch = body.text.match(/\\b([A-Z]{1,3}\\d{3,6})\\b/i);\n  if (objMatch) body.objectID = objMatch[1].toUpperCase();\n}\n\n// B. SearchKey — Từ khóa triệu chứng (Module 5)\nbody.searchKey = body.search_key || body.trieu_chung || body.searchkey || '';\nif (!body.searchKey && action === 'ai_google_sale') {\n  const symptomMap = [\n    ['thuoc ho|bi ho|ho lau', 'ho'], ['thuoc sot|bi sot|sot cao', 'sot'],\n    ['dau dau|nhuc dau', 'dau dau'], ['dau bung', 'dau bung'],\n    ['tieu chay', 'tieu chay'], ['viem hong', 'viem hong'],\n    ['cam cum', 'cam cum'], ['di ung', 'di ung'],\n    ['kho tho', 'kho tho'], ['mat ngu', 'mat ngu'],\n    ['bo than kinh', 'bo than kinh'], ['xuong khop', 'xuong khop'],\n    ['tieu duong', 'tieu duong'], ['huyet ap', 'huyet ap']\n  ];\n  for (const [pattern, val] of symptomMap) {\n    if (new RegExp(pattern).test(cleanText)) { body.searchKey = val; break; }\n  }\n}\n\n// C. NhomFilter — Nhóm A/B/C (Module 3)\nbody.nhomFilter = body.nhom_filter || body.nhomfilter || '';\nif (!body.nhomFilter && action === 'cham_diem_kh') {\n  if (/\\b(vip|nhom a|hang a|khach a|doanh so cao nhat)\\b/.test(cleanText)) body.nhomFilter = 'A';\n  else if (/\\b(nhom b|hang b|on dinh|tiem nang)\\b/.test(cleanText)) body.nhomFilter = 'B';\n  else if (/\\b(nguy co|nhom c|hang c|sap nghi|lau chua mua|mat khach)\\b/.test(cleanText)) body.nhomFilter = 'C';\n}\n\n// D. medicineKeyword — Tên thuốc từ đơn (Module 7)\nbody.medicineKeyword = body.keyword || body.ten_thuoc || body.thuoc || '';\n\n// E. TopN — Số kết quả tối đa\nbody.topN = parseInt(body.top_n || body.topn || body.so_luong || '10', 10) || 10;\n\n// F. MucTieu — Mức tích lũy (Module 4)\nbody.mucTieu = parseFloat(body.muc_tieu || body.muctieu || '10000000') || 10000000;\n\n// G. SoNgayVangMat — Ngưỡng cảnh báo (Module 2)\nbody.soNgayVangMat = parseInt(body.so_ngay || body.ngay_vang_mat || '45', 10) || 45;\n\n// 6. SECURITY & METADATA\nlet rawToken = webhookData.headers?.authorization || webhookData.headers?.Authorization || body.token || '';\nif (rawToken && !rawToken.toLowerCase().startsWith('bearer')) {\n    rawToken = 'Bearer ' + rawToken.trim();\n}\nbody.token = rawToken;\nbody._processed_at = new Date().toISOString();\n\nreturn [{ json: { body: body } }];"
       },
       "id": "d60833c0-4187-4ba3-9b01-f6d1b8d6f2bb",
       "name": "Chuẩn Hóa Action",
@@ -350,6 +350,29 @@
               },
               "renameOutput": true,
               "outputKey": "Chao Hoi"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "goi_y_don_hang",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WF-GoiYDonHang"
             }
           ]
         },
@@ -625,6 +648,45 @@
     },
     {
       "parameters": {
+        "workflowId": "GOI_Y_DON_HANG_WF_ID",
+        "options": {}
+      },
+      "id": "c7e3f1a2-4b85-4d96-8e0f-1a2b3c4d5e6f",
+      "name": "Goi Workflow GOI Y DON HANG (WF-M1)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        7232
+      ]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "output",
+              "value": "🤔 Xin lỗi, tôi chưa hiểu yêu cầu này. Bạn có thể hỏi lại theo cách khác không? Ví dụ: 'Hôm nay bán gì cho khách HB106?', 'Tuyến hôm nay của tôi', 'Khách VIP là ai?'"
+            },
+            {
+              "name": "action",
+              "value": "chat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d8f4a2b1-5c96-4e07-9f10-2b3c4d5e6f7a",
+      "name": "Fallback Handler",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        7392
+      ]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify({\n  status: ($json.status || 'success'),\n  action: ($json.action || $json.body?.action || 'chat'),\n  message: ($json.text || $json.baoCao || $json.finalText || $json.output || $json.formatted_chat || $json.body?.text || $json.message || 'Đã xử lý xong!'),\n  data: ($json.data || $json.items || {})\n}) }}",
         "options": {}
@@ -772,7 +834,14 @@
         ],
         [
           {
-            "node": "Goi Workflow AI SALE (WF2)",
+            "node": "Goi Workflow GOI Y DON HANG (WF-M1)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback Handler",
             "type": "main",
             "index": 0
           }
@@ -941,6 +1010,28 @@
       ]
     },
     "Cau tra loi tinh": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Workflow GOI Y DON HANG (WF-M1)": {
+      "main": [
+        [
+          {
+            "node": "Tra ket qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback Handler": {
       "main": [
         [
           {
