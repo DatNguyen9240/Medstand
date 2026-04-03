@@ -110,7 +110,7 @@ BEGIN
         L.DiemUuTien,
         CONCAT(
             CASE
-                WHEN L.NgayConLaiHetHang < 0 THEN N'📍 Quá hạn mua ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày'
+                WHEN L.NgayConLaiHetHang < 0 THEN N'📍 Chưa phát sinh đơn hàng ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày'
                 WHEN L.NgayConLaiHetHang <= 5 THEN N'⏳ Sắp hết hàng (Còn ' + CAST(L.NgayConLaiHetHang AS VARCHAR) + N' ngày)'
                 ELSE N'📅 Theo lịch ghé'
             END,
@@ -119,37 +119,10 @@ BEGIN
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
     WHERE (@ObjectID = '' OR KH.ObjectID = @ObjectID)
+      AND L.SoNgayKhongMua >= @SoNgayVangMat
     ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC;
-
-
-    -- ═══════════════════════════════════════════════════════
-    -- KẾT QUẢ 2: CẢNH BÁO RỜI BỎ
-    -- ═══════════════════════════════════════════════════════
-    SELECT KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone, KH.ZoneID AS Tuyen, KH.ThuTrongTuan AS LichGhe,
-           FORMAT(L.LanMuaCuoi, 'MM/dd') AS LanMuaCuoi, L.SoNgayKhongMua,
-           CASE
-                WHEN L.SoNgayKhongMua >= @SoNgayVangMat THEN N'🔴 NGUY CƠ RỜI BỎ'
-                ELSE N'🟡 CẦN CHĂM SÓC'
-           END AS NhomCanhBao,
-           CASE
-                WHEN L.SoNgayKhongMua >= @SoNgayVangMat THEN N'Khách đã ' + CAST(L.SoNgayKhongMua AS VARCHAR) + N' ngày chưa phát sinh đơn.'
-                ELSE N'Doanh số có dấu hiệu sụt giảm tháng này.'
-           END AS CanhBao
-    FROM CF_ObjectTbl KH JOIN #Logic L ON KH.ObjectID = L.ObjectID
-    WHERE (@ObjectID <> '' AND KH.ObjectID = @ObjectID) OR (@ObjectID = '' AND L.SoNgayKhongMua >= @SoNgayVangMat)
-    ORDER BY L.SoNgayKhongMua DESC;
 
 
     DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic;
 END
 GO
-
-
-
-
-
-
-
-
-
-

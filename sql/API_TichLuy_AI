@@ -83,21 +83,26 @@ BEGIN
 
 
 
-    -- KẾT QUẢ TRẢ VỀ CHO AI
-    -- Bảng 0: Chương trình
-     SELECT DocumentID AS ProgramID, ISNULL(Memo, N'Tích lũy trọng tâm tháng ' + CAST(MONTH(FromDate) AS VARCHAR)) AS TenChuongTrinh,
-            FORMAT(FromDate, 'dd/MM') AS FromDate, FORMAT(ToDate, 'dd/MM') AS ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+    -- KẾT QUẢ DUY NHẤT — gộp chương trình + tích lũy + gợi ý sản phẩm
+    DECLARE @TenChuongTrinh NVARCHAR(200) = ''
+    DECLARE @ChTrinhFrom    VARCHAR(10)   = ''
+    DECLARE @ChTrinhTo      VARCHAR(10)   = ''
+    SELECT @TenChuongTrinh = ISNULL(Memo, N'Tích lũy trọng tâm tháng ' + CAST(MONTH(FromDate) AS VARCHAR)),
+           @ChTrinhFrom    = FORMAT(FromDate, 'dd/MM'),
+           @ChTrinhTo      = FORMAT(ToDate,   'dd/MM')
+    FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
 
-
-
-
-    -- Bảng 1: Trạng thái quà tặng (Dùng LEFT JOIN để luôn hiện khách hàng)
+    -- Bảng 1: Chương trình + Tích lũy khách hàng
     SELECT * FROM (
-        SELECT KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone,
+        SELECT
+            @ProgramID        AS ProgramID,
+            @TenChuongTrinh   AS TenChuongTrinh,
+            @ChTrinhFrom      AS ChTrinhFromDate,
+            @ChTrinhTo        AS ChTrinhToDate,
+            KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone,
             CAST(ISNULL(TL.TongDat,0) AS BIGINT) AS TichLuyDatDuoc,
             CAST(@MucTieu AS BIGINT) AS MucDieuMotPhanQua,
             CAST(FLOOR(ISNULL(TL.TongDat,0) / @MucTieu) AS INT) AS SoQuaDaDat,
-            -- Số tiền còn thiếu cho quà tiếp
             CAST(@MucTieu - (CAST(ISNULL(TL.TongDat,0) AS BIGINT) % CAST(@MucTieu AS BIGINT)) AS BIGINT) AS ConThieuChoQuaTiep,
             CASE
                 WHEN ISNULL(TL.TongDat,0) >= @MucTieu
@@ -110,29 +115,22 @@ BEGIN
            OR (@ObjectID = '' AND ISNULL(TL.TongDat,0) >= @MucTieu * 0.7)
     ) Result ORDER BY TichLuyDatDuoc DESC;
 
-
-
-
-    -- Bảng 2: Gợi ý bán thêm (Chỉ chọn hàng trọng tâm CÒN KHO)
+    -- Bảng 2: Gợi ý sản phẩm trọng tâm còn kho (chỉ khi xem 1 khách)
     IF @ObjectID != ''
     BEGIN
         SELECT TOP 5 T.ItemID, CF.ItemName, N'Gợi ý hàng trọng tâm còn kho' AS GhiChu
         FROM #TrongTam T
         JOIN CF_ItemTbl CF ON T.ItemID = CF.ItemID
-        JOIN IV_StockTbl S ON T.ItemID = S.ItemID -- Kiểm tra tồn kho thực tế
+        JOIN IV_StockTbl S ON T.ItemID = S.ItemID
         WHERE S.QuantityinStock > 0
           AND T.ItemID NOT IN (
-              SELECT D.ItemID
-              FROM AR_InvoiceDetailTbl D
+              SELECT D.ItemID FROM AR_InvoiceDetailTbl D
               JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
               WHERE I.ObjectID = @ObjectID
                 AND I.DocumentDate BETWEEN @FromDate AND @ToDate
                 AND ISNULL(I.StatusID, 0) != 10
           );
     END
-
-
-
 
     DROP TABLE #HoaDon; DROP TABLE #TraHang; DROP TABLE #TrongTam; DROP TABLE #TichLuy;
 END
