@@ -1,57 +1,65 @@
-# 🤖 Kịch Bản Hội Thoại Bán Hàng Chia Theo Module (Q&A)
+# 🤖 Kịch Bản Hội Thoại Bán Hàng (Sắp xếp theo Thứ tự Module 1-10)
 
-Tài liệu này hướng dẫn cách AI tương tác với người dùng theo từng phân hệ (module) chức năng cụ thể trong hệ thống.
-
----
-
-## 🛒 MODULE 1: BÁN HÀNG & TƯ VẤN THÔNG MINH
-*Module này giúp nhân viên chốt đơn nhanh và tăng giá trị đơn hàng.*
-
-**Người hỏi:** "Khách hàng muốn biết giá của thuốc Panadol vỉ và thực phẩm chức năng bổ não hôm nay bao nhiêu? Còn hàng trong kho không?"  
-**AI trả lời:**  
-"Giá Panadol vỉ hôm nay là **15.000đ/vỉ**, kho còn hơn 500 vỉ. Thực phẩm chức năng bổ não có giá **180.000đ/hộp**, kho còn 20 hộp. Đây là mức giá niêm yết mới nhất đã được cập nhật đồng bộ với danh mục."
-
-**Người hỏi:** "Khách đưa một đơn thuốc từ nơi khác, trong đó có 'Kháng sinh X' và 'Bổ gan Y'. Bên mình có hàng tương tự không?"  
-**AI trả lời:**  
-"Có ạ. Đối với 'Kháng sinh X', chúng ta có sản phẩm **Amox-C** với hàm lượng tương đương. Với 'Bổ gan Y', bạn có thể hướng khách sang dòng **Hepasan** của mình, hoạt chất ưu việt hơn và đang có giá cạnh tranh."
-
-**Người hỏi:** "Khách vừa chọn 2 hộp Kháng sinh. AI có gợi ý bán kèm thêm món gì không?"  
-**AI trả lời:**  
-"⚠️ **Cảnh báo:** Đơn hàng có Kháng sinh, bạn hãy tư vấn khách lấy thêm **Men vi sinh** để bảo vệ hệ tiêu hóa.  
-🎁 Ngoài ra, để giúp chị khách mau chóng đạt thưởng, nhà thuốc nên lấy thêm **Combo Tăng đề kháng** (đây là hàng chiến lược tháng này)."
+Tài liệu này được biên soạn để khớp hoàn toàn với cấu trúc file SQL Module của bạn.
 
 ---
 
-## 📍 MODULE 2: QUẢN LÝ TUYẾN & CHIẾN LƯỢC THỊ TRƯỜNG
-*Module này giúp lập kế hoạch di chuyển và xử lý hàng tồn hiệu quả.*
-
-**Người hỏi:** "Hôm nay tôi nên đi thăm những nhà thuốc nào ở khu vực Quận 1? Khách nào lâu rồi chưa mua hàng?"  
+### ⏳ [Module 1] GỢI Ý ĐƠN HÀNG (Recurring Loyalty)
+**Người hỏi:** "Khách này có món nào thường mua mà sắp hết hạn chu kỳ lấy hàng chưa?"  
 **AI trả lời:**  
-"Dựa trên lộ trình, bạn nên ghé thăm 10 điểm bán tại Quận 1. Đặc biệt lưu ý **Nhà thuốc An Bình** và **Nhà thuốc Tâm Đức** đã hơn 45 ngày chưa phát sinh đơn mới. Đây là cơ hội tốt để hâm nóng mối quan hệ."
-
-**Người hỏi:** "Có mặt hàng nào cần ưu tiên xả hàng để giải phóng kho không?"  
-**AI trả lời:**  
-"Dữ liệu kho cho thấy **Siro ho ABC** và **Vitamin XYZ** đang tồn cao và chỉ còn 6 tháng hạn dùng. Bạn hãy ưu tiên chào mời 2 món này với chương trình 'Cận date - Giá sốc' để đẩy hàng đi nhanh nhất."
+"Có ạ. Sản phẩm **Canxi Nano** khách mua đơn cuối cách đây 34 ngày. Theo chu kỳ tiêu thụ trung bình là 30 ngày, dự kiến nhà thuốc đã cạn hàng từ 4 ngày trước. Bạn hãy nhắc họ nhập thêm để đảm bảo không bị đứt hàng nhé."
 
 ---
 
-## 📈 MODULE 3: TÍN DỤNG & CHĂM SÓC KHÁCH HÀNG
-*Module này giúp đánh giá rủi ro và thắt chặt mối quan hệ với khách hàng.*
-
-**Người hỏi:** "Uy tín và sức khỏe tài chính của nhà thuốc này hiện tại thế nào?"  
+### 📍 [Module 2] QUẢN LÝ TUYẾN BÁN HÀNG (Planning)
+**Người hỏi:** "Lịch trình hôm nay của tôi thế nào? Có ai vắng mặt quá lâu không?"  
 **AI trả lời:**  
-"Nhà thuốc này có điểm tín dụng là **85/100 (Hạng A)**. Lịch sử thanh toán rất tốt, tỷ lệ nợ quá hạn gần như bằng 0. Bạn hoàn toàn có thể tự tin ký đơn hàng lớn cho họ."
-
-**Người hỏi:** "Khách này thường mua những gì mà gần đây họ chưa lấy lại?"  
-**AI trả lời:**  
-"Theo lịch sử, khách thường nhập **Canxi Nano** định kỳ mỗi 30 ngày. Hiện tại đã 35 ngày trôi qua, khả năng cao là họ đã cạn kho. Bạn hãy nhắc họ nhập thêm để tránh bị đứt hàng nhé."
-
-**Người hỏi:** "Sau đơn hàng này, tổng doanh số tích lũy của khách là bao nhiêu?"  
-**AI trả lời:**  
-"Chúc mừng! Tổng doanh số tích lũy tháng này của nhà thuốc đã đạt **10.700.000đ**. Họ đã chính thức vượt mốc quà tặng đầu tiên. Bạn hãy thông báo tin vui này nhé!"
+"Chào bạn, lộ trình hôm nay gồm 8 điểm tại Quận 1. Cần lưu ý **Nhà thuốc An Bình** đã vắng mặt **52 ngày** (vượt ngưỡng 45 ngày). Hãy ưu tiên ghé thăm điểm này đầu tiên để hâm nóng doanh số."
 
 ---
 
-### 🏁 LƯU Ý KỸ THUẬT:
-*   Mọi phản hồi của AI đều được kết nối trực tiếp với 9 Procedure AI trong Folder `sql`.
-*   Dữ liệu luôn được đồng bộ thời gian thực với bảng giá Excel của hệ thống.
+### 💳 [Module 3] CHẤM ĐIỂM & TÍN DỤNG KHÁCH HÀNG (Credit Score)
+**Người hỏi:** "Độ uy tín của nhà thuốc này thế nào? Tôi có nên cho họ nợ đơn hàng lớn không?"  
+**AI trả lời:**  
+"Nhà thuốc này có điểm tín dụng là **88/100 (Hạng A - Rất tốt)**. Lịch sử thanh toán luôn đúng hạn trong 6 tháng qua. Bạn hoàn toàn có thể tự tin ký đơn hàng lớn hoặc áp dụng các chính sách ưu đãi cho họ."
+
+---
+
+### 🏆 [Module 4] TÍCH LŨY & PHẦN THƯỞNG (Loyalty)
+**Người hỏi:** "Cập nhật tổng kết đơn hàng này, khách đã đạt được mốc quà nào chưa?"  
+**AI trả lời:**  
+"🎉 Chúc mừng! Sau đơn hàng này, tổng tích lũy tháng của nhà thuốc đạt **11.050.000đ**. Họ đã vượt mốc thưởng 10 triệu và nhận được **1 phần quà Voucher 500k**. Tôi đã ghi nhận tích lũy thành công vào hệ thống."
+
+---
+
+### 🎁 [Module 5] UPSELL & TIẾP CẬN MỐC THƯỞNG
+**Người hỏi:** "Gợi ý cho tôi vài món bán chạy để khách gộp đơn cho đủ mốc doanh số nhận quà tiếp theo."  
+**AI trả lời:**  
+"Dựa trên lịch sử mua hàng, bạn nên tư vấn họ lấy thêm **Combo Tăng đề kháng**. Món này thuộc Top 10 bán chạy tại chi nhánh, vừa giúp khách mau đạt mốc thưởng, vừa rất dễ ra lẻ tại cửa hàng nhà thuốc."
+
+---
+
+### 📦 [Module 6] ĐỀ XUẤT KHUYẾN MÃI (Expiry & Velocity)
+**Người hỏi:** "Có mặt hàng nào cận date hoặc tồn kho cao cần đẩy mạnh ngay không?"  
+**AI trả lời:**  
+"Cảnh báo: **Siro ho ABC** còn tồn 150 hộp nhưng hạn dùng **dưới 3 tháng**. Tôi đề xuất chạy chương trình 'Mua 5 tặng 1' hoặc giảm giá sâu để giải phóng kho hàng này ngay lập tức."
+
+---
+
+### 💊 [Module 8] GỢI Ý ĐƠN THUỐC TƯƠNG ĐƯƠNG (Alternatives)
+**Người hỏi:** "Khách hỏi mua 'Kháng sinh ngoại Z' nhưng mình hết hàng, có sản phẩm nào thay thế không?"  
+**AI trả lời:**  
+"Bạn hãy tư vấn dòng **Amox-C** của chúng ta. Sản phẩm có cùng hoạt chất và hàm lượng tương đương, giá đang ưu đãi tốt hơn và hàng luôn sẵn sàng giao ngay."
+
+---
+
+### 🔍 [Module 10] TRA CỨU GIÁ - TỒN KHO - TRỌNG TÂM
+**Người hỏi:** "Báo giá mới của Panadol vỉ và tình hình hàng trọng tâm của khách tháng này?"  
+**AI trả lời:**  
+"Giá Panadol là **15.200đ/vỉ**, kho còn 480 vỉ. Về chương trình trọng tâm, khách đã mua được **8.250.000đ**, còn thiếu **1.750.000đ** nữa là đạt mốc quà tặng 500k của tháng."
+
+---
+
+### 🏁 LƯU Ý VẬN HÀNH:
+*   Kịch bản đã được sắp xếp **đúng trình tự từ Module 1 đến Module 10**.
+*   Các Module 7 và 9 hiện tại không có file SQL tương ứng nên đã được lược bỏ khỏi kịch bản này.
