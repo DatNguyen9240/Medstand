@@ -1451,21 +1451,14 @@
             // Double-tap detected!
             e.preventDefault();
             _ghostAccept();
-            // Hiện visual feedback nhỏ
-            _ghostFlash();
         }
     }, { passive: false });
-
-    /** Flash nhẹ để báo hiệu ghost đã được chấp nhận */
-    function _ghostFlash() {
-        var $bar = document.getElementById('chat-input-bar');
-        if (!$bar) return;
-        $bar.style.transition = 'background 0.1s';
-        $bar.style.background = 'rgba(var(--color-primary-rgb), 0.08)';
-        setTimeout(function () {
-            $bar.style.background = '';
-        }, 180);
-    }
+    
+    // ── Double-click trên Desktop → accept ghost text ──
+    $input.addEventListener('dblclick', function (e) {
+        if (!ghostText) return;
+        _ghostAccept();
+    });
 
     $btnSend.addEventListener('click', _send);
 
