@@ -3,7 +3,6 @@ GO
 CREATE PROCEDURE API_UpsellGoiY_AI
     @Username      VARCHAR(50)  = '',
     @ObjectID      VARCHAR(50)  = '',
-    @MucTarget     FLOAT        = 10000000,
     @SearchKey     NVARCHAR(50) = '',      
     @TopN          INT          = 10
 AS
@@ -21,17 +20,24 @@ BEGIN
     SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
 
     DECLARE @DoanhSoHienTai FLOAT = 0
+    DECLARE @MucTarget      FLOAT = 0
     DECLARE @SoTienThieu    FLOAT = 0
+    DECLARE @ProgramID      VARCHAR(50) = ''
 
     -- ═══ Validate ObjectID ═══
     IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
     BEGIN
-        SELECT 0 AS DoanhSoDaDat, @MucTarget AS MucTieuTiepTheo, @MucTarget AS SoTienConThieu, 
-               N'❌ Không tìm thấy mã khách hàng này trong hệ thống.' AS LoiNhacAI;
+        SELECT N'❌ Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
     END
 
-    -- ═══ Doanh số hiện tại của khách trong tháng ═══
+    -- ═══ 1. Xác định chương trình đang hoạt động ═══
+    SELECT TOP 1 @ProgramID = DocumentID 
+    FROM AR_SanPhamTrongTamTbl
+    WHERE GETDATE() BETWEEN FromDate AND ToDate
+    ORDER BY ToDate DESC
+
+    -- ═══ 2. Doanh số hiện tại của khách trong tháng ═══
     SELECT @DoanhSoHienTai = ISNULL(SUM(D.TotalAmount), 0)
     FROM AR_InvoiceTbl I
     JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
@@ -40,11 +46,31 @@ BEGIN
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
 
-    SET @SoTienThieu = CASE WHEN @DoanhSoHienTai < @MucTarget 
-                            THEN @MucTarget - @DoanhSoHienTai 
-                            ELSE 0 END
+    -- ═══ 3. Tự động tìm mốc thưởng tiếp theo (Cách 3) ═══
+    IF @ProgramID <> ''
+    BEGIN
+        SELECT TOP 1 @MucTarget = CAST(TuDiem AS FLOAT)
+        FROM AR_PromotionGiftTbl
+        WHERE DocumentID = @ProgramID AND TuDiem > @DoanhSoHienTai
+        ORDER BY TuDiem ASC
+    END
 
-    -- ═══ 1. Lấy giá mới nhất từ Bảng giá (Price List) - Thay thế cho lịch sử bán ═══
+    SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END
+
+    -- ════════════════════════════════════════════════════
+    -- BẢNG 1: THÔNG BÁO DOANH SỐ (TỰ ĐỘNG THEO MỐC)
+    -- ════════════════════════════════════════════════════
+    SELECT
+        CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
+        CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
+        CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
+        CASE 
+            WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
+            WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+            ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+        END AS LoiNhacAI
+
+    -- ═══ 4. Lấy giá mới nhất từ Bảng giá (Price List) ═══
     SELECT
         D.ItemID,
         MAX(H.FromDate) AS MaxFromDate
@@ -66,7 +92,7 @@ BEGIN
     WHERE H.isDisable = 0
     GROUP BY D.ItemID;
 
-    -- ═══ 2. Hàng khách hay mua (6 tháng gần nhất) ═══
+    -- ═══ 5. Hàng khách hay mua (6 tháng gần nhất) ═══
     SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
     INTO #KhachQuen 
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
@@ -75,7 +101,7 @@ BEGIN
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
     GROUP BY D.ItemID
 
-    -- ═══ 3. Top 50 bán chạy tại chi nhánh (6 tháng gần nhất) ═══
+    -- ═══ 6. Top 50 bán chạy tại chi nhánh (6 tháng gần nhất) ═══
     SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
     INTO #BanChay 
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
@@ -84,23 +110,11 @@ BEGIN
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
     GROUP BY D.ItemID
 
-    -- ═══ 4. Tồn kho tổng hợp (FIX: SUM để tránh lỗi nhiều kho/chi nhánh) ═══
+    -- ═══ 7. Tồn kho tổng hợp ═══
     SELECT ItemID, SUM(QuantityinStock) AS QuantityinStock
     INTO #TonKho
     FROM IV_StockTbl
     GROUP BY ItemID
-
-    -- ════════════════════════════════════════════════════
-    -- BẢNG 1: THÔNG BÁO DOANH SỐ HIỆN TẠI
-    -- ════════════════════════════════════════════════════
-    SELECT 
-        CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat, 
-        CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo, 
-        CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
-        CASE WHEN @SoTienThieu > 0 
-             THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt thưởng.' 
-             ELSE N'🎉 Đạt thưởng!' 
-        END AS LoiNhacAI
 
     -- ════════════════════════════════════════════════════
     -- BẢNG 2: GỢI Ý SẢN PHẨM
