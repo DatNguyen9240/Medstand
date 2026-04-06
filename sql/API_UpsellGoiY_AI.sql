@@ -44,13 +44,27 @@ BEGIN
                             THEN @MucTarget - @DoanhSoHienTai 
                             ELSE 0 END
 
-    -- ═══ 1. Giá thị trường (6 tháng gần nhất) ═══
-    SELECT D.ItemID, AVG(D.TotalAmount / NULLIF(D.Quantity, 0)) AS GiaHienTai
-    INTO #GiaThiTruong 
-    FROM AR_InvoiceDetailTbl D JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
-    WHERE I.DocumentDate >= DATEADD(MONTH, -6, GETDATE()) 
-      AND ISNULL(I.StatusID, 0) != 10
-    GROUP BY D.ItemID
+    -- ═══ 1. Lấy giá mới nhất từ Bảng giá (Price List) - Thay thế cho lịch sử bán ═══
+    SELECT
+        D.ItemID,
+        MAX(H.FromDate) AS MaxFromDate
+    INTO #LatestPriceHeader
+    FROM AR_PriceDetailTbl D
+    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    WHERE H.isDisable = 0
+      AND H.FromDate <= GETDATE()
+      AND (H.ToDate IS NULL OR H.ToDate >= GETDATE())
+    GROUP BY D.ItemID;
+
+    SELECT
+        D.ItemID,
+        MAX(D.UnitPrice) AS GiaHienTai
+    INTO #GiaThiTruong
+    FROM AR_PriceDetailTbl D
+    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    JOIN #LatestPriceHeader L ON D.ItemID = L.ItemID AND H.FromDate = L.MaxFromDate
+    WHERE H.isDisable = 0
+    GROUP BY D.ItemID;
 
     -- ═══ 2. Hàng khách hay mua (6 tháng gần nhất) ═══
     SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
@@ -152,6 +166,6 @@ BEGIN
       )
     ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
 
-    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho;
+    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader;
 END
 GO

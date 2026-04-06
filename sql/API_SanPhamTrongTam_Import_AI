@@ -1,0 +1,96 @@
+IF OBJECT_ID('API_SanPhamTrongTam_Import_AI', 'P') IS NOT NULL DROP PROCEDURE API_SanPhamTrongTam_Import_AI;
+GO
+
+
+CREATE PROCEDURE API_SanPhamTrongTam_Import_AI
+    @DocumentID VARCHAR(50),
+    @FromDate   DATETIME,
+    @ToDate     DATETIME,
+    @Memo       NVARCHAR(200),
+    @JsonItems  NVARCHAR(MAX),
+    @JsonRules  NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+
+        -- 1. Cập nhật hoặc Thêm mới Header (AR_SanPhamTrongTamTbl)
+        IF EXISTS (SELECT 1 FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @DocumentID)
+        BEGIN
+            UPDATE AR_SanPhamTrongTamTbl
+            SET FromDate = @FromDate, ToDate = @ToDate, Memo = @Memo,
+                DateUpdate = GETDATE(), UserUpdate = 'AI_IMPORT'
+            WHERE DocumentID = @DocumentID;
+        END
+        ELSE
+        BEGIN
+            INSERT INTO AR_SanPhamTrongTamTbl (DocumentID, FromDate, ToDate, Memo, isLock, UserCreate, DateCreate)
+            VALUES (@DocumentID, @FromDate, @ToDate, @Memo, 0, 'AI_IMPORT', GETDATE());
+        END
+
+
+        -- 2. FIX LỖI FOREIGN KEY: Khai báo vào bảng AR_PromotionTbl với tên cột chuẩn
+        IF NOT EXISTS (SELECT 1 FROM AR_PromotionTbl WHERE DocumentID = @DocumentID)
+        BEGIN
+            INSERT INTO AR_PromotionTbl (DocumentID, FromDate, ToDate, TenChuongTrinh, isDisable, UserCreate, DateCreate)
+            VALUES (@DocumentID, @FromDate, @ToDate, @Memo, 0, 'AI_IMPORT', GETDATE());
+        END
+        ELSE
+        BEGIN
+            UPDATE AR_PromotionTbl
+            SET FromDate = @FromDate, ToDate = @ToDate, TenChuongTrinh = @Memo, isDisable = 0
+            WHERE DocumentID = @DocumentID;
+        END
+
+
+        -- 3. Lưu danh sách SẢN PHẨM TRỌNG TÂM (Detail)
+        DELETE FROM AR_SanPhamTrongTamDetailTbl WHERE DocumentID = @DocumentID;
+       
+        INSERT INTO AR_SanPhamTrongTamDetailTbl (UserAutoID, DocumentID, ItemID, Notes)
+        SELECT NEWID(), @DocumentID, ItemID, Notes
+        FROM OPENJSON(@JsonItems)
+        WITH (ItemID VARCHAR(50) '$.ItemID', Notes NVARCHAR(500) '$.Notes');
+
+
+        -- 4. Lưu DANH SÁCH MỐC THƯỞNG (Rules vào AR_PromotionGiftTbl)
+        DELETE FROM AR_PromotionGiftTbl WHERE DocumentID = @DocumentID;
+
+
+        INSERT INTO AR_PromotionGiftTbl (UserAutoID, DocumentID, TuDiem, DenDiem, QuaTang, Notes)
+        SELECT
+            NEWID() AS UserAutoID,
+            @DocumentID AS DocumentID,
+            CAST(TuDiem AS DECIMAL(18,2)) AS TuDiem,
+            CAST(DenDiem AS DECIMAL(18,2)) AS DenDiem,
+            QuaTang AS QuaTang,
+            N'Mốc thưởng nạp từ n8n' AS Notes
+        FROM OPENJSON(@JsonRules)
+        WITH (
+            TuDiem  DECIMAL(18,2) '$.TuDiem',
+            DenDiem DECIMAL(18,2) '$.DenDiem',
+            QuaTang NVARCHAR(500) '$.QuaTang'
+        );
+
+
+        COMMIT TRANSACTION;
+
+
+        SELECT @DocumentID AS DocumentID, N'Thành công: Đã cập nhật Chương trình, Sản phẩm và Mốc thưởng.' AS Msg, 0 AS MsgType;
+
+
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT ERROR_MESSAGE() AS Msg, 1 AS MsgType;
+    END CATCH
+END
+GO
+
+
+
+
+
