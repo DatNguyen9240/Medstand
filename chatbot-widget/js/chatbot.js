@@ -1,6 +1,6 @@
 // -- AI Chatbot Page ----------------------------------------------------------
 (function () {
-    var CHAT_API = 'https://nhuyen.app.n8n.cloud/webhook/api-nha-thuoc';
+    var CHAT_API = 'http://localhost:5678/webhook/api-nha-thuoc';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút
@@ -806,9 +806,9 @@
                 body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-            .then(function (res) { return res.json().catch(function () { return res.text(); }); })
-            .then(_handleReply)
-            .catch(_handleError);
+                .then(function (res) { return res.json().catch(function () { return res.text(); }); })
+                .then(_handleReply)
+                .catch(_handleError);
         });
     }
 
@@ -1383,7 +1383,7 @@
         $ghost.scrollLeft = $input.scrollLeft;
     }
 
-    $input.addEventListener('scroll', function() {
+    $input.addEventListener('scroll', function () {
         if ($ghost && $ghost.style.display !== 'none') {
             $ghost.scrollTop = $input.scrollTop;
             $ghost.scrollLeft = $input.scrollLeft;
@@ -1453,7 +1453,7 @@
             _ghostAccept();
         }
     }, { passive: false });
-    
+
     // ── Double-click trên Desktop → accept ghost text ──
     $input.addEventListener('dblclick', function (e) {
         if (!ghostText) return;

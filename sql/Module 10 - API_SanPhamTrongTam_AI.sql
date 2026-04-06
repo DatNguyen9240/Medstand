@@ -18,36 +18,54 @@ BEGIN
     ORDER BY ToDate DESC
 
 
-    -- 2. Kết quả Bảng 1: Header Chương trình
-    SELECT DocumentID, Memo AS TenChuongTrinh, FromDate, ToDate
-    FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID;
+    -- 2. Kết quả Bảng 1: TRẠNG THÁI & LỘ TRÌNH (Header + Doanh số + Thang quà tặng)
+    DECLARE @ProgramInfo TABLE (DocumentID VARCHAR(50), TenChuongTrinh NVARCHAR(200), FromDate DATETIME, ToDate DATETIME)
+    INSERT INTO @ProgramInfo SELECT DocumentID, Memo, FromDate, ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID;
 
-
-    -- 3. Kết quả Bảng 2: Doanh số thực tế của khách trong tháng
-    SELECT
-        @ObjectID AS ObjectID,
-        CAST(ISNULL(SUM(AmountTotal), 0) AS BIGINT) AS DoanhSoThangNay
+    DECLARE @CurrentSales BIGINT = 0;
+    SELECT @CurrentSales = CAST(ISNULL(SUM(AmountTotal), 0) AS BIGINT)
     FROM AR_InvoiceTbl
-    WHERE ObjectID = @ObjectID
-      AND StatusID <> 10
-      AND MONTH(DocumentDate) = MONTH(GETDATE())
-      AND YEAR(DocumentDate) = YEAR(GETDATE());
+    WHERE ObjectID = @ObjectID AND StatusID <> 10
+      AND MONTH(DocumentDate) = MONTH(GETDATE()) AND YEAR(DocumentDate) = YEAR(GETDATE());
+
+    -- Nén thang quà tặng thành chuỗi mũi tên trực quan
+    DECLARE @GiftLadder NVARCHAR(MAX) = ''
+    SET @GiftLadder = STUFF((
+        SELECT ' -> [' + CAST(CAST(TuDiem AS BIGINT) AS VARCHAR(20)) + ': ' + QuaTang + ']'
+        FROM AR_PromotionGiftTbl
+        WHERE DocumentID = @ProgramID
+        ORDER BY TuDiem ASC
+        FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 4, '')
+
+    ;WITH NextGoal AS (
+        SELECT TOP 1 TuDiem, QuaTang FROM AR_PromotionGiftTbl
+        WHERE DocumentID = @ProgramID AND TuDiem > @CurrentSales ORDER BY TuDiem ASC
+    )
+    SELECT 
+        P.TenChuongTrinh AS [Chương Trình],
+        P.FromDate AS [Từ Ngày], P.ToDate AS [Đến Ngày],
+        @ObjectID AS [Mã Khách], 
+        @CurrentSales AS [Doanh Số Hiện Tại],
+        CAST(ISNULL(G.TuDiem, 0) AS BIGINT) AS [Mốc Kế Tiếp],
+        CASE WHEN G.TuDiem IS NOT NULL THEN CAST(G.TuDiem - @CurrentSales AS BIGINT) ELSE 0 END AS [Còn Thiếu],
+        ISNULL(G.QuaTang, N'Đã đạt mốc cao nhất') AS [Quà Kế Tiếp],
+        ISNULL(@GiftLadder, N'') AS [Thang Quà Tặng Toàn Bộ]
+    FROM @ProgramInfo P
+    LEFT JOIN NextGoal G ON 1=1;
 
 
-    -- 4. Kết quả Bảng 3: Danh sách sản phẩm & Tồn kho & Giá bán từ Bảng giá (Đã tối ưu JOIN chuẩn)
+    -- 3. Kết quả Bảng 2: DANH MỤC SẢN PHẨM TRỌNG TÂM
     SELECT TOP (@TopN)
-        D.ItemID, I.ItemName, I.Unit,
-        ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = D.ItemID), 0) AS TonKho,
-        -- LẤY GIÁ TỪ BẢNG GIÁ ĐỂ ĐỒNG BỘ VỚI EXCEL IMPORT
+        D.ItemID AS [Mã sp], 
+        I.ItemName AS [Sản Phẩm], 
+        I.Unit AS [ĐVT],
+        ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = D.ItemID), 0) AS [Tồn Kho],
         CAST(ISNULL((
-            SELECT TOP 1 P.UnitPrice 
-            FROM AR_PriceDetailTbl P 
+            SELECT TOP 1 P.UnitPrice FROM AR_PriceDetailTbl P 
             JOIN AR_PriceTbl H ON P.DocumentID = H.DocumentID
-            WHERE P.ItemID = D.ItemID 
-              AND H.isDisable = 0 
-              AND H.FromDate <= GETDATE()
+            WHERE P.ItemID = D.ItemID AND H.isDisable = 0 AND H.FromDate <= GETDATE()
             ORDER BY H.FromDate DESC
-        ), 0) AS BIGINT) AS GiaThamKhao
+        ), 0) AS BIGINT) AS [Giá Bán]
     FROM AR_SanPhamTrongTamDetailTbl D
     JOIN CF_ItemTbl I ON D.ItemID = I.ItemID
     WHERE D.DocumentID = @ProgramID

@@ -54,12 +54,13 @@ BEGIN
     GROUP BY D.ItemID;
 
 
-    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn giá
+    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn giá, Tồn kho
     SELECT
         ROW_NUMBER() OVER (ORDER BY I.ItemName) AS [STT],
         I.ItemID AS [Mã sp],
         I.ItemName AS [Sản Phẩm],
-        CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá]
+        CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
+        ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
     FROM #Items I
     LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID;
 
