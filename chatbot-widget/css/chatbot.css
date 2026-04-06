@@ -415,16 +415,19 @@
   bottom: 0;
   box-sizing: border-box;
   padding: 10px 14px;
-  border: 1px solid transparent;
+  border: 1px solid transparent; /* Match border width of textarea */
   font-family: var(--font-family);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal, 400);
   line-height: 1.5;
+  letter-spacing: normal;
+  word-spacing: normal;
   color: var(--color-text-muted);
-  opacity: 0.45;
   pointer-events: none;
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow: hidden;
+  text-align: left;
 }
 
 .chat-send-btn {
@@ -763,20 +766,22 @@
     height: 16px;
   }
 
-  .chat-input {
+  /* Ghost phải sync với textarea mobile: cùng font-size và padding */
+  .chat-input,
+  .chat-ghost-text {
     min-height: 36px;
     padding: 8px 10px;
     font-size: 16px; /* >= 16px để iOS không auto-zoom */
+  }
+
+  .chat-input {
     overflow-y: auto;
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
-    /* IE/Edge */
   }
 
   .chat-input::-webkit-scrollbar {
     display: none;
-    /* Chrome/Safari */
   }
 
   .chat-input-wrap {
@@ -810,13 +815,243 @@
     height: 14px;
   }
 
-  .chat-input {
+  /* Ghost sync padding với textarea */
+  .chat-input,
+  .chat-ghost-text {
     min-height: 32px;
     padding: 6px 8px;
-    font-size: 16px; /* >= 16px để iOS không auto-zoom */
+    font-size: 16px;
   }
 
   .chat-input-wrap {
     gap: 2px;
   }
+}
+
+/* ── Multi-file preview ── */
+.chat-file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+}
+
+.chat-file-list-wrap {
+  padding: 6px var(--spacing-md);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: absolute;
+  bottom: 100%;
+  left: 0; right: 0;
+  z-index: 51;
+  animation: slide-up 0.2s ease-out;
+}
+
+.chat-file-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(var(--color-primary-rgb), 0.07);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--radius-full);
+  color: var(--color-primary);
+  max-width: 200px;
+  animation: bubble-in 0.18s ease-out;
+}
+
+.chat-file-item-name {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.chat-file-item-size {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-file-item-remove {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.chat-file-item-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ── Drag & Drop Overlay ── */
+.chat-drop-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(var(--color-primary-rgb), 0.12);
+  backdrop-filter: blur(2px);
+  border: 2.5px dashed var(--color-primary);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-drop-overlay.active {
+  display: flex;
+  pointer-events: auto;
+  animation: drop-fadein 0.15s ease-out;
+}
+
+@keyframes drop-fadein {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.chat-drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-primary);
+  user-select: none;
+}
+
+.chat-drop-inner svg {
+  opacity: 0.85;
+  animation: drop-bounce 1s ease-in-out infinite;
+}
+
+@keyframes drop-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+.chat-drop-inner span {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+}
+.chat-file-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  background: rgba(var(--color-primary-rgb), 0.07);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: var(--radius-full);
+  color: var(--color-primary);
+  max-width: 200px;
+  animation: bubble-in 0.18s ease-out;
+}
+
+.chat-file-item-name {
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.chat-file-item-size {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chat-file-item-remove {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.chat-file-item-remove:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* ── Drag & Drop Overlay ── */
+.chat-drop-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(var(--color-primary-rgb), 0.12);
+  backdrop-filter: blur(2px);
+  border: 2.5px dashed var(--color-primary);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-drop-overlay.active {
+  display: flex;
+  pointer-events: auto;
+  animation: drop-fadein 0.15s ease-out;
+}
+
+@keyframes drop-fadein {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.chat-drop-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-primary);
+  user-select: none;
+}
+
+.chat-drop-inner svg {
+  opacity: 0.85;
+  animation: drop-bounce 1s ease-in-out infinite;
+}
+
+@keyframes drop-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+
+.chat-drop-inner span {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
 }

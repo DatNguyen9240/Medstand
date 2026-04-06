@@ -39,27 +39,12 @@
 
 <!-- Input area -->
 <div class="chat-input-bar" id="chat-input-bar">
-    <!-- File preview (positioned above input bar via CSS absolute) -->
-    <div class="chat-file-preview" id="chat-file-preview" style="display:none">
-        <div class="chat-file-preview-info">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            <span class="chat-file-name" id="chat-file-name"></span>
-            <span class="chat-file-size" id="chat-file-size"></span>
-        </div>
-        <button type="button" class="chat-file-remove" id="chat-file-remove" aria-label="Xóa file">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-        </button>
+    <!-- File preview (multi-file) -->
+    <div class="chat-file-list-wrap" id="chat-file-preview" style="display:none">
+        <div class="chat-file-list" id="chat-file-list"></div>
     </div>
 
-    <input type="file" id="chat-file-input" hidden
+    <input type="file" id="chat-file-input" hidden multiple
         accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
     <div class="chat-input-wrap">
         <!-- Attach button -->

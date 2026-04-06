@@ -91,12 +91,10 @@
     var $btnMic = document.getElementById('btn-mic');
     var $fileInput = document.getElementById('chat-file-input');
     var $filePreview = document.getElementById('chat-file-preview');
-    var $fileName = document.getElementById('chat-file-name');
-    var $fileSize = document.getElementById('chat-file-size');
-    var $fileRemove = document.getElementById('chat-file-remove');
+    var $fileList = document.getElementById('chat-file-list');
 
     var chatHistory = _loadCache();
-    var selectedFile = null;   // File object đang chọn
+    var selectedFiles = [];    // Danh sách file đang chọn (multi)
     var recognition = null;    // SpeechRecognition instance
     var isRecording = false;
     var mediaRecorder = null;  // Cho ghi âm trực tiếp
@@ -333,7 +331,7 @@
     // ── Update send button state ──
     function _updateSendBtn() {
         var hasText = $input.value.trim().length > 0;
-        var hasFile = !!selectedFile;
+        var hasFile = selectedFiles.length > 0;
         $btnSend.disabled = !(hasText || hasFile);
     }
 
@@ -341,10 +339,41 @@
     //  FILE UPLOAD
     // ══════════════════════════════════════════
 
-    function _clearFile() {
-        selectedFile = null;
-        $fileInput.value = '';
-        $filePreview.style.display = 'none';
+    function _renderFileList() {
+        if (selectedFiles.length === 0) {
+            $filePreview.style.display = 'none';
+            $fileList.innerHTML = '';
+            return;
+        }
+        $filePreview.style.display = 'block';
+        $fileList.innerHTML = selectedFiles.map(function (f, i) {
+            return '<div class="chat-file-item" data-idx="' + i + '">'
+                + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>'
+                + '<span class="chat-file-item-name">' + _esc(f.name) + '</span>'
+                + '<span class="chat-file-item-size">' + _formatFileSize(f.size) + '</span>'
+                + '<button type="button" class="chat-file-item-remove" data-idx="' + i + '" aria-label="Xóa">'
+                + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
+                + '</button>'
+                + '</div>';
+        }).join('');
+
+        // Gán sự kiện cho các nút xóa
+        $fileList.querySelectorAll('.chat-file-item-remove').forEach(function (btn) {
+            btn.addEventListener('mousedown', function (e) { e.preventDefault(); }); // Giữ keyboard focus
+            btn.addEventListener('click', function () {
+                var idx = parseInt(this.getAttribute('data-idx'), 10);
+                selectedFiles.splice(idx, 1);
+                _renderFileList();
+                _updateSendBtn();
+                $input.focus();
+            });
+        });
+    }
+
+    function _clearFiles() {
+        selectedFiles = [];
+        if ($fileInput) $fileInput.value = '';
+        _renderFileList();
         _updateSendBtn();
     }
 
@@ -353,24 +382,76 @@
     });
 
     $fileInput.addEventListener('change', function () {
-        var file = $fileInput.files && $fileInput.files[0];
-        if (!file) return;
+        var files = $fileInput.files;
+        if (!files || files.length === 0) return;
 
-        // Kiểm tra kích thước
-        if (file.size > MAX_FILE_SIZE) {
-            alert('File quá lớn! Tối đa 10 MB.');
-            $fileInput.value = '';
-            return;
+        var oversized = [];
+        for (var i = 0; i < files.length; i++) {
+            if (files[i].size > MAX_FILE_SIZE) {
+                oversized.push(files[i].name);
+            } else {
+                selectedFiles.push(files[i]);
+            }
         }
 
-        selectedFile = file;
-        $fileName.textContent = file.name;
-        $fileSize.textContent = _formatFileSize(file.size);
-        $filePreview.style.display = 'flex';
+        if (oversized.length > 0) {
+            alert('File quá lớn (tối đa 10 MB): ' + oversized.join(', '));
+        }
+
+        $fileInput.value = ''; // Reset để có thể chọn lại cùng 1 file
+        _renderFileList();
         _updateSendBtn();
     });
 
-    $fileRemove.addEventListener('click', _clearFile);
+    // ── Drag & Drop Logic ──
+    var _dragCounter = 0;
+    var $dropOverlay = document.createElement('div');
+    $dropOverlay.className = 'chat-drop-overlay';
+    $dropOverlay.innerHTML = '<div class="chat-drop-inner">'
+        + '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
+        + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
+        + '<span>Thả tập tin vào đây</span></div>';
+    $container.style.position = 'relative';
+    $container.appendChild($dropOverlay);
+
+    function _addDroppedFiles(fileList) {
+        var oversized = [];
+        for (var i = 0; i < fileList.length; i++) {
+            if (fileList[i].size > MAX_FILE_SIZE) {
+                oversized.push(fileList[i].name);
+            } else {
+                selectedFiles.push(fileList[i]);
+            }
+        }
+        if (oversized.length > 0) alert('File quá lớn: ' + oversized.join(', '));
+        _renderFileList();
+        _updateSendBtn();
+    }
+
+    $container.addEventListener('dragenter', function (e) {
+        e.preventDefault();
+        _dragCounter++;
+        if (_dragCounter === 1) $dropOverlay.classList.add('active');
+    });
+
+    $container.addEventListener('dragleave', function (e) {
+        _dragCounter--;
+        if (_dragCounter === 0) $dropOverlay.classList.remove('active');
+    });
+
+    $container.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+
+    $container.addEventListener('drop', function (e) {
+        e.preventDefault();
+        _dragCounter = 0;
+        $dropOverlay.classList.remove('active');
+        if (e.dataTransfer && e.dataTransfer.files.length > 0) {
+            _addDroppedFiles(e.dataTransfer.files);
+        }
+    });
 
     // ══════════════════════════════════════════
     //  VOICE RECORDING (Web Speech API)
@@ -570,18 +651,16 @@
                     var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                     var file = new File([audioBlob], "voice_recording_" + Date.now() + ".webm", { type: 'audio/webm' });
 
-                    // Gán vào selectedFile và gửi luôn
-                    selectedFile = file;
-                    $fileName.textContent = "Ghi âm giọng nói";
-                    $fileSize.textContent = _formatFileSize(file.size);
-                    $filePreview.style.display = 'flex';
+                    // Thêm vào danh sách file và gửi luôn
+                    selectedFiles.push(file);
+                    _renderFileList();
                     _updateSendBtn();
 
                     // Tự động gửi sau khi dừng ghi âm file
                     setTimeout(_send, 500);
 
                     // Tắt stream
-                    stream.getTracks().forEach(t => t.stop());
+                    stream.getTracks().forEach(function (t) { t.stop(); });
                 });
 
                 isRecording = true;
@@ -629,121 +708,94 @@
     }
 
     function _send() {
-        // Nếu đang chờ AI → dừng
         if (isWaitingAI) {
             _stopAI();
             return;
         }
 
         var text = $input.value.trim();
-        if (!text && !selectedFile) return;
+        if (!text && selectedFiles.length === 0) return;
 
-        // Dừng ghi âm nếu đang ghi
-        if (isRecording && recognition) {
-            recognition.stop();
-        }
+        if (isRecording && recognition) recognition.stop();
 
-        var attachedFileName = selectedFile ? selectedFile.name : null;
+        var fileNames = selectedFiles.map(function (f) { return f.name; });
+        var attachedFileName = fileNames.length > 0 ? fileNames.join(', ') : null;
         var displayText = text || ('📎 ' + attachedFileName);
 
-        // Cache user phrase cho ghost text
         _saveUserPhrase(text);
-
-        // Add user message
         _addMessage('user', displayText, attachedFileName);
         $input.value = '';
         _autoResize();
 
-        // Reset keyboard/scroll sau khi gửi
-        if (window.innerWidth <= 768) {
-            $input.blur();
-        }
+        if (window.innerWidth <= 768) $input.blur();
 
-        // Show typing + stop button
         _showTyping();
         abortController = new AbortController();
         _setStopMode(true);
 
-        // Session ID — duy nhất cho mỗi phiên chat
         var sessionId = _getSessionId();
 
-        // Gửi request
-        if (selectedFile) {
-            // Chuyển file sang base64 rồi gửi JSON
-            var fileToSend = selectedFile;
-            var fileType = fileToSend.type.startsWith('image/') ? 'image'
-                : fileToSend.type.startsWith('audio/') ? 'audio'
-                    : 'file';
-            _clearFile();
-
-            // ── Nén hình ảnh trước khi gửi ──
-            function _compressImage(file, maxSize, quality, callback) {
-                var img = new Image();
-                var url = URL.createObjectURL(file);
-                img.onload = function () {
-                    URL.revokeObjectURL(url);
-                    var w = img.width;
-                    var h = img.height;
-                    // Resize nếu lớn hơn maxSize
-                    if (w > maxSize || h > maxSize) {
-                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-                        else { w = Math.round(w * maxSize / h); h = maxSize; }
-                    }
-                    var canvas = document.createElement('canvas');
-                    canvas.width = w;
-                    canvas.height = h;
-                    var ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-                    var dataUrl = canvas.toDataURL('image/jpeg', quality);
-                    callback(dataUrl);
-                };
-                img.onerror = function () {
-                    URL.revokeObjectURL(url);
-                    // Fallback: đọc nguyên gốc nếu không nén được
-                    var reader = new FileReader();
-                    reader.onload = function () { callback(reader.result); };
-                    reader.readAsDataURL(file);
-                };
-                img.src = url;
-            }
-
-            function _sendFile(base64DataUrl) {
-                var chatText = text || (fileType === 'image' ? '(hình ảnh)' : '(file đính kèm)');
-                fetch(CHAT_API, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + _getToken(),
-                        'x-api-key': CHAT_API_KEY
-                    },
-                    body: JSON.stringify({
-                        action: 'chat',
-                        chatInput: chatText,
-                        text: chatText,
-                        image_url: base64DataUrl,
-                        file_type: fileType,
-                        username: userName || 'Demo',
-                        session_id: sessionId
-                    }),
-                    signal: abortController.signal
-                })
-                    .then(function (res) { return res.json().catch(function () { return res.text(); }); })
-                    .then(_handleReply)
-                    .catch(_handleError);
-            }
-
-            if (fileType === 'image') {
-                // Nén: max 1024px, quality 70%
-                _compressImage(fileToSend, 1024, 0.7, _sendFile);
-            } else {
-                // Audio/file khác: đọc nguyên gốc
+        // Helper: Nén ảnh
+        function _compressImage(file, maxSize, quality, callback) {
+            var img = new Image();
+            var url = URL.createObjectURL(file);
+            img.onload = function () {
+                URL.revokeObjectURL(url);
+                var w = img.width, h = img.height;
+                if (w > maxSize || h > maxSize) {
+                    if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                    else { w = Math.round(w * maxSize / h); h = maxSize; }
+                }
+                var canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                callback(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = function () {
+                URL.revokeObjectURL(url);
                 var reader = new FileReader();
-                reader.onload = function () { _sendFile(reader.result); };
-                reader.onerror = function () { _handleError(new Error('Không thể đọc file')); };
-                reader.readAsDataURL(fileToSend);
+                reader.onload = function () { callback(reader.result); };
+                reader.readAsDataURL(file);
+            };
+            img.src = url;
+        }
+
+        // Helper: Đọc file sang base64
+        function _readFile(file) {
+            return new Promise(function (resolve) {
+                var type = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('audio/') ? 'audio' : 'file');
+                if (type === 'image') {
+                    _compressImage(file, 1024, 0.7, function (base64) {
+                        resolve({ name: file.name, type: type, data: base64 });
+                    });
+                } else {
+                    var reader = new FileReader();
+                    reader.onload = function () { resolve({ name: file.name, type: type, data: reader.result }); };
+                    reader.onerror = function () { resolve({ name: file.name, type: type, data: null }); };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        var filesToSend = selectedFiles.slice();
+        _clearFiles();
+
+        Promise.all(filesToSend.map(_readFile)).then(function (fileList) {
+            var firstFile = fileList.length > 0 ? fileList[0] : null;
+            var payload = {
+                action: 'chat',
+                chatInput: text || displayText,
+                text: text || displayText,
+                username: userName || 'Demo',
+                session_id: sessionId,
+                files: fileList
+            };
+            // Backward compatibility
+            if (firstFile) {
+                payload.image_url = firstFile.data;
+                payload.file_type = firstFile.type;
             }
-        } else {
-            // Gửi JSON text
+
             fetch(CHAT_API, {
                 method: 'POST',
                 headers: {
@@ -751,20 +803,13 @@
                     'Authorization': 'Bearer ' + _getToken(),
                     'x-api-key': CHAT_API_KEY
                 },
-                body: JSON.stringify({
-                    action: 'chat',
-                    chatInput: text,
-                    text: text,
-                    file_type: 'text',
-                    username: userName || 'Demo',
-                    session_id: sessionId
-                }),
+                body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-                .then(function (res) { return res.json().catch(function () { return res.text(); }); })
-                .then(_handleReply)
-                .catch(_handleError);
-        }
+            .then(function (res) { return res.json().catch(function () { return res.text(); }); })
+            .then(_handleReply)
+            .catch(_handleError);
+        });
     }
 
     function _handleReply(res) {
@@ -1330,11 +1375,20 @@
         if (!matchText) { _ghostClear(); return; }
         ghostFull = matchText;
         ghostText = matchText.substring(text.length);
-        // Hiện: phần user gõ (ẩn) + phần gợi ý (mờ)
-        $ghost.innerHTML = '<span style="visibility:hidden">' + _esc(text) + '</span>' + _esc(ghostText);
+        // Hiện: phần user gõ (ẩn hoàn toàn) + phần gợi ý (mờ xám)
+        // Đồng bộ cuộn tuyệt đối bằng cách gán scrollTop/scrollLeft
+        $ghost.innerHTML = '<span style="visibility:hidden;white-space:pre-wrap">' + _esc(text) + '</span>' + _esc(ghostText);
         $ghost.style.display = '';
         $ghost.scrollTop = $input.scrollTop;
+        $ghost.scrollLeft = $input.scrollLeft;
     }
+
+    $input.addEventListener('scroll', function() {
+        if ($ghost && $ghost.style.display !== 'none') {
+            $ghost.scrollTop = $input.scrollTop;
+            $ghost.scrollLeft = $input.scrollLeft;
+        }
+    });
 
     function _ghostAccept() {
         if (!ghostText) return false;
@@ -1382,7 +1436,7 @@
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             _ghostClear();
-            if ($input.value.trim() || selectedFile) _send();
+            if ($input.value.trim() || selectedFiles.length > 0) _send();
         }
     });
 
@@ -1421,7 +1475,7 @@
         _clearCache();
         $messages.innerHTML = '';
         $welcome.style.display = '';
-        _clearFile();
+        _clearFiles();
         _mentionHide();
     });
 

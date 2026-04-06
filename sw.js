@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v3';
+const CACHE_VERSION = 'medstand-v4';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -50,12 +50,20 @@ const PRECACHE_URLS = [
   '/offline.html',
 ];
 
-// ── Install: cache tất cả static assets ──────────────────────────────────────
+// ── Install: cache từng file riêng, bỏ qua file lỗi ──────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
       console.log('[SW] Pre-caching app shell');
-      return cache.addAll(PRECACHE_URLS);
+      // Dùng Promise.allSettled thay vì cache.addAll:
+      // → Nếu 1 file bị 404, SW vẫn install thành công (không bị hủy toàn bộ)
+      return Promise.allSettled(
+        PRECACHE_URLS.map((url) =>
+          cache.add(url).catch((err) => {
+            console.warn('[SW] Skip cache (not found):', url, err.message);
+          })
+        )
+      );
     })
   );
   // Kích hoạt SW mới ngay lập tức (không chờ tab cũ đóng)
