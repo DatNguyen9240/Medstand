@@ -97,6 +97,14 @@ BEGIN
     FROM AR_PromotionTbl P JOIN AR_PromotionDetailTbl PD ON P.DocumentID = PD.DocumentID
     WHERE GETDATE() BETWEEN P.FromDate AND P.ToDate AND ISNULL(P.isDisable, 0) = 0
 
+    -- TIÊU CHÍ 5: Sản phẩm trọng tâm (Focus Items)
+    DECLARE @CurProgramID VARCHAR(50) = ''
+    SELECT TOP 1 @CurProgramID = DocumentID FROM AR_SanPhamTrongTamTbl 
+    WHERE GETDATE() BETWEEN FromDate AND ToDate ORDER BY ToDate DESC
+
+    SELECT DISTINCT ItemID INTO #TrongTam 
+    FROM AR_SanPhamTrongTamDetailTbl WHERE DocumentID = @CurProgramID
+
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
     SELECT TOP (@TopN)
         L.ItemID,
@@ -112,9 +120,10 @@ BEGIN
                 WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh 
                 THEN N'☢️ Quá hạn mua ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
                 WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 
-                THEN N'⏳ Sắp hết hàng (Còn ~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
+                THEN N'✨ THỜI ĐIỂM VÀNG (Dự kiến còn ~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
                 ELSE N'📦 Chu kỳ ổn định'
             END,
+            CASE WHEN TT.ItemID IS NOT NULL THEN N' | 🔥 Hàng trọng tâm' ELSE '' END,
             CASE WHEN MV.ItemID IS NOT NULL THEN N' | 📅 Có tính Mùa vụ' ELSE '' END,
             CASE WHEN KM.ItemID IS NOT NULL THEN N' | 🎁 Đang Khuyến mãi' ELSE '' END
         )                                               AS LyDoGoiY
@@ -122,16 +131,26 @@ BEGIN
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
     LEFT JOIN #KhuyenMai KM ON L.ItemID = KM.ItemID
+    LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN CF_ItemTbl CF ON L.ItemID = CF.ItemID
     WHERE ISNULL(CF.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI') -- Lọc rác
       AND CF.ItemID NOT LIKE 'KM%' AND CF.ItemID NOT LIKE 'BB%'
-    ORDER BY (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 
+    ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
+             (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 
              (CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
              L.SoLanMua DESC
 
-    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai;
+    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam;
 END
 GO
+
+/* -- TEST SCRIPT --
+-- Kịch bản 1: Tra cứu gợi ý cho một khách hàng cụ thể
+EXEC API_GoiYDonHang_AI @Username = 'admin', @ObjectID = 'KH001', @TopN = 10;
+
+-- Kịch bản 2: Tra cứu danh sách bán chạy chung cho chi nhánh (ObjectID để trống)
+EXEC API_GoiYDonHang_AI @Username = 'admin', @ObjectID = '', @TopN = 10;
+*/
 
 
 

@@ -104,6 +104,48 @@ BEGIN
    ORDER BY ISNULL(TL.TongTichLuy,0) DESC;
 
 
+   -- ════════════════════════════════════════════════════
+   -- BẢNG 2: SẢN PHẨM TRỌNG TÂM CHƯA PHÁT SINH DOANH SỐ (GỢI Ý)
+   -- ════════════════════════════════════════════════════
+   -- Chỉ gợi ý khi tra cứu 1 khách hàng cụ thể
+   IF @ObjectID != ''
+   BEGIN
+       -- Lấy danh sách ItemID đã mua trong kỳ của khách này
+       SELECT DISTINCT D.ItemID
+       INTO #ItemsBought
+       FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+       WHERE I.ObjectID = @ObjectID 
+         AND I.DocumentDate BETWEEN @FromDate AND @ToDate
+         AND ISNULL(I.StatusID, 0) != 10
+         AND D.ItemID IN (SELECT ItemID FROM #TrongTam)
+
+       -- Trả về các món trong danh mục trọng tâm mà chưa mua
+       SELECT TOP 12
+           I.ItemID,
+           I.ItemName,
+           I.Unit
+       FROM #TrongTam T
+       JOIN CF_ItemTbl I ON T.ItemID = I.ItemID
+       WHERE NOT EXISTS (SELECT 1 FROM #ItemsBought DM WHERE DM.ItemID = T.ItemID)
+       ORDER BY I.ItemName ASC
+
+       DROP TABLE #ItemsBought
+   END
+   ELSE
+   BEGIN
+       -- Nếu tra cứu tổng quát (Admin), trả về bảng trống để n8n không lỗi
+       SELECT TOP 0 '' AS ItemID, '' AS ItemName, '' AS Unit
+   END
+
+
    DROP TABLE #HoaDon; DROP TABLE #TraHang; DROP TABLE #TrongTam; DROP TABLE #TichLuy;
 END
 GO
+
+/* -- TEST SCRIPT --
+-- Kịch bản 1: Tra cứu tích lũy và gợi ý hàng chưa mua cho 1 khách
+EXEC API_TichLuy_AI @Username = 'admin', @ObjectID = 'KH001';
+
+-- Kịch bản 2: Tra cứu tổng hợp toàn bộ các khách hàng tiềm năng
+EXEC API_TichLuy_AI @Username = 'admin', @ObjectID = '';
+*/

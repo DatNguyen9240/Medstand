@@ -116,6 +116,11 @@ BEGIN
     FROM IV_StockTbl
     GROUP BY ItemID
 
+    -- ═══ 7.5. Danh sách sản phẩm trọng tâm (Focus Items) ═══
+    SELECT DISTINCT ItemID INTO #TrongTam 
+    FROM AR_SanPhamTrongTamDetailTbl 
+    WHERE DocumentID = @ProgramID
+
     -- ════════════════════════════════════════════════════
     -- BẢNG 2: GỢI Ý SẢN PHẨM
     -- ════════════════════════════════════════════════════
@@ -126,6 +131,8 @@ BEGIN
         CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
         ISNULL(S.QuantityinStock, 0)               AS TonKho,
         (
+            -- Ưu tiên hàng trong chương trình trọng tâm (+300,000đ)
+            (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
             -- Ưu tiên hàng còn tồn kho (+200,000đ)
             (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
             -- Khớp từ khóa chính xác - word boundary (+100,000đ)
@@ -144,35 +151,41 @@ BEGIN
             (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
         ) AS PriorityScore,
         CASE
-            -- Kịch bản 1: Tìm theo triệu chứng → Gắn nhãn tình trạng kho
+            -- Kịch bản 1: Hàng trọng tâm của chương trình
+            WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
+            -- Kịch bản 2: Tìm theo triệu chứng → Gắn nhãn tình trạng kho
             WHEN @SearchKey != '' AND (
                 I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
                 I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%')
                 THEN N'🔍 Triệu chứng: ' + @SearchKey + 
                      CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 
-                          THEN N' | ⚠️ Hết hàng - Cần đặt thêm' 
-                          ELSE N' | ✅ Còn hàng' END
-            -- Kịch bản 2: Upsell → Phân loại lý do gợi ý
+                           THEN N' | ⚠️ Hết hàng' 
+                           ELSE N' | ✅ Còn hàng' END
+            -- Kịch bản 3: Upsell → Phân loại lý do gợi ý
             WHEN KQ.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng khách quen'
             WHEN BC.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng bán chạy'
             ELSE N'✨ Gợi ý sẵn có'
         END AS LyDoGoiY
     FROM CF_ItemTbl I
-    LEFT JOIN #TonKho        S  ON I.ItemID = S.ItemID  -- FIX: Dùng #TonKho đã SUM thay vì JOIN thẳng
+    LEFT JOIN #TonKho        S  ON I.ItemID = S.ItemID  
     LEFT JOIN #GiaThiTruong  G  ON I.ItemID = G.ItemID
     LEFT JOIN #KhachQuen     KQ ON I.ItemID = KQ.ItemID
     LEFT JOIN #BanChay       BC ON I.ItemID = BC.ItemID
+    LEFT JOIN #TrongTam      TT ON I.ItemID = TT.ItemID  -- JOIN thêm bảng trọng tâm
     WHERE ISNULL(I.isDisable, 0) = 0
       AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
       AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' 
       AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
       AND (
-          -- Kịch bản 1: Tìm theo triệu chứng → Hiện tất cả (kể cả hết hàng, có gắn nhãn cảnh báo)
+          -- Kịch bản 1: Ưu tiên hàng trọng tâm (Dù có search key hay không)
+          (TT.ItemID IS NOT NULL AND ISNULL(S.QuantityinStock, 0) > 0)
+          OR
+          -- Kịch bản 2: Tìm theo triệu chứng
           (@SearchKey != '' AND (
               I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
               I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%'
           ))
-          -- Kịch bản 2: Upsell → Chỉ hiện hàng còn kho
+          -- Kịch bản 3: Upsell thông thường
           OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
               AND (KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL))
           OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
@@ -180,6 +193,14 @@ BEGIN
       )
     ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
 
-    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader;
+    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
 END
 GO
+
+/* -- TEST SCRIPT --
+-- Kịch bản 1: Tìm sản phẩm theo triệu chứng (SearchKey)
+EXEC API_UpsellGoiY_AI @Username = 'admin', @ObjectID = 'KH001', @SearchKey = N'ho', @TopN = 10;
+
+-- Kịch bản 2: Gợi ý Upsell tự động (Trọng tâm + Bán chạy + Khách quen)
+EXEC API_UpsellGoiY_AI @Username = 'admin', @ObjectID = 'KH001', @SearchKey = '', @TopN = 10;
+*/
