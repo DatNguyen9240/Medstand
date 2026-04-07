@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v5';
+const CACHE_VERSION = 'medstand-v6';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -21,6 +21,16 @@ const PRECACHE_URLS = [
   '/src/templates/routes.html',
   '/src/templates/orders.html',
   '/src/templates/account.html',
+
+  // Chatbot Widget
+  '/chatbot-widget/template/chatbot.html',
+  '/chatbot-widget/template/ai-bot-button.html',
+  '/chatbot-widget/js/chatbot-suggestions.js',
+  '/chatbot-widget/js/chatbot-api-engine.js',
+  '/chatbot-widget/js/chatbot.js',
+  '/chatbot-widget/css/chatbot.css',
+  '/chatbot-widget/css/chatbot-api-engine.css',
+  '/chatbot-widget/css/ai-bot-button.css',
 
   // Global CSS
   '/src/css/design-tokens.css',
