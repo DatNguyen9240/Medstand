@@ -11,7 +11,7 @@ const Router = (() => {
     // Main app pages (need auth + nav)
     { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
     { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
-    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot-suggestions.js', 'chatbot-widget/js/chatbot.js'], css: ['chatbot-widget/css/chatbot.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
+    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot-suggestions.js', 'chatbot-widget/js/chatbot-api-engine.js', 'chatbot-widget/js/chatbot.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
     { path: 'orders', template: 'src/templates/orders.html', scripts: ['src/js/pages/orders.js'], css: ['src/css/pages/orders.css'], auth: true, nav: 'orders', title: 'Đơn hàng' },
     { path: 'account', template: 'src/templates/account.html', scripts: ['src/js/pages/account.js'], css: ['src/css/pages/account.css'], auth: true, nav: 'account', title: 'Tài khoản' },
