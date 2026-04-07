@@ -272,6 +272,20 @@
         return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
     }
 
+    function _clearVn(s) {
+        if (!s) return '';
+        s = String(s).toLowerCase();
+        s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
+        s = s.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
+        s = s.replace(/[ìíịỉĩ]/g, 'i');
+        s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
+        s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
+        s = s.replace(/[ỳýỵỷỹ]/g, 'y');
+        s = s.replace(/đ/g, 'd');
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s;
+    }
+
     function _formatFileSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -1138,13 +1152,11 @@
         if (mentionState.active) { _ghostClear(); return; }
         var text = $input.value;
         if (text.length < 2 || text.charAt(0) === '@') { _ghostClear(); return; }
-        var lower = text.toLowerCase();
-
-        // 1. Tìm trong static suggestions trước
         var suggestions = window.CHAT_SUGGESTIONS || [];
         var matchText = null;
+        var kw = _clearVn(text);
         for (var i = 0; i < suggestions.length; i++) {
-            if (suggestions[i].text.toLowerCase().indexOf(lower) === 0) {
+            if (_clearVn(suggestions[i].text).indexOf(kw) === 0) {
                 matchText = suggestions[i].text; break;
             }
         }
@@ -1153,7 +1165,7 @@
         if (!matchText) {
             var phrases = _loadUserPhrases();
             for (var j = 0; j < phrases.length; j++) {
-                if (phrases[j].toLowerCase().indexOf(lower) === 0 && phrases[j].length > text.length) {
+                if (_clearVn(phrases[j]).indexOf(kw) === 0 && phrases[j].length > text.length) {
                     matchText = phrases[j]; break;
                 }
             }
@@ -1270,8 +1282,7 @@
     });
 
     // ── Init ──
-    // _mentionCreate(); // Vô hiệu hóa hệ thống cũ
-    // _mentionLoadCategories(); // Vô hiệu hóa hệ thống cũ
+    _ghostCreate();
     _renderHistory();
 
     // ── API Engine (@api_code menu + DataSource fields) ──

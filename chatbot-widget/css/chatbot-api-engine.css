@@ -15,8 +15,9 @@
 
 /* ─── @ API Dropdown Menu ──────────────────────────────────────── */
 .ae-menu {
-    position: fixed;
-    z-index: 99999;
+    position: absolute;
+    bottom: 100%;
+    z-index: 1000;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
     border-radius: 12px;

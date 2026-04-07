@@ -45,6 +45,7 @@
     var _menuIdx = -1;
     var _activeApi = null;   // { apiCode, dispName, execType, config }
     var _cartItems = [];
+    var _hideTimer = null;
 
     // Callbacks từ chatbot.js
     var _cbMsg = null;
@@ -58,6 +59,20 @@
     function _user() { try { return (JSON.parse(localStorage.getItem('auth_user') || '{}')).UserName || ''; } catch (e) { return ''; } }
     function _esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(String(s || ''))); return d.innerHTML; }
     function _fmtMoney(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
+    function _clearVn(s) {
+        if (!s) return '';
+        s = String(s).toLowerCase();
+        s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
+        s = s.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
+        s = s.replace(/[ìíịỉĩ]/g, 'i');
+        s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
+        s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
+        s = s.replace(/[ỳýỵỷỹ]/g, 'y');
+        s = s.replace(/đ/g, 'd');
+        // Remove combining diacritics as a fallback
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s;
+    }
 
     function _resolveDefault(v) {
         if (!v) return '';
@@ -145,9 +160,9 @@
             try { opts = typeof dsValue === 'string' ? JSON.parse(dsValue) : dsValue; }
             catch (e) { opts = []; }
             if (keyword) {
-                var kw = keyword.toLowerCase();
+                var kw = _clearVn(keyword);
                 opts = opts.filter(function (o) {
-                    return String(o.label || '').toLowerCase().indexOf(kw) !== -1;
+                    return _clearVn(o.label || '').indexOf(kw) !== -1;
                 });
             }
             cb(opts.slice(0, 20));
@@ -219,16 +234,19 @@
         _menuEl.id = 'ae-menu';
         _menuEl.className = 'ae-menu';
         _menuEl.style.display = 'none';
-        document.body.appendChild(_menuEl);
+        
+        var bar = _inputBarEl || document.getElementById('chat-input-bar');
+        if (bar) bar.appendChild(_menuEl);
+        else document.body.appendChild(_menuEl);
     }
 
     function _menuShow(query) {
         _menuCreate();
         var list = query
             ? _apiList.filter(function (a) {
-                var q = query.toLowerCase();
-                return a.ApiCode.toLowerCase().indexOf(q) !== -1 ||
-                    (a.DisplayName || '').toLowerCase().indexOf(q) !== -1;
+                var q = _clearVn(query);
+                return _clearVn(a.ApiCode).indexOf(q) !== -1 ||
+                       _clearVn(a.DisplayName || '').indexOf(q) !== -1;
             })
             : _apiList;
         if (!list.length) { _menuHide(); return; }
@@ -252,11 +270,17 @@
         });
         _menuEl.innerHTML = html;
 
-        var rect = _inputEl.getBoundingClientRect();
+        var wrap = document.querySelector('.chat-input-wrap');
+        var bar = _inputBarEl || document.getElementById('chat-input-bar');
+        var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
+        var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
+        
         _menuEl.style.display = 'block';
-        _menuEl.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
-        _menuEl.style.left = rect.left + 'px';
-        _menuEl.style.width = rect.width + 'px';
+        // Vì đã là absolute bên trong bar, ta chỉ cần chỉnh left/width theo wrap
+        _menuEl.style.bottom = '100%'; 
+        _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
+        _menuEl.style.width = wrapRect.width + 'px';
+        _menuEl.style.borderRadius = '12px 12px 0 0';
         _menuVis = true; _menuIdx = -1;
 
         _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
@@ -268,7 +292,7 @@
         });
     }
 
-    function _menuHide() { if (_menuEl) _menuEl.style.display = 'none'; _menuVis = false; _menuIdx = -1; }
+    function _menuHide() { if (_menuEl) _menuEl.style.display = 'none'; _menuVis = false; _menuIdx = -1; clearTimeout(_hideTimer); }
 
     function _menuNav(dir) {
         if (!_menuEl || !_menuVis) return false;
@@ -781,7 +805,7 @@
         });
 
         inp.addEventListener('blur', function () {
-            setTimeout(_menuHide, 200);
+            _hideTimer = setTimeout(_menuHide, 160);
         });
     }
 
@@ -824,6 +848,22 @@
         showMenu: function (inputEl) {
             if (_activeApi) return; // panel đang mở
             if (inputEl) _inputEl = inputEl;
+            
+            clearTimeout(_hideTimer);
+
+            // Toggle logic: nếu đang hiện thì ẩn đi
+            if (_menuVis) {
+                _menuHide();
+                return;
+            }
+
+            // Tự động thêm @ nếu chưa có
+            var val = _inputEl.value;
+            if (!/@\S*$/.test(val)) {
+                _inputEl.value = (val && !val.endsWith(' ') ? val + ' ' : val) + '@';
+            }
+            _inputEl.focus();
+
             if (!_apiList.length) {
                 _loadList(function () { _menuShow(''); });
             } else {
