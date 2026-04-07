@@ -1,0 +1,117 @@
+{
+  "name": "WF_NghiepVu_NangCao (Khối 4 - Cánh Tay Phân Tích AI)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "hook-nghiepvu-nangcao",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-592, -80],
+      "id": "03f69bda-bf92-4aa1-aed5-1079d2c03828",
+      "name": "Webhook Nâng Cao",
+      "webhookId": "f1083d55-3c26-4ad7-94a2-d9afad4d3605"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// Validate ApiCode — Module Chuyên Sâu AI (Schema_API_Metadata.sql)\n// 10 ApiCode phân tích AI nâng cao\n// ═══════════════════════════════════════════════════════\nconst body = $input.item.json.body || $input.item.json;\nconst headers = $('Webhook Nâng Cao').item.json.headers || {};\n\nconst VALID_API_CODES = [\n  '@goi_y_don_hang',      // Gợi ý đơn hàng theo lịch sử KH\n  '@upsell_goi_y',        // Upsell & gợi ý SP tăng giá trị đơn\n  '@goi_y_don_thuoc',     // Tìm thuốc theo triệu chứng\n  '@tuyen_ban_hang',      // Lịch tuyến bán hàng\n  '@cham_diem_kh',        // Phân loại KH A/B/C\n  '@tich_luy',            // Tích lũy chương trình KH\n  '@san_pham_trong_tam',  // Sản phẩm trọng tâm đang chạy\n  '@de_xuat_khuyen_mai',  // AI gợi ý xả hàng/combo\n  '@tra_cuu_san_pham',    // Tra cứu giá & tồn kho tổng hợp\n  '@import_trong_tam'     // [ADMIN] Import SP trọng tâm\n];\n\nconst ApiCode = (body.ApiCode || '').trim().toLowerCase();\nconst username = body.username || 'default';\nconst token = headers.authorization || body.token || 'Bearer empty';\n\nif (!ApiCode) {\n  return [{ json: {\n    loi: true,\n    message: 'Thiếu ApiCode. Khối 4 chỉ xử lý phân tích AI chuyên sâu.',\n    valid_codes: VALID_API_CODES\n  }}];\n}\n\nif (!VALID_API_CODES.includes(ApiCode)) {\n  return [{ json: {\n    loi: true,\n    message: `ApiCode \"${ApiCode}\" không thuộc Module Chuyên Sâu AI. Nếu là tra cứu cơ bản, hãy gọi hook-nghiepvu-crud.`,\n    api_code_nhan: ApiCode,\n    valid_codes: VALID_API_CODES\n  }}];\n}\n\n// Map ApiCode → backend endpoint (từng module có SP riêng)\nconst SP_MAP = {\n  '@goi_y_don_hang':     'API_GoiYDonHang_AI',\n  '@upsell_goi_y':       'API_UpsellGoiY_AI',\n  '@goi_y_don_thuoc':   'API_GoiYDonThuoc_AI',\n  '@tuyen_ban_hang':     'API_TuyenBanHang_AI',\n  '@cham_diem_kh':       'API_ChamDiemKH_AI',\n  '@tich_luy':           'API_TichLuy_AI',\n  '@san_pham_trong_tam': 'API_SanPhamTrongTam_AI',\n  '@de_xuat_khuyen_mai': 'API_DeXuatKhuyenMai_AI',\n  '@tra_cuu_san_pham':   'API_TraCuuSanPham_AI',\n  '@import_trong_tam':   'API_SanPhamTrongTam_Import_AI'\n};\n\nreturn [{ json: {\n  ApiCode,\n  StoredProcedure: SP_MAP[ApiCode],\n  username,\n  token,\n  hop_le: true,\n  // Tham số phân tích AI\n  ObjectID:      body.ObjectID      || null,\n  SearchKey:     body.SearchKey     || null,\n  TopN:          body.TopN          || null,\n  Keyword:       body.Keyword       || null,\n  NhomFilter:    body.NhomFilter    || null,\n  SoNgayVangMat: body.SoNgayVangMat || null,\n  ProgramID:     body.ProgramID     || null,\n  FromDate:      body.FromDate      || null,\n  ToDate:        body.ToDate        || null,\n  ItemIDs:       body.ItemIDs       || null,\n  JsonItems:     body.JsonItems     || null,\n  JsonRules:     body.JsonRules     || null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-304, -80],
+      "id": "e44940bd-9ea2-4fdf-a2c7-42d6e7e1c6d0",
+      "name": "Validate ApiCode (Nâng Cao)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hop_le }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-32, -80],
+      "id": "d66f2449-7034-4d0d-aeff-8b0f8c884ecb",
+      "name": "Input Hợp Lệ?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://medtest.bms79.com/api/chatbot-action",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ApiCode:        $json.ApiCode,\n  StoredProcedure: $json.StoredProcedure,\n  username:       $json.username,\n  ObjectID:       $json.ObjectID,\n  SearchKey:      $json.SearchKey,\n  TopN:           $json.TopN,\n  Keyword:        $json.Keyword,\n  NhomFilter:     $json.NhomFilter,\n  SoNgayVangMat:  $json.SoNgayVangMat,\n  ProgramID:      $json.ProgramID,\n  FromDate:       $json.FromDate,\n  ToDate:         $json.ToDate,\n  ItemIDs:        $json.ItemIDs,\n  JsonItems:      $json.JsonItems,\n  JsonRules:      $json.JsonRules\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [256, -160],
+      "id": "ac8815b9-3a29-4edf-aa50-5d40d9ef0724",
+      "name": "Gọi API Phân Tích"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'ApiCode không hợp lệ cho Module Nâng Cao.',\n  loi: true,\n  goi_y: 'Nếu cần tra cứu cơ bản, hãy dùng Tool_NghiepVu_CoBan'\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [256, 48],
+      "id": "c830dac1-8553-4b29-a7ba-a6cf2a76086a",
+      "name": "Trả Lỗi Validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst raw = data.data || data.result || data;\nconst ApiCode = data.ApiCode || '';\n\nif (data.error || data.status === 'error') {\n  return [{ json: {\n    ket_qua: `❌ Lỗi phân tích ${ApiCode}: ${data.message || data.error}`,\n    loi: true\n  }}];\n}\n\nlet ket_qua_text = '';\n\nif (typeof raw === 'string') {\n  ket_qua_text = raw;\n} else if (Array.isArray(raw)) {\n  ket_qua_text = raw.map((item, i) => {\n    // Format thông minh tùy ApiCode\n    if (item.TenSanPham || item.ItemName) {\n      return `${i+1}. ${item.TenSanPham || item.ItemName} — SL gợi ý: ${item.SoLuongGoiY || item.TopN || 'N/A'}`;\n    } else if (item.TenKhachHang || item.ObjectName) {\n      return `${i+1}. ${item.TenKhachHang || item.ObjectName} — Nhóm: ${item.NhomKH || item.phan_loai || 'N/A'} — Điểm: ${item.Diem || item.Score || 'N/A'}`;\n    } else if (item.NgayGheKe) {\n      return `${i+1}. ${item.TenKhachHang || ''} — Vắng: ${item.SoNgayVang || '?'} ngày — ${item.DiaChi || ''}`;\n    }\n    return `${i+1}. ${JSON.stringify(item)}`;\n  }).join('\\n');\n} else {\n  ket_qua_text = JSON.stringify(raw, null, 2);\n}\n\nreturn [{ json: {\n  ket_qua: ket_qua_text || 'Không có dữ liệu phân tích.',\n  ApiCode: ApiCode,\n  so_ban_ghi: Array.isArray(raw) ? raw.length : null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [544, -160],
+      "id": "91aa2007-2689-43ab-bf2b-fc1d644c377b",
+      "name": "Format Kết Quả Phân Tích"
+    }
+  ],
+  "connections": {
+    "Webhook Nâng Cao": {
+      "main": [[{ "node": "Validate ApiCode (Nâng Cao)", "type": "main", "index": 0 }]]
+    },
+    "Validate ApiCode (Nâng Cao)": {
+      "main": [[{ "node": "Input Hợp Lệ?", "type": "main", "index": 0 }]]
+    },
+    "Input Hợp Lệ?": {
+      "main": [
+        [{ "node": "Gọi API Phân Tích", "type": "main", "index": 0 }],
+        [{ "node": "Trả Lỗi Validation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gọi API Phân Tích": {
+      "main": [[{ "node": "Format Kết Quả Phân Tích", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}

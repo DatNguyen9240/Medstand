@@ -9,7 +9,10 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "id": "node-webhook",
       "name": "Webhook"
     },
@@ -28,7 +31,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.6,
-      "position": [250, 0],
+      "position": [
+        250,
+        0
+      ],
       "id": "node-agent",
       "name": "AI Agent"
     },
@@ -39,7 +45,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [200, 250],
+      "position": [
+        200,
+        250
+      ],
       "id": "node-model",
       "name": "OpenAI Chat Model"
     },
@@ -50,7 +59,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.2,
-      "position": [350, 250],
+      "position": [
+        350,
+        250
+      ],
       "id": "node-memory",
       "name": "Window Buffer Memory"
     },
@@ -75,7 +87,10 @@
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [500, 250],
+      "position": [
+        500,
+        250
+      ],
       "id": "node-tool",
       "name": "HTTP Request Tool"
     }

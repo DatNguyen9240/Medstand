@@ -1,0 +1,151 @@
+{
+  "name": "WF_NghiepVu_CoBan_CRUD (Khối 3 - Cánh Tay Nghiệp Vụ)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "hook-nghiepvu-crud",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-848, 80],
+      "id": "77299c72-57a3-4b89-9d00-d9894d33f836",
+      "name": "Webhook CRUD",
+      "webhookId": "b0b177f5-22b2-4f31-8ad0-a98d28b0c37b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// Validate ApiCode — Module Dùng Chung (Schema_API_Metadata_Patch.sql)\n// Theo n8n-config.md: đọc ApiCode + isConfirm từ body\n// ═══════════════════════════════════════════════════════\nconst body = $input.item.json.body || $input.item.json;\nconst headers = $('Webhook CRUD').item.json.headers || {};\n\nconst VALID_API_CODES = [\n  '@tao_don_hang',      // ExecutionType: CART — cần isConfirm\n  '@them_khach_hang',   // ExecutionType: QUERY — cần isConfirm\n  '@xem_hoa_don',\n  '@xem_don_hang',\n  '@xem_doanh_so',      // Manager+\n  '@cong_no_kh',\n  '@cong_no_chi_tiet',\n  '@danh_muc',\n  '@ton_kho_list'\n];\n\n// ApiCode bắt buộc isConfirm trước khi thực thi\nconst CONFIRM_REQUIRED = ['@tao_don_hang', '@them_khach_hang'];\n\nconst ApiCode = (body.ApiCode || '').trim().toLowerCase();\nconst username = body.username || 'default';\nconst token = headers.authorization || body.token || 'Bearer empty';\n// isConfirm: chatbot gửi kèm theo n8n-config.md Section 3\nconst isConfirm = parseInt(body.isConfirm || '0', 10);\nconst action = (body.action || 'QUERY').toUpperCase();\n\nif (!ApiCode) {\n  return [{ json: {\n    loi: true,\n    message: 'Thiếu ApiCode. Khối 3 chỉ xử lý nghiệp vụ cơ bản.',\n    valid_codes: VALID_API_CODES\n  }}];\n}\n\nif (!VALID_API_CODES.includes(ApiCode)) {\n  return [{ json: {\n    loi: true,\n    message: `ApiCode \"${ApiCode}\" không thuộc Module Dùng Chung. Nếu là phân tích AI, hãy gọi hook-nghiepvu-nangcao.`,\n    api_code_nhan: ApiCode,\n    valid_codes: VALID_API_CODES\n  }}];\n}\n\n// Kiểm tra xem có cần xác nhận không\nconst canGoNeedConfirm = CONFIRM_REQUIRED.includes(ApiCode) && isConfirm !== 1;\n\nreturn [{ json: {\n  ApiCode,\n  action,\n  username,\n  token,\n  isConfirm,\n  hop_le: true,\n  can_confirming: canGoNeedConfirm, // true = cần hỏi xác nhận trước\n  // Tham số nghiệp vụ cơ bản\n  ObjectID:     body.ObjectID     || null,\n  SearchText:   body.SearchText   || null,\n  FromDate:     body.FromDate     || null,\n  ToDate:       body.ToDate       || null,\n  TopN:         body.TopN         || null,\n  StatusName:   body.StatusName   || null,\n  ItemID:       body.ItemID       || null,\n  ItemName:     body.ItemName     || null,\n  TenKhachHang: body.TenKhachHang || null,\n  SoDienThoai:  body.SoDienThoai  || null,\n  Type:         body.Type         || null,\n  ItemList:     body.ItemList     || null,\n  EmployeeID:   body.EmployeeID   || null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-560, 80],
+      "id": "b05edc26-ee13-40e9-bc3e-89d79390bb45",
+      "name": "Validate ApiCode + isConfirm"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.hop_le }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-288, 80],
+      "id": "4f72d6d7-6a2d-44b9-893d-df054ac46ced",
+      "name": "Input Hợp Lệ?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.can_confirming }}",
+              "value2": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "cc1234ab-5678-90cd-ef12-34567890abcd",
+      "name": "Cần Xác Nhận?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n-config.md Section 3: isConfirm=1 bắt buộc trước @tao_don_hang, @them_khach_hang\n// Trả về form confirm để chatbot hiển thị cho user\nconst data = $input.item.json;\n\nconst ACTION_LABELS = {\n  '@tao_don_hang':    'TẠO ĐƠN HÀNG',\n  '@them_khach_hang': 'THÊM KHÁCH HÀNG MỚI'\n};\n\nconst label = ACTION_LABELS[data.ApiCode] || data.ApiCode.toUpperCase();\n\n// Tóm tắt thông tin sẽ thực hiện\nlet tom_tat = '';\nif (data.ApiCode === '@tao_don_hang') {\n  tom_tat = `Tạo đơn cho khách ${data.ObjectID || '?'} — Danh sách SP: ${data.ItemList ? JSON.stringify(data.ItemList) : 'chưa có'}`;\n} else if (data.ApiCode === '@them_khach_hang') {\n  tom_tat = `Tên: ${data.TenKhachHang || '?'} — SĐT: ${data.SoDienThoai || '?'}`;\n}\n\nreturn [{ json: {\n  ket_qua: `⚠️ XÁC NHẬN ${label}\\n${tom_tat}\\n\\nVui lòng xác nhận bằng cách gửi lại yêu cầu kèm isConfirm=1 để thực hiện.`,\n  can_confirm: true,\n  ApiCode: data.ApiCode,\n  action: data.action\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [288, -96],
+      "id": "dd2345bc-6789-01de-fg23-45678901bcde",
+      "name": "Yêu Cầu Xác Nhận"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://medtest.bms79.com/api/chatbot-action",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ApiCode:      $json.ApiCode,\n  action:       $json.action,\n  username:     $json.username,\n  isConfirm:    $json.isConfirm,\n  ObjectID:     $json.ObjectID,\n  SearchText:   $json.SearchText,\n  FromDate:     $json.FromDate,\n  ToDate:       $json.ToDate,\n  TopN:         $json.TopN,\n  StatusName:   $json.StatusName,\n  ItemID:       $json.ItemID,\n  ItemName:     $json.ItemName,\n  TenKhachHang: $json.TenKhachHang,\n  SoDienThoai:  $json.SoDienThoai,\n  Type:         $json.Type,\n  ItemList:     $json.ItemList,\n  EmployeeID:   $json.EmployeeID\n}) }}",
+        "options": {
+          "timeout": 25000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [288, 112],
+      "id": "1669a852-71c7-486e-a151-a6c407a14068",
+      "name": "Gọi API Backend"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'ApiCode không hợp lệ cho Module Cơ Bản.',\n  loi: true,\n  goi_y: 'Nếu cần phân tích AI, hãy dùng Tool_NghiepVu_NangCao'\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, 240],
+      "id": "a55532c2-20dc-48c4-9278-f53fbe314ad2",
+      "name": "Trả Lỗi Validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\n\nif (data.error || data.status === 'error') {\n  return [{ json: {\n    ket_qua: `❌ Lỗi ${data.ApiCode || ''}: ${data.message || data.error || 'Lỗi kết nối API Backend.'}`,\n    loi: true\n  }}];\n}\n\nconst payload = data.data || data.result || data.message || data;\nconst ApiCode = data.ApiCode || '';\nlet ket_qua_text = '';\n\nif (typeof payload === 'string') {\n  ket_qua_text = payload;\n} else if (Array.isArray(payload)) {\n  const total = payload.length;\n  ket_qua_text = `Tìm thấy ${total} kết quả (${ApiCode}):\\n` +\n    payload.slice(0, 20).map((item, i) => `${i+1}. ${JSON.stringify(item)}`).join('\\n');\n  if (total > 20) ket_qua_text += `\\n... và ${total - 20} kết quả khác.`;\n} else {\n  ket_qua_text = JSON.stringify(payload, null, 2);\n}\n\nreturn [{ json: {\n  ket_qua: ket_qua_text,\n  ApiCode: ApiCode,\n  so_ban_ghi: Array.isArray(payload) ? payload.length : null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [576, 112],
+      "id": "005259ef-705d-4dda-95d5-adf7576ebbb2",
+      "name": "Format Kết Quả"
+    }
+  ],
+  "connections": {
+    "Webhook CRUD": {
+      "main": [[{ "node": "Validate ApiCode + isConfirm", "type": "main", "index": 0 }]]
+    },
+    "Validate ApiCode + isConfirm": {
+      "main": [[{ "node": "Input Hợp Lệ?", "type": "main", "index": 0 }]]
+    },
+    "Input Hợp Lệ?": {
+      "main": [
+        [{ "node": "Cần Xác Nhận?", "type": "main", "index": 0 }],
+        [{ "node": "Trả Lỗi Validation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cần Xác Nhận?": {
+      "main": [
+        [{ "node": "Yêu Cầu Xác Nhận", "type": "main", "index": 0 }],
+        [{ "node": "Gọi API Backend", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gọi API Backend": {
+      "main": [[{ "node": "Format Kết Quả", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}
