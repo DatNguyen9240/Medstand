@@ -5,23 +5,50 @@
  */
 (function () {
   var STORAGE_KEY = 'medstand-theme';
+  var darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
-  function getPreferred() {
-    var saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return saved;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  function apply(theme) {
+  /**
+   * Applies the theme to the document and optionally persists it.
+   */
+  function apply(theme, persist) {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem(STORAGE_KEY, theme);
+    if (persist) {
+      localStorage.setItem(STORAGE_KEY, theme);
+    }
+    // Dispatch event for components that might need to sync icons/states
+    window.dispatchEvent(new CustomEvent('themechanged', { detail: { theme: theme } }));
   }
 
-  // Apply on load (before DOMContentLoaded to avoid flash)
-  apply(getPreferred());
+  /**
+   * Initialize theme based on preference or system settings.
+   */
+  function init() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      apply(saved, false);
+    } else {
+      apply(darkQuery.matches ? 'dark' : 'light', false);
+    }
+  }
 
-  // Apply sidebar-collapsed immediately (trước khi browser render body)
-  // để tránh hiện tượng nội dung chuyển từ phải sang trái khi load trang
+  // 1. Initial Apply (sync)
+  init();
+
+  // 2. Listen for System Theme Changes
+  var themeListener = function (e) {
+    // Only follow system if user hasn't manually set a preference
+    if (!localStorage.getItem(STORAGE_KEY)) {
+      apply(e.matches ? 'dark' : 'light', false);
+    }
+  };
+
+  if (darkQuery.addEventListener) {
+    darkQuery.addEventListener('change', themeListener);
+  } else {
+    darkQuery.addListener(themeListener);
+  }
+
+  // Sidebar-collapsed init (giữ nguyên logic cũ)
   if (localStorage.getItem('sidebar-collapsed') === 'true') {
     document.documentElement.classList.add('sidebar-collapsed-init');
   }
@@ -29,7 +56,8 @@
   // Global toggle function
   window.toggleTheme = function () {
     var current = document.documentElement.getAttribute('data-theme') || 'light';
-    apply(current === 'dark' ? 'light' : 'dark');
+    var next = (current === 'dark') ? 'light' : 'dark';
+    apply(next, true);
   };
 })();
 

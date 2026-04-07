@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v4';
+const CACHE_VERSION = 'medstand-v9';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -21,6 +21,16 @@ const PRECACHE_URLS = [
   '/src/templates/routes.html',
   '/src/templates/orders.html',
   '/src/templates/account.html',
+
+  // Chatbot Widget
+  '/chatbot-widget/template/chatbot.html',
+  '/chatbot-widget/template/ai-bot-button.html',
+  '/chatbot-widget/js/chatbot-suggestions.js',
+  '/chatbot-widget/js/chatbot-api-engine.js',
+  '/chatbot-widget/js/chatbot.js',
+  '/chatbot-widget/css/chatbot.css',
+  '/chatbot-widget/css/chatbot-api-engine.css',
+  '/chatbot-widget/css/ai-bot-button.css',
 
   // Global CSS
   '/src/css/design-tokens.css',
@@ -95,10 +105,22 @@ self.addEventListener('fetch', (event) => {
   // Bỏ qua các request không phải GET
   if (request.method !== 'GET') return;
 
-  // Nếu là API call → luôn lấy từ network
-  if (request.url.includes('/api/')) {
+  // API call, Navigation (trang HTML), hoặc các tệp chatbot-widget → luôn lấy từ network trước (Network-first)
+  if (request.url.includes('/api/') || 
+      request.url.includes('/chatbot-widget/') ||
+      request.mode === 'navigate' || 
+      request.headers.get('accept').includes('text/html')) {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request))
+      fetch(request)
+        .then((response) => {
+          // Lưu bản mới nhất vào cache nếu thành công
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

@@ -1,0 +1,198 @@
+/* chatbot-api-engine.css  v3 - Dynamic Theme (Sync with Medstand App) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Sử dụng biến có sẵn của Chatbot hoặc fallback nếu không có */
+    --ae-bg: var(--color-surface, #ffffff);
+    --ae-bg-alt: var(--color-bg, #f8fafc);
+    --ae-text: var(--color-text, #1e293b);
+    --ae-text-muted: var(--color-text-muted, #64748b);
+    --ae-border: var(--color-border, #e2e8f0);
+    --ae-accent: var(--color-primary, #3b82f6);
+    --ae-accent-soft: rgba(59, 130, 246, 0.1);
+    --ae-shadow: 0 10px 25px rgba(0,0,0,0.15);
+}
+
+/* ─── @ API Dropdown Menu ──────────────────────────────────────── */
+.ae-menu {
+    position: absolute;
+    bottom: 100%;
+    z-index: 1000;
+    background: var(--ae-bg);
+    border: 1px solid var(--ae-border);
+    border-radius: 12px;
+    box-shadow: var(--ae-shadow);
+    max-height: 310px;
+    overflow-y: auto;
+    padding: 6px 0;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    animation: aeSlideUp 0.14s ease;
+}
+@keyframes aeSlideUp {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+}
+.ae-menu-group {
+    padding: 10px 16px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--ae-text-muted);
+    opacity: 0.7;
+}
+.ae-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    gap: 12px;
+    cursor: pointer;
+    color: var(--ae-text);
+    transition: background 0.1s;
+}
+.ae-menu-item:hover, .ae-menu-item.active { 
+    background: var(--ae-accent-soft); 
+    color: var(--ae-accent);
+}
+.ae-tag {
+    font-size: 11px;
+    background: var(--ae-accent-soft);
+    color: var(--ae-accent);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-weight: 600;
+}
+
+/* ─── Filter Panel ─────────────────────────────────────────────── */
+.ae-panel {
+    background: var(--ae-bg);
+    border-top: 1px solid var(--ae-border);
+    padding: 0 16px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    overflow: visible;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height 0.28s ease, opacity 0.2s ease;
+}
+.ae-panel.active {
+    max-height: 450px;
+    opacity: 1;
+    padding: 12px 16px;
+}
+.ae-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.ae-panel-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ae-text-muted);
+}
+.ae-panel-close {
+    background: var(--ae-bg-alt);
+    border: none;
+    color: var(--ae-text-muted);
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Controls */
+.ae-label { font-size: 12px; font-weight: 600; color: var(--ae-text-muted); margin-bottom: 4px; display: block; }
+.ae-ctrl {
+    width: 100%;
+    background: var(--ae-bg-alt);
+    border: 1px solid var(--ae-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--ae-text);
+    font-size: 14px;
+    transition: all 0.15s;
+}
+.ae-ctrl:focus {
+    outline: none;
+    border-color: var(--ae-accent);
+    background: var(--ae-bg);
+}
+
+.ae-combo-sug, .ae-cart-sug {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0; right: 0;
+    background: var(--ae-bg);
+    border: 1px solid var(--ae-border);
+    border-radius: 10px;
+    z-index: 9999;
+    box-shadow: var(--ae-shadow);
+}
+.ae-sug-row {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--ae-border);
+}
+.ae-sug-row:hover { background: var(--ae-accent-soft); }
+.ae-sug-lbl { color: var(--ae-text); font-weight: 500; display: block; }
+.ae-sug-sub { color: var(--ae-text-muted); font-size: 12px; }
+
+/* Cart Row */
+.ae-cart-row {
+    display: grid;
+    grid-template-columns: 1fr 60px auto auto;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ae-border);
+    color: var(--ae-text);
+}
+.ae-cart-price { color: var(--ae-accent); font-weight: 700; }
+
+/* ─── Confirm Overlay ──────────────────────────────────────────── */
+.ae-confirm-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(var(--ae-bg-rgb, 255,255,255), 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: aeFadeIn 0.2s ease;
+}
+.ae-confirm-card {
+    background: var(--ae-bg);
+    border: 1px solid var(--ae-border);
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 320px;
+    box-shadow: var(--ae-shadow);
+    text-align: center;
+    animation: aeScaleUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.ae-confirm-title { font-size: 16px; font-weight: 700; color: var(--ae-text); margin-bottom: 8px; }
+.ae-confirm-msg { font-size: 14px; color: var(--ae-text-muted); margin-bottom: 20px; line-height: 1.5; }
+.ae-confirm-btns { display: flex; gap: 12px; }
+.ae-confirm-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.ae-btn-cancel { background: var(--ae-bg-alt); color: var(--ae-text-muted); }
+.ae-btn-confirm { background: var(--ae-accent); color: #fff; }
+.ae-btn-confirm:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+@keyframes aeFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes aeScaleUp { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+/* Scrollbar */
+.ae-menu::-webkit-scrollbar { width: 5px; }
+.ae-menu::-webkit-scrollbar-thumb { background: var(--ae-border); border-radius: 10px; }

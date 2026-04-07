@@ -1,6 +1,6 @@
 // -- AI Chatbot Page ----------------------------------------------------------
 (function () {
-    var CHAT_API = 'http://localhost:5678/webhook/api-nha-thuoc';
+    var CHAT_API = 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/hook-ai-dainao';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút
@@ -88,26 +88,12 @@
     var $btnSend = document.getElementById('btn-send');
     var $btnClear = document.getElementById('btn-clear-chat');
     var $btnAttach = document.getElementById('btn-attach');
-    var $btnMic = document.getElementById('btn-mic');
     var $fileInput = document.getElementById('chat-file-input');
     var $filePreview = document.getElementById('chat-file-preview');
     var $fileList = document.getElementById('chat-file-list');
 
     var chatHistory = _loadCache();
     var selectedFiles = [];    // Danh sách file đang chọn (multi)
-    var recognition = null;    // SpeechRecognition instance
-    var isRecording = false;
-    var mediaRecorder = null;  // Cho ghi âm trực tiếp
-    var audioChunks = [];      // Chứa dữ liệu audio
-    var recordingMode = 'text'; // 'text' (SpeechAPI) hoặc 'audio' (MediaRecorder)
-    var silenceTimer = null;    // Bộ đếm thời gian im lặng
-    var silenceDelay = 2500;    // 2.5 giây tự động tắt
-    var audioContext = null;    // Theo dõi âm lượng
-    var analyser = null;
-    var microphone = null;
-    var scriptProcessor = null;
-    var speechRetryCount = 0;   // Đếm số lần retry Speech API
-    var MAX_SPEECH_RETRIES = 3; // Tối đa 3 lần retry
     var abortController = null; // AbortController cho fetch
     var isWaitingAI = false;    // Đang chờ AI phản hồi
 
@@ -286,6 +272,20 @@
         return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
     }
 
+    function _clearVn(s) {
+        if (!s) return '';
+        s = String(s).toLowerCase();
+        s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
+        s = s.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
+        s = s.replace(/[ìíịỉĩ]/g, 'i');
+        s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
+        s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
+        s = s.replace(/[ỳýỵỷỹ]/g, 'y');
+        s = s.replace(/đ/g, 'd');
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return s;
+    }
+
     function _formatFileSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -454,226 +454,15 @@
     });
 
     // ══════════════════════════════════════════
-    //  VOICE RECORDING (Web Speech API)
+    //  API BUTTON — mở ApiEngine @ menu
     // ══════════════════════════════════════════
-
-    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    var textBeforeRecording = '';  // Nội dung gốc trước khi bắt đầu hoặc trước khi restart phiên ghi âm
-
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'vi-VN';
-        recognition.interimResults = true;
-        recognition.continuous = false;
-        recognition.maxAlternatives = 1;
-
-        recognition.addEventListener('result', function (e) {
-            var sessionPart = '';
-            for (var i = 0; i < e.results.length; i++) {
-                sessionPart += e.results[i][0].transcript;
-            }
-
-            var display = textBeforeRecording;
-            if (sessionPart.trim()) {
-                display = textBeforeRecording
-                    ? textBeforeRecording.trim() + ' ' + sessionPart.trim()
-                    : sessionPart.trim();
-            }
-
-            $input.value = display;
-            _autoResize();
-            _updateSendBtn();
-            _resetSilenceTimer();
-        });
-
-        recognition.addEventListener('end', function () {
-            if (isRecording) {
-                // Khi tự động restart do im lặng: cập nhật lại nội dung gốc
-                textBeforeRecording = $input.value;
-                try {
-                    recognition.start();
-                } catch (e) {
-                    isRecording = false;
-                    $btnMic.classList.remove('recording');
-                }
-                return;
-            }
-            $btnMic.classList.remove('recording');
-        });
-
-        recognition.addEventListener('error', function (e) {
-            if (e.error === 'no-speech') return;
-
-            console.error('[Voice] Recognition error:', e.error);
-            isRecording = false;
-            $btnMic.classList.remove('recording');
-
-            if (e.error === 'network') {
-                if (speechRetryCount < MAX_SPEECH_RETRIES) {
-                    speechRetryCount++;
-                    console.warn('[Voice] Network error, retrying Speech API (' + speechRetryCount + '/' + MAX_SPEECH_RETRIES + ')...');
-                    isRecording = true;
-                    $btnMic.classList.add('recording');
-                    setTimeout(function () {
-                        try {
-                            recognition.start();
-                        } catch (ex) {
-                            console.error('[Voice] Retry failed:', ex);
-                            isRecording = false;
-                            $btnMic.classList.remove('recording');
-                            alert('Không thể nhận diện giọng nói. Vui lòng kiểm tra:\n• Kết nối mạng\n• Trang web đang chạy trên HTTPS\n• Đã cấp quyền micro');
-                        }
-                    }, 500);
-                } else {
-                    console.error('[Voice] Speech API failed after ' + MAX_SPEECH_RETRIES + ' retries');
-                    speechRetryCount = 0;
-                    alert('Không thể nhận diện giọng nói. Vui lòng kiểm tra:\n• Kết nối mạng\n• Trang web đang chạy trên HTTPS\n• Đã cấp quyền micro');
-                }
-                return;
-            }
-
-            if (e.error === 'not-allowed') {
-                alert('Vui lòng cho phép truy cập micro để sử dụng ghi âm.');
+    var $btnApi = document.getElementById('btn-api');
+    if ($btnApi) {
+        $btnApi.addEventListener('click', function () {
+            if (window.ApiEngine) {
+                ApiEngine.showMenu($input);
             }
         });
-
-        $btnMic.addEventListener('click', function () {
-            if (isRecording) {
-                _stopRecording();
-            } else {
-                _startRecording();
-            }
-        });
-    } else {
-        // Trình duyệt không hỗ trợ Web Speech -> Thử MediaRecorder trực tiếp
-        recordingMode = 'audio';
-        $btnMic.addEventListener('click', function () {
-            if (isRecording) _stopRecording();
-            else _startRecording();
-        });
-    }
-
-    function _startRecording() {
-        if (recordingMode === 'text' && recognition) {
-            textBeforeRecording = $input.value;
-            speechRetryCount = 0;      // Reset bộ đếm retry
-            isRecording = true;
-            $btnMic.classList.add('recording');
-            try {
-                recognition.start();
-                _resetSilenceTimer();
-            } catch (e) {
-                console.error('[Voice] recognition.start fail:', e);
-                isRecording = false;
-                $btnMic.classList.remove('recording');
-                alert('Không thể khởi động nhận diện giọng nói. Vui lòng thử lại.');
-            }
-        } else {
-            _startAudioRecording();
-        }
-    }
-
-    function _stopRecording() {
-        isRecording = false;
-        $btnMic.classList.remove('recording');
-
-        if (silenceTimer) {
-            clearTimeout(silenceTimer);
-            silenceTimer = null;
-        }
-
-        // Tắt AudioContext nếu có (cho MediaRecorder fallback)
-        if (audioContext) {
-            audioContext.close();
-            audioContext = null;
-        }
-
-        if (recordingMode === 'text' && recognition) {
-            recognition.stop();
-        } else if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-        }
-    }
-
-    function _resetSilenceTimer() {
-        if (silenceTimer) clearTimeout(silenceTimer);
-        silenceTimer = setTimeout(function () {
-            console.log('[Voice] Silence timeout reached (2.5s). Stopping...');
-            _stopRecording();
-        }, silenceDelay);
-    }
-
-    function _startAudioRecording() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('Trình duyệt của bạn không hỗ trợ ghi âm.');
-            return;
-        }
-
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-                audioChunks = [];
-                mediaRecorder = new MediaRecorder(stream);
-
-                // --- Silence Detection bằng AudioContext (cho MediaRecorder) ---
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                microphone = audioContext.createMediaStreamSource(stream);
-                scriptProcessor = audioContext.createScriptProcessor(2048, 1, 1);
-
-                analyser.smoothingTimeConstant = 0.8;
-                analyser.fftSize = 1024;
-
-                microphone.connect(analyser);
-                analyser.connect(scriptProcessor);
-                scriptProcessor.connect(audioContext.destination);
-
-                scriptProcessor.onaudioprocess = function () {
-                    var array = new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(array);
-                    var values = 0;
-                    var length = array.length;
-                    for (var i = 0; i < length; i++) {
-                        values += array[i];
-                    }
-                    var average = values / length;
-
-                    // Ngưỡng âm thanh (threshold) để coi là đang nói
-                    if (average > 15) {
-                        _resetSilenceTimer();
-                    }
-                };
-                // -------------------------------------------------------------
-
-                mediaRecorder.addEventListener('dataavailable', function (e) {
-                    audioChunks.push(e.data);
-                });
-                mediaRecorder.addEventListener('stop', function () {
-                    var audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    var file = new File([audioBlob], "voice_recording_" + Date.now() + ".webm", { type: 'audio/webm' });
-
-                    // Thêm vào danh sách file và gửi luôn
-                    selectedFiles.push(file);
-                    _renderFileList();
-                    _updateSendBtn();
-
-                    // Tự động gửi sau khi dừng ghi âm file
-                    setTimeout(_send, 500);
-
-                    // Tắt stream
-                    stream.getTracks().forEach(function (t) { t.stop(); });
-                });
-
-                isRecording = true;
-                $btnMic.classList.add('recording');
-                mediaRecorder.start();
-                console.log('[Voice] MediaRecorder started');
-            })
-            .catch(function (err) {
-                console.error('[Voice] getUserMedia error:', err);
-                alert('Không thể truy cập máy ảnh/micro: ' + err.message);
-                isRecording = false;
-                $btnMic.classList.remove('recording');
-            });
     }
 
     // ══════════════════════════════════════════
@@ -708,6 +497,9 @@
     }
 
     function _send() {
+        // ApiEngine intercept: panel đang mở → thu params & execute
+        if (window.ApiEngine && ApiEngine.handleSend && ApiEngine.handleSend()) return;
+
         if (isWaitingAI) {
             _stopAI();
             return;
@@ -975,6 +767,9 @@
     var $mentionDropdown = null;
 
     function _mentionCreate() {
+        // ApiEngine thay thế toàn bộ @ system → không cần mention dropdown
+        if (window.ApiEngine) return;
+
         if ($mentionDropdown) return;
         $mentionDropdown = document.createElement('div');
         $mentionDropdown.className = 'mention-dropdown';
@@ -1255,6 +1050,9 @@
 
     /** Input handler — detect @mention */
     function _mentionOnInput() {
+        // ApiEngine handles @: bail out to avoid dual dropdowns
+        if (window.ApiEngine) { _mentionHide(); return; }
+
         var parsed = _mentionParse();
         if (!parsed) {
             _mentionHide();
@@ -1283,6 +1081,9 @@
 
     /** Keyboard handler cho mention dropdown */
     function _mentionOnKeydown(e) {
+        // ApiEngine handles keyboard navigation
+        if (window.ApiEngine) return false;
+
         if (!mentionState.active) return false;
 
         if (e.key === 'ArrowDown') {
@@ -1351,13 +1152,11 @@
         if (mentionState.active) { _ghostClear(); return; }
         var text = $input.value;
         if (text.length < 2 || text.charAt(0) === '@') { _ghostClear(); return; }
-        var lower = text.toLowerCase();
-
-        // 1. Tìm trong static suggestions trước
         var suggestions = window.CHAT_SUGGESTIONS || [];
         var matchText = null;
+        var kw = _clearVn(text);
         for (var i = 0; i < suggestions.length; i++) {
-            if (suggestions[i].text.toLowerCase().indexOf(lower) === 0) {
+            if (_clearVn(suggestions[i].text).indexOf(kw) === 0) {
                 matchText = suggestions[i].text; break;
             }
         }
@@ -1366,7 +1165,7 @@
         if (!matchText) {
             var phrases = _loadUserPhrases();
             for (var j = 0; j < phrases.length; j++) {
-                if (phrases[j].toLowerCase().indexOf(lower) === 0 && phrases[j].length > text.length) {
+                if (_clearVn(phrases[j]).indexOf(kw) === 0 && phrases[j].length > text.length) {
                     matchText = phrases[j]; break;
                 }
             }
@@ -1413,13 +1212,12 @@
     $input.addEventListener('input', function () {
         _autoResize();
         _updateSendBtn();
-        _mentionOnInput();
+        // _mentionOnInput();
         _ghostUpdate();
     });
 
     $input.addEventListener('keydown', function (e) {
-        // Mention dropdown intercepts keys first
-        if (_mentionOnKeydown(e)) return;
+        // if (_mentionOnKeydown(e)) return;
 
         // Tab → accept ghost text
         if (e.key === 'Tab' && ghostText) {
@@ -1484,9 +1282,18 @@
     });
 
     // ── Init ──
-    _mentionCreate();
-    _mentionLoadCategories();
+    _ghostCreate();
     _renderHistory();
+
+    // ── API Engine (@api_code menu + DataSource fields) ──
+    if (window.ApiEngine) {
+        ApiEngine.init({
+            inputEl: $input,
+            addMessage: _addMessage,
+            showTyping: _showTyping,
+            hideTyping: _hideTyping
+        });
+    }
 
     // Responsive placeholder
     function _updatePlaceholder() {
@@ -1508,12 +1315,12 @@
     });
 
     $input.addEventListener('blur', function () {
-        if (mentionState.active) {
+        // Nếu Panel đang mở, không hiện lại navbar để tránh đè giao diện
+        if (document.body.classList.contains('ae-panel-open')) {
             return;
         }
-        // Delay để button click (gửi, đính kèm, mic) kịp xử lý
+        // Delay để button click (gửi, đính kèm, API) kịp xử lý
         setTimeout(function () {
-            // Nếu focus quay lại input → skip
             if (document.activeElement === $input) return;
             if ($nav) {
                 $nav.style.display = '';

@@ -10,7 +10,9 @@ const AuthService = (() => {
   // ── Cookie helpers ──────────────────────────────────────────────────────
   function setCookie(name, value, days) {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Lax`;
+    const isSecure = window.location.protocol === 'https:';
+    // SameSite=Strict và Secure (nếu là HTTPS) để bảo mật cao hơn
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict${isSecure ? ';Secure' : ''}`;
   }
 
   function getCookie(name) {
@@ -84,7 +86,7 @@ const AuthService = (() => {
     } finally {
       deleteCookie('auth_token');
       localStorage.removeItem('auth_user');
-      window.location.href = 'login.html';
+      window.location.href = 'login.html?v=' + Date.now();
     }
   }
 
