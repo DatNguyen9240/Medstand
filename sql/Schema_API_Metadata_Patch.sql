@@ -31,6 +31,7 @@ GO
 :r "Module common - API_CongNoChiTiet_AI"
 :r "Module common - API_DanhMuc_AI"
 :r "Module common - API_GetTonKho_List_AI"
+:r "Module common - API_ThemKhachHang_AI.sql"
 
 PRINT N'✅ Đã install SP Module Common';
 GO
@@ -42,6 +43,7 @@ INSERT INTO API_Definition (ApiCode, ApiName, ApiDescription, StoredProcedure, C
 VALUES
 -- Nhóm: Bán hàng    
 ('@tao_don_hang',       N'Tạo đơn hàng',            N'Tạo đơn hàng mới với danh sách sản phẩm tự chọn',                  'API_DonHangChiTiet_Insert_AI', N'Bán hàng', N'📝', 1,  20),
+('@them_khach_hang',    N'Thêm khách hàng',         N'Tạo nhanh hồ sơ khách hàng mới vào hệ thống',                      'API_ThemKhachHang_AI',         N'Khách hàng', N'👤+', 1, 55),
 
 -- Nhóm: Tra cứu
 ('@xem_hoa_don',        N'Xem hóa đơn',              N'Tra cứu DS hóa đơn theo ngày và khách hàng',                       'API_HoaDon_AI',                N'Tra cứu',  N'🧾', 1, 120),
@@ -60,6 +62,7 @@ GO
 -- ═══════════════════════════════════════════════════════════════════════════
 INSERT INTO API_Action (ApiID, ActionCode, ActionName, ExecutionType, IsConfirm, IsDefault, IsActive, OrderIndex)
 SELECT ApiID, 'CREATE', N'Tạo đơn hàng mới',       'CART',  1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tao_don_hang'      UNION ALL
+SELECT ApiID, 'INSERT', N'Thêm khách hàng',         'COMMAND', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@them_khach_hang'     UNION ALL
 SELECT ApiID, 'VIEW',   N'Tra cứu hóa đơn',         'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_hoa_don'       UNION ALL
 SELECT ApiID, 'VIEW',   N'Tra cứu đơn hàng',        'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_don_hang'      UNION ALL
 SELECT ApiID, 'VIEW',   N'Xem báo cáo doanh số',    'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_doanh_so'      UNION ALL
@@ -79,6 +82,14 @@ SELECT ApiID, '@Username',   N'Người dùng',         'VARCHAR', 'hidden',    
 SELECT ApiID, '@ObjectID',   N'Khách hàng',          'VARCHAR', 'combobox',        1,0,NULL, N'Nhập mã/tên KH',         'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@tao_don_hang' UNION ALL
 SELECT ApiID, '@DocumentID', N'Mã đơn hàng',         'VARCHAR', 'text',            0,0,NULL, N'Tự sinh nếu để trống',   NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@tao_don_hang' UNION ALL
 SELECT ApiID, '@ItemList',   N'Danh sách sản phẩm',  'JSON',    'cart_items',      1,0,'[]', NULL,                      NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@tao_don_hang';
+
+-- @them_khach_hang → API_ThemKhachHang_AI(@Username, @TenKhachHang, @SoDienThoai, @DiaChi, @ObjectGroupID)
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username',      N'Người dùng',     'VARCHAR', 'hidden',          1,1,NULL, NULL,                      NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@them_khach_hang' UNION ALL
+SELECT ApiID, '@TenKhachHang',  N'Tên khách hàng', 'NVARCHAR', 'text',            1,0,NULL, N'Nhập tên đầy đủ...',     NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@them_khach_hang' UNION ALL
+SELECT ApiID, '@SoDienThoai',   N'Số điện thoại',  'VARCHAR',  'text',            1,0,NULL, N'Nhập số điện thoại...',  NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@them_khach_hang' UNION ALL
+SELECT ApiID, '@DiaChi',        N'Địa chỉ',       'NVARCHAR', 'text',            0,0,NULL, N'Nhập địa chỉ...',        NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@them_khach_hang' UNION ALL
+SELECT ApiID, '@ObjectGroupID', N'Nhóm khách hàng','VARCHAR',  'select',          0,0,'KH', NULL,                      'STATIC', N'[{"value":"KH","label":"Khách hàng"},{"value":"DAILY","label":"Đại lý"}]', 5 FROM API_Definition WHERE ApiCode = '@them_khach_hang';
 
 -- @xem_hoa_don → API_HoaDon_AI(@Username, @FromDate, @ToDate, @SearchText)
 INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
@@ -150,7 +161,7 @@ FROM API_Action A
 JOIN API_Field F ON A.ApiID = F.ApiID
 WHERE A.ApiID IN (
     SELECT ApiID FROM API_Definition WHERE ApiCode IN (
-        '@tao_don_hang','@xem_hoa_don','@xem_don_hang','@xem_doanh_so',
+        '@tao_don_hang','@them_khach_hang','@xem_hoa_don','@xem_don_hang','@xem_doanh_so',
         '@cong_no_kh','@cong_no_chi_tiet','@danh_muc','@ton_kho_list'
     )
 )
@@ -229,7 +240,7 @@ PRINT N'';
 PRINT N'🎉 Schema_API_Metadata_Patch.sql hoàn tất!';
 PRINT N'   ✅ 8 Module Common APIs đã thêm';
 PRINT N'   🔴 Disabled: @xem_doanh_so (chỉ Manager)';
-PRINT N'   📊 Tổng: 18 APIs — 16 Active, 2 Disabled';
+PRINT N'   📊 Tổng: 19 APIs — 17 Active, 2 Disabled';
 GO
 
 /* ── TEST ──────────────────────────────────────────────────────────
