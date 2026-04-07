@@ -28,10 +28,10 @@
 
     // ── Config ────────────────────────────────────────────────────────
     var CFG = {
-        LIST_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-list-active',
-        CFG_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-get-config',
-        EXEC_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-execute',
-        DS_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-datasource',
+        LIST_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-list-active',
+        CFG_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-get-config',
+        EXEC_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-execute',
+        DS_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-datasource',
         CACHE_TTL: 10 * 60 * 1000,
         CACHE_KEY: 'api_engine_v3_list'
     };
