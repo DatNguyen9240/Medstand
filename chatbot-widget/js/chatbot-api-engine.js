@@ -28,10 +28,10 @@
 
     // ── Config ────────────────────────────────────────────────────────
     var CFG = {
-        LIST_URL: 'http://localhost:5678/webhook/api-list-active',
-        CFG_URL: 'http://localhost:5678/webhook/api-get-config',
-        EXEC_URL: 'http://localhost:5678/webhook/api-execute',
-        DS_URL: 'http://localhost:5678/webhook/api-datasource',  // SQL datasource endpoint
+        LIST_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-list-active',
+        CFG_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-get-config',
+        EXEC_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-execute',
+        DS_URL: 'https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-datasource',
         CACHE_TTL: 10 * 60 * 1000,
         CACHE_KEY: 'api_engine_v3_list'
     };
@@ -234,7 +234,7 @@
         _menuEl.id = 'ae-menu';
         _menuEl.className = 'ae-menu';
         _menuEl.style.display = 'none';
-        
+
         var bar = _inputBarEl || document.getElementById('chat-input-bar');
         if (bar) bar.appendChild(_menuEl);
         else document.body.appendChild(_menuEl);
@@ -246,7 +246,7 @@
             ? _apiList.filter(function (a) {
                 var q = _clearVn(query);
                 return _clearVn(a.ApiCode).indexOf(q) !== -1 ||
-                       _clearVn(a.DisplayName || '').indexOf(q) !== -1;
+                    _clearVn(a.DisplayName || '').indexOf(q) !== -1;
             })
             : _apiList;
         if (!list.length) { _menuHide(); return; }
@@ -274,10 +274,10 @@
         var bar = _inputBarEl || document.getElementById('chat-input-bar');
         var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
         var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
-        
+
         _menuEl.style.display = 'block';
         // Vì đã là absolute bên trong bar, ta chỉ cần chỉnh left/width theo wrap
-        _menuEl.style.bottom = '100%'; 
+        _menuEl.style.bottom = '100%';
         _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
         _menuEl.style.width = wrapRect.width + 'px';
         _menuEl.style.borderRadius = '12px 12px 0 0';
@@ -338,7 +338,7 @@
         var atPos = val.lastIndexOf('@');
         var tag = '#' + apiCode.replace('@', '') + ' ';
         _inputEl.value = (atPos !== -1 ? val.slice(0, atPos) : val) + tag;
-        
+
         // Phát sự kiện input để chatbot.js biết giá trị đã thay đổi -> cập nhật nút Gửi
         _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         _inputEl.focus();
@@ -694,15 +694,15 @@
 
         return params;
     }
-    
+
     // ── Confirmation Dialog ───────────────────────────────────────────
     function _showConfirm(params, api) {
         var overlay = document.createElement('div');
         overlay.className = 'ae-confirm-overlay';
-        
+
         var msg = 'Bạn có chắc chắn muốn thực hiện hành động này không?';
         // Có thể bổ sung tóm tắt params vào đây nếu cần
-        
+
         overlay.innerHTML = '<div class="ae-confirm-card">'
             + '<div class="ae-confirm-title">Xác nhận yêu cầu</div>'
             + '<div class="ae-confirm-msg">' + _esc(msg) + '</div>'
@@ -711,12 +711,12 @@
             + '<button class="ae-confirm-btn ae-btn-confirm" id="ae-cf-yes">Xác nhận</button>'
             + '</div>'
             + '</div>';
-            
+
         var target = _panelEl || _inputBarEl || document.body;
         target.appendChild(overlay);
-        
-        overlay.querySelector('#ae-cf-no').onclick = function() { overlay.remove(); };
-        overlay.querySelector('#ae-cf-yes').onclick = function() {
+
+        overlay.querySelector('#ae-cf-no').onclick = function () { overlay.remove(); };
+        overlay.querySelector('#ae-cf-yes').onclick = function () {
             overlay.remove();
             _closePanel(false);
             _executeApi(api.apiCode, params, api.dispName, api.execType, api.config);
@@ -767,7 +767,7 @@
                 if (val.indexOf(tag) === -1) {
                     _closePanel(false); // Xóa tag -> Đóng panel
                 }
-                
+
                 // Nếu gõ thêm @ khi đang mở panel -> xóa @ thừa
                 if (/@\s*$/.test(val)) {
                     this.value = val.replace(/@\s*$/, '');
@@ -826,10 +826,10 @@
             var params = _collectParams();
             if (params === null) return true; // Validation fail, không gửi
             var api = _activeApi;
-            
+
             // Kiểm tra IsConfirm từ metadata
             var isConfirm = api.config && api.config.info && (api.config.info.IsConfirm == 1 || api.config.info.IsConfirm === true);
-            
+
             if (isConfirm) {
                 _showConfirm(params, api);
             } else {
@@ -846,7 +846,7 @@
         showMenu: function (inputEl) {
             if (_activeApi) return; // panel đang mở
             if (inputEl) _inputEl = inputEl;
-            
+
             clearTimeout(_hideTimer);
 
             // Toggle logic: nếu đang hiện thì ẩn đi
