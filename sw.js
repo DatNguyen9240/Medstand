@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v4';
+const CACHE_VERSION = 'medstand-v5';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -95,10 +95,19 @@ self.addEventListener('fetch', (event) => {
   // Bỏ qua các request không phải GET
   if (request.method !== 'GET') return;
 
-  // Nếu là API call → luôn lấy từ network
-  if (request.url.includes('/api/')) {
+  // API call hoặc Navigation (trang HTML) → luôn lấy từ network trước (Network-first)
+  if (request.url.includes('/api/') || request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
     event.respondWith(
-      fetch(request).catch(() => caches.match(request))
+      fetch(request)
+        .then((response) => {
+          // Lưu bản mới nhất vào cache nếu thành công
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }

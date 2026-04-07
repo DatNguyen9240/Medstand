@@ -147,54 +147,82 @@
     AuthThemeToggle.bind();
     PasswordToggle.init();
 
-    // Login form
-    document.getElementById('login-form').addEventListener('submit', async function (e) {
-      e.preventDefault();
+    // LocalStorage-based "Remember me" (including Password) logic
+    (function () {
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const rememberCheckbox = document.getElementById('remember-me');
 
-      var username = document.getElementById('username').value.trim();
-      var password = document.getElementById('password').value;
-      var errorEl = document.getElementById('login-error');
-      var spinner = document.getElementById('login-spinner');
-      var btnText = document.getElementById('btn-login-text');
-      var btn = document.getElementById('btn-login');
+      // Helper for UTF-8 safe Base64 obfuscation
+      const b64Encode = (str) => btoa(unescape(encodeURIComponent(str)));
+      const b64Decode = (str) => {
+        try { return decodeURIComponent(escape(atob(str))); }
+        catch (e) { return ''; }
+      };
 
-      errorEl.style.display = 'none';
+      // 1. Initial Load (with small delay to ensure DOM and native autofill are ready)
+      setTimeout(() => {
+        const rememberedUser = localStorage.getItem('remember_user');
+        const rememberedPw = localStorage.getItem('remember_pw');
 
-      if (!username || !password) {
-        errorEl.textContent = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.';
-        errorEl.style.display = 'block';
-        return;
-      }
+        if (rememberedUser && rememberedPw) {
+          usernameInput.value = rememberedUser;
+          passwordInput.value = b64Decode(rememberedPw);
+          rememberCheckbox.checked = true;
+        }
+      }, 100);
 
-      btn.disabled = true;
-      spinner.style.display = '';
-      btnText.textContent = 'Đang đăng nhập...';
+      // (Readonly logic removed as requested)
 
-      try {
-        await AuthService.login(username, password);
+      // 3. Login form submission
+      document.getElementById('login-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
 
-        if (document.getElementById('remember-me').checked) {
-          localStorage.setItem('remember_user', username);
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        const errorEl = document.getElementById('login-error');
+        const spinner = document.getElementById('login-spinner');
+        const btnText = document.getElementById('btn-login-text');
+        const btn = document.getElementById('btn-login');
+
+        errorEl.style.display = 'none';
+
+        if (!username || !password) {
+          errorEl.textContent = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.';
+          errorEl.style.display = 'block';
+          return;
         }
 
-        // Redirect sang SPA
-        window.location.href = './#/home';
-      } catch (err) {
-        errorEl.textContent = err.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
-        errorEl.style.display = 'block';
-      } finally {
-        btn.disabled = false;
-        spinner.style.display = 'none';
-        btnText.textContent = 'Đăng nhập';
-      }
-    });
+        btn.disabled = true;
+        spinner.style.display = '';
+        btnText.textContent = 'Đang đăng nhập...';
 
-    // Điền lại user đã ghi nhớ
-    var remembered = localStorage.getItem('remember_user');
-    if (remembered) {
-      document.getElementById('username').value = remembered;
-      document.getElementById('remember-me').checked = true;
-    }
+        try {
+          // Perform authentication
+          await AuthService.login(username, password);
+
+          // If "Remember me" is active, save to localStorage
+          if (rememberCheckbox.checked) {
+            localStorage.setItem('remember_user', username);
+            localStorage.setItem('remember_pw', b64Encode(password));
+          } else {
+            // Otherwise, clear remembered details
+            localStorage.removeItem('remember_user');
+            localStorage.removeItem('remember_pw');
+          }
+
+          // Successful login, go home
+          window.location.href = './#/home';
+        } catch (err) {
+          errorEl.textContent = err.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+          errorEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          spinner.style.display = 'none';
+          btnText.textContent = 'Đăng nhập';
+        }
+      });
+    })();
   </script>
 
   <!-- PWA Service Worker -->
