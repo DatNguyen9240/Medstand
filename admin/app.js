@@ -149,7 +149,6 @@ function renderActions(actions) {
             <td>
                 <select class="flat-select" onchange="updateAction('${a.ActionCode}', 'ExecutionType', this.value)">
                     <option value="QUERY" ${a.ExecutionType === 'QUERY' ? 'selected' : ''}>QUERY</option>
-                    <option value="COMMAND" ${a.ExecutionType === 'COMMAND' ? 'selected' : ''}>COMMAND</option>
                     <option value="CART" ${a.ExecutionType === 'CART' ? 'selected' : ''}>CART</option>
                 </select>
             </td>

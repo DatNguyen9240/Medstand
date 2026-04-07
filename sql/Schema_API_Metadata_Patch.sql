@@ -62,7 +62,7 @@ GO
 -- ═══════════════════════════════════════════════════════════════════════════
 INSERT INTO API_Action (ApiID, ActionCode, ActionName, ExecutionType, IsConfirm, IsDefault, IsActive, OrderIndex)
 SELECT ApiID, 'CREATE', N'Tạo đơn hàng mới',       'CART',  1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tao_don_hang'      UNION ALL
-SELECT ApiID, 'INSERT', N'Thêm khách hàng',         'COMMAND', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@them_khach_hang'     UNION ALL
+SELECT ApiID, 'INSERT', N'Thêm khách hàng',         'QUERY', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@them_khach_hang'     UNION ALL
 SELECT ApiID, 'VIEW',   N'Tra cứu hóa đơn',         'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_hoa_don'       UNION ALL
 SELECT ApiID, 'VIEW',   N'Tra cứu đơn hàng',        'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_don_hang'      UNION ALL
 SELECT ApiID, 'VIEW',   N'Xem báo cáo doanh số',    'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@xem_doanh_so'      UNION ALL

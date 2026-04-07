@@ -56,7 +56,7 @@ CREATE TABLE API_Action (
     ApiID         INT           NOT NULL REFERENCES API_Definition(ApiID),
     ActionCode    VARCHAR(50)   NOT NULL,
     ActionName    NVARCHAR(200) NOT NULL,
-    ExecutionType VARCHAR(20)   NOT NULL,  -- SINGLE / QUERY / COMMAND / CART / BULK
+    ExecutionType VARCHAR(20)   NOT NULL,  -- SINGLE / QUERY / CART / BULK
     HttpMethod    VARCHAR(10)   NOT NULL DEFAULT 'POST',
     IsConfirm     BIT           NOT NULL DEFAULT 0,
     IsDefault     BIT           NOT NULL DEFAULT 1,
@@ -195,8 +195,8 @@ SELECT ApiID, 'VIEW',   N'Xem tuyến bán hàng',            'QUERY',   0, 1, 1
 SELECT ApiID, 'VIEW',   N'Chấm điểm khách hàng',          'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh'     UNION ALL
 SELECT ApiID, 'VIEW',   N'Xem tích lũy',                  'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tich_luy'         UNION ALL
 SELECT ApiID, 'VIEW',   N'Xem sản phẩm trọng tâm',        'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
-SELECT ApiID, 'VIEW',   N'Xem đề xuất khuyến mãi',        'COMMAND', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai' UNION ALL
-SELECT ApiID, 'UPDATE', N'Cập nhật chương trình trọng tâm','COMMAND', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, 'VIEW',   N'Xem đề xuất khuyến mãi',        'QUERY', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai' UNION ALL
+SELECT ApiID, 'UPDATE', N'Cập nhật chương trình trọng tâm','QUERY', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
 SELECT ApiID, 'VIEW',   N'Tìm sản phẩm',                  'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
 GO
 

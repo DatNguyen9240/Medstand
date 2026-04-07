@@ -116,7 +116,7 @@
                     { ApiCode: '@cham_diem_kh', DisplayName: '⭐ Chấm điểm KH', Category: 'Khách hàng', ExecutionType: 'QUERY' },
                     { ApiCode: '@tich_luy', DisplayName: '🎁 Tích lũy chương trình', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
                     { ApiCode: '@san_pham_trong_tam', DisplayName: '🔥 Sản phẩm trọng tâm', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-                    { ApiCode: '@de_xuat_khuyen_mai', DisplayName: '📢 Đề xuất khuyến mãi', Category: 'Khuyến mại', ExecutionType: 'COMMAND' },
+                    { ApiCode: '@de_xuat_khuyen_mai', DisplayName: '📢 Đề xuất khuyến mãi', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
                     { ApiCode: '@tra_cuu_san_pham', DisplayName: '🔍 Tra cứu sản phẩm', Category: 'Tra cứu', ExecutionType: 'QUERY' },
                     { ApiCode: '@ton_kho_list', DisplayName: '🏭 Tồn kho chi tiết', Category: 'Tra cứu', ExecutionType: 'QUERY' },
                     { ApiCode: '@xem_hoa_don', DisplayName: '🧾 Xem hóa đơn', Category: 'Tra cứu', ExecutionType: 'QUERY' },
@@ -317,12 +317,6 @@
         var found = _apiList.find(function (a) { return a.ApiCode === apiCode; });
         var execType = found ? found.ExecutionType : 'QUERY';
         var dispName = found ? found.DisplayName : apiCode;
-
-        if (execType === 'COMMAND') {
-            _replaceAtTag(apiCode);
-            _executeApi(apiCode, {}, dispName, execType, null);
-            return;
-        }
 
         _replaceAtTag(apiCode);
 
