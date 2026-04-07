@@ -58,6 +58,7 @@ CREATE TABLE API_Action (
     ActionName    NVARCHAR(200) NOT NULL,
     ExecutionType VARCHAR(20)   NOT NULL,  -- SINGLE / QUERY / COMMAND / CART / BULK
     HttpMethod    VARCHAR(10)   NOT NULL DEFAULT 'POST',
+    IsConfirm     BIT           NOT NULL DEFAULT 0,
     IsDefault     BIT           NOT NULL DEFAULT 1,
     IsActive      BIT           NOT NULL DEFAULT 1,
     OrderIndex    INT           NOT NULL DEFAULT 0
@@ -81,6 +82,8 @@ CREATE TABLE API_Field (
     MinValue      NVARCHAR(50)   NULL,
     MaxValue      NVARCHAR(50)   NULL,
     OptionsJson   NVARCHAR(MAX)  NULL,
+    DataSourceType  VARCHAR(50)  NULL,   -- STATIC / SQL / APICODE / API
+    DataSourceValue NVARCHAR(MAX) NULL,
     OrderIndex    INT            NOT NULL DEFAULT 0
 );
 GO
@@ -112,6 +115,8 @@ CREATE TABLE API_Filter (
     DefaultValue NVARCHAR(500)  NULL,
     Placeholder  NVARCHAR(200)  NULL,
     OptionsJson  NVARCHAR(MAX)  NULL,
+    DataSourceType  VARCHAR(50)  NULL,
+    DataSourceValue NVARCHAR(MAX) NULL,
     IsRequired   BIT            NOT NULL DEFAULT 0,
     OrderIndex   INT            NOT NULL DEFAULT 0
 );
@@ -182,17 +187,17 @@ GO
 -- ═══════════════════════════════════════════════════════════════════════════
 -- BƯỚC 3: API_Action
 -- ═══════════════════════════════════════════════════════════════════════════
-INSERT INTO API_Action (ApiID, ActionCode, ActionName, ExecutionType, IsDefault, IsActive, OrderIndex)
-SELECT ApiID, 'VIEW',   N'Xem gợi ý đơn hàng',           'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang'   UNION ALL
-SELECT ApiID, 'VIEW',   N'Gợi ý Upsell',                  'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y'      UNION ALL
-SELECT ApiID, 'VIEW',   N'Tìm đơn thuốc',                 'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_thuoc'  UNION ALL
-SELECT ApiID, 'VIEW',   N'Xem tuyến bán hàng',            'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang'   UNION ALL
-SELECT ApiID, 'VIEW',   N'Chấm điểm khách hàng',          'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh'     UNION ALL
-SELECT ApiID, 'VIEW',   N'Xem tích lũy',                  'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@tich_luy'         UNION ALL
-SELECT ApiID, 'VIEW',   N'Xem sản phẩm trọng tâm',        'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
-SELECT ApiID, 'VIEW',   N'Xem đề xuất khuyến mãi',        'COMMAND', 1, 1, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai' UNION ALL
-SELECT ApiID, 'UPDATE', N'Cập nhật chương trình trọng tâm','COMMAND', 1, 1, 1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, 'VIEW',   N'Tìm sản phẩm',                  'QUERY',   1, 1, 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
+INSERT INTO API_Action (ApiID, ActionCode, ActionName, ExecutionType, IsConfirm, IsDefault, IsActive, OrderIndex)
+SELECT ApiID, 'VIEW',   N'Xem gợi ý đơn hàng',           'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang'   UNION ALL
+SELECT ApiID, 'VIEW',   N'Gợi ý Upsell',                  'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y'      UNION ALL
+SELECT ApiID, 'VIEW',   N'Tìm đơn thuốc',                 'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_thuoc'  UNION ALL
+SELECT ApiID, 'VIEW',   N'Xem tuyến bán hàng',            'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang'   UNION ALL
+SELECT ApiID, 'VIEW',   N'Chấm điểm khách hàng',          'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh'     UNION ALL
+SELECT ApiID, 'VIEW',   N'Xem tích lũy',                  'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tich_luy'         UNION ALL
+SELECT ApiID, 'VIEW',   N'Xem sản phẩm trọng tâm',        'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
+SELECT ApiID, 'VIEW',   N'Xem đề xuất khuyến mãi',        'COMMAND', 0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai' UNION ALL
+SELECT ApiID, 'UPDATE', N'Cập nhật chương trình trọng tâm','COMMAND', 1, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, 'VIEW',   N'Tìm sản phẩm',                  'QUERY',   0, 1, 1, 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
 GO
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -201,69 +206,68 @@ GO
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- @goi_y_don_hang → API_GoiYDonHang_AI(@Username, @ObjectID, @TopN)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, OrderIndex)
-SELECT ApiID, '@Username', N'Người dùng',     'VARCHAR',  'hidden',          1,1,NULL, NULL,'','', 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
-SELECT ApiID, '@ObjectID', N'Mã khách hàng',  'VARCHAR',  'customer_lookup', 0,0,NULL, N'Nhập mã/tên KH','','', 2 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
-SELECT ApiID, '@TopN',     N'Số gợi ý',       'INT',      'number',          0,0,'10', NULL,'1','50', 3 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username', N'Người dùng',     'VARCHAR',  'hidden',          1,1,NULL, NULL,'','', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
+SELECT ApiID, '@ObjectID', N'Mã khách hàng',  'VARCHAR',  'combobox',        0,0,NULL, N'Nhập mã/tên KH','','', 'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
+SELECT ApiID, '@TopN',     N'Số gợi ý',       'INT',      'number',          0,0,'10', NULL,'1','50', NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang';
 
 -- @upsell_goi_y → API_UpsellGoiY_AI(@Username, @ObjectID, @SearchKey, @TopN)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, OrderIndex)
-SELECT ApiID, '@Username',  N'Người dùng',          'VARCHAR','hidden',          1,1,NULL,  NULL,'','', 1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
-SELECT ApiID, '@ObjectID',  N'Mã khách hàng',       'VARCHAR','customer_lookup', 0,0,NULL,  N'Nhập mã/tên KH','','', 2 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
-SELECT ApiID, '@SearchKey', N'Từ khóa/triệu chứng', 'VARCHAR','text',            0,0,NULL,  N'VD: ho, đau bụng, vitamin...','','', 3 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
-SELECT ApiID, '@TopN',      N'Số sản phẩm',         'INT',    'number',          0,0,'10',  NULL,'1','50', 4 FROM API_Definition WHERE ApiCode = '@upsell_goi_y';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username',  N'Người dùng',          'VARCHAR','hidden',          1,1,NULL,  NULL,'','', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
+SELECT ApiID, '@ObjectID',  N'Mã khách hàng',       'VARCHAR','combobox',        0,0,NULL,  N'Nhập mã/tên KH','','', 'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
+SELECT ApiID, '@SearchKey', N'Từ khóa/triệu chứng', 'VARCHAR','text',            0,0,NULL,  N'VD: ho, đau bụng, vitamin...','','', NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
+SELECT ApiID, '@TopN',      N'Số sản phẩm',         'INT',    'number',          0,0,'10',  NULL,'1','50', NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@upsell_goi_y';
 
 -- @goi_y_don_thuoc → API_GoiYDonThuoc_AI(@Keyword)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@Keyword', N'Triệu chứng/Tên thuốc', 'VARCHAR', 'text', 1,0,NULL, N'VD: ho, sốt, Amoxicillin...', 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_thuoc';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Keyword', N'Triệu chứng/Tên thuốc', 'VARCHAR', 'text', 1,0,NULL, N'VD: ho, sốt, Amoxicillin...', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_thuoc';
 
 -- @tuyen_ban_hang → API_TuyenBanHang_AI(@Username, @ObjectID, @SoNgayVangMat, @TopN)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, OrderIndex)
-SELECT ApiID, '@Username',      N'Người dùng',               'VARCHAR','hidden',          1,1,NULL, NULL,'','', 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
-SELECT ApiID, '@ObjectID',      N'Mã khách hàng',            'VARCHAR','customer_lookup', 0,0,NULL, N'Để trống = toàn tuyến','','', 2 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
-SELECT ApiID, '@SoNgayVangMat', N'Vắng ít nhất (ngày)',      'INT',    'number',          0,0,'45', NULL,'1','365', 3 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
-SELECT ApiID, '@TopN',          N'Số khách hàng',            'INT',    'number',          0,0,'8',  NULL,'1','50',  4 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username',      N'Người dùng',               'VARCHAR','hidden',          1,1,NULL, NULL,'','', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
+SELECT ApiID, '@ObjectID',      N'Mã khách hàng',            'VARCHAR','combobox',        0,0,NULL, N'Để trống = toàn tuyến','','', 'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
+SELECT ApiID, '@SoNgayVangMat', N'Vắng ít nhất (ngày)',      'INT',    'number',          0,0,'45', NULL,'1','365', NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
+SELECT ApiID, '@TopN',          N'Số khách hàng',            'INT',    'number',          0,0,'8',  NULL,'1','50',  NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang';
 
 -- @cham_diem_kh → API_ChamDiemKH_AI(@Username, @ObjectID, @NhomFilter)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, OptionsJson, OrderIndex)
-SELECT ApiID, '@Username',   N'Người dùng',     'VARCHAR','hidden',          1,1,NULL,NULL,NULL, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
-SELECT ApiID, '@ObjectID',   N'Mã khách hàng',  'VARCHAR','customer_lookup', 0,0,NULL,N'Để trống = tất cả',NULL, 2 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, OptionsJson, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username',   N'Người dùng',     'VARCHAR','hidden',          1,1,NULL,NULL,NULL, NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
+SELECT ApiID, '@ObjectID',   N'Mã khách hàng',  'VARCHAR','combobox',        0,0,NULL,N'Để trống = tất cả',NULL, 'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
 SELECT ApiID, '@NhomFilter', N'Nhóm KH',        'VARCHAR','select',          0,0,'',  NULL,
-    N'[{"value":"","label":"Tất cả"},{"value":"A","label":"A - VIP (≥50tr)"},{"value":"B","label":"B - Ổn định (≥30tr)"},{"value":"C","label":"C - Nguy cơ rời bỏ"}]',
-    3 FROM API_Definition WHERE ApiCode = '@cham_diem_kh';
+    N'[{"value":"","label":"Tất cả"},{"value":"A","label":"A - VIP (≥50tr)"},{"value":"B","label":"B - Ổn định (≥30tr)"},{"value":"C","label":"C - Nguy cơ rời bỏ"}]', NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@cham_diem_kh';
 
 -- @tich_luy → API_TichLuy_AI(@Username, @ObjectID, @ProgramID, @FromDate, @ToDate, @ItemIDs)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@Username',  N'Người dùng',      'VARCHAR',  'hidden',          1,1,NULL,               NULL,                                1 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@ObjectID',  N'Mã khách hàng',   'VARCHAR',  'customer_lookup', 0,0,NULL,               N'Để trống = tổng hợp',             2 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@ProgramID', N'Mã chương trình', 'VARCHAR',  'text',            0,0,NULL,               N'Để trống = CT đang chạy',          3 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@FromDate',  N'Từ ngày',          'DATETIME', 'date',            0,0,'THIS_MONTH_START', NULL,                                4 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@ToDate',    N'Đến ngày',         'DATETIME', 'date',            0,0,'TODAY',            NULL,                                5 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@ItemIDs',   N'Lọc sản phẩm',    'VARCHAR',  'text',            0,0,NULL,               N'VD: SP001,SP002 (để trống = tất cả)', 6 FROM API_Definition WHERE ApiCode = '@tich_luy';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username',  N'Người dùng',      'VARCHAR',  'hidden',          1,1,NULL,               NULL,                                NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@ObjectID',  N'Mã khách hàng',   'VARCHAR',  'combobox',        0,0,NULL,               N'Để trống = tổng hợp',             'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@ProgramID', N'Mã chương trình', 'VARCHAR',  'text',            0,0,NULL,               N'Để trống = CT đang chạy',          NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@FromDate',  N'Từ ngày',          'DATETIME', 'date',            0,0,'THIS_MONTH_START', NULL,                                NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@ToDate',    N'Đến ngày',         'DATETIME', 'date',            0,0,'TODAY',            NULL,                                NULL, NULL, 5 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@ItemIDs',   N'Lọc sản phẩm',    'VARCHAR',  'text',            0,0,NULL,               N'VD: SP001,SP002 (để trống = tất cả)', NULL, NULL, 6 FROM API_Definition WHERE ApiCode = '@tich_luy';
 
 -- @san_pham_trong_tam → API_SanPhamTrongTam_AI(@Username, @ObjectID, @TopN)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, MinValue, MaxValue, OrderIndex)
-SELECT ApiID, '@Username', N'Người dùng',   'VARCHAR','hidden',          1,1,NULL, '','',  1 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
-SELECT ApiID, '@ObjectID', N'Mã khách hàng','VARCHAR','customer_lookup', 0,0,NULL, '','',  2 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
-SELECT ApiID, '@TopN',     N'Số sản phẩm',  'INT',    'number',          0,0,'500','1','999', 3 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, MinValue, MaxValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username', N'Người dùng',   'VARCHAR','hidden',          1,1,NULL, '','',  NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
+SELECT ApiID, '@ObjectID', N'Mã khách hàng','VARCHAR','combobox',        0,0,NULL, '','',  'APICODE', '@danh_muc|@Type=CUSTOMER', 2 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam' UNION ALL
+SELECT ApiID, '@TopN',     N'Số sản phẩm',  'INT',    'number',          0,0,'500','1','999', NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@san_pham_trong_tam';
 
 -- @de_xuat_khuyen_mai → API_DeXuatKhuyenMai_AI(@Username)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, OrderIndex)
-SELECT ApiID, '@Username', N'Người dùng', 'VARCHAR','hidden', 1,1,NULL, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@Username', N'Người dùng', 'VARCHAR','hidden', 1,1,NULL, NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@de_xuat_khuyen_mai';
 
 -- @import_trong_tam → API_SanPhamTrongTam_Import_AI(@DocumentID, @FromDate, @ToDate, @Memo, @JsonItems, @JsonRules)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@DocumentID', N'Mã chương trình',   'VARCHAR',  'text',     1,0,NULL, N'VD: SPTT-2026-04',                                      1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, '@FromDate',   N'Từ ngày',             'DATETIME', 'date',     1,0,NULL, NULL,                                                    2 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, '@ToDate',     N'Đến ngày',            'DATETIME', 'date',     1,0,NULL, NULL,                                                    3 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, '@Memo',       N'Tên chương trình',    'VARCHAR',  'text',     1,0,NULL, N'VD: CT Tháng 04/2026',                                  4 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, '@JsonItems',  N'DS sản phẩm (JSON)',  'JSON',     'textarea', 0,0,NULL, N'[{"ItemID":"SP001","Notes":"..."}]',                    5 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
-SELECT ApiID, '@JsonRules',  N'Mốc thưởng (JSON)',   'JSON',     'textarea', 0,0,NULL, N'[{"TuDiem":10000000,"DenDiem":19999999,"QuaTang":"A"}]', 6 FROM API_Definition WHERE ApiCode = '@import_trong_tam';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@DocumentID', N'Mã chương trình',   'VARCHAR',  'text',     1,0,NULL, N'VD: SPTT-2026-04',                                      NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, '@FromDate',   N'Từ ngày',             'DATETIME', 'date',     1,0,NULL, NULL,                                                    NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, '@ToDate',     N'Đến ngày',            'DATETIME', 'date',     1,0,NULL, NULL,                                                    NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, '@Memo',       N'Tên chương trình',    'VARCHAR',  'text',     1,0,NULL, N'VD: CT Tháng 04/2026',                                  NULL, NULL, 4 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, '@JsonItems',  N'DS sản phẩm (JSON)',  'JSON',     'textarea', 0,0,NULL, N'[{"ItemID":"SP001","Notes":"..."}]',                    NULL, NULL, 5 FROM API_Definition WHERE ApiCode = '@import_trong_tam' UNION ALL
+SELECT ApiID, '@JsonRules',  N'Mốc thưởng (JSON)',   'JSON',     'textarea', 0,0,NULL, N'[{"TuDiem":10000000,"DenDiem":19999999,"QuaTang":"A"}]', NULL, NULL, 6 FROM API_Definition WHERE ApiCode = '@import_trong_tam';
 
 -- @tra_cuu_san_pham → API_TraCuuSanPham_AI(@SearchKey, @TopN)
-INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, OrderIndex)
-SELECT ApiID, '@SearchKey', N'Từ khóa tìm kiếm', 'VARCHAR','text',   0,0,NULL, N'Nhập tên hoặc mã SP...','','',   1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham' UNION ALL
-SELECT ApiID, '@TopN',      N'Số kết quả',        'INT',    'number', 0,0,'50', NULL,'1','500', 2 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
+INSERT INTO API_Field (ApiID, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DefaultValue, Placeholder, MinValue, MaxValue, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@SearchKey', N'Từ khóa tìm kiếm', 'VARCHAR','text',   0,0,NULL, N'Nhập tên hoặc mã SP...','','',   NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham' UNION ALL
+SELECT ApiID, '@TopN',      N'Số kết quả',        'INT',    'number', 0,0,'50', NULL,'1','500', NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
 GO
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -283,36 +287,36 @@ GO
 -- ═══════════════════════════════════════════════════════════════════════════
 
 -- @goi_y_don_hang
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@ObjectID', N'Mã/Tên KH',      'VARCHAR','customer_lookup','=',  NULL, N'Nhập mã hoặc tên KH', 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
-SELECT ApiID, '@TopN',     N'Top N sản phẩm',  'INT',    'number',         '=',  '10', NULL, 2 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang';
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@ObjectID', N'Mã/Tên KH',      'VARCHAR','combobox',       '=',  NULL, N'Nhập mã hoặc tên KH', 'APICODE', '@danh_muc|@Type=CUSTOMER', 1 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang' UNION ALL
+SELECT ApiID, '@TopN',     N'Top N sản phẩm',  'INT',    'number',         '=',  '10', NULL, NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@goi_y_don_hang';
 
 -- @upsell_goi_y
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@ObjectID',  N'Mã/Tên KH',            'VARCHAR','customer_lookup','=',   NULL, N'Nhập mã hoặc tên KH',        1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
-SELECT ApiID, '@SearchKey', N'Từ khóa/Triệu chứng',  'VARCHAR','text',           'LIKE',NULL, N'VD: ho, sốt, Amoxicillin...', 2 FROM API_Definition WHERE ApiCode = '@upsell_goi_y';
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@ObjectID',  N'Mã/Tên KH',            'VARCHAR','combobox',       '=',   NULL, N'Nhập mã hoặc tên KH',        'APICODE', '@danh_muc|@Type=CUSTOMER', 1 FROM API_Definition WHERE ApiCode = '@upsell_goi_y' UNION ALL
+SELECT ApiID, '@SearchKey', N'Từ khóa/Triệu chứng',  'VARCHAR','text',           'LIKE',NULL, N'VD: ho, sốt, Amoxicillin...', NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@upsell_goi_y';
 
 -- @tuyen_ban_hang
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@ObjectID',      N'Mã khách hàng',       'VARCHAR','customer_lookup','=', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
-SELECT ApiID, '@SoNgayVangMat', N'Vắng ít nhất (ngày)', 'INT',    'number',         '>=','45',  NULL, 2 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang';
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@ObjectID',      N'Mã khách hàng',       'VARCHAR','combobox',       '=', NULL, NULL, 'APICODE', '@danh_muc|@Type=CUSTOMER', 1 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang' UNION ALL
+SELECT ApiID, '@SoNgayVangMat', N'Vắng ít nhất (ngày)', 'INT',    'number',         '>=','45',  NULL, NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@tuyen_ban_hang';
 
 -- @cham_diem_kh
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, OptionsJson, OrderIndex)
-SELECT ApiID, '@ObjectID',   N'Mã khách hàng',  'VARCHAR','customer_lookup','=', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, OptionsJson, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@ObjectID',   N'Mã khách hàng',  'VARCHAR','combobox',       '=', NULL, NULL, 'APICODE', '@danh_muc|@Type=CUSTOMER', 1 FROM API_Definition WHERE ApiCode = '@cham_diem_kh' UNION ALL
 SELECT ApiID, '@NhomFilter', N'Nhóm KH',        'VARCHAR','select',         '=', NULL,
     N'[{"value":"","label":"Tất cả"},{"value":"A","label":"A - VIP"},{"value":"B","label":"B - Ổn định"},{"value":"C","label":"C - Rời bỏ"}]',
-    2 FROM API_Definition WHERE ApiCode = '@cham_diem_kh';
+    NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@cham_diem_kh';
 
 -- @tich_luy
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@ObjectID', N'Mã khách hàng', 'VARCHAR',  'customer_lookup','=',  NULL,               N'Để trống = tổng hợp', 1 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@FromDate', N'Từ ngày',        'DATETIME', 'date',           '>=', 'THIS_MONTH_START', NULL,                   2 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
-SELECT ApiID, '@ToDate',   N'Đến ngày',       'DATETIME', 'date',           '<=', 'TODAY',            NULL,                   3 FROM API_Definition WHERE ApiCode = '@tich_luy';
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@ObjectID', N'Mã khách hàng', 'VARCHAR',  'combobox',       '=',  NULL,               N'Để trống = tổng hợp', 'APICODE', '@danh_muc|@Type=CUSTOMER', 1 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@FromDate', N'Từ ngày',        'DATETIME', 'date',           '>=', 'THIS_MONTH_START', NULL,                   NULL, NULL, 2 FROM API_Definition WHERE ApiCode = '@tich_luy' UNION ALL
+SELECT ApiID, '@ToDate',   N'Đến ngày',       'DATETIME', 'date',           '<=', 'TODAY',            NULL,                   NULL, NULL, 3 FROM API_Definition WHERE ApiCode = '@tich_luy';
 
 -- @tra_cuu_san_pham
-INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, OrderIndex)
-SELECT ApiID, '@SearchKey', N'Tên/Mã sản phẩm', 'VARCHAR','text','LIKE',NULL, N'Nhập tên hoặc mã SP...', 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
+INSERT INTO API_Filter (ApiID, FieldCode, FieldName, DataType, ControlType, Operator, DefaultValue, Placeholder, DataSourceType, DataSourceValue, OrderIndex)
+SELECT ApiID, '@SearchKey', N'Tên/Mã sản phẩm', 'VARCHAR','text','LIKE',NULL, N'Nhập tên hoặc mã SP...', NULL, NULL, 1 FROM API_Definition WHERE ApiCode = '@tra_cuu_san_pham';
 
 -- @import_trong_tam
 INSERT INTO API_Bulk_Config (ApiID, AllowUpload, AllowMultiSelect, TemplateUrl, MaxRows)
@@ -348,7 +352,7 @@ BEGIN
     SET NOCOUNT ON;
     -- 1: API + Action info
     SELECT D.ApiID, D.ApiCode, D.ApiName, D.ApiDescription, D.StoredProcedure, D.Category, D.IconEmoji,
-           A.ActionID, A.ActionCode, A.ExecutionType
+           A.ActionID, A.ActionCode, A.ExecutionType, A.IsConfirm
     FROM API_Definition D
     JOIN API_Action A ON A.ApiID = D.ApiID AND A.IsDefault = 1
     WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1 AND A.IsActive = 1
@@ -356,13 +360,17 @@ BEGIN
     -- 2: Fields
     SELECT F.FieldID, F.ApiID, F.FieldCode, F.FieldName, F.DataType, F.ControlType,
            F.IsRequired, F.IsSystemParam, F.DefaultValue, F.Placeholder,
-           F.MinValue, F.MaxValue, F.OptionsJson, F.OrderIndex
+           F.MinValue, F.MaxValue, F.OptionsJson,
+           F.DataSourceType, F.DataSourceValue,
+           F.OrderIndex
     FROM API_Field F JOIN API_Definition D ON D.ApiID = F.ApiID
     WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1
     ORDER BY D.OrderIndex, F.OrderIndex;
     -- 3: Filters
     SELECT FL.FilterID, FL.ApiID, FL.FieldCode, FL.FieldName, FL.DataType, FL.ControlType,
-           FL.Operator, FL.DefaultValue, FL.Placeholder, FL.OptionsJson, FL.IsRequired, FL.OrderIndex
+           FL.Operator, FL.DefaultValue, FL.Placeholder, FL.OptionsJson, 
+           FL.DataSourceType, FL.DataSourceValue,
+           FL.IsRequired, FL.OrderIndex
     FROM API_Filter FL JOIN API_Definition D ON D.ApiID = FL.ApiID
     WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1
     ORDER BY D.OrderIndex, FL.OrderIndex;
