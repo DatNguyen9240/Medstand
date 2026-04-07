@@ -1,0 +1,149 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admin-metadata",
+        "options": {}
+      },
+      "id": "webhook-admin",
+      "name": "Webhook Admin API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.action }}",
+              "value2": "save"
+            }
+          ]
+        }
+      },
+      "id": "check-action",
+      "name": "Kiểm tra hành động",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC API_Admin_GetFullConfig @ApiCode = '{{ $json.body.apiCode || \"\" }}'",
+        "additionalFields": {}
+      },
+      "id": "sql-get",
+      "name": "Lấy dữ liệu SQL",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "microsoftSql": {
+           "id": "YOUR_SQL_CREDENTIAL_ID",
+           "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC API_Admin_SaveBasicConfig \n  @ApiCode = '{{ $json.body.apiCode }}', \n  @ApiName = N'{{ $json.body.apiName }}', \n  @StoredProcedure = '{{ $json.body.storedProcedure }}', \n  @Category = N'{{ $json.body.category }}', \n  @IconEmoji = N'{{ $json.body.iconEmoji }}'",
+        "additionalFields": {}
+      },
+      "id": "sql-save",
+      "name": "Lưu dữ liệu SQL",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        600,
+        400
+      ],
+      "credentials": {
+        "microsoftSql": {
+           "id": "YOUR_SQL_CREDENTIAL_ID",
+           "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-ok",
+      "name": "Trả kết quả",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Admin API": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra hành động",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra hành động": {
+      "main": [
+        [
+          {
+            "node": "Lưu dữ liệu SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lấy dữ liệu SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lấy dữ liệu SQL": {
+      "main": [
+        [
+          {
+            "node": "Trả kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lưu dữ liệu SQL": {
+      "main": [
+        [
+          {
+            "node": "Trả kết quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
