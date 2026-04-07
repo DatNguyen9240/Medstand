@@ -509,7 +509,6 @@
         var text = $input.value.trim();
         if (!text && selectedFiles.length === 0) return;
 
-        if (isRecording && recognition) recognition.stop();
 
         var fileNames = selectedFiles.map(function (f) { return f.name; });
         var attachedFileName = fileNames.length > 0 ? fileNames.join(', ') : null;
