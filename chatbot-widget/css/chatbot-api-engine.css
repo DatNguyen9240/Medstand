@@ -119,6 +119,18 @@
     background: var(--ae-bg);
 }
 
+.ae-ctrl.ae-error {
+    border-color: #ef4444;
+    background-color: #fef2f2;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.ae-label em {
+    color: #ef4444;
+    margin-left: 2px;
+    font-style: normal;
+}
+
 .ae-combo-sug, .ae-cart-sug {
     position: absolute;
     top: calc(100% + 5px);
