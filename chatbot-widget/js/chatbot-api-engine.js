@@ -338,6 +338,9 @@
         var atPos = val.lastIndexOf('@');
         var tag = '#' + apiCode.replace('@', '') + ' ';
         _inputEl.value = (atPos !== -1 ? val.slice(0, atPos) : val) + tag;
+        
+        // Phát sự kiện input để chatbot.js biết giá trị đã thay đổi -> cập nhật nút Gửi
+        _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         _inputEl.focus();
     }
 

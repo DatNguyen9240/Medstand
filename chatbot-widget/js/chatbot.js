@@ -332,7 +332,8 @@
     function _updateSendBtn() {
         var hasText = $input.value.trim().length > 0;
         var hasFile = selectedFiles.length > 0;
-        $btnSend.disabled = !(hasText || hasFile);
+        // Nếu đang đợi AI (đang hiện nút Stop) thì không được disabled nút
+        $btnSend.disabled = !(hasText || hasFile || isWaitingAI);
     }
 
     // ══════════════════════════════════════════
@@ -1206,7 +1207,7 @@
         if ($ghost) { $ghost.innerHTML = ''; $ghost.style.display = 'none'; }
     }
 
-    _ghostCreate();
+
 
     // ── Events ──
     $input.addEventListener('input', function () {
@@ -1329,5 +1330,6 @@
         }, 300);
     });
 
+    _updateSendBtn();
     $input.focus();
 })();
