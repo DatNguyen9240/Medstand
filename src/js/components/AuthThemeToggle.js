@@ -34,9 +34,11 @@ var AuthThemeToggle = (function () {
     }
 
     syncIcons();
+    window.addEventListener('themechanged', syncIcons);
+
     btn.addEventListener('click', function () {
       if (typeof toggleTheme === 'function') toggleTheme();
-      syncIcons();
+      // No need to call syncIcons() manually as the event will fire
     });
   }
 
