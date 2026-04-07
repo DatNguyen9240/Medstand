@@ -780,7 +780,10 @@
             }
 
             var pos = val.lastIndexOf('@');
-            if (pos === -1) { _menuHide(); return; }
+            if (pos === -1) {
+                if (_menuVis) _menuHide();
+                return;
+            }
             var after = val.slice(pos + 1);
             if (/\s/.test(after)) { _menuHide(); return; }
 
@@ -804,9 +807,7 @@
             else if (e.key === 'Escape') { _menuHide(); }
         });
 
-        inp.addEventListener('blur', function () {
-            _hideTimer = setTimeout(_menuHide, 160);
-        });
+        // Đã gỡ bỏ tự động đóng khi mất focus theo yêu cầu
     }
 
     // ── Public API ────────────────────────────────────────────────────
