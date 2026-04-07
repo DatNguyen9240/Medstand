@@ -9,10 +9,35 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [1824, 64],
+      "position": [1600, 80],
       "id": "ac92e879-87cb-4f32-8531-a4546641e24c",
       "name": "Webhook",
       "webhookId": "b38d2f10-8c77-4a8d-b0fd-ca3199d30189"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/api-list-active",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"SearchKey\": \"\" }",
+        "options": { "timeout": 8000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 280],
+      "id": "fetch-api-list",
+      "name": "Lấy Danh Sách API"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Biến danh sách API từ DB thành text mô tả cho AI\nconst list = $input.item.json;\nconst apis = Array.isArray(list) ? list : (list.data || list.result || []);\n\nif (!apis.length) {\n  return [{ json: { api_list_text: '(Không lấy được danh sách API từ hệ thống)' } }];\n}\n\nconst grouped = {};\nfor (const api of apis) {\n  const cat = api.Category || 'Khác';\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push(`• ${api.ApiCode}  → ${api.ApiDescription || api.ApiName}  [${api.ExecutionType}]`);\n}\n\nlet text = 'DANH SÁCH API HỆ THỐNG (tự động từ DB):\\n';\nfor (const [cat, items] of Object.entries(grouped)) {\n  text += `\\n===== ${cat} =====\\n${items.join('\\n')}`;\n}\n\nreturn [{ json: { api_list_text: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1824, 280],
+      "id": "build-api-text",
+      "name": "Build Prompt API List"
     },
     {
       "parameters": {
@@ -22,7 +47,7 @@
           "messageValues": [
             {
               "role": "system",
-              "message": "Bạn là AI Sale Assistant của hệ thống Medstand — hỗ trợ đội ngũ bán hàng dược phẩm.\n\nBạn có 3 công cụ:\n1. Tool_RAG_TaiLieu       → Câu hỏi về kiến thức thuốc, quy trình, tài liệu sản phẩm\n2. Tool_NghiepVu_CoBan    → Nghiệp vụ bán hàng hàng ngày (đơn hàng, công nợ, tồn kho, danh mục)\n3. Tool_NghiepVu_NangCao  → Phân tích AI chuyên sâu (gợi ý, chấm điểm, tích lũy, tuyến bán hàng)\n\nKHÔNG tự trả lời bằng kiến thức cá nhân, phải gọi đúng tool.\n\n===== TOOL 2: Tool_NghiepVu_CoBan =====\n(9 ApiCode — Module Dùng Chung từ Schema_API_Metadata_Patch)\n\n• @tao_don_hang       → Tạo đơn hàng mới [CART - cần xác nhận]     | params: @ObjectID, @ItemList\n• @them_khach_hang    → Thêm khách hàng mới [QUERY - cần xác nhận]  | params: @TenKhachHang, @SoDienThoai\n• @xem_hoa_don        → Tra cứu hóa đơn                             | params: @FromDate, @SearchText\n• @xem_don_hang       → Tra cứu đơn hàng theo trạng thái            | params: @StatusName, @FromDate\n• @xem_doanh_so       → [MANAGER+] Báo cáo doanh số                 | params: @FromDate, @EmployeeID\n• @cong_no_kh         → Công nợ tổng hợp KH                         | params: @ObjectID, @ToDate\n• @cong_no_chi_tiet   → Chi tiết nợ từng hóa đơn [bắt buộc mã KH]  | params: @ObjectID\n• @danh_muc           → Tìm nhanh: KH, SP, kho, đơn hàng, NV        | params: @Type, @SearchText\n• @ton_kho_list       → Tồn kho theo lô/hạn dùng                   | params: @ItemID, @ItemName\n\n===== TOOL 3: Tool_NghiepVu_NangCao =====\n(10 ApiCode — Module Chuyên Sâu AI từ Schema_API_Metadata)\n\n• @goi_y_don_hang     → Gợi ý đơn hàng theo lịch sử KH             | params: @ObjectID, @TopN\n• @upsell_goi_y       → Upsell & gợi ý SP tăng giá trị đơn          | params: @ObjectID, @SearchKey, @TopN\n• @goi_y_don_thuoc    → Tìm thuốc theo triệu chứng                   | params: @Keyword\n• @tuyen_ban_hang     → Lịch tuyến bán hàng KH cần ghé thăm         | params: @SoNgayVangMat, @TopN\n• @cham_diem_kh       → Phân loại KH A/B/C theo doanh số             | params: @NhomFilter\n• @tich_luy           → Tích lũy chương trình KH                     | params: @ObjectID, @ProgramID\n• @san_pham_trong_tam → Sản phẩm trọng tâm đang chạy                | params: @ObjectID, @TopN\n• @de_xuat_khuyen_mai → AI gợi ý xả hàng/combo [tự động theo @Username]\n• @tra_cuu_san_pham   → Tra cứu giá & tồn kho tổng hợp             | params: @SearchKey, @TopN\n• @import_trong_tam   → [ADMIN ONLY] Import SP trọng tâm             | params: @JsonItems, @JsonRules\n\n===== QUY TẮC QUAN TRỌNG =====\n- @Username: Tự động inject từ session — KHÔNG hỏi người dùng\n- isConfirm: Các lệnh @tao_don_hang và @them_khach_hang BẮT BUỘC xác nhận:\n  → Lần 1: Gọi tool KHÔNG có isConfirm (hoặc isConfirm=0) → hệ thống trả về form xác nhận\n  → Người dùng xác nhận → Gọi lại tool với isConfirm=1 để thực thi\n- Tìm KH/SP trước khi tạo đơn: dùng @danh_muc để lấy ObjectID chính xác\n- Mặc định: @FromDate = LAST_30_DAYS, @ToDate = TODAY, @TopN = 10"
+              "message": "=Bạn là AI Sale Assistant của hệ thống Medstand — hỗ trợ đội ngũ bán hàng dược phẩm.\n\nBạn có 2 công cụ:\n1. Tool_RAG_TaiLieu       → Câu hỏi về KIẾN THỨC: thuốc, quy trình, tài liệu sản phẩm\n2. Tool_NghiepVu_HeThong  → Mọi nghiệp vụ thực tế của hệ thống (xem danh sách API bên dưới)\n\nKHÔNG tự trả lời bằng kiến thức cá nhân, phải gọi đúng tool.\n\n{{ $('Build Prompt API List').item.json.api_list_text }}\n\n===== QUY TẮC QUAN TRỌNG =====\n- @Username: Tự động inject từ session, KHÔNG hỏi người dùng.\n- isConfirm: Các lệnh @tao_don_hang và @them_khach_hang BẮT BUỘC xác nhận:\n  → Gọi tool lần 1 với isConfirm=0 → hệ thống trả về form xác nhận\n  → Người dùng xác nhận → Gọi lại tool với isConfirm=1 để thực thi.\n- Khi gọi Tool_NghiepVu_HeThong, chỉ cần truyền:\n  * ApiCode: mã API cần gọi (bắt buộc)\n  * params: JSON object chứa toàn bộ tham số (VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"10\"})\n  * isConfirm: 0 hoặc 1\n- Mặc định: @FromDate = LAST_30_DAYS, @ToDate = TODAY, @TopN = 10"
             }
           ]
         },
@@ -30,7 +55,7 @@
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [2112, 64],
+      "position": [2112, 80],
       "id": "f22a12cd-cfd7-4410-ad28-30e7b4388e92",
       "name": "AI Agent (Đại Não)"
     },
@@ -43,7 +68,7 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [1968, 336],
+      "position": [1968, 352],
       "id": "7f66cdc5-fed1-4c3f-82d4-cb2da82c6895",
       "name": "OpenAI GPT-4o-mini",
       "credentials": {
@@ -59,7 +84,7 @@
       },
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
-      "position": [2128, 336],
+      "position": [2128, 352],
       "id": "834773c5-75f7-450b-845e-99e4caf54cef",
       "name": "Memory (Nhớ ngữ cảnh)"
     },
@@ -68,79 +93,57 @@
         "name": "Tool_RAG_TaiLieu",
         "description": "Dùng khi người dùng hỏi về KIẾN THỨC: thông tin thuốc, cơ chế hoạt động, tác dụng phụ, quy trình nghiệp vụ, hướng dẫn sử dụng sản phẩm.\nKHÔNG dùng để tra cứu tồn kho, đơn hàng, hay dữ liệu thực tế.\n\nTham số:\n- cau_hoi: Câu hỏi của người dùng (string, bắt buộc)",
         "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-rag-tracuu",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [{}]
-        },
+        "url": "https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/hook-rag-tracuu",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"cau_hoi\": \"{{ $parameter.cau_hoi }}\",\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\"\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2048, 336],
+      "position": [2048, 352],
       "id": "7942e7ac-b97a-4341-8b68-7acbf69374d2",
       "name": "Tool_RAG_TaiLieu"
     },
     {
       "parameters": {
-        "name": "Tool_NghiepVu_CoBan",
-        "description": "Dùng cho nghiệp vụ BÁN HÀNG hàng ngày: tra cứu, tạo đơn, công nợ, tồn kho, danh mục.\n\nApiCode hợp lệ: @tao_don_hang, @them_khach_hang, @xem_hoa_don, @xem_don_hang, @xem_doanh_so, @cong_no_kh, @cong_no_chi_tiet, @danh_muc, @ton_kho_list\n\nTham số BẮT BUỘC:\n- ApiCode: Mã API cần gọi\n- isConfirm: 0 (mặc định) hoặc 1 (khi user đã xác nhận cho @tao_don_hang / @them_khach_hang)\n\nTham số TÙY CHỌN:\n- ObjectID: Mã khách hàng\n- SearchText: Từ khóa tìm kiếm\n- FromDate / ToDate: Khoảng ngày (YYYY-MM-DD)\n- TopN: Số kết quả (mặc định 10)\n- StatusName: Trạng thái đơn (Chờ duyệt/Đã duyệt/Đang giao/Hoàn thành/Hủy)\n- ItemID / ItemName: Mã/tên sản phẩm\n- TenKhachHang / SoDienThoai: Thông tin KH mới\n- Type: Loại danh mục (sanpham/khachhang/donhang/khohang/nhanvien)\n- ItemList: Danh sách JSON sản phẩm (cho @tao_don_hang)\n- EmployeeID: Mã nhân viên",
+        "name": "Tool_NghiepVu_HeThong",
+        "description": "Dùng cho MỌI nghiệp vụ hệ thống: tra cứu, tạo đơn, công nợ, tồn kho, phân tích AI, gợi ý, chấm điểm KH...\nXem danh sách ApiCode đầy đủ trong System Prompt.\n\nChỉ cần 3 tham số:\n- ApiCode: Mã API cần gọi (bắt buộc, bắt đầu bằng @)\n- params: JSON string chứa tất cả tham số nghiệp vụ, VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"10\"}\n- isConfirm: Số nguyên, 0 (mặc định) hoặc 1 (đã xác nhận thực thi)",
         "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-nghiepvu-crud",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [{}]
-        },
+        "url": "https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/hook-nghiepvu-executor",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"ApiCode\": \"{{ $parameter.ApiCode }}\",\n  \"action\": \"{{ $parameter.action || 'QUERY' }}\",\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\",\n  \"ObjectID\": \"{{ $parameter.ObjectID || '' }}\",\n  \"SearchText\": \"{{ $parameter.SearchText || '' }}\",\n  \"FromDate\": \"{{ $parameter.FromDate || '' }}\",\n  \"ToDate\": \"{{ $parameter.ToDate || '' }}\",\n  \"TopN\": \"{{ $parameter.TopN || '10' }}\",\n  \"StatusName\": \"{{ $parameter.StatusName || '' }}\",\n  \"ItemID\": \"{{ $parameter.ItemID || '' }}\",\n  \"ItemName\": \"{{ $parameter.ItemName || '' }}\",\n  \"TenKhachHang\": \"{{ $parameter.TenKhachHang || '' }}\",\n  \"SoDienThoai\": \"{{ $parameter.SoDienThoai || '' }}\",\n  \"Type\": \"{{ $parameter.Type || '' }}\",\n  \"ItemList\": \"{{ $parameter.ItemList || '[]' }}\",\n  \"EmployeeID\": \"{{ $parameter.EmployeeID || '' }}\"\n}"
+        "jsonBody": "={\n  \"ApiCode\":   \"{{ $parameter.ApiCode }}\",\n  \"params\":    {{ $parameter.params || '{}' }},\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\":  \"{{ $('Webhook').item.json.body.username || 'default' }}\",\n  \"token\":     \"{{ $('Webhook').item.json.headers.authorization || 'Bearer empty' }}\"\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2208, 336],
-      "id": "0c0ea7b5-3340-4ece-b920-7e5c02374e6c",
-      "name": "Tool_NghiepVu_CoBan"
-    },
-    {
-      "parameters": {
-        "name": "Tool_NghiepVu_NangCao",
-        "description": "Dùng cho phân tích AI CHUYÊN SÂU: gợi ý đơn, chấm điểm KH, tích lũy, tuyến bán hàng, đề xuất khuyến mãi.\n\nApiCode hợp lệ: @goi_y_don_hang, @upsell_goi_y, @goi_y_don_thuoc, @tuyen_ban_hang, @cham_diem_kh, @tich_luy, @san_pham_trong_tam, @de_xuat_khuyen_mai, @tra_cuu_san_pham, @import_trong_tam\n\nTham số BẮT BUỘC:\n- ApiCode: Mã API cần gọi\n\nTham số TÙY CHỌN:\n- ObjectID: Mã khách hàng\n- SearchKey: Từ khóa tìm kiếm SP\n- TopN: Số kết quả (mặc định 10)\n- Keyword: Triệu chứng / tên thuốc (cho @goi_y_don_thuoc)\n- NhomFilter: A/B/C (cho @cham_diem_kh)\n- SoNgayVangMat: Số ngày vắng mặt (cho @tuyen_ban_hang, mặc định 45)\n- ProgramID: Mã chương trình tích lũy (cho @tich_luy)\n- JsonItems / JsonRules: Dữ liệu import (chỉ @import_trong_tam - Admin)",
-        "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-nghiepvu-nangcao",
-        "sendHeaders": true,
-        "parametersHeaders": {
-          "values": [{}]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"ApiCode\": \"{{ $parameter.ApiCode }}\",\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\",\n  \"ObjectID\": \"{{ $parameter.ObjectID || '' }}\",\n  \"SearchKey\": \"{{ $parameter.SearchKey || '' }}\",\n  \"TopN\": \"{{ $parameter.TopN || '10' }}\",\n  \"Keyword\": \"{{ $parameter.Keyword || '' }}\",\n  \"NhomFilter\": \"{{ $parameter.NhomFilter || '' }}\",\n  \"SoNgayVangMat\": \"{{ $parameter.SoNgayVangMat || '45' }}\",\n  \"ProgramID\": \"{{ $parameter.ProgramID || '' }}\",\n  \"JsonItems\": \"{{ $parameter.JsonItems || '' }}\",\n  \"JsonRules\": \"{{ $parameter.JsonRules || '' }}\"\n}"
-      },
-      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
-      "typeVersion": 1.1,
-      "position": [2368, 336],
-      "id": "70b8abc2-35d8-4929-95d4-79a4952e6dfe",
-      "name": "Tool_NghiepVu_NangCao"
+      "position": [2288, 352],
+      "id": "tool-nghiepvu-chung",
+      "name": "Tool_NghiepVu_HeThong"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": {{ JSON.stringify($json.output || $json.text || 'Xử lý hoàn tất.') }},\n  \"action\": \"{{ $('Webhook').item.json.body.action || 'QUERY' }}\",\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\"\n}",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": {{ JSON.stringify($json.output || $json.text || 'Xử lý hoàn tất.') }},\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\"\n}",
         "options": {
           "responseCode": 200
         }
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2512, 64],
+      "position": [2512, 80],
       "id": "e1bbb00b-4160-4dc3-9fff-2e3435d3bd0f",
       "name": "Trả Kết Quả về App"
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "AI Agent (Đại Não)", "type": "main", "index": 0 }]]
+      "main": [
+        [{ "node": "Lấy Danh Sách API", "type": "main", "index": 0 }],
+        [{ "node": "AI Agent (Đại Não)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Lấy Danh Sách API": {
+      "main": [[{ "node": "Build Prompt API List", "type": "main", "index": 0 }]]
     },
     "AI Agent (Đại Não)": {
       "main": [[{ "node": "Trả Kết Quả về App", "type": "main", "index": 0 }]]
@@ -154,10 +157,7 @@
     "Tool_RAG_TaiLieu": {
       "ai_tool": [[{ "node": "AI Agent (Đại Não)", "type": "ai_tool", "index": 0 }]]
     },
-    "Tool_NghiepVu_CoBan": {
-      "ai_tool": [[{ "node": "AI Agent (Đại Não)", "type": "ai_tool", "index": 0 }]]
-    },
-    "Tool_NghiepVu_NangCao": {
+    "Tool_NghiepVu_HeThong": {
       "ai_tool": [[{ "node": "AI Agent (Đại Não)", "type": "ai_tool", "index": 0 }]]
     }
   },
