@@ -27,11 +27,16 @@
     'use strict';
 
     // ── Config ────────────────────────────────────────────────────────
+    // URL lấy từ api.config.js (API_CONFIG.N8N_BASE) — khi đổi tunnel chỉ sửa 1 chỗ
+    var _n8n = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE)
+        ? API_CONFIG.N8N_BASE
+        : 'https://seasonal-homes-portraits-fired.trycloudflare.com'; // fallback
+
     var CFG = {
-        LIST_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-list-active',
-        CFG_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-get-config',
-        EXEC_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-execute',
-        DS_URL: 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/api-datasource',
+        LIST_URL: _n8n + '/webhook/api-list-active',
+        CFG_URL:  _n8n + '/webhook/api-get-config',
+        EXEC_URL: _n8n + '/webhook/api-execute',
+        DS_URL:   _n8n + '/webhook/api-datasource',
         CACHE_TTL: 10 * 60 * 1000,
         CACHE_KEY: 'api_engine_v3_list'
     };
@@ -94,37 +99,40 @@
     }
 
     // ── Load API List ─────────────────────────────────────────────────
+    var _FALLBACK_LIST = [
+        { ApiCode: '@goi_y_don_hang', DisplayName: '🛒 Gợi ý đơn hàng', Category: 'Bán hàng', ExecutionType: 'QUERY' },
+        { ApiCode: '@upsell_goi_y', DisplayName: '✨ Upsell & Gợi ý SP', Category: 'Bán hàng', ExecutionType: 'QUERY' },
+        { ApiCode: '@tao_don_hang', DisplayName: '📝 Tạo đơn hàng', Category: 'Bán hàng', ExecutionType: 'CART' },
+        { ApiCode: '@goi_y_don_thuoc', DisplayName: '💊 Gợi ý đơn thuốc', Category: 'Bán hàng', ExecutionType: 'QUERY' },
+        { ApiCode: '@tuyen_ban_hang', DisplayName: '🗺️ Lịch tuyến bán hàng', Category: 'Khách hàng', ExecutionType: 'QUERY' },
+        { ApiCode: '@cham_diem_kh', DisplayName: '⭐ Chấm điểm KH', Category: 'Khách hàng', ExecutionType: 'QUERY' },
+        { ApiCode: '@tich_luy', DisplayName: '🎁 Tích lũy chương trình', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
+        { ApiCode: '@san_pham_trong_tam', DisplayName: '🔥 Sản phẩm trọng tâm', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
+        { ApiCode: '@de_xuat_khuyen_mai', DisplayName: '📢 Đề xuất khuyến mãi', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
+        { ApiCode: '@tra_cuu_san_pham', DisplayName: '🔍 Tra cứu sản phẩm', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@ton_kho_list', DisplayName: '🏭 Tồn kho chi tiết', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@xem_hoa_don', DisplayName: '🧾 Xem hóa đơn', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@xem_don_hang', DisplayName: '📋 Xem đơn hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@cong_no_kh', DisplayName: '💳 Công nợ khách hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@cong_no_chi_tiet', DisplayName: '🧾 Chi tiết công nợ', Category: 'Tra cứu', ExecutionType: 'QUERY' },
+        { ApiCode: '@danh_muc', DisplayName: '📚 Tra cứu danh mục', Category: 'Tra cứu', ExecutionType: 'QUERY' }
+    ];
+
     function _loadList(cb) {
         try {
             var c = JSON.parse(sessionStorage.getItem(CFG.CACHE_KEY));
-            if (c && c.data && Date.now() - c.ts < CFG.CACHE_TTL) { _apiList = c.data; cb && cb(_apiList); return; }
+            if (c && c.data && c.data.length > 0 && Date.now() - c.ts < CFG.CACHE_TTL) { _apiList = c.data; cb && cb(_apiList); return; }
         } catch (e) { }
 
         _post(CFG.LIST_URL, { SearchKey: '' })
             .then(function (res) {
-                _apiList = Array.isArray(res) ? res : (res.data || res.records || []);
+                var list = Array.isArray(res) ? res : (res.data || res.records || []);
+                _apiList = (list && list.length > 0) ? list : _FALLBACK_LIST;
                 try { sessionStorage.setItem(CFG.CACHE_KEY, JSON.stringify({ data: _apiList, ts: Date.now() })); } catch (e) { }
                 cb && cb(_apiList);
             })
             .catch(function () {
-                _apiList = [
-                    { ApiCode: '@goi_y_don_hang', DisplayName: '🛒 Gợi ý đơn hàng', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-                    { ApiCode: '@upsell_goi_y', DisplayName: '✨ Upsell & Gợi ý SP', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-                    { ApiCode: '@tao_don_hang', DisplayName: '📝 Tạo đơn hàng', Category: 'Bán hàng', ExecutionType: 'CART' },
-                    { ApiCode: '@goi_y_don_thuoc', DisplayName: '💊 Gợi ý đơn thuốc', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-                    { ApiCode: '@tuyen_ban_hang', DisplayName: '🗺️ Lịch tuyến bán hàng', Category: 'Khách hàng', ExecutionType: 'QUERY' },
-                    { ApiCode: '@cham_diem_kh', DisplayName: '⭐ Chấm điểm KH', Category: 'Khách hàng', ExecutionType: 'QUERY' },
-                    { ApiCode: '@tich_luy', DisplayName: '🎁 Tích lũy chương trình', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-                    { ApiCode: '@san_pham_trong_tam', DisplayName: '🔥 Sản phẩm trọng tâm', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-                    { ApiCode: '@de_xuat_khuyen_mai', DisplayName: '📢 Đề xuất khuyến mãi', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-                    { ApiCode: '@tra_cuu_san_pham', DisplayName: '🔍 Tra cứu sản phẩm', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@ton_kho_list', DisplayName: '🏭 Tồn kho chi tiết', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@xem_hoa_don', DisplayName: '🧾 Xem hóa đơn', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@xem_don_hang', DisplayName: '📋 Xem đơn hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@cong_no_kh', DisplayName: '💳 Công nợ khách hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@cong_no_chi_tiet', DisplayName: '🧾 Chi tiết công nợ', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-                    { ApiCode: '@danh_muc', DisplayName: '📚 Tra cứu danh mục', Category: 'Tra cứu', ExecutionType: 'QUERY' }
-                ];
+                _apiList = _FALLBACK_LIST;
                 cb && cb(_apiList);
             });
     }
@@ -133,14 +141,47 @@
         if (_cfgCache[apiCode]) { cb(_cfgCache[apiCode]); return; }
         _post(CFG.CFG_URL, { ApiCode: apiCode })
             .then(function (res) {
-                var c = {
-                    info: Array.isArray(res[0]) ? res[0][0] : (res.api || {}),
-                    fields: Array.isArray(res[1]) ? res[1] : (res.fields || []),
-                    filters: Array.isArray(res[2]) ? res[2] : (res.filters || [])
-                };
-                _cfgCache[apiCode] = c; cb(c);
+                // API_GetConfig trả 1 row với FieldsJSON + FiltersJSON (FOR JSON PATH)
+                // Backend có thể gói trong: res[0][0] / res.data[0] / res trực tiếp
+                var row = null;
+                if (Array.isArray(res) && Array.isArray(res[0])) {
+                    row = res[0][0]; // [[row]] format
+                } else if (Array.isArray(res) && res[0] && !Array.isArray(res[0])) {
+                    row = res[0];    // [row] format
+                } else if (res && res.data && Array.isArray(res.data)) {
+                    row = res.data[0]; // {data:[row]} format
+                } else if (res && res.data && !Array.isArray(res.data)) {
+                    row = res.data;    // {data:row} format
+                } else if (res && res.ApiCode) {
+                    row = res;         // raw row format
+                }
+
+                var c;
+                if (row && (row.FieldsJSON !== undefined || row.FiltersJSON !== undefined)) {
+                    // Format mới: FOR JSON PATH — parse JSON string
+                    c = {
+                        info: row,
+                        fields:  _parseJson(row.FieldsJSON),
+                        filters: _parseJson(row.FiltersJSON)
+                    };
+                } else {
+                    // Fallback format cũ: multi-resultset array
+                    c = {
+                        info:    Array.isArray(res[0]) ? res[0][0] : (res.api || {}),
+                        fields:  Array.isArray(res[1]) ? res[1]    : (res.fields  || []),
+                        filters: Array.isArray(res[2]) ? res[2]    : (res.filters || [])
+                    };
+                }
+                _cfgCache[apiCode] = c;
+                cb(c);
             })
             .catch(function () { cb(null); });
+    }
+
+    function _parseJson(str) {
+        if (!str) return [];
+        if (Array.isArray(str)) return str;
+        try { return JSON.parse(str); } catch(e) { return []; }
     }
 
     // ── DataSource Loader ─────────────────────────────────────────────
@@ -319,15 +360,13 @@
         var dispName = found ? found.DisplayName : apiCode;
 
         _replaceAtTag(apiCode);
-
-        // Set ngay (sync) để block @ menu trigger trong lúc load config
         _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null };
 
         _loadConfig(apiCode, function (config) {
             _activeApi.config = config;
             _cartItems = [];
+            // Luôn hiện panel filter — user tự chọn giá trị rồi bấm Gửi
             _openPanel(config, execType, dispName);
-            // Safety net
             if (!_activeApi)
                 _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: config };
         });

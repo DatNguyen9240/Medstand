@@ -1,0 +1,112 @@
+{
+  "name": "K4 · Nghiệp Vụ Nâng Cao",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "hook-nghiepvu-nangcao",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 0],
+      "id": "wh-nangcao",
+      "name": "Webhook Nâng Cao",
+      "webhookId": "nghiepvu-nangcao-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// KHỐI 4 — Nghiệp Vụ Nâng Cao (Analytics & AI)\n// ExecutionType: AI, ANALYSIS, REPORT, SCORING\n// Ví dụ: @goi_y_don_hang, @upsell_goi_y, @cham_diem_kh, @de_xuat_khuyen_mai\n// Timeout cao hơn vì cần chờ AI xử lý phức tạp hơn\n// ═══════════════════════════════════════════════════════\nconst raw = $input.item.json;\nconst body = raw.body || raw;\nconst headers = raw.headers || {};\n\nconst ApiCode = (body.ApiCode || '').trim();\nconst username = body.username || 'default';\nconst token = headers.authorization || body.token || 'Bearer empty';\nconst isConfirm = parseInt(body.isConfirm || '0', 10);\n\n// params: AI Agent truyền lên dưới dạng JSON string hoặc object\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) { params = {}; }\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\n// Inject @Username tự động\nif (!params['@Username']) {\n  params['@Username'] = username;\n}\n\nif (!ApiCode) {\n  return [{ json: {\n    loi: true,\n    message: 'Thiếu ApiCode. Cần truyền ApiCode và params dạng JSON object.'\n  }}];\n}\n\nreturn [{ json: {\n  ApiCode,\n  username,\n  token,\n  isConfirm,\n  params,\n  hop_le: true\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-512, 0],
+      "id": "parse-input-nangcao",
+      "name": "Parse Input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hop_le }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-224, 0],
+      "id": "check-valid-nangcao",
+      "name": "Input Hợp Lệ?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://medtest.bms79.com/api/chatbot-action",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "={{ $json.token }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  ApiCode:   $json.ApiCode,\n  params:    $json.params,\n  isConfirm: $json.isConfirm\n}) }}",
+        "options": { "timeout": 60000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [64, -80],
+      "id": "call-backend-nangcao",
+      "name": "Gọi Backend AI/Analytics"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst ApiCode = $('Parse Input').item.json.ApiCode || '';\n\nif (data.error || data.status === 'error') {\n  return [{ json: {\n    ket_qua: `❌ Lỗi phân tích [${ApiCode}]: ${data.message || data.error || 'Lỗi không xác định'}`,\n    loi: true\n  }}];\n}\n\nconst payload = data.data || data.result || data.message || data;\nlet text = '';\n\nif (typeof payload === 'string') {\n  // Nâng cao thường trả dạng text phân tích/gợi ý → giữ nguyên\n  text = payload;\n} else if (Array.isArray(payload)) {\n  const total = payload.length;\n  if (total === 0) {\n    text = 'Không có dữ liệu phân tích.';\n  } else {\n    const keys = Object.keys(payload[0]).filter(k => !k.startsWith('_'));\n    text = `📊 Kết quả phân tích (${total} mục):\\n\\n`;\n    text += `| STT | ${keys.join(' | ')} |\\n`;\n    text += `|---|${keys.map(() => '---').join('|')} |\\n`;\n    text += payload.slice(0, 20).map((row, i) => {\n      return `| ${i + 1} | ${keys.map(k => {\n        let val = row[k];\n        if (val === null || val === undefined) return '';\n        return String(val).replace(/\\|/g, '-');\n      }).join(' | ')} |`;\n    }).join('\\n');\n    if (total > 20) text += `\\n\\n... và ${total - 20} mục khác.`;\n  }\n} else if (typeof payload === 'object') {\n  // Object đơn (gợi ý, điểm chấm...) — format dễ đọc\n  text = Object.entries(payload)\n    .filter(([k]) => !k.startsWith('_'))\n    .map(([k, v]) => `• **${k}**: ${v}`)\n    .join('\\n');\n}\n\nreturn [{ json: {\n  ket_qua: text || 'Không có kết quả phân tích.',\n  ApiCode,\n  so_ban_ghi: Array.isArray(payload) ? payload.length : null\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [352, -80],
+      "id": "format-result-nangcao",
+      "name": "Format Kết Quả"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'Yêu cầu không hợp lệ.',\n  loi: true\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [64, 128],
+      "id": "return-error-nangcao",
+      "name": "Trả Lỗi"
+    }
+  ],
+  "connections": {
+    "Webhook Nâng Cao": {
+      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+    },
+    "Parse Input": {
+      "main": [[{ "node": "Input Hợp Lệ?", "type": "main", "index": 0 }]]
+    },
+    "Input Hợp Lệ?": {
+      "main": [
+        [{ "node": "Gọi Backend AI/Analytics", "type": "main", "index": 0 }],
+        [{ "node": "Trả Lỗi", "type": "main", "index": 0 }]
+      ]
+    },
+    "Gọi Backend AI/Analytics": {
+      "main": [[{ "node": "Format Kết Quả", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}

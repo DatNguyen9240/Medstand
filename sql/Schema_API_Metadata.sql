@@ -144,16 +144,17 @@ GO
 PRINT N'📦 Đang install Stored Procedures Module 1→10...';
 GO
 
-:r "Module 1 - API_GoiYDonHang_AI.sql"
-:r "Module 2 - API_TuyenBanHang_AI.sql"
-:r "Module 3 - API_ChamDiemKH_AI.sql"
-:r "Module 4 - API_TichLuy_AI.sql"
-:r "Module 5 - API_UpsellGoiY_AI.sql"
-:r "Module 6 - API_DeXuatKhuyenMai_AI.sql"
-:r "Module 8 - API_GoiYDonThuoc_AI.sql"
-:r "Module 10 - API_SanPhamTrongTam_AI.sql"
-:r "Module 10 - API_SanPhamTrongTam_Import_AI.sql"
-:r "Module 10 - API_TraCuuSanPham_AI.sql"
+-- ℹ️ Bỏ qua cài SP — đã có sẵn trên server. Bật SQLCMD Mode nếu muốn reinstall:
+-- :r "Module 1 - API_GoiYDonHang_AI.sql"
+-- :r "Module 2 - API_TuyenBanHang_AI.sql"
+-- :r "Module 3 - API_ChamDiemKH_AI.sql"
+-- :r "Module 4 - API_TichLuy_AI.sql"
+-- :r "Module 5 - API_UpsellGoiY_AI.sql"
+-- :r "Module 6 - API_DeXuatKhuyenMai_AI.sql"
+-- :r "Module 8 - API_GoiYDonThuoc_AI.sql"
+-- :r "Module 10 - API_SanPhamTrongTam_AI.sql"
+-- :r "Module 10 - API_SanPhamTrongTam_Import_AI.sql"
+-- :r "Module 10 - API_TraCuuSanPham_AI.sql"
 
 PRINT N'✅ Đã install SP Module 1→10';
 GO
@@ -350,34 +351,35 @@ CREATE PROCEDURE API_GetConfig @ApiCode VARCHAR(100) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- 1: API + Action info
-    SELECT D.ApiID, D.ApiCode, D.ApiName, D.ApiDescription, D.StoredProcedure, D.Category, D.IconEmoji,
-           A.ActionID, A.ActionCode, A.ExecutionType, A.IsConfirm
+    -- Trả 1 row duy nhất: info + FieldsJSON + FiltersJSON
+    -- Frontend parse JSON.parse(row.FieldsJSON) thay vì xử lý multi-resultset
+    SELECT
+        D.ApiID, D.ApiCode, D.ApiName, D.ApiDescription,
+        D.StoredProcedure, D.Category, D.IconEmoji,
+        A.ActionID, A.ActionCode, A.ExecutionType, A.IsConfirm,
+        (
+            SELECT F.FieldCode, F.FieldName, F.DataType, F.ControlType,
+                   F.IsRequired, F.IsSystemParam, F.DefaultValue, F.Placeholder,
+                   F.MinValue, F.MaxValue, F.OptionsJson,
+                   F.DataSourceType, F.DataSourceValue, F.OrderIndex
+            FROM API_Field F
+            WHERE F.ApiID = D.ApiID
+            ORDER BY F.OrderIndex
+            FOR JSON PATH
+        ) AS FieldsJSON,
+        (
+            SELECT FL.FieldCode, FL.FieldName, FL.DataType, FL.ControlType,
+                   FL.Operator, FL.DefaultValue, FL.Placeholder, FL.OptionsJson,
+                   FL.DataSourceType, FL.DataSourceValue,
+                   FL.IsRequired, FL.OrderIndex
+            FROM API_Filter FL
+            WHERE FL.ApiID = D.ApiID
+            ORDER BY FL.OrderIndex
+            FOR JSON PATH
+        ) AS FiltersJSON
     FROM API_Definition D
-    JOIN API_Action A ON A.ApiID = D.ApiID AND A.IsDefault = 1
-    WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1 AND A.IsActive = 1
-    ORDER BY D.OrderIndex;
-    -- 2: Fields
-    SELECT F.FieldID, F.ApiID, F.FieldCode, F.FieldName, F.DataType, F.ControlType,
-           F.IsRequired, F.IsSystemParam, F.DefaultValue, F.Placeholder,
-           F.MinValue, F.MaxValue, F.OptionsJson,
-           F.DataSourceType, F.DataSourceValue,
-           F.OrderIndex
-    FROM API_Field F JOIN API_Definition D ON D.ApiID = F.ApiID
-    WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1
-    ORDER BY D.OrderIndex, F.OrderIndex;
-    -- 3: Filters
-    SELECT FL.FilterID, FL.ApiID, FL.FieldCode, FL.FieldName, FL.DataType, FL.ControlType,
-           FL.Operator, FL.DefaultValue, FL.Placeholder, FL.OptionsJson, 
-           FL.DataSourceType, FL.DataSourceValue,
-           FL.IsRequired, FL.OrderIndex
-    FROM API_Filter FL JOIN API_Definition D ON D.ApiID = FL.ApiID
-    WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode) AND D.IsActive = 1
-    ORDER BY D.OrderIndex, FL.OrderIndex;
-    -- 4: Bulk config
-    SELECT BC.ApiID, BC.AllowUpload, BC.AllowMultiSelect, BC.TemplateUrl, BC.MaxRows
-    FROM API_Bulk_Config BC JOIN API_Definition D ON D.ApiID = BC.ApiID
-    WHERE (@ApiCode = '' OR D.ApiCode = @ApiCode);
+    JOIN API_Action A ON A.ApiID = D.ApiID AND A.IsDefault = 1 AND A.IsActive = 1
+    WHERE D.ApiCode = @ApiCode AND D.IsActive = 1;
 END
 GO
 

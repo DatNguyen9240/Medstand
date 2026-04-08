@@ -1,5 +1,5 @@
 {
-  "name": "WF_TracCuu_TaiLieu_RAG (Khối 2 - Cánh Tay Tri Thức)",
+  "name": "K2 · RAG Tri Thức",
   "nodes": [
     {
       "parameters": {
@@ -74,6 +74,7 @@
           "timeout": 15000
         }
       },
+      "onError": "continueRegularOutput",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -85,7 +86,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Lấy kết quả tìm kiếm từ Qdrant\nconst results = $input.item.json.result || [];\nconst cau_hoi = $('Webhook RAG').item.json.body?.cau_hoi || '';\n\nif (!results || results.length === 0) {\n  return [{\n    json: {\n      ket_qua: 'Không tìm thấy thông tin phù hợp trong cơ sở dữ liệu tài liệu. Vui lòng đặt câu hỏi cụ thể hơn hoặc liên hệ dược sĩ.',\n      so_ket_qua: 0,\n      cau_hoi: cau_hoi\n    }\n  }];\n}\n\n// Gộp nội dung từ top kết quả liên quan nhất\nconst noi_dung = results\n  .slice(0, 5)\n  .map((item, idx) => {\n    const payload = item.payload || {};\n    const score = (item.score * 100).toFixed(1);\n    const text = payload.text || payload.content || payload.noi_dung || JSON.stringify(payload);\n    return `[${idx + 1}] (Độ liên quan: ${score}%) ${text}`;\n  })\n  .join('\\n\\n---\\n\\n');\n\nreturn [{\n  json: {\n    ket_qua: noi_dung,\n    so_ket_qua: results.length,\n    cau_hoi: cau_hoi,\n    nguon: 'Qdrant Cloud RAG - medstand-rag'\n  }\n}];"
+        "jsCode": "// ══════════════════════════════════════════════\n// K2 RAG — Format + Error Guard (continueOnFail)\n// ══════════════════════════════════════════════\nconst raw = $input.item.json;\nconst cau_hoi = $('Webhook RAG').item.json.body?.cau_hoi || '';\n\n// 🛡️ Bắt lỗi Qdrant: nếu có error field hoặc không có result\nif (raw.error || raw.code >= 400 || raw.status === 'error') {\n  return [{\n    json: {\n      ket_qua: '⚠️ Hệ thống tài liệu đang bảo trì, vui lòng thử lại sau ít phút hoặc liên hệ dược sĩ để được hỗ trợ.',\n      so_ket_qua: 0,\n      cau_hoi: cau_hoi,\n      loi: true\n    }\n  }];\n}\n\nconst results = raw.result || [];\n\nif (!results || results.length === 0) {\n  return [{\n    json: {\n      ket_qua: 'Không tìm thấy thông tin phù hợp trong cơ sở dữ liệu tài liệu. Vui lòng đặt câu hỏi cụ thể hơn hoặc liên hệ dược sĩ.',\n      so_ket_qua: 0,\n      cau_hoi: cau_hoi\n    }\n  }];\n}\n\n// Gộp nội dung từ top kết quả liên quan nhất\nconst noi_dung = results\n  .slice(0, 5)\n  .map((item, idx) => {\n    const payload = item.payload || {};\n    const score = (item.score * 100).toFixed(1);\n    const text = payload.text || payload.content || payload.noi_dung || JSON.stringify(payload);\n    return `[${idx + 1}] (Độ liên quan: ${score}%) ${text}`;\n  })\n  .join('\\n\\n---\\n\\n');\n\nreturn [{\n  json: {\n    ket_qua: noi_dung,\n    so_ket_qua: results.length,\n    cau_hoi: cau_hoi,\n    nguon: 'Qdrant Cloud RAG - medstand-rag'\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

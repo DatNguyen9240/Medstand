@@ -52,8 +52,8 @@ Trong mọi Workflow n8n, bạn phải đảm bảo trích xuất được:
 ## 4. Ánh xạ Webhook n8n (Current)
 
 Dựa trên cấu hình trong `chatbot.js`:
-*   **Production URL**: `https://highways-robbie-outdoors-jefferson.trycloudflare.com/webhook/hook-ai-dainao`
-*   **Action Code**: Chatbot sẽ gửi kèm `action` và `ApiCode` trong body JSON. n8n cần dùng Switch node để điều hướng.
+*   **Production URL**: `https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-ai-dainao`
+*   **Action Code**: Chatbot sẽ gửi kèm `ApiCode` trong body JSON. AI Agent (K1) tự điều hướng sang K3/K4 dựa theo `ExecutionType`.
 
 ---
 **Lưu ý**: Tất cả các API hiện tại đều đã được chuyển về loại `QUERY` (hoặc `CART`) để đảm bảo luôn hiển thị Form nhập liệu trước khi thực hiện.

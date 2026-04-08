@@ -124,6 +124,10 @@ const API_CONFIG = {
       CATALOG: '/api/API_DanhMuc_AI',
     },
   },
+
+  // ─── N8N Workflow Base URL (Cloudflare Tunnel) ────────────────────────────
+  // ⚠️  Khi đổi tunnel mới: chỉ cần sửa dòng này, KHÔNG cần sửa chatbot-api-engine.js
+  N8N_BASE: 'https://seasonal-homes-portraits-fired.trycloudflare.com',
 };
 
 // Đóng băng để tránh bị ghi đè ngoài ý muốn

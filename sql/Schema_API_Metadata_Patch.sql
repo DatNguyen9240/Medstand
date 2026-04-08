@@ -23,15 +23,16 @@ GO
 PRINT N'📦 Đang install Stored Procedures Module Common...';
 GO
 
-:r "Module common - API_DonHangChiTiet_Insert_AI.sql"
-:r "Module common - API_DoanhSo_AI.sql"
-:r "Module common - API_DonHang_AI.sql"
-:r "Module common - API_HoaDon_AI.sql"
-:r "Module common - API_CongNoKhachHang_AI"
-:r "Module common - API_CongNoChiTiet_AI"
-:r "Module common - API_DanhMuc_AI"
-:r "Module common - API_GetTonKho_List_AI"
-:r "Module common - API_ThemKhachHang_AI.sql"
+-- ℹ️ Bỏ qua cài SP — đã có sẵn trên server. Bật SQLCMD Mode nếu muốn reinstall:
+-- :r "Module common - API_DonHangChiTiet_Insert_AI.sql"
+-- :r "Module common - API_DoanhSo_AI.sql"
+-- :r "Module common - API_DonHang_AI.sql"
+-- :r "Module common - API_HoaDon_AI.sql"
+-- :r "Module common - API_CongNoKhachHang_AI"
+-- :r "Module common - API_CongNoChiTiet_AI"
+-- :r "Module common - API_DanhMuc_AI"
+-- :r "Module common - API_GetTonKho_List_AI"
+-- :r "Module common - API_ThemKhachHang_AI.sql"
 
 PRINT N'✅ Đã install SP Module Common';
 GO

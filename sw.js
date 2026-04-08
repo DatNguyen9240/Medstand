@@ -106,10 +106,10 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
 
   // API call, Navigation (trang HTML), hoặc các tệp chatbot-widget → luôn lấy từ network trước (Network-first)
-  if (request.url.includes('/api/') || 
-      request.url.includes('/chatbot-widget/') ||
-      request.mode === 'navigate' || 
-      request.headers.get('accept').includes('text/html')) {
+  if (request.url.includes('/api/') ||
+    request.url.includes('/chatbot-widget/') ||
+    request.mode === 'navigate' ||
+    request.headers.get('accept').includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
