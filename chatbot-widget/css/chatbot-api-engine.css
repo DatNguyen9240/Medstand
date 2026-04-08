@@ -84,7 +84,7 @@ body.ae-panel-open::before {
 
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
-    position: absolute;
+    position: fixed; /* QUAN TRỌNG: Cần dùng fixed để nó không bị đẩy bởi chiều cao chat container */
     top: 50%; /* Trả lại căn giữa màn hình */
     left: 50%;
     transform: translate(-50%, -50%);
@@ -100,6 +100,16 @@ body.ae-panel-open::before {
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Điều chỉnh lại vị trí ở màn hình lớn để tránh bị lệch do có sidebar */
+@media (min-width: 768px) {
+    .ae-panel {
+        left: calc(50% + var(--sidebar-width, 240px) / 2);
+    }
+    body.sidebar-collapsed .ae-panel {
+        left: calc(50% + var(--sidebar-collapsed-width, 64px) / 2);
+    }
 }
 .ae-panel.active {
     pointer-events: auto;
@@ -149,7 +159,6 @@ body.ae-panel-open::before {
 .ae-panel-fields {
     flex: 1;
     overflow-y: visible; /* Cho dropdown menu vượt ranh giới if needed */
-    max-height: 60vh;
 }
 
 /* Controls */
@@ -248,6 +257,7 @@ body.ae-panel-open::before {
     z-index: 1002; /* Nổi lên trên panel */
     max-height: 280px;
     overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15); /* Thêm box-shadow cho nó nổi bật hơn */
 }
 .ae-sug-header {
     display: flex;
