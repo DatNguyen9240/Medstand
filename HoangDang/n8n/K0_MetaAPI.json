@@ -270,7 +270,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"ApiCode\": \"@system_get_config\",\n  \"params\": { \"@Code\": \"{{ $('Webhook GetConfig').item.json.body.ApiCode || '' }}\" }\n}",
+        "jsonBody": "={\n  \"ApiCode\": \"@system_get_config\",\n  \"username\": \"{{ $('Webhook GetConfig').item.json.body.username || 'system' }}\",\n  \"params\": {\n    \"@TargetApiCode\": \"{{ $('Webhook GetConfig').item.json.body.ApiCode || '' }}\"\n  }\n}",
         "options": {
           "timeout": 10000
         }
