@@ -68,15 +68,14 @@
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 100px); /* Kéo lên 1 chút để không che bàn phím */
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 400px;
+    transform: translate(-50%, 0);
+    width: calc(100% - 24px); /* Trừ ra margin 12px 2 bên (giống từ attach đến send) */
+    max-width: var(--content-max-width, 768px);
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
     border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     padding: 0 16px;
     font-family: 'Inter', 'Segoe UI', sans-serif;
     overflow: visible;
@@ -88,7 +87,7 @@
 .ae-panel.active {
     pointer-events: auto;
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translate(-50%, -10px) scale(1);
 }
 .ae-panel.active {
     
@@ -149,22 +148,51 @@
 
 .ae-combo-sug, .ae-cart-sug {
     position: absolute;
-    top: calc(100% + 5px);
-    left: 0; right: 0;
+    top: calc(100% + 6px); /* Đổ xuống dưới */
+    bottom: auto;
+    left: 0; 
+    width: 100%;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
-    border-radius: 10px;
+    border-radius: 12px;
     z-index: 9999;
-    box-shadow: var(--ae-shadow);
+    max-height: 280px;
+    overflow-y: auto;
+}
+.ae-sug-header {
+    display: flex;
+    padding: 10px 16px;
+    background: var(--ae-bg-alt);
+    border-bottom: 1px solid var(--ae-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ae-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.ae-sug-col-id {
+    flex: 0 0 110px;
+    padding-right: 12px;
+}
+.ae-sug-col-name {
+    flex: 1;
+    min-width: 0;
 }
 .ae-sug-row {
+    display: flex;
+    align-items: flex-start;
     padding: 12px 16px;
     cursor: pointer;
     border-bottom: 1px solid var(--ae-border);
+    transition: background 0.15s;
 }
 .ae-sug-row:hover { background: var(--ae-accent-soft); }
-.ae-sug-lbl { color: var(--ae-text); font-weight: 600; display: block; font-size: 15px; margin-bottom: 3px; }
-.ae-sug-sub { color: var(--ae-text-muted); font-size: 13px; line-height: 1.4; display: block; }
+.ae-sug-val { color: var(--ae-accent); font-weight: 600; font-size: 13px; font-family: monospace; word-break: break-all; margin-top: 2px; display: block; }
+.ae-sug-lbl { color: var(--ae-text); font-weight: 600; display: block; font-size: 14px; margin-bottom: 4px; line-height: 1.3; }
+.ae-sug-sub { color: var(--ae-text-muted); font-size: 12px; line-height: 1.4; display: block; }
 
 /* Cart Row */
 .ae-cart-row {

@@ -552,12 +552,17 @@
             return;
         }
         var limit = showAll ? rows.length : 12;
-        sug.innerHTML = rows.slice(0, limit).map(function (r) {
+        var html = '<div class="ae-sug-header"><span class="ae-sug-col-id">Mã / ID</span><span class="ae-sug-col-name">Thông tin chi tiết</span></div>';
+        html += rows.slice(0, limit).map(function (r) {
             return '<div class="ae-sug-row" data-val="' + _esc(r.value) + '" data-lbl="' + _esc(r.label) + '">'
+                + '<div class="ae-sug-col-id"><span class="ae-sug-val">' + _esc(r.value) + '</span></div>'
+                + '<div class="ae-sug-col-name">'
                 + '<span class="ae-sug-lbl">' + _esc(r.label) + '</span>'
                 + (r.sub ? '<span class="ae-sug-sub">' + _esc(r.sub) + '</span>' : '')
+                + '</div>'
                 + '</div>';
         }).join('');
+        sug.innerHTML = html;
         sug.style.display = 'block';
 
         sug.querySelectorAll('.ae-sug-row').forEach(function (el) {
@@ -602,12 +607,17 @@
             t = setTimeout(function () {
                 _loadDataSource('APICODE', '@tra_cuu_san_pham|@SearchText=' + kw + '&@TopN=10', kw, function (rows) {
                     if (!rows.length) { sug.style.display = 'none'; return; }
-                    sug.innerHTML = rows.map(function (r) {
+                    var html = '<div class="ae-sug-header"><span class="ae-sug-col-id">Mã SP</span><span class="ae-sug-col-name">Tên sản phẩm</span></div>';
+                    html += rows.map(function (r) {
                         return '<div class="ae-sug-row" data-val="' + _esc(r.value) + '" data-lbl="' + _esc(r.label) + '" data-price="' + _esc(r.price || 0) + '">'
+                            + '<div class="ae-sug-col-id"><span class="ae-sug-val">' + _esc(r.value) + '</span></div>'
+                            + '<div class="ae-sug-col-name">'
                             + '<span class="ae-sug-lbl">' + _esc(r.label) + '</span>'
                             + (r.sub ? '<span class="ae-sug-sub">' + _esc(r.sub) + '</span>' : '')
+                            + '</div>'
                             + '</div>';
                     }).join('');
+                    sug.innerHTML = html;
                     sug.style.display = 'block';
                     sug.querySelectorAll('.ae-sug-row').forEach(function (el) {
                         el.addEventListener('click', function () {
