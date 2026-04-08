@@ -368,6 +368,9 @@
         _replaceAtTag(apiCode);
         _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null };
 
+        // Đảm bảo nút "mở lại panel" được khởi tạo sẵn
+        _createTriggerButton();
+
         _loadConfig(apiCode, function (config) {
             _activeApi.config = config;
             _cartItems = [];
@@ -403,7 +406,10 @@
 
         var html = '<div class="ae-panel-header">'
             + '<span class="ae-panel-title">' + _esc(dispName) + '</span>'
-            + '<button class="ae-panel-close" id="ae-panel-close">✕</button>'
+            + '<div class="ae-panel-actions">'
+            + '<button class="ae-panel-btn" id="ae-panel-min">−</button>'
+            + '<button class="ae-panel-btn" id="ae-panel-close">✕</button>'
+            + '</div>'
             + '</div>';
 
         if (execType === 'CART') {
@@ -413,6 +419,13 @@
         } else {
             html += '<div class="ae-panel-fields">' + fields.map(_buildField).join('') + '</div>';
         }
+        
+        // Thêm nút Gửi ngay trên panel
+        html += '<div class="ae-panel-footer">'
+            + '<button class="ae-panel-send-btn" id="ae-panel-send-btn">'
+            + '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>'
+            + ' Gửi</button>'
+            + '</div>';
 
         _panelEl.innerHTML = html;
 
@@ -420,7 +433,21 @@
         wrapper.appendChild(_panelEl);
 
         document.body.classList.add('ae-panel-open'); // Đánh dấu để ẩn navbar trên mobile
-        _panelEl.querySelector('#ae-panel-close').addEventListener('click', _closePanel.bind(null, false));
+        _panelEl.querySelector('#ae-panel-min').addEventListener('click', function() {
+            // Minimize thay vì xóa hoàn toàn
+            _panelEl.classList.remove('active');
+            document.body.classList.remove('ae-panel-open'); // Tắt nền mờ
+            setTimeout(function() { _panelEl.style.display = 'none'; }, 200);
+            
+            var triggerBtn = document.getElementById('ae-panel-trigger');
+            if (triggerBtn) triggerBtn.style.display = 'flex';
+        });
+        _panelEl.querySelector('#ae-panel-close').addEventListener('click', function() {
+            _closeFull();
+        });
+        _panelEl.querySelector('#ae-panel-send-btn').addEventListener('click', function() {
+            window.ApiEngine.handleSend();
+        });
 
         // Init DataSource fields
         _initDataSourceFields(_panelEl);
@@ -430,8 +457,32 @@
         requestAnimationFrame(function () { _panelEl.classList.add('active'); });
         setTimeout(function () {
             var first = _panelEl.querySelector('input:not([type=hidden]),select,textarea');
-            if (first) first.focus();
+            if (first) {
+                // Focus mà không bị nhảy (scroll to)
+                first.focus({ preventScroll: true });
+            }
         }, 200);
+    }
+    
+    function _closeFull() {
+        if (_panelEl) {
+            _panelEl.classList.remove('active');
+            var p = _panelEl;
+            setTimeout(function () { if (p.parentNode) p.parentNode.removeChild(p); }, 250);
+            _panelEl = null;
+        }
+        document.body.classList.remove('ae-panel-open');
+        _activeApi = null;
+        _cartItems = [];
+        var tagRegex = /#\S+\s*/g;
+        if (_inputEl && tagRegex.test(_inputEl.value)) {
+            _inputEl.value = _inputEl.value.replace(tagRegex, '').trim();
+            _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        
+        var triggerBtn = document.getElementById('ae-panel-trigger');
+        if (triggerBtn) triggerBtn.style.display = 'none';
+        
     }
 
     // ── Field Builder ─────────────────────────────────────────────────
@@ -684,11 +735,47 @@
         document.body.classList.remove('ae-panel-open'); // Gỡ bỏ đánh dấu
         _cartItems = [];
 
+        // Hiển thị nút "Mũi tên lên" ở thanh chat nếu không đóng hoàn toàn (đóng tạm)
+        var triggerBtn = document.getElementById('ae-panel-trigger');
+        if (triggerBtn) {
+            triggerBtn.style.display = silent ? 'none' : 'flex';
+        }
+
         if (silent) return; // Chỉ xóa DOM — _activeApi còn nguyên
 
         // Full close
-        _activeApi = null;
-        if (_inputEl) _inputEl.value = _inputEl.value.replace(/#\S+\s*/g, '').trim();
+        if (!silent) {
+            _closeFull();
+        }
+    }
+
+    function _createTriggerButton() {
+        if (document.getElementById('ae-panel-trigger')) return;
+
+        var btn = document.createElement('button');
+        btn.id = 'ae-panel-trigger';
+        btn.className = 'ae-panel-trigger-btn';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>';
+        btn.style.display = 'none';
+        btn.title = 'Mở lại bảng thao tác';
+
+        // Gắn vào thanh chat
+        var inputWrap = document.querySelector('.chat-input-wrap');
+        if (inputWrap) {
+            inputWrap.insertBefore(btn, inputWrap.querySelector('.chat-send-btn'));
+        }
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            this.style.display = 'none';
+            if (_panelEl && _activeApi && _activeApi.config) {
+                _panelEl.style.display = ''; // Dùng '' thay vì 'block' để ưu tiên display: flex của CSS
+                document.body.classList.add('ae-panel-open'); // Bật lại nền mờ
+                requestAnimationFrame(function () { _panelEl.classList.add('active'); });
+            } else if (_activeApi && _activeApi.config) {
+                _openPanel(_activeApi.config, _activeApi.execType, _activeApi.dispName);
+            }
+        });
     }
 
     // ── Collect Params ────────────────────────────────────────────────
@@ -841,10 +928,10 @@
             var val = this.value;
 
             if (_activeApi) {
-                // Nếu đang mở Panel, kiểm tra xem tag #ApiCode còn trong input không
+                // Nếu đang mở Panel, hoặc đã thu gọn, kiểm tra tag #ApiCode còn trong input không
                 var tag = '#' + _activeApi.apiCode.replace('@', '');
                 if (val.indexOf(tag) === -1) {
-                    _closePanel(false); // Xóa tag -> Đóng panel
+                    _closeFull(); // Xóa tag -> Đóng hoàn toàn
                 }
 
                 // Nếu gõ thêm @ khi đang mở panel -> xóa @ thừa
@@ -886,6 +973,22 @@
         // Đã gỡ bỏ tự động đóng khi mất focus theo yêu cầu
     }
 
+    // click ngoài panel thì thu nhỏ
+    document.addEventListener('click', function (e) {
+        if (_panelEl && _panelEl.classList.contains('active')) {
+            var minBtn = document.getElementById('ae-panel-min');
+            var isInside = _panelEl.contains(e.target);
+            var triggerBtn = document.getElementById('ae-panel-trigger');
+            var isTrigger = triggerBtn && triggerBtn.contains(e.target);
+            var apiBtn = document.getElementById('btn-api');
+            var isApiBtn = apiBtn && apiBtn.contains(e.target);
+            
+            if (!isInside && !isTrigger && !isApiBtn) {
+                if (minBtn) minBtn.click();
+            }
+        }
+    });
+
     // ── Public API ────────────────────────────────────────────────────
     window.ApiEngine = {
         init: function (opts) {
@@ -912,19 +1015,43 @@
             if (isConfirm) {
                 _showConfirm(params, api);
             } else {
-                _closePanel(false);
                 _executeApi(api.apiCode, params, api.dispName, api.execType, api.config);
+                // Clear state sau khi gọi xong
+                _closeFull();
             }
             return true;
         },
+
+        // Dùng khi người dùng xóa hash tag để giải phóng API State
+        clearState: function() { _closeFull(); },
 
         configure: function (cfg) { Object.assign(CFG, cfg); },
         open: function (code) { _onApiSelected(code); },
 
         // Mở @ menu từ button click (không cần gõ @)
         showMenu: function (inputEl) {
-            if (_activeApi) return; // panel đang mở
             if (inputEl) _inputEl = inputEl;
+
+            if (_activeApi) {
+                if (_panelEl) {
+                    if (_panelEl.style.display === 'none') {
+                        // Đang thu nhỏ -> Mở lên
+                        _panelEl.style.display = ''; 
+                        document.body.classList.add('ae-panel-open');
+                        requestAnimationFrame(function () { _panelEl.classList.add('active'); });
+                        var triggerBtn = document.getElementById('ae-panel-trigger');
+                        if (triggerBtn) triggerBtn.style.display = 'none';
+                    } else {
+                        // Đang mở -> Thu nhỏ lại
+                        _panelEl.classList.remove('active');
+                        document.body.classList.remove('ae-panel-open'); 
+                        setTimeout(function() { _panelEl.style.display = 'none'; }, 200);
+                        var triggerBtn = document.getElementById('ae-panel-trigger');
+                        if (triggerBtn) triggerBtn.style.display = 'flex';
+                    }
+                }
+                return; // panel đang mở hoặc ẩn, toggle trạng thái thay vì mở menu
+            }
 
             clearTimeout(_hideTimer);
 

@@ -377,6 +377,7 @@
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
   box-sizing: border-box;
+  position: relative; /* Thêm relative để position button bên trong thả gọn lên trên */
 }
 
 .chat-input {

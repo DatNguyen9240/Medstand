@@ -33,6 +33,23 @@
     from { opacity:0; transform:translateY(8px); }
     to   { opacity:1; transform:translateY(0); }
 }
+
+/* ─── Backdrop Overlay ─────────────────────────────────────────── */
+body.ae-panel-open::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+    animation: aeFadeIn 0.2s ease;
+}
+
+@keyframes aeFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .ae-menu-group {
     padding: 10px 16px 4px;
     font-size: 11px;
@@ -68,9 +85,9 @@
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
     position: absolute;
-    top: calc(50% - 100px); /* Kéo lên 1 chút để không che bàn phím */
+    top: 50%; /* Trả lại căn giữa màn hình */
     left: 50%;
-    transform: translate(-50%, 0);
+    transform: translate(-50%, -50%);
     width: calc(100% - 24px); /* Trừ ra margin 12px 2 bên (giống từ attach đến send) */
     max-width: var(--content-max-width, 768px);
     background: var(--ae-bg);
@@ -78,8 +95,8 @@
     border-radius: 16px;
     padding: 0 16px;
     font-family: 'Inter', 'Segoe UI', sans-serif;
-    overflow: visible;
-    z-index: 1001;
+    /* overflow: visible; SỬA LẠI: Vô tình để visible làm overflow nội dung đè lên form */
+    z-index: 1001; /* Lớn hơn backdrop (1000) */
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -87,7 +104,9 @@
 .ae-panel.active {
     pointer-events: auto;
     opacity: 1;
-    transform: translate(-50%, -10px) scale(1);
+    transform: translate(-50%, -50%) scale(1);
+    display: flex;
+    flex-direction: column;
 }
 .ae-panel.active {
     
@@ -105,13 +124,32 @@
     font-weight: 700;
     color: var(--ae-text-muted);
 }
-.ae-panel-close {
+.ae-panel-actions {
+    display: flex;
+    gap: 8px;
+}
+.ae-panel-btn {
     background: var(--ae-bg-alt);
     border: none;
     color: var(--ae-text-muted);
     width: 24px; height: 24px;
     border-radius: 50%;
     cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+.ae-panel-btn:hover {
+    background: #e2e8f0;
+}
+
+.ae-panel-fields {
+    flex: 1;
+    overflow-y: visible; /* Cho dropdown menu vượt ranh giới if needed */
+    max-height: 60vh;
 }
 
 /* Controls */
@@ -146,16 +184,68 @@
 
 .ae-combo { position: relative; width: 100%; }
 
+/* ── Nút mũi tên mở lại / thu hồi ── */
+.ae-panel-trigger-btn {
+    background: #fff;
+    border: 1px solid var(--ae-border);
+    cursor: pointer;
+    color: var(--ae-accent);
+    padding: 6px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    
+    /* Vị trí trên thanh chat (tuyệt đối so với .chat-input-wrap) */
+    position: absolute;
+    top: -36px;
+    right: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+.ae-panel-trigger-btn:hover { 
+    background: var(--ae-accent-soft); 
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* ── Nút Gửi ngay trên Bảng Panel ── */
+.ae-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+    border-top: 1px solid var(--ae-border);
+    padding-top: 16px;
+}
+.ae-panel-send-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ae-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+}
+.ae-panel-send-btn:hover { filter: brightness(0.9); }
+.ae-panel-send-btn:active { transform: scale(0.96); }
+
 .ae-combo-sug, .ae-cart-sug {
     position: absolute;
-    top: calc(100% + 6px); /* Đổ xuống dưới */
+    top: calc(100% + 6px); /* Xổ xuống dưới */
     bottom: auto;
     left: 0; 
     width: 100%;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
     border-radius: 12px;
-    z-index: 9999;
+    z-index: 1002; /* Nổi lên trên panel */
     max-height: 280px;
     overflow-y: auto;
 }
