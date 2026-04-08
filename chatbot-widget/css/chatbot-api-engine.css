@@ -10,7 +10,7 @@
     --ae-border: var(--color-border, #e2e8f0);
     --ae-accent: var(--color-primary, #3b82f6);
     --ae-accent-soft: rgba(59, 130, 246, 0.1);
-    --ae-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    --ae-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* ─── @ API Dropdown Menu ──────────────────────────────────────── */
@@ -29,10 +29,43 @@
     font-size: 14px;
     animation: aeSlideUp 0.14s ease;
 }
+
 @keyframes aeSlideUp {
-    from { opacity:0; transform:translateY(8px); }
-    to   { opacity:1; transform:translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
+/* ─── Backdrop Overlay ─────────────────────────────────────────── */
+body.ae-panel-open::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    backdrop-filter: blur(2px);
+    animation: aeFadeIn 0.2s ease;
+}
+
+@keyframes aeFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 .ae-menu-group {
     padding: 10px 16px 4px;
     font-size: 11px;
@@ -42,6 +75,7 @@
     color: var(--ae-text-muted);
     opacity: 0.7;
 }
+
 .ae-menu-item {
     display: flex;
     align-items: center;
@@ -52,10 +86,13 @@
     color: var(--ae-text);
     transition: background 0.1s;
 }
-.ae-menu-item:hover, .ae-menu-item.active { 
-    background: var(--ae-accent-soft); 
+
+.ae-menu-item:hover,
+.ae-menu-item.active {
+    background: var(--ae-accent-soft);
     color: var(--ae-accent);
 }
+
 .ae-tag {
     font-size: 11px;
     background: var(--ae-accent-soft);
@@ -67,56 +104,95 @@
 
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
-    position: fixed;
+    position: absolute;
     top: 50%;
+    /* Trả lại căn giữa màn hình */
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 90%;
-    max-width: 400px;
+    width: calc(100% - 24px);
+    /* Trừ ra margin 12px 2 bên (giống từ attach đến send) */
+    max-width: var(--content-max-width, 768px);
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
     border-radius: 16px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     padding: 0 16px;
     font-family: 'Inter', 'Segoe UI', sans-serif;
-    overflow: visible;
+    /* overflow: visible; SỬA LẠI: Vô tình để visible làm overflow nội dung đè lên form */
     z-index: 1001;
+    /* Lớn hơn backdrop (1000) */
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
 .ae-panel.active {
     pointer-events: auto;
     opacity: 1;
     transform: translate(-50%, -50%) scale(1);
+    display: flex;
+    flex-direction: column;
 }
+
 .ae-panel.active {
-    
+
     opacity: 1;
     padding: 12px 16px;
 }
+
 .ae-panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 12px;
 }
+
 .ae-panel-title {
     font-size: 16px;
     font-weight: 700;
     color: var(--ae-text-muted);
 }
-.ae-panel-close {
+
+.ae-panel-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.ae-panel-btn {
     background: var(--ae-bg-alt);
     border: none;
     color: var(--ae-text-muted);
-    width: 24px; height: 24px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
     cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.ae-panel-btn:hover {
+    background: #e2e8f0;
+}
+
+.ae-panel-fields {
+    flex: 1;
+    overflow-y: visible;
+    /* Cho dropdown menu vượt ranh giới if needed */
+    max-height: 60vh;
 }
 
 /* Controls */
-.ae-label { font-size: 12px; font-weight: 600; color: var(--ae-text-muted); margin-bottom: 4px; display: block; }
+.ae-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ae-text-muted);
+    margin-bottom: 4px;
+    display: block;
+}
+
 .ae-ctrl {
     width: 100%;
     background: var(--ae-bg-alt);
@@ -127,6 +203,7 @@
     font-size: 15px;
     transition: all 0.15s;
 }
+
 .ae-ctrl:focus {
     outline: none;
     border-color: var(--ae-accent);
@@ -145,26 +222,151 @@
     font-style: normal;
 }
 
-.ae-combo { position: relative; width: 100%; }
+.ae-combo {
+    position: relative;
+    width: 100%;
+}
 
-.ae-combo-sug, .ae-cart-sug {
+/* ── Nút mũi tên mở lại / thu hồi ── */
+.ae-panel-trigger-btn {
+    background: #fff;
+    border: 1px solid var(--ae-border);
+    cursor: pointer;
+    color: var(--ae-accent);
+    padding: 6px;
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+
+    /* Vị trí trên thanh chat (tuyệt đối so với .chat-input-wrap) */
     position: absolute;
-    top: calc(100% + 5px);
-    left: 0; right: 0;
+    top: -36px;
+    right: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+}
+
+.ae-panel-trigger-btn:hover {
+    background: var(--ae-accent-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Nút Gửi ngay trên Bảng Panel ── */
+.ae-panel-footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+    border-top: 1px solid var(--ae-border);
+    padding-top: 16px;
+}
+
+.ae-panel-send-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ae-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+}
+
+.ae-panel-send-btn:hover {
+    filter: brightness(0.9);
+}
+
+.ae-panel-send-btn:active {
+    transform: scale(0.96);
+}
+
+.ae-combo-sug,
+.ae-cart-sug {
+    position: absolute;
+    top: calc(100% + 6px);
+    /* Xổ xuống dưới */
+    bottom: auto;
+    left: 0;
+    width: 100%;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
-    border-radius: 10px;
-    z-index: 9999;
-    box-shadow: var(--ae-shadow);
+    border-radius: 12px;
+    z-index: 1002;
+    /* Nổi lên trên panel */
+    max-height: 280px;
+    overflow-y: auto;
 }
+
+.ae-sug-header {
+    display: flex;
+    padding: 10px 16px;
+    background: var(--ae-bg-alt);
+    border-bottom: 1px solid var(--ae-border);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ae-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.ae-sug-col-id {
+    flex: 0 0 110px;
+    padding-right: 12px;
+}
+
+.ae-sug-col-name {
+    flex: 1;
+    min-width: 0;
+}
+
 .ae-sug-row {
+    display: flex;
+    align-items: flex-start;
     padding: 12px 16px;
     cursor: pointer;
     border-bottom: 1px solid var(--ae-border);
+    transition: background 0.15s;
 }
-.ae-sug-row:hover { background: var(--ae-accent-soft); }
-.ae-sug-lbl { color: var(--ae-text); font-weight: 600; display: block; font-size: 15px; margin-bottom: 3px; }
-.ae-sug-sub { color: var(--ae-text-muted); font-size: 13px; line-height: 1.4; display: block; }
+
+.ae-sug-row:hover {
+    background: var(--ae-accent-soft);
+}
+
+.ae-sug-val {
+    color: var(--ae-accent);
+    font-weight: 600;
+    font-size: 13px;
+    font-family: monospace;
+    word-break: break-all;
+    margin-top: 2px;
+    display: block;
+}
+
+.ae-sug-lbl {
+    color: var(--ae-text);
+    font-weight: 600;
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+
+.ae-sug-sub {
+    color: var(--ae-text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+    display: block;
+}
 
 /* Cart Row */
 .ae-cart-row {
@@ -175,13 +377,20 @@
     border-bottom: 1px solid var(--ae-border);
     color: var(--ae-text);
 }
-.ae-cart-price { color: var(--ae-accent); font-weight: 700; }
+
+.ae-cart-price {
+    color: var(--ae-accent);
+    font-weight: 700;
+}
 
 /* ─── Confirm Overlay ──────────────────────────────────────────── */
 .ae-confirm-overlay {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(var(--ae-bg-rgb, 255,255,255), 0.85);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(var(--ae-bg-rgb, 255, 255, 255), 0.85);
     backdrop-filter: blur(8px);
     z-index: 10000;
     display: flex;
@@ -190,6 +399,7 @@
     padding: 20px;
     animation: aeFadeIn 0.2s ease;
 }
+
 .ae-confirm-card {
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
@@ -201,9 +411,26 @@
     text-align: center;
     animation: aeScaleUp 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.ae-confirm-title { font-size: 16px; font-weight: 700; color: var(--ae-text); margin-bottom: 8px; }
-.ae-confirm-msg { font-size: 14px; color: var(--ae-text-muted); margin-bottom: 20px; line-height: 1.5; }
-.ae-confirm-btns { display: flex; gap: 12px; }
+
+.ae-confirm-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--ae-text);
+    margin-bottom: 8px;
+}
+
+.ae-confirm-msg {
+    font-size: 14px;
+    color: var(--ae-text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.ae-confirm-btns {
+    display: flex;
+    gap: 12px;
+}
+
 .ae-confirm-btn {
     flex: 1;
     padding: 10px;
@@ -214,13 +441,50 @@
     cursor: pointer;
     transition: all 0.15s;
 }
-.ae-btn-cancel { background: var(--ae-bg-alt); color: var(--ae-text-muted); }
-.ae-btn-confirm { background: var(--ae-accent); color: #fff; }
-.ae-btn-confirm:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-@keyframes aeFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes aeScaleUp { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.ae-btn-cancel {
+    background: var(--ae-bg-alt);
+    color: var(--ae-text-muted);
+}
+
+.ae-btn-confirm {
+    background: var(--ae-accent);
+    color: #fff;
+}
+
+.ae-btn-confirm:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+@keyframes aeFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes aeScaleUp {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
 
 /* Scrollbar */
-.ae-menu::-webkit-scrollbar { width: 5px; }
-.ae-menu::-webkit-scrollbar-thumb { background: var(--ae-border); border-radius: 10px; }
+.ae-menu::-webkit-scrollbar {
+    width: 5px;
+}
+
+.ae-menu::-webkit-scrollbar-thumb {
+    background: var(--ae-border);
+    border-radius: 10px;
+}

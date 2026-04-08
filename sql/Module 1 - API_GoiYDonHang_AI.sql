@@ -16,10 +16,9 @@ BEGIN
         RETURN
     END
 
-    -- 0. KIỂM TRA ObjectID HỢP LỆ (Nếu có truyền vào)
     IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
     BEGIN
-        SELECT 'N/A' AS ItemID, N'❌ Không tìm thấy mã khách hàng này.' AS TenSanPham, 0 AS DoanhSoDaMua, NULL AS LanMuaCuoi, 0 AS ChuKyTrungBinh, 0 AS SoNgayDuKienConLai, N'Vui lòng kiểm tra lại mã khách hàng.' AS LyDoGoiY;
+        SELECT 'N/A' AS [Mã SP], N'❌ Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
         RETURN;
     END
 
@@ -33,11 +32,11 @@ BEGIN
     IF @ObjectID = ''
     BEGIN
         SELECT TOP (@TopN)
-            D.ItemID,
-            CF.ItemName                                  AS TenSanPham,
-            COUNT(DISTINCT I.DocumentID)                 AS SoHoaDon,
-            CAST(SUM(D.TotalAmount) AS BIGINT)           AS TongDoanhSo,
-            N'📊 Bán chạy trong chi nhánh'               AS LyDoGoiY
+            D.ItemID                                     AS [Mã SP],
+            CF.ItemName                                  AS [Sản phẩm],
+            COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
+            CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
+            N'📊 Bán chạy trong chi nhánh'               AS [Gợi ý]
         FROM AR_InvoiceTbl I
         JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
         JOIN CF_ItemTbl CF         ON CF.ItemID    = D.ItemID
@@ -45,7 +44,7 @@ BEGIN
           AND ISNULL(I.StatusID, 0) != 10
           AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
         GROUP BY D.ItemID, CF.ItemName
-        ORDER BY TongDoanhSo DESC
+        ORDER BY [Doanh số] DESC
         RETURN
     END
 
@@ -107,26 +106,26 @@ BEGIN
 
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
     SELECT TOP (@TopN)
-        L.ItemID,
-        CF.ItemName                                     AS TenSanPham,
-        CAST(L.TongTien AS BIGINT)                      AS DoanhSoDaMua,
-        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS LanMuaCuoi,
-        CK.ChuKyTrungBinh,
+        L.ItemID                                        AS [Mã SP],
+        CF.ItemName                                     AS [Sản phẩm],
+        CAST(L.TongTien AS BIGINT)                      AS [Đã mua (đ)],
+        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [Lần cuối],
+        CK.ChuKyTrungBinh                               AS [Chu kỳ (ngày)],
         -- Dự kiến còn lại: Nếu < 0 (đã quá hạn) thì hiện 0 cho trực quan
         CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
-             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS SoNgayDuKienConLai,
+             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [Còn (ngày)],
         CONCAT(
             CASE 
                 WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh 
                 THEN N'☢️ Quá hạn mua ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
                 WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 
-                THEN N'✨ THỜI ĐIỂM VÀNG (Dự kiến còn ~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
-                ELSE N'📦 Chu kỳ ổn định'
+                THEN N'✨ THỜI ĐIỂM VÀNG (~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
+                ELSE N'📦 Ổn định'
             END,
-            CASE WHEN TT.ItemID IS NOT NULL THEN N' | 🔥 Hàng trọng tâm' ELSE '' END,
-            CASE WHEN MV.ItemID IS NOT NULL THEN N' | 📅 Có tính Mùa vụ' ELSE '' END,
-            CASE WHEN KM.ItemID IS NOT NULL THEN N' | 🎁 Đang Khuyến mãi' ELSE '' END
-        )                                               AS LyDoGoiY
+            CASE WHEN TT.ItemID IS NOT NULL THEN N' | 🔥 Trọng tâm' ELSE '' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N' | 📅 Mùa vụ' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N' | 🎁 Khuyến mãi' ELSE '' END
+        )                                               AS [Gợi ý]
     FROM #LichSu L
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
