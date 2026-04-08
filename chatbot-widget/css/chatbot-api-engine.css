@@ -15,7 +15,7 @@
 
 /* ─── @ API Dropdown Menu ──────────────────────────────────────── */
 .ae-menu {
-    position: fixed;
+    position: absolute;
     bottom: 100%;
     z-index: 1000;
     background: var(--ae-bg);
@@ -148,7 +148,7 @@
 .ae-combo { position: relative; width: 100%; }
 
 .ae-combo-sug, .ae-cart-sug {
-    position: fixed;
+    position: absolute;
     top: calc(100% + 5px);
     left: 0; right: 0;
     background: var(--ae-bg);
