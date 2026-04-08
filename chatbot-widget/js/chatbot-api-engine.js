@@ -569,18 +569,37 @@
         console.log('[ApiEngine] resolved dsValue=', ds, 'for type=', type);
         _loadDataSource('APICODE', ds, keyword, function(rows) {
             if (!rows || !rows.length) { _menuHide(); return; }
+            // DEBUG: print a sample of raw rows so we can see actual backend field names
+            try { console.log('[ApiEngine] RAW ROWS SAMPLE:', (rows.slice ? rows.slice(0,5) : rows)); } catch(e) {}
             _menuCreate();
             var html = '';
             rows.forEach(function(r) {
                 var raw = r.raw || r;
-                // try to preserve original metadata fields if present in raw
-                var mAD = raw.MaDanhMuc || raw.MaSP || raw.ObjectID || raw.ItemID || raw.MaDanhMuc || raw.value || r.value || '';
-                // Prefer explicit Name/ObjectName/ItemName in raw, fallback to normalized label
-                var mName = raw.Name || raw.ObjectName || raw.ItemName || raw.Name || r.label || '';
-                var mPhanLoai = raw.PhanLoai || raw.type || raw.Type || r.label || '';
+                function pickRaw(keys) {
+                    for (var i = 0; i < keys.length; i++) {
+                        var k = keys[i];
+                        if (raw && raw[k] !== undefined && raw[k] !== null && String(raw[k]).trim() !== '') return raw[k];
+                    }
+                    return null;
+                }
+
+                // Right-side ID (MaDanhMuc) candidates
+                var mAD = pickRaw(['MaDanhMuc','MaSP','MaKhachHang','Code','ObjectID','ItemID','ID','CustomerCode','ExternalCode']) || r.value || '';
+                // Left-side name candidates (prefer actual name fields)
+                var mName = pickRaw(['Name','FullName','HoTen','HOTEN','TenKhachHang','TEN_KH','Ten','CustomerName','ObjectName','ItemName','DisplayName','label']) || '';
+                var mPhanLoai = pickRaw(['PhanLoai','type','Type']) || '';
+
+                // If mName is missing or equals generic type label (e.g., 'Khách hàng'), try address/company fields
+                var lowName = String(mName || '').toLowerCase();
+                if (!mName || lowName === 'khách hàng' || lowName === 'khachhang' || lowName === (mPhanLoai || '').toLowerCase()) {
+                    mName = pickRaw(['Address','DiaChi','AddressLine','Street','Company','CompanyName','AccountName','FullAddress','TenDiaChi']) || mName || r.label || '';
+                }
+
+                if (!mName) mName = r.label || '';
+
                 html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-phanloai="' + _esc(mPhanLoai) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
-                    + '<span class="ae-val-name">' + _esc(mName || r.label) + '</span>'
-                    + (mAD ? '<span class="ae-tag ae-val-id">' + _esc(mAD) + '</span>' : '')
+                    + '<span class="ae-val-name">' + _esc(mName) + '</span>'
+                    + (mAD ? '<span class="ae-val-id">' + _esc(mAD) + '</span>' : '')
                     + '</div>';
             });
             _menuEl.innerHTML = html;
