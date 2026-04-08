@@ -519,6 +519,10 @@
         $input.value = '';
         _autoResize();
 
+        if (window.ApiEngine && window.ApiEngine.clearState) {
+            window.ApiEngine.clearState();
+        }
+
         if (window.innerWidth <= 768) $input.blur();
 
         _showTyping();
