@@ -218,7 +218,10 @@
                 SearchKey: keyword || ''
             })
                 .then(function (res) {
-                    cb(_normalizeDs(Array.isArray(res) ? res : (res.data || res.records || [])));
+                    console.log('--- API RESPONSE ---', res);
+                    var rawData = Array.isArray(res) ? res : (res.data || res.records || []);
+                    console.log('--- EXTRACTED DATA ---', rawData, 'isArray:', Array.isArray(rawData));
+                    cb(_normalizeDs(rawData));
                 })
                 .catch(function () { cb([]); });
             return;
@@ -239,7 +242,10 @@
 
             _post(CFG.EXEC_URL, { ApiCode: apiCode, params: params })
                 .then(function (res) {
-                    cb(_normalizeDs(Array.isArray(res) ? res : (res.data || res.records || [])));
+                    console.log('--- API RESPONSE ---', res);
+                    var rawData = Array.isArray(res) ? res : (res.data || res.records || []);
+                    console.log('--- EXTRACTED DATA ---', rawData, 'isArray:', Array.isArray(rawData));
+                    cb(_normalizeDs(rawData));
                 })
                 .catch(function () { cb([]); });
             return;
@@ -496,11 +502,10 @@
 
             // Mở suggest khi focus (STATIC: hiện tất cả; SQL/APICODE: load)
             txt.addEventListener('focus', function () {
-                if (!this.value && dsType === 'STATIC') {
-                    _loadDataSource(dsType, dsVal, '', function (rows) {
-                        _renderComboSug(sug, txt, hid, rows, true);
-                    });
-                }
+                var kw = this.value.trim();
+                _loadDataSource(dsType, dsVal, kw, function (rows) {
+                    console.log('--- RENDER SUG (focus) ---', rows.length, 'rows'); _renderComboSug(sug, txt, hid, rows, true);
+                });
             });
 
             txt.addEventListener('input', function () {
@@ -511,17 +516,16 @@
                 // STATIC: filter ngay, không cần debounce
                 if (dsType === 'STATIC') {
                     _loadDataSource(dsType, dsVal, kw, function (rows) {
-                        _renderComboSug(sug, txt, hid, rows, false);
+                        console.log('--- RENDER SUG (input) ---', rows.length, 'rows'); _renderComboSug(sug, txt, hid, rows, false);
                     });
                     return;
                 }
 
-                // SQL/APICODE: cần ít nhất 2 ký tự để search
-                if (kw.length < 2) { sug.style.display = 'none'; return; }
+
 
                 timer = setTimeout(function () {
                     _loadDataSource(dsType, dsVal, kw, function (rows) {
-                        _renderComboSug(sug, txt, hid, rows, false);
+                        console.log('--- RENDER SUG (input) ---', rows.length, 'rows'); _renderComboSug(sug, txt, hid, rows, false);
                     });
                 }, 320);
             });
@@ -542,6 +546,7 @@
     }
 
     function _renderComboSug(sug, txt, hid, rows, showAll) {
+        console.log('--- RENDER COMBO SUG CALLED ---', sug, rows.length);
         if (!rows || !rows.length) {
             sug.innerHTML = '<div class="ae-sug-empty">Không tìm thấy kết quả</div>';
             sug.style.display = 'block';

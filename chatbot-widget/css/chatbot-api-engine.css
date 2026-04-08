@@ -131,6 +131,8 @@
     font-style: normal;
 }
 
+.ae-combo { position: relative; width: 100%; }
+
 .ae-combo-sug, .ae-cart-sug {
     position: absolute;
     top: calc(100% + 5px);
