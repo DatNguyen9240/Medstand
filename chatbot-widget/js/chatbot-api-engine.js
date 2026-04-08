@@ -788,7 +788,33 @@
         _post(CFG.EXEC_URL, { ApiCode: apiCode, StoredProcedure: sp, params: params })
             .then(function (res) {
                 _cbHide && _cbHide();
-                var r = typeof res === 'string' ? res : (res.reply || res.message || JSON.stringify(res, null, 2));
+                var r = typeof res === 'string' ? res : (res.reply || res.message || '');
+                
+                // --- Tự động render mảng Data thành Bảng Markdown (Table) ---
+                if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+                    var arr = res.data;
+                    // Lấy tiêu đề cột (bỏ các cột hệ thống dư thừa nếu có)
+                    var keys = Object.keys(arr[0]).filter(function(k) { 
+                        var l = k.toLowerCase();
+                        return l !== 'rowindex' && l !== 'totalrows' && l !== 'isdeleted'; 
+                    });
+                    
+                    if (keys.length > 0) {
+                        var tb = '\n\n| ' + keys.join(' | ') + ' |\n';
+                        tb += '|' + keys.map(function() { return '---'; }).join('|') + '|\n';
+                        arr.forEach(function(item) {
+                            tb += '| ' + keys.map(function(k) { 
+                                var v = item[k]; 
+                                if (v === null || v === undefined) return '';
+                                return String(v).replace(/\|/g, '-').replace(/\n/g, ' '); 
+                            }).join(' | ') + ' |\n';
+                        });
+                        r += tb;
+                    }
+                } else if (!r && typeof res === 'object') {
+                    r = JSON.stringify(res, null, 2);
+                }
+                
                 _cbMsg && _cbMsg('ai', r);
             })
             .catch(function (err) {
