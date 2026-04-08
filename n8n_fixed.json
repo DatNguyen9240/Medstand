@@ -1,48 +1,53 @@
 {
-  "name": "K1 · Đại Não AI Router",
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "hook-ai-dainao",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {
+          "allowedOrigins": "*"
+        }
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [1600, 80],
-      "id": "ac92e879-87cb-4f32-8531-a4546641e24c",
-      "name": "Webhook",
-      "webhookId": "b38d2f10-8c77-4a8d-b0fd-ca3199d30189"
+      "position": [8208, 1216],
+      "id": "bc1a0004-0a0b-49bb-a063-d3c6763a9c6e",
+      "name": "Webhook AI Chat",
+      "webhookId": "60c2ded4-1631-4a4b-a657-0257338c0ba8"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/api-list-active",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "{ \"SearchKey\": \"\" }",
-        "options": { "timeout": 8000 }
+        "operation": "executeQuery",
+        "query": "EXEC API_ListActive;"
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1600, 280],
-      "id": "fetch-api-list",
-      "name": "Lấy Danh Sách API"
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [8416, 1216],
+      "id": "f0ac6238-01c4-43ad-b464-b5ca8cd30ddb",
+      "name": "Lấy DS API (Bằng SQL)",
+      "continueOnFail": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "5XZStIxQA6Sd5chg",
+          "name": "Microsoft SQL account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// Biến danh sách API từ DB thành text mô tả cho AI\nconst list = $input.item.json;\nconst apis = Array.isArray(list) ? list : (list.data || list.result || []);\n\nif (!apis.length) {\n  return [{ json: { api_list_text: '(Không lấy được danh sách API từ hệ thống)' } }];\n}\n\nconst grouped = {};\nfor (const api of apis) {\n  const cat = api.Category || 'Khác';\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push(`• ${api.ApiCode}  → ${api.ApiDescription || api.ApiName}  [${api.ExecutionType}]`);\n}\n\nlet text = 'DANH SÁCH API HỆ THỐNG (tự động từ DB):\\n';\nfor (const [cat, items] of Object.entries(grouped)) {\n  text += `\\n===== ${cat} =====\\n${items.join('\\n')}`;\n}\n\nreturn [{ json: { api_list_text: text } }];"
+        "jsCode": "try {\n  const items = $input.all();\n  const apis = items.map(item => item.json).filter(r => r && r.ApiCode);\n\n  if (!apis.length) {\n    return [{ json: { api_list_text: '(Không lấy được danh sách API từ hệ thống)' } }];\n  }\n\n  const grouped = {};\n  for (const api of apis) {\n    const cat = api.Category || 'Khác';\n    if (!grouped[cat]) grouped[cat] = [];\n    grouped[cat].push(`• ${api.ApiCode}  → ${api.ApiDescription || api.ApiName}  [${api.ExecutionType}]`);\n  }\n\n  let text = 'DANH SÁCH API HỆ THỐNG (tự động từ DB):\\n';\n  for (const [cat, groupItems] of Object.entries(grouped)) {\n    text += `\\n===== ${cat} =====\\n${groupItems.join('\\n')}`;\n  }\n\n  return [{ json: { api_list_text: text } }];\n} catch (e) {\n  return [{ json: { api_list_text: '(Lỗi khi xử lý danh sách API: ' + e.message + ')' } }];\n}"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1824, 280],
-      "id": "build-api-text",
+      "position": [8608, 1216],
+      "id": "46cb384a-8d00-4f08-bc5a-f9e6226bf277",
       "name": "Build Prompt API List"
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Webhook').item.json.body.text || $('Webhook').item.json.body.message }}",
+        "text": "={{ $('Webhook AI Chat').item.json.body?.message || $('Webhook AI Chat').item.json.body?.text || $('Webhook AI Chat').item.json.body?.query || $('Webhook AI Chat').item.json.body?.question || '' }}",
         "messages": {
           "messageValues": [
             {
@@ -55,8 +60,8 @@
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [2112, 80],
-      "id": "f22a12cd-cfd7-4410-ad28-30e7b4388e92",
+      "position": [8816, 1216],
+      "id": "5b0665e4-cb78-48e4-833d-78c45e341773",
       "name": "AI Agent (Đại Não)"
     },
     {
@@ -68,8 +73,8 @@
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [1968, 352],
-      "id": "7f66cdc5-fed1-4c3f-82d4-cb2da82c6895",
+      "position": [8688, 1424],
+      "id": "ba26ae6a-332c-4d0c-9c86-79d7b96bab46",
       "name": "OpenAI GPT-4o-mini",
       "credentials": {
         "openAiApi": {
@@ -81,35 +86,35 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Webhook').item.json.body.username || $('Webhook').item.json.body.userId || 'session_default' }}",
+        "sessionKey": "={{ $('Webhook AI Chat').item.json.body?.username || $('Webhook AI Chat').item.json.body?.userId || 'session_default' }}",
         "contextWindowLength": 20
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.3,
-      "position": [2128, 352],
-      "id": "834773c5-75f7-450b-845e-99e4caf54cef",
+      "position": [8864, 1424],
+      "id": "f3f49ba6-e779-4191-85d3-278d5af041c2",
       "name": "Memory Redis",
       "credentials": {
         "redis": {
-          "id": "REDIS_CREDENTIAL_ID",
-          "name": "Redis (cấu hình trong n8n Credentials)"
+          "id": "J7TAp23o8NR3x7Mp",
+          "name": "Redis account"
         }
       }
     },
     {
       "parameters": {
         "name": "Tool_RAG_TaiLieu",
-        "description": "Dùng khi người dùng hỏi về KIẾN THỨC: thông tin thuốc, cơ chế hoạt động, tác dụng phụ, quy trình nghiệp vụ, hướng dẫn sử dụng sản phẩm.\nKHÔNG dùng để tra cứu tồn kho, đơn hàng, hay dữ liệu thực tế.\n\nTham số:\n- cau_hoi: Câu hỏi của người dùng (string, bắt buộc)",
+        "description": "Dùng khi người dùng hỏi về KIẾN THỨC: thông tin thuốc, cơ chế hoạt động, tác dụng phụ, quy trình nghiệp vụ, hướng dẫn sử dụng sản phẩm. KHÔNG dùng để tra cứu tồn kho, đơn hàng, hay dữ liệu thực tế.\n\nTham số:\n- cau_hoi: Câu hỏi của người dùng (string, bắt buộc)",
         "method": "POST",
-        "url": "https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-rag-tracuu",
+        "url": "http://localhost:5678/webhook/hook-rag-tracuu",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"cau_hoi\": \"{{ $parameter.cau_hoi }}\",\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\"\n}"
+        "jsonBody": "={\n  \"cau_hoi\": \"{{ $parameter.cau_hoi }}\",\n  \"username\": \"{{ $('Webhook AI Chat').item.json.body?.username || 'default' }}\"\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [1968, 352],
-      "id": "7942e7ac-b97a-4341-8b68-7acbf69374d2",
+      "position": [9008, 1424],
+      "id": "bc1567e4-0cca-436f-9420-4dc9ae0cc126",
       "name": "Tool_RAG_TaiLieu"
     },
     {
@@ -117,37 +122,37 @@
         "name": "Tool_NghiepVu_CoBan",
         "description": "Dùng cho nghiệp vụ CRUD & Tra cứu thông thường (ExecutionType: QUERY, INSERT, UPDATE, DELETE, CART).\nVí dụ: @xem_don_hang, @cong_no_kh, @ton_kho_list, @tao_don_hang, @xem_hoa_don, @danh_muc, @tra_cuu_san_pham.\n\nXem danh sách ApiCode đầy đủ trong System Prompt (chọn các API có [QUERY/INSERT/UPDATE/DELETE/CART]).\n\nChỉ cần 3 tham số:\n- ApiCode: Mã API cần gọi (bắt buộc, bắt đầu bằng @)\n- params: JSON string chứa tất cả tham số, VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"10\"}\n- isConfirm: Số nguyên, 0 (mặc định) hoặc 1 (đã xác nhận thực thi)",
         "method": "POST",
-        "url": "https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-nghiepvu-coban",
+        "url": "http://localhost:5678/webhook/hook-nghiepvu-coban",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"ApiCode\":   \"{{ $parameter.ApiCode }}\",\n  \"params\":    {{ $parameter.params || '{}' }},\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\":  \"{{ $('Webhook').item.json.body.username || 'default' }}\",\n  \"token\":     \"{{ $('Webhook').item.json.headers.authorization || 'Bearer empty' }}\"\n}"
+        "jsonBody": "={\n  \"ApiCode\":   \"{{ $parameter.ApiCode }}\",\n  \"params\":    {{ $parameter.params || '{}' }},\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\":  \"{{ $('Webhook AI Chat').item.json.body?.username || 'default' }}\",\n  \"token\":     \"{{ $('Webhook AI Chat').item.json.headers?.authorization || 'Bearer empty' }}\"\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2128, 352],
-      "id": "tool-nghiepvu-coban",
+      "position": [9168, 1424],
+      "id": "69775daf-605d-48a7-b152-b46cd14f57c3",
       "name": "Tool_NghiepVu_CoBan"
     },
     {
       "parameters": {
         "name": "Tool_NghiepVu_NangCao",
-        "description": "Dùng cho phân tích, gợi ý AI, báo cáo, chấm điểm (ExecutionType: AI, ANALYSIS, REPORT, SCORING).\nVí dụ: @goi_y_don_hang, @upsell_goi_y, @cham_diem_kh, @de_xuat_khuyen_mai, @san_pham_trong_tam, @tuyen_ban_hang, @tich_luy, @goi_y_don_thuoc.\n\nXem danh sách ApiCode đầy đủ trong System Prompt (chọn các API có [AI/ANALYSIS/REPORT/SCORING]).\n\nChỉ cần 3 tham số:\n- ApiCode: Mã API cần gọi (bắt buộc, bắt đầu bằng @)\n- params: JSON string chứa tất cả tham số, VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"10\"}\n- isConfirm: Số nguyên, 0 (mặc định) hoặc 1 (đã xác nhận thực thi)",
+        "description": "Dùng cho phân tích, gợi ý AI, báo cáo, chấm điểm (ExecutionType: AI, ANALYSIS, REPORT, SCORING).\nVí dụ: @goi_y_don_hang, @upsell_goi_y, @cham_diem_kh, @de_xuat_khuyen_mai, @san_pham_trong_tam.\n\nXem danh sách ApiCode đầy đủ trong System Prompt (chọn các API có [AI/ANALYSIS/REPORT/SCORING]).\n\nChỉ cần 3 tham số:\n- ApiCode: Mã API cần gọi (bắt buộc, bắt đầu bằng @)\n- params: JSON string chứa tất cả tham số, VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"10\"}\n- isConfirm: Số nguyên, 0 (mặc định) hoặc 1 (đã xác nhận thực thi)",
         "method": "POST",
-        "url": "https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-nghiepvu-nangcao",
+        "url": "http://localhost:5678/webhook/hook-nghiepvu-nangcao",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"ApiCode\":   \"{{ $parameter.ApiCode }}\",\n  \"params\":    {{ $parameter.params || '{}' }},\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\":  \"{{ $('Webhook').item.json.body.username || 'default' }}\",\n  \"token\":     \"{{ $('Webhook').item.json.headers.authorization || 'Bearer empty' }}\"\n}"
+        "jsonBody": "={\n  \"ApiCode\":   \"{{ $parameter.ApiCode }}\",\n  \"params\":    {{ $parameter.params || '{}' }},\n  \"isConfirm\": {{ $parameter.isConfirm || 0 }},\n  \"username\":  \"{{ $('Webhook AI Chat').item.json.body?.username || 'default' }}\",\n  \"token\":     \"{{ $('Webhook AI Chat').item.json.headers?.authorization || 'Bearer empty' }}\"\n}"
       },
       "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
       "typeVersion": 1.1,
-      "position": [2288, 352],
-      "id": "tool-nghiepvu-nangcao",
+      "position": [9312, 1424],
+      "id": "2aeddcf7-6c05-4a68-9467-a07050499433",
       "name": "Tool_NghiepVu_NangCao"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": {{ JSON.stringify($json.output || $json.text || 'Xử lý hoàn tất.') }},\n  \"username\": \"{{ $('Webhook').item.json.body.username || 'default' }}\"\n}",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": {{ JSON.stringify($json.output || $json.text || 'Xử lý hoàn tất.') }},\n  \"username\": \"{{ $('Webhook AI Chat').item.json.body?.username || 'default' }}\"\n}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
@@ -160,20 +165,20 @@
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2512, 80],
-      "id": "e1bbb00b-4160-4dc3-9fff-2e3435d3bd0f",
+      "position": [9120, 1216],
+      "id": "ae658b64-45b7-4c11-a2b4-3d81b75e99fb",
       "name": "Trả Kết Quả về App"
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [
-        [{ "node": "Lấy Danh Sách API", "type": "main", "index": 0 }],
-        [{ "node": "AI Agent (Đại Não)", "type": "main", "index": 0 }]
-      ]
+    "Webhook AI Chat": {
+      "main": [[{ "node": "Lấy DS API (Bằng SQL)", "type": "main", "index": 0 }]]
     },
-    "Lấy Danh Sách API": {
+    "Lấy DS API (Bằng SQL)": {
       "main": [[{ "node": "Build Prompt API List", "type": "main", "index": 0 }]]
+    },
+    "Build Prompt API List": {
+      "main": [[{ "node": "AI Agent (Đại Não)", "type": "main", "index": 0 }]]
     },
     "AI Agent (Đại Não)": {
       "main": [[{ "node": "Trả Kết Quả về App", "type": "main", "index": 0 }]]

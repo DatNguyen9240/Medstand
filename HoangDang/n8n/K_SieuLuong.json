@@ -1,0 +1,873 @@
+{
+  "name": "SIEU LUONG: Dai Nao + Co Ban + Nang Cao",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hook-ai-dainao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        9856,
+        912
+      ],
+      "id": "36d98c20-76f6-480c-b2e1-b2f64bcd2e59",
+      "name": "Webhook AI Chat",
+      "webhookId": "822b0b0a-99d3-455e-9347-fa0cbbb380e8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC API_ListActive;"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        10048,
+        912
+      ],
+      "id": "ac7ced4d-8f95-4385-9c6e-b10cb112e5a1",
+      "name": "Lay DS API (Bang SQL)",
+      "continueOnFail": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "5XZStIxQA6Sd5chg",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nlet apis = [];\n\ntry {\n  if (items.length > 0) {\n    const firstItem = items[0].json;\n    if (firstItem && firstItem.recordsets && firstItem.recordsets.length > 0) {\n      apis = firstItem.recordsets[0];\n    } else if (firstItem && firstItem.recordset) {\n      apis = firstItem.recordset;\n    } else {\n      apis = items.map(item => item.json).filter(r => r && r.ApiCode);\n    }\n  }\n} catch(e) {\n  return [{ json: { api_list_text: '(Loi khi xu ly danh sach API: ' + e.message + ')' } }];\n}\n\nif (!apis || !apis.length) {\n  return [{ json: { api_list_text: '(Khong lay duoc danh sach API tu he thong)' } }];\n}\n\nconst grouped = {};\nfor (const api of apis) {\n  const cat = api.Category || 'Khac';\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push('- ' + api.ApiCode + ' -> ' + (api.ApiDescription || api.ApiName) + ' [' + api.ExecutionType + ']');\n}\n\nlet text = 'DANH SACH API HE THONG:\\n';\nfor (const [cat, groupItems] of Object.entries(grouped)) {\n  text += '\\n===== ' + cat + ' =====\\n' + groupItems.join('\\n');\n}\n\nreturn [{ json: { api_list_text: text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        10256,
+        912
+      ],
+      "id": "0b8fd7fc-6284-4204-981f-4530462960cc",
+      "name": "Build Prompt API List"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook AI Chat').item.json.body?.message || $('Webhook AI Chat').item.json.body?.text || $('Webhook AI Chat').item.json.body?.query || $('Webhook AI Chat').item.json.body?.question || '' }}",
+        "options": {
+          "systemMessage": "=Ban la 'Medstand Super Assistant' - Chuyen gia tu van va Tro ly kinh doanh xuat sac cua he thong duoc pham Medstand. Nhiem vu cua ban khong chi la tra loi cau hoi, ma la DONG HANH, PHAN TICH va TOI UU HOA qua trinh ban hang.\n\nBan duoc trang bi 3 cong cu (Tools):\n1. Tool_RAG_TaiLieu: Tra loi kien thuc chuyen mon y duoc (thong tin thuoc, tac dung phu, quy trinh). KHONG dung de tra cuu du lieu thuc te.\n2. Tool_NghiepVu_CoBan: Thuc thi CRUD, tra cuu du lieu (ExecutionType = QUERY/INSERT/UPDATE/DELETE/CART).\n3. Tool_NghiepVu_NangCao: Phan tich AI, bao cao, cham diem KH, goi y upsell (ExecutionType = AI/ANALYSIS/REPORT/SCORING).\n\nDANH SACH API HE THONG:\n{{ $('Build Prompt API List').item.json.api_list_text }}\n\n===== QUY TAC SUY LUAN CHUOI (AGENTIC REASONING) =====\nKhi nhan mot yeu cau, ban PHAI phan tich xem co can goi nhieu API lien tiep de giai quyet tron ven van de khong. NEU CO, hay tu dong thuc hien tung buoc:\n- Vi du 'Len don cho chi Lan, lay toa cu thang truoc':\n  B1: Goi Tool_NghiepVu_CoBan tra cuu lich su mua hang cua khach.\n  B2: Goi Tool_NghiepVu_CoBan kiem tra ton kho tung san pham.\n  B3: Tong hop, hoi xac nhan tao don (isConfirm=0).\n- Vi du 'Xem khach HB106':\n  B1: Goi Tool_NghiepVu_CoBan lay thong tin KH.\n  B2: TU DONG goi them Tool_NghiepVu_NangCao (@goi_y_don_hang) de tu van upsell.\n\n===== QUY TAC UPSELL CHU DONG =====\n- Bat cu khi nao nguoi dung tra cuu KH cu the hoac tao don hang, hay TU DONG can nhac goi them Tool_NghiepVu_NangCao de cung cap goi y tang gia tri don hang.\n- LUON LUON dinh kem 1 cau goi y kinh doanh o cuoi cau tra loi.\n\n===== KY NANG HIEU NGON NGU TU NHIEN =====\n- Nguoi dung noi theo cach tu nhien. Ban PHAI tu suy luan y dinh va map sang ApiCode dung.\n- Trich xuat tham so thong minh tu cau noi: ten thuoc -> @ProductName, ma KH -> @ObjectID.\n- KHONG hoi username, KHONG tu choi coc loc neu cau hoi mo ho - hay hoi lai lich su.\n\n===== QUY TAC KY THUAT =====\n- @Username: Tu dong inject, KHONG hoi nguoi dung.\n- isConfirm: Lenh thay doi du lieu (@tao_don_hang, @them_khach_hang) -> B1: isConfirm=0 lay form, B2: user dong y -> isConfirm=1.\n- Mac dinh: @FromDate=LAST_30_DAYS, @ToDate=TODAY, @TopN=10.\n- TUYET DOI chi dung ApiCode co trong danh sach. KHONG bia dat ma API."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        10464,
+        912
+      ],
+      "id": "3615bfac-0fd5-4a6f-ae78-76330e5193f1",
+      "name": "AI Agent (Dai Nao)"
+    },
+    {
+      "parameters": {
+        "model": "=openai/gpt-4o-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        10336,
+        1120
+      ],
+      "id": "8f960a03-f45f-4718-94fd-8a6a74cab99c",
+      "name": "OpenAI GPT-4o-mini",
+      "credentials": {
+        "openAiApi": {
+          "id": "mxZCAAqEX3fE4Amb",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook AI Chat').item.json.body?.username || $('Webhook AI Chat').item.json.body?.userId || 'session_default' }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.3,
+      "position": [
+        10512,
+        1120
+      ],
+      "id": "c2ad4a39-2be8-4c99-9133-a8acfc24eb82",
+      "name": "Memory Redis",
+      "credentials": {
+        "redis": {
+          "id": "J7TAp23o8NR3x7Mp",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Tool_RAG_TaiLieu",
+        "description": "Dung khi nguoi dung hoi ve KIEN THUC: thong tin thuoc, tac dung phu, co che hoat dong, quy trinh nghiep vu, huong dan su dung san pham. KHONG dung de tra cuu ton kho, don hang, hay du lieu thuc te tu he thong.",
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/hook-rag-tracuu",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "cau_hoi"
+            },
+            {
+              "name": "username"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "cau_hoi",
+              "description": "Cau hoi kien thuc cua nguoi dung (string, bat buoc)",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        10656,
+        1120
+      ],
+      "id": "a285a895-f320-4f26-8f9c-8db65118a474",
+      "name": "Tool_RAG_TaiLieu"
+    },
+    {
+      "parameters": {
+        "name": "Tool_NghiepVu_CoBan",
+        "description": "Dung cho nghiep vu CRUD va Tra cuu du lieu thuc te (ExecutionType: QUERY, INSERT, UPDATE, DELETE, CART). Vi du: xem ton kho, xem don hang, xem cong no, tao don hang, tra cuu san pham, xem lich su mua hang cua khach.",
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/hook-nghiepvu-coban",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "ApiCode"
+            },
+            {
+              "name": "params"
+            },
+            {
+              "name": "isConfirm"
+            },
+            {
+              "name": "username"
+            },
+            {
+              "name": "token"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "ApiCode",
+              "description": "Ma API can goi (BAT BUOC co dau @ o dau, VD: @ton_kho, @xem_don_hang, @cong_no_kh). Chi dung ApiCode co trong danh sach system prompt.",
+              "type": "string"
+            },
+            {
+              "name": "params",
+              "description": "JSON Object chua tham so (VD: {\"@ObjectID\": \"A008\", \"@TopN\": \"10\"}). Neu khong co tham so, truyen {}",
+              "type": "string"
+            },
+            {
+              "name": "isConfirm",
+              "description": "0 = chi xem/tra cuu (mac dinh). 1 = xac nhan thuc thi lenh tao/sua/xoa. Chi truyen 1 khi nguoi dung da dong y.",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        10816,
+        1120
+      ],
+      "id": "e96c67d4-04df-4cda-9843-d63ed3b88122",
+      "name": "Tool_NghiepVu_CoBan"
+    },
+    {
+      "parameters": {
+        "name": "Tool_NghiepVu_NangCao",
+        "description": "Dung cho phan tich nang cao, goi y AI, bao cao, cham diem khach hang, de xuat upsell/cross-sell (ExecutionType: AI, ANALYSIS, REPORT, SCORING). Vi du: goi y don hang (@goi_y_don_hang), cham diem KH (@cham_diem_kh), san pham ban kem (@upsell_goi_y).",
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/hook-nghiepvu-nangcao",
+        "sendBody": true,
+        "parametersBody": {
+          "values": [
+            {
+              "name": "ApiCode"
+            },
+            {
+              "name": "params"
+            },
+            {
+              "name": "isConfirm"
+            },
+            {
+              "name": "username"
+            },
+            {
+              "name": "token"
+            }
+          ]
+        },
+        "placeholderDefinitions": {
+          "values": [
+            {
+              "name": "ApiCode",
+              "description": "Ma API phan tich (BAT BUOC co dau @ o dau, VD: @goi_y_don_hang, @cham_diem_kh, @upsell_goi_y). Chi dung ApiCode co trong danh sach system prompt.",
+              "type": "string"
+            },
+            {
+              "name": "params",
+              "description": "JSON Object chua tham so (VD: {\"@ObjectID\": \"KH001\", \"@TopN\": \"5\"}). Neu khong co tham so, truyen {}",
+              "type": "string"
+            },
+            {
+              "name": "isConfirm",
+              "description": "Luon la so 0 cho cac lenh phan tich va goi y",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+      "typeVersion": 1.1,
+      "position": [
+        10960,
+        1120
+      ],
+      "id": "13a9cb9f-6c50-4c38-86f2-b5839defbbcd",
+      "name": "Tool_NghiepVu_NangCao"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', message: $json.output || $json.text || 'Xu ly hoan tat.', username: $('Webhook AI Chat').item.json.body?.username || 'default' }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        10768,
+        912
+      ],
+      "id": "5fa5270c-bed8-4402-93d0-e4909b777e54",
+      "name": "Tra Ket Qua ve App"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hook-nghiepvu-coban",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        -224
+      ],
+      "id": "75fbce64-ae4c-40a5-997b-aeea8d5ec84c",
+      "name": "Webhook Co Ban",
+      "webhookId": "162abe9d-e1de-48e8-a893-768c2d564349"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.item.json;\nconst body = raw.body || raw;\nconst headers = raw.headers || {};\nconst ApiCode = (body.ApiCode || '').trim();\nconst isConfirm = parseInt(body.isConfirm || '0', 10);\n\nif (!ApiCode) return [{ json: { loi: true, hop_le: false, message: 'Thieu ApiCode' } }];\n\nlet tokenStr = body.token || headers.authorization || headers.Authorization || headers.token || '';\nif (tokenStr.startsWith('Bearer ')) tokenStr = tokenStr.split(' ')[1];\n\nlet realUsername = body.username || 'UNKNOWN';\nlet userRoles = ['USER'];\nlet isJwtParsed = false;\n\nif (!tokenStr || tokenStr === 'Bearer empty' || tokenStr === 'empty' || tokenStr === 'null') {\n   // Xử lý nới lỏng tạm thời cho bot tĩnh (nếu cần) hoặc chặn luôn\n   // return [{ json: { loi: true, hop_le: false, message: 'Vui lòng đăng nhập lại để sử dụng chức năng!' } }];\n} else {\n    try {\n      const parts = tokenStr.split('.');\n      if (parts.length === 3) {\n        const base64Url = parts[1];\n        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');\n        const jsonPayload = Buffer.from(base64, 'base64').toString('utf-8');\n        const payload = JSON.parse(jsonPayload);\n        \n        let r = payload.role || payload.Role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'USER';\n        if (Array.isArray(r)) userRoles = r.map(x => String(x).toUpperCase());\n        else userRoles = String(r).toUpperCase().split(',');\n        \n        realUsername = payload.UserName || payload.username || payload.sub || payload.unique_name || payload.name || payload.Name || realUsername;\n        isJwtParsed = true;\n      }\n    } catch(e) {\n      console.log('JWT Error:', e.message);\n    }\n}\n\n// Nếu realUsername = Demo hoặc UNKNOWN -> chưa auth\nif (realUsername === 'Demo' || realUsername === 'UNKNOWN') {\n    return [{ json: { loi: true, hop_le: false, message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng tải lại trang (F5) và đăng nhập lại!' } }];\n}\n\n// Chặn quyền\nconst MANAGER_APIS = ['@xem_doanh_so', '@import_trong_tam', '@de_xuat_khuyen_mai'];\nif (MANAGER_APIS.includes(ApiCode)) {\n   const isManager = userRoles.includes('ADMIN') || userRoles.includes('MANAGER') || userRoles.includes('CEO') || userRoles.includes('QUANLY');\n   if (!isManager && isJwtParsed) {\n      return [{ json: { loi: true, hop_le: false, message: '⛔ Từ chối truy cập: API [' + ApiCode + '] yêu cầu quyền Quản Lý. Bạn hiện là [' + userRoles.join(',') + '].' } }];\n   }\n}\n\n// --- 2. BUILD SQL ---\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) { params = {}; }\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\nfunction esc(val) {\n  if (val === undefined || val === null || String(val).trim() === '') return 'NULL';\n  let str = typeof val === 'object' ? JSON.stringify(val) : String(val);\n  return \"N'\" + str.replace(/'/g, \"''\") + \"'\";\n}\n\nlet sql = '';\nlet isUpdate = false;\n\nswitch(ApiCode) {\n    case '@tao_don_hang':\n        isUpdate = true;\n        sql = `EXEC API_DonHangChiTiet_Insert_AI @Username=${esc(realUsername)}, @DocumentID=${esc(params['@DocumentID'])}, @ObjectID=${esc(params['@ObjectID'])}, @ItemList=${esc(params['@ItemList'])};`;\n        break;\n    case '@them_khach_hang':\n        isUpdate = true;\n        sql = `EXEC API_ThemKhachHang_AI @Username=${esc(realUsername)}, @TenKhachHang=${esc(params['@TenKhachHang'])}, @SoDienThoai=${esc(params['@SoDienThoai'])}, @DiaChi=${esc(params['@DiaChi'])}, @ObjectGroupID=${esc(params['@ObjectGroupID'])};`;\n        break;\n    case '@xem_hoa_don':\n        sql = `EXEC API_HoaDon_AI @Username=${esc(realUsername)}, @FromDate=${esc(params['@FromDate'])}, @ToDate=${esc(params['@ToDate'])}, @SearchText=${esc(params['@SearchText'])};`;\n        break;\n    case '@xem_don_hang':\n        sql = `EXEC API_DonHang_AI @Username=${esc(realUsername)}, @FromDate=${esc(params['@FromDate'])}, @ToDate=${esc(params['@ToDate'])}, @StatusID=${esc(params['@StatusID'])}, @StatusName=${esc(params['@StatusName'])}, @EmployeeID=${esc(params['@EmployeeID'])}, @ObjectID=${esc(params['@ObjectID'])}, @SearchText=${esc(params['@SearchText'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@xem_doanh_so':\n        sql = `EXEC API_DoanhSo_AI @Username=${esc(realUsername)}, @FromDate=${esc(params['@FromDate'])}, @ToDate=${esc(params['@ToDate'])}, @ObjectID=${esc(params['@ObjectID'])}, @ObjectName=${esc(params['@ObjectName'])}, @EmployeeID=${esc(params['@EmployeeID'])}, @EmployeeName=${esc(params['@EmployeeName'])}, @ItemName=${esc(params['@ItemName'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@cong_no_kh':\n        sql = `EXEC API_CongNoKhachHang_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @ToDate=${esc(params['@ToDate'])};`;\n        break;\n    case '@cong_no_chi_tiet':\n        sql = `EXEC API_CongNoChiTiet_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @ToDate=${esc(params['@ToDate'])};`;\n        break;\n    case '@danh_muc':\n        sql = `EXEC API_DanhMuc_AI @Type=${esc(params['@Type'])}, @SearchText=${esc(params['@SearchText'])};`;\n        break;\n    case '@ton_kho_list':\n        sql = `EXEC API_GetTonKho_List_AI @Username=${esc(realUsername)}, @ItemID=${esc(params['@ItemID'])}, @ItemName=${esc(params['@ItemName'])};`;\n        break;\n    case '@tra_cuu_san_pham':\n        sql = `EXEC API_TraCuuSanPham_AI @SearchKey=${esc(params['@SearchKey'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    default:\n        return [{ json: { loi: true, hop_le: false, message: 'ApiCode Cơ Bản không được hỗ trợ: ' + ApiCode } }];\n}\n\nif (isUpdate && isConfirm === 0) {\n    return [{ json: { hop_le: true, need_confirm: true, ApiCode, sql_query: null } }];\n}\n\nreturn [{ json: { hop_le: true, need_confirm: false, ApiCode, sql_query: sql } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1472,
+        -224
+      ],
+      "id": "a9a2100d-a4f9-4e0b-8697-1db4ad5baa2f",
+      "name": "Parse Input Co Ban"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hop_le }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1184,
+        -224
+      ],
+      "id": "08f66137-6173-442a-8456-9a480894c933",
+      "name": "Input Hop Le Co Ban?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql_query || \"SELECT 'NEED_CONFIRM' AS status;\" }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        -304
+      ],
+      "id": "sql-coban-dispatcher",
+      "name": "Goi Backend API",
+      "continueOnFail": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "5XZStIxQA6Sd5chg",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst parseNode = $('Parse Input Co Ban').item.json;\nconst ApiCode = parseNode.ApiCode || '';\n\nif (parseNode.need_confirm) {\n   return [{ json: { ket_qua: \"⚠️ Dữ liệu hợp lệ. Vui lòng kiểm tra kỹ và bấm **XÁC NHẬN** để hệ thống thực thi lệnh \" + ApiCode, so_ban_ghi: 0, ApiCode, isConfirm_Review: true } }];\n}\n\nlet payload = [];\ntry {\n  if (items.length > 0) {\n    const first = items[0].json;\n    if (first && first.recordsets && first.recordsets[0]) {\n      payload = first.recordsets[0];\n    } else if (first && first.recordset) {\n      payload = first.recordset;\n    } else if (first && Array.isArray(first)) {\n      payload = first;\n    } else {\n      payload = items.map(i => i.json).filter(r => r && !r.error);\n    }\n    if (first && first.error) {\n      return [{ json: { ket_qua: 'Lỗi Database (' + ApiCode + '): ' + (first.message || JSON.stringify(first.error)), loi: true } }];\n    }\n  }\n} catch(e) {}\n\nif (!payload || payload.length === 0) {\n  return [{ json: { ket_qua: 'Thực thi thành công nhưng hệ thống trả về rỗng.', so_ban_ghi: 0, ApiCode } }];\n}\n\nconst keys = Object.keys(payload[0]).filter(k => !k.startsWith('_'));\nconst total = payload.length;\nlet text = 'Tìm thấy ' + total + ' kết quả:\\n\\n';\ntext += '| STT | ' + keys.join(' | ') + ' |\\n';\ntext += '|---|' + keys.map(() => '---').join('|') + ' |\\n';\ntext += payload.slice(0, 20).map((row, i) => {\n  return '| ' + (i + 1) + ' | ' + keys.map(k => String(row[k] !== null && row[k] !== undefined ? row[k] : '').replace(/\\|/g, '-')).join(' | ') + ' |';\n}).join('\\n');\nif (total > 20) text += '\\n\\n... và ' + (total - 20) + ' kết quả khác chênh lệch.';\n\nreturn [{ json: { ket_qua: text, so_ban_ghi: total, ApiCode } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        -304
+      ],
+      "id": "d20d9630-6d8c-4f49-85ce-da8f405b56d7",
+      "name": "Format Ket Qua Co Ban"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', result: $json.ket_qua, ApiCode: $json.ApiCode, so_ban_ghi: $json.so_ban_ghi }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -320,
+        -304
+      ],
+      "id": "19a53083-891f-495a-9820-c4b7f71b7ed5",
+      "name": "Tra Ve OK Co Ban"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'Yeu cau khong hop le.',\n  loi: true\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -912,
+        -64
+      ],
+      "id": "22ff4d95-38cb-42a4-90d1-76241de47f13",
+      "name": "Tra Loi Co Ban"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'error', result: $json.ket_qua || $json.message || 'Yeu cau khong hop le.' }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        -96
+      ],
+      "id": "55a02b39-ee44-409b-be6e-fb5973d6305b",
+      "name": "Tra Ve Loi Co Ban"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hook-nghiepvu-nangcao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        240
+      ],
+      "id": "ca2e614f-e323-4bd6-b4be-6e4108de5b12",
+      "name": "Webhook Nang Cao",
+      "webhookId": "webhook-nangcao-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = $input.item.json;\nconst body = raw.body || raw;\nconst headers = raw.headers || {};\nconst ApiCode = (body.ApiCode || '').trim();\n\nif (!ApiCode) return [{ json: { loi: true, hop_le: false, message: 'Thieu ApiCode' } }];\n\nlet tokenStr = body.token || headers.authorization || headers.Authorization || headers.token || '';\nif (tokenStr.startsWith('Bearer ')) tokenStr = tokenStr.split(' ')[1];\n\nlet realUsername = body.username || 'UNKNOWN';\nlet userRoles = ['USER'];\nlet isJwtParsed = false;\n\nif (tokenStr && tokenStr !== 'Bearer empty' && tokenStr !== 'empty' && tokenStr !== 'null') {\n    try {\n      const parts = tokenStr.split('.');\n      if (parts.length === 3) {\n        const base64Url = parts[1];\n        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');\n        const jsonPayload = Buffer.from(base64, 'base64').toString('utf-8');\n        const payload = JSON.parse(jsonPayload);\n        \n        let r = payload.role || payload.Role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'USER';\n        if (Array.isArray(r)) userRoles = r.map(x => String(x).toUpperCase());\n        else userRoles = String(r).toUpperCase().split(',');\n        \n        realUsername = payload.UserName || payload.username || payload.sub || payload.unique_name || payload.name || payload.Name || realUsername;\n        isJwtParsed = true;\n      }\n    } catch(e) {}\n}\n\nif (realUsername === 'Demo' || realUsername === 'UNKNOWN') {\n    return [{ json: { loi: true, hop_le: false, message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng tải lại trang (F5) và đăng nhập lại!' } }];\n}\n\nconst MANAGER_APIS = ['@xem_doanh_so', '@import_trong_tam', '@de_xuat_khuyen_mai'];\nif (MANAGER_APIS.includes(ApiCode)) {\n   const isManager = userRoles.includes('ADMIN') || userRoles.includes('MANAGER') || userRoles.includes('CEO') || userRoles.includes('QUANLY');\n   if (!isManager && isJwtParsed) {\n      return [{ json: { loi: true, hop_le: false, message: '⛔ Từ chối truy cập: API [' + ApiCode + '] yêu cầu quyền Quản Lý. Bạn hiện là [' + userRoles.join(',') + '].' } }];\n   }\n}\n\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) { params = {}; }\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\nfunction esc(val) {\n  if (val === undefined || val === null || String(val).trim() === '') return 'NULL';\n  let str = typeof val === 'object' ? JSON.stringify(val) : String(val);\n  return \"N'\" + str.replace(/'/g, \"''\") + \"'\";\n}\n\nlet sql = '';\nswitch(ApiCode) {\n    case '@goi_y_don_hang':\n        sql = `EXEC API_GoiYDonHang_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@upsell_goi_y':\n        sql = `EXEC API_UpsellGoiY_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @SearchKey=${esc(params['@SearchKey'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@goi_y_don_thuoc':\n        sql = `EXEC API_GoiYDonThuoc_AI @Keyword=${esc(params['@Keyword'])};`;\n        break;\n    case '@tuyen_ban_hang':\n        sql = `EXEC API_TuyenBanHang_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @SoNgayVangMat=${esc(params['@SoNgayVangMat'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@cham_diem_kh':\n        sql = `EXEC API_ChamDiemKH_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @NhomFilter=${esc(params['@NhomFilter'])};`;\n        break;\n    case '@tich_luy':\n        sql = `EXEC API_TichLuy_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @ProgramID=${esc(params['@ProgramID'])}, @FromDate=${esc(params['@FromDate'])}, @ToDate=${esc(params['@ToDate'])}, @ItemIDs=${esc(params['@ItemIDs'])};`;\n        break;\n    case '@san_pham_trong_tam':\n        sql = `EXEC API_SanPhamTrongTam_AI @Username=${esc(realUsername)}, @ObjectID=${esc(params['@ObjectID'])}, @TopN=${esc(params['@TopN'])};`;\n        break;\n    case '@de_xuat_khuyen_mai':\n        sql = `EXEC API_DeXuatKhuyenMai_AI @Username=${esc(realUsername)};`;\n        break;\n    default:\n        return [{ json: { loi: true, hop_le: false, message: 'ApiCode Nâng Cao không được hỗ trợ: ' + ApiCode } }];\n}\n\nreturn [{ json: { hop_le: true, need_confirm: false, ApiCode, sql_query: sql } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -992,
+        240
+      ],
+      "id": "221e5e05-1392-47a2-ae52-9a45c64486dc",
+      "name": "Parse Input Nang Cao"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hop_le }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        240
+      ],
+      "id": "fa452eed-7b1b-4686-84a0-76833b7d0eeb",
+      "name": "Input Hop Le Nang Cao?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.sql_query || \"SELECT 'NEED_CONFIRM' AS status;\" }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        160
+      ],
+      "id": "sql-nangcao-dispatcher",
+      "name": "Goi Backend AI Analytics",
+      "continueOnFail": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "5XZStIxQA6Sd5chg",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst parseNode = $('Parse Input Nang Cao').item.json;\nconst ApiCode = parseNode.ApiCode || '';\n\nif (parseNode.need_confirm) {\n   return [{ json: { ket_qua: \"⚠️ Dữ liệu hợp lệ. Vui lòng kiểm tra kỹ và bấm **XÁC NHẬN** để hệ thống thực thi lệnh \" + ApiCode, so_ban_ghi: 0, ApiCode, isConfirm_Review: true } }];\n}\n\nlet payload = [];\ntry {\n  if (items.length > 0) {\n    const first = items[0].json;\n    if (first && first.recordsets && first.recordsets[0]) {\n      payload = first.recordsets[0];\n    } else if (first && first.recordset) {\n      payload = first.recordset;\n    } else if (first && Array.isArray(first)) {\n      payload = first;\n    } else {\n      payload = items.map(i => i.json).filter(r => r && !r.error);\n    }\n    if (first && first.error) {\n      return [{ json: { ket_qua: 'Lỗi Database (' + ApiCode + '): ' + (first.message || JSON.stringify(first.error)), loi: true } }];\n    }\n  }\n} catch(e) {}\n\nif (!payload || payload.length === 0) {\n  return [{ json: { ket_qua: 'Thực thi thành công nhưng hệ thống trả về rỗng.', so_ban_ghi: 0, ApiCode } }];\n}\n\nconst keys = Object.keys(payload[0]).filter(k => !k.startsWith('_'));\nconst total = payload.length;\nlet text = 'Tìm thấy ' + total + ' kết quả:\\n\\n';\ntext += '| STT | ' + keys.join(' | ') + ' |\\n';\ntext += '|---|' + keys.map(() => '---').join('|') + ' |\\n';\ntext += payload.slice(0, 20).map((row, i) => {\n  return '| ' + (i + 1) + ' | ' + keys.map(k => String(row[k] !== null && row[k] !== undefined ? row[k] : '').replace(/\\|/g, '-')).join(' | ') + ' |';\n}).join('\\n');\nif (total > 20) text += '\\n\\n... và ' + (total - 20) + ' kết quả khác chênh lệch.';\n\nreturn [{ json: { ket_qua: text, so_ban_ghi: total, ApiCode } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        160
+      ],
+      "id": "c7063b4c-5bd1-4d34-afcf-318575743eb7",
+      "name": "Format Ket Qua Nang Cao"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', result: $json.ket_qua, ApiCode: $json.ApiCode, so_ban_ghi: $json.so_ban_ghi }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        160
+      ],
+      "id": "eeffd4d7-bfaa-414c-b468-5b279954a6ca",
+      "name": "Tra Ve OK Nang Cao"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'Yeu cau khong hop le.',\n  loi: true\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        368
+      ],
+      "id": "2986a419-4a2e-4087-8ac0-b3c25b614f53",
+      "name": "Tra Loi Nang Cao"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'error', result: $json.ket_qua || $json.message || 'Yeu cau khong hop le.' }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -128,
+        368
+      ],
+      "id": "05bca63b-3778-4dd1-ac97-a63a2e39db4f",
+      "name": "Tra Ve Loi Nang Cao"
+    }
+  ],
+  "connections": {
+    "Webhook AI Chat": {
+      "main": [
+        [
+          {
+            "node": "Lay DS API (Bang SQL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lay DS API (Bang SQL)": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt API List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt API List": {
+      "main": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent (Dai Nao)": {
+      "main": [
+        [
+          {
+            "node": "Tra Ket Qua ve App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o-mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory Redis": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_RAG_TaiLieu": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_NghiepVu_CoBan": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tool_NghiepVu_NangCao": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent (Dai Nao)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Co Ban": {
+      "main": [
+        [
+          {
+            "node": "Parse Input Co Ban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input Co Ban": {
+      "main": [
+        [
+          {
+            "node": "Input Hop Le Co Ban?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Hop Le Co Ban?": {
+      "main": [
+        [
+          {
+            "node": "Goi Backend API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tra Loi Co Ban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Backend API": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Co Ban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Co Ban": {
+      "main": [
+        [
+          {
+            "node": "Tra Ve OK Co Ban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tra Loi Co Ban": {
+      "main": [
+        [
+          {
+            "node": "Tra Ve Loi Co Ban",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Nang Cao": {
+      "main": [
+        [
+          {
+            "node": "Parse Input Nang Cao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input Nang Cao": {
+      "main": [
+        [
+          {
+            "node": "Input Hop Le Nang Cao?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Hop Le Nang Cao?": {
+      "main": [
+        [
+          {
+            "node": "Goi Backend AI Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tra Loi Nang Cao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Goi Backend AI Analytics": {
+      "main": [
+        [
+          {
+            "node": "Format Ket Qua Nang Cao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Ket Qua Nang Cao": {
+      "main": [
+        [
+          {
+            "node": "Tra Ve OK Nang Cao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tra Loi Nang Cao": {
+      "main": [
+        [
+          {
+            "node": "Tra Ve Loi Nang Cao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}

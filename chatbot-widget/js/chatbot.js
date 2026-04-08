@@ -1,6 +1,6 @@
 // -- AI Chatbot Page ----------------------------------------------------------
 (function () {
-    var CHAT_API = 'https://rest-hammer-electro-authors.trycloudflare.com/webhook/hook-ai-dainao';
+    var CHAT_API = 'https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-ai-dainao';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 30 * 60 * 1000; // 30 phút

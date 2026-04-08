@@ -1,38 +1,50 @@
 {
-  "name": "K3 · Nghiệp Vụ Cơ Bản",
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "hook-nghiepvu-coban",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-800, 0],
-      "id": "wh-coban",
+      "position": [
+        -1728,
+        64
+      ],
+      "id": "c0c61001-56bb-4805-83f0-c18e254e4a30",
       "name": "Webhook Cơ Bản",
-      "webhookId": "nghiepvu-coban-001"
+      "webhookId": "162abe9d-e1de-48e8-a893-768c2d564349"
     },
     {
       "parameters": {
-        "jsCode": "// ═══════════════════════════════════════════════════════\n// KHỐI 3 — Nghiệp Vụ Cơ Bản (CRUD & Tra Cứu)\n// ExecutionType: QUERY, INSERT, UPDATE, DELETE, CART\n// Ví dụ: @xem_don_hang, @cong_no_kh, @ton_kho_list, @tao_don_hang\n// ═══════════════════════════════════════════════════════\nconst raw = $input.item.json;\nconst body = raw.body || raw;\nconst headers = raw.headers || {};\n\nconst ApiCode = (body.ApiCode || '').trim();\nconst username = body.username || 'default';\nconst token = headers.authorization || body.token || 'Bearer empty';\nconst isConfirm = parseInt(body.isConfirm || '0', 10);\n\n// params: AI Agent truyền lên dưới dạng JSON string hoặc object\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) { params = {}; }\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\n// Inject @Username tự động\nif (!params['@Username']) {\n  params['@Username'] = username;\n}\n\nif (!ApiCode) {\n  return [{ json: {\n    loi: true,\n    message: 'Thiếu ApiCode. Cần truyền ApiCode và params dạng JSON object.'\n  }}];\n}\n\nreturn [{ json: {\n  ApiCode,\n  username,\n  token,\n  isConfirm,\n  params,\n  hop_le: true\n}}];"
+        "jsCode": "// KHỐI 3 — Nghiệp Vụ Cơ Bản\nconst raw = $input.item.json;\nconst body = raw.body || raw;\nconst headers = raw.headers || {};\n\nconst ApiCode = (body.ApiCode || '').trim();\nconst username = body.username || 'default';\nconst token = headers.authorization || body.token || 'Bearer empty';\nconst isConfirm = parseInt(body.isConfirm || '0', 10);\n\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) { params = {}; }\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\nif (!params['@Username']) params['@Username'] = username;\n\nif (!ApiCode) {\n  return [{ json: { loi: true, message: 'Thiếu ApiCode. Cần truyền ApiCode và params dạng JSON object.' } }];\n}\n\nreturn [{ json: { ApiCode, username, token, isConfirm, params, hop_le: true } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-512, 0],
-      "id": "parse-input-coban",
+      "position": [
+        -1440,
+        64
+      ],
+      "id": "964998a2-92c7-4077-a80e-482610b4df72",
       "name": "Parse Input"
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.hop_le }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true" }
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -41,8 +53,11 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-224, 0],
-      "id": "check-valid-coban",
+      "position": [
+        -1152,
+        64
+      ],
+      "id": "2638e49c-d6a2-4598-9e47-f4d5f7af6626",
       "name": "Input Hợp Lệ?"
     },
     {
@@ -52,19 +67,30 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $json.token }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  ApiCode:   $json.ApiCode,\n  params:    $json.params,\n  isConfirm: $json.isConfirm\n}) }}",
-        "options": { "timeout": 30000 }
+        "jsonBody": "={{ JSON.stringify({\n  ApiCode: $json.ApiCode,\n  params: $json.params,\n  isConfirm: $json.isConfirm\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [64, -80],
-      "id": "call-backend-coban",
+      "position": [
+        -864,
+        -16
+      ],
+      "id": "0a795121-a52b-407d-8838-9620cd574aef",
       "name": "Gọi Backend API"
     },
     {
@@ -73,36 +99,134 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [352, -80],
-      "id": "format-result-coban",
+      "position": [
+        -576,
+        -16
+      ],
+      "id": "07d683ab-d50b-4e0c-963f-e35505a3b19b",
       "name": "Format Kết Quả"
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.item.json;\nreturn [{ json: {\n  ket_qua: data.message || 'Yêu cầu không hợp lệ.',\n  loi: true\n}}];"
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'success', result: $json.ket_qua, ApiCode: $json.ApiCode, so_ban_ghi: $json.so_ban_ghi } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
       },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [64, 128],
-      "id": "return-error-coban",
-      "name": "Trả Lỗi"
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        -16
+      ],
+      "id": "354ee04d-658c-47eb-9d26-9e53ba358817",
+      "name": "Trả Về OK"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { status: 'error', result: $json.ket_qua } }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        192
+      ],
+      "id": "9d2fe8dc-91b0-4390-b002-da93b49b074e",
+      "name": "Trả Về Lỗi"
     }
   ],
   "connections": {
     "Webhook Cơ Bản": {
-      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Input": {
-      "main": [[{ "node": "Input Hợp Lệ?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Input Hợp Lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Input Hợp Lệ?": {
       "main": [
-        [{ "node": "Gọi Backend API", "type": "main", "index": 0 }],
-        [{ "node": "Trả Lỗi", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gọi Backend API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả Về Lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gọi Backend API": {
-      "main": [[{ "node": "Format Kết Quả", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Kết Quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kết Quả": {
+      "main": [
+        [
+          {
+            "node": "Trả Về OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
