@@ -416,9 +416,8 @@
 
         _panelEl.innerHTML = html;
 
-        var bar = document.getElementById('chat-input-bar');
-        if (bar) bar.prepend(_panelEl);
-        else document.body.appendChild(_panelEl);
+        var wrapper = document.querySelector('.chat-container') || document.querySelector('.chatbot-wrapper') || document.body;
+        wrapper.appendChild(_panelEl);
 
         document.body.classList.add('ae-panel-open'); // Đánh dấu để ẩn navbar trên mobile
         _panelEl.querySelector('#ae-panel-close').addEventListener('click', _closePanel.bind(null, false));
