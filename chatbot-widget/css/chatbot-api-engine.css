@@ -15,7 +15,7 @@
 
 /* ─── @ API Dropdown Menu ──────────────────────────────────────── */
 .ae-menu {
-    position: absolute;
+    position: fixed;
     bottom: 100%;
     z-index: 1000;
     background: var(--ae-bg);
@@ -67,7 +67,7 @@
 
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
-    position: absolute;
+    position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -148,7 +148,7 @@
 .ae-combo { position: relative; width: 100%; }
 
 .ae-combo-sug, .ae-cart-sug {
-    position: absolute;
+    position: fixed;
     top: calc(100% + 5px);
     left: 0; right: 0;
     background: var(--ae-bg);
@@ -179,7 +179,7 @@
 
 /* ─── Confirm Overlay ──────────────────────────────────────────── */
 .ae-confirm-overlay {
-    position: absolute;
+    position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(var(--ae-bg-rgb, 255,255,255), 0.85);
     backdrop-filter: blur(8px);

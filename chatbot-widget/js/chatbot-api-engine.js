@@ -416,7 +416,7 @@
 
         _panelEl.innerHTML = html;
 
-        var wrapper = document.querySelector('.chat-container') || document.querySelector('.chatbot-wrapper') || document.body;
+        var wrapper = document.body;
         wrapper.appendChild(_panelEl);
 
         document.body.classList.add('ae-panel-open'); // Đánh dấu để ẩn navbar trên mobile
