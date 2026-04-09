@@ -21,7 +21,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT d.ApiCode, d.ApiName, d.ApiDescription, d.Category, a.ExecutionType FROM dbo.API_Definition d JOIN dbo.API_Action a ON a.ApiID = d.ApiID AND a.IsDefault = 1 WHERE d.IsActive = 1"
+        "query": "SELECT TOP 100 d.ApiCode, d.ApiName, d.ApiDescription, d.Category, a.ExecutionType FROM dbo.API_Definition d WITH(NOLOCK) INNER JOIN dbo.API_Action a ON a.ApiID = d.ApiID AND a.IsDefault = 1 WHERE d.IsActive = 1 ORDER BY d.Category, d.ApiCode"
       },
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1,
@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nlet apis = [];\n\ntry {\n  if (items.length > 0) {\n    const firstItem = items[0].json;\n    if (firstItem && firstItem.recordsets && firstItem.recordsets.length > 0) {\n      apis = firstItem.recordsets[0];\n    } else if (firstItem && firstItem.recordset) {\n      apis = firstItem.recordset;\n    } else {\n      apis = items.map(item => item.json).filter(r => r && r.ApiCode);\n    }\n  }\n} catch(e) {\n  return [{ json: { api_list_text: '(Loi khi xu ly danh sach API: ' + e.message + ')' } }];\n}\n\nif (!apis || !apis.length) {\n  return [{ json: { api_list_text: '(Khong lay duoc danh sach API tu he thong)' } }];\n}\n\nconst grouped = {};\nfor (const api of apis) {\n  const cat = api.Category || 'Khac';\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push('- ' + api.ApiCode + ' -> ' + (api.ApiDescription || api.ApiName) + ' [' + api.ExecutionType + ']');\n}\n\nlet text = 'DANH SACH API HE THONG:\\n';\nfor (const [cat, groupItems] of Object.entries(grouped)) {\n  text += '\\n===== ' + cat + ' =====\\n' + groupItems.join('\\n');\n}\n\nreturn [{ json: { api_list_text: text } }];"
+        "jsCode": "const items = $input.all();\nlet apis = [];\n\ntry {\n  if (items.length > 0) {\n    const firstItem = items[0].json;\n    if (firstItem && firstItem.recordsets && firstItem.recordsets.length > 0) {\n      apis = firstItem.recordsets[0];\n    } else if (firstItem && firstItem.recordset) {\n      apis = firstItem.recordset;\n    } else {\n      apis = items.map(item => item.json).filter(r => r && r.ApiCode);\n    }\n  }\n} catch(e) {\n  return [{ json: { api_list_text: '(Error: ' + e.message + ')' } }];\n}\n\nif (!apis || !apis.length) {\n  return [{ json: { api_list_text: '(No APIs found in DB)' } }];\n}\n\nconst grouped = {};\nfor (const api of apis) {\n  const cat = api.Category || 'Other';\n  if (!grouped[cat]) grouped[cat] = [];\n  // Show ApiCode + Description + ExecutionType so AI knows exactly what to call\n  grouped[cat].push('  ' + api.ApiCode + ' [' + (api.ExecutionType || 'QUERY') + ']: ' + (api.ApiDescription || api.ApiName || ''));\n}\n\nlet text = 'DANH SACH API CHINH XAC (chi dung cac ApiCode nay, khong duoc tu tao):\\n';\nfor (const [cat, groupItems] of Object.entries(grouped)) {\n  text += '\\n[' + cat + ']\\n' + groupItems.join('\\n');\n}\n\nreturn [{ json: { api_list_text: text } }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -58,7 +58,7 @@
         "promptType": "define",
         "text": "={{ $('Webhook AI Chat').first().json.body?.message || $('Webhook AI Chat').first().json.body?.text || $('Webhook AI Chat').first().json.body?.query || $('Webhook AI Chat').first().json.body?.question || '' }}",
         "options": {
-          "systemMessage": "=Ban la 'Medstand Super Assistant' - Chuyen gia tu van va Tro ly kinh doanh xuat sac cua he thong duoc pham Medstand. Nhiem vu cua ban khong chi la tra loi cau hoi, ma la DONG HANH, PHAN TICH va TOI UU HOA qua trinh ban hang.\n\nBan duoc trang bi 3 cong cu (Tools):\n1. Tool_RAG_TaiLieu: Tra loi kien thuc chuyen mon y duoc (thong tin thuoc, tac dung phu, quy trinh). KHONG dung de tra cuu du lieu thuc te.\n2. Tool_NghiepVu_CoBan: Thuc thi CRUD, tra cuu du lieu (ExecutionType = QUERY/INSERT/UPDATE/DELETE/CART).\n3. Tool_NghiepVu_NangCao: Phan tich AI, bao cao, cham diem KH, goi y upsell (ExecutionType = AI/ANALYSIS/REPORT/SCORING).\n\nDANH SACH API HE THONG:\n{{ $('Build Prompt API List').item.json.api_list_text }}\n\n===== QUY TAC SUY LUAN CHUOI (AGENTIC REASONING) =====\nKhi nhan mot yeu cau, ban PHAI phan tich xem co can goi nhieu API lien tiep de giai quyet tron ven van de khong. NEU CO, hay tu dong thuc hien tung buoc:\n- Vi du 'Len don cho chi Lan, lay toa cu thang truoc':\n  B1: Goi Tool_NghiepVu_CoBan tra cuu lich su mua hang cua khach.\n  B2: Goi Tool_NghiepVu_CoBan kiem tra ton kho tung san pham.\n  B3: Tong hop, hoi xac nhan tao don (isConfirm=0).\n- Vi du 'Xem khach HB106':\n  B1: Goi Tool_NghiepVu_CoBan lay thong tin KH.\n  B2: TU DONG goi them Tool_NghiepVu_NangCao (@goi_y_don_hang) de tu van upsell.\n\n===== QUY TAC UPSELL CHU DONG =====\n- Bat cu khi nao nguoi dung tra cuu KH cu the hoac tao don hang, hay TU DONG can nhac goi them Tool_NghiepVu_NangCao de cung cap goi y tang gia tri don hang.\n- LUON LUON dinh kem 1 cau goi y kinh doanh o cuoi cau tra loi.\n\n===== KY NANG HIEU NGON NGU TU NHIEN =====\n- Nguoi dung noi theo cach tu nhien. Ban PHAI tu suy luan y dinh va map sang ApiCode dung.\n- Trich xuat tham so thong minh tu cau noi: ten thuoc -> @ProductName, ma KH -> @ObjectID.\n- KHONG hoi username, KHONG tu choi coc loc neu cau hoi mo ho - hay hoi lai lich su.\n\n===== QUY TAC KY THUAT =====\n- @Username: Tu dong inject, KHONG hoi nguoi dung.\n- isConfirm: Lenh thay doi du lieu (@tao_don_hang, @them_khach_hang) -> B1: isConfirm=0 lay form, B2: user dong y -> isConfirm=1.\n- Mac dinh: @FromDate=LAST_30_DAYS, @ToDate=TODAY, @TopN=10.\n- TUYET DOI chi dung ApiCode co trong danh sach. KHONG bia dat ma API."
+          "systemMessage": "=Ban la Medstand AI Assistant - Tro ly ban hang xuat sac.\n\nQUY TAC BAT BUOC (CRITICAL - TUYET DOI PHAI TUAN THU):\n\n1. KHI KHACH HOI VE: \"Ton kho\", \"Don hang\", \"Doanh so\", \"Cong no\", \"Kho hang\", \"San pham\", \"Gia\"\n   → PHAI GOI NGAY TOOL: Call_API_TraCuu\n   → KHONG DUOC tra loi bang van ban khi chua goi tool!\n\n2. KHI KHACH HOI VE: \"Goi y san pham\", \"Upsell\", \"Phan tich KH\", \"Cham diem\", \"Bao cao\"\n   → PHAI GOI TOOL: Tool_NghiepVu_NangCao\n\n3. KHI KHACH HOI VE: \"Kien thuc\", \"Thuoc\", \"Thanh phan\", \"Tac dung\", \"Quy trinh\"\n   → GOI TOOL: Tool_RAG_TaiLieu\n\nDANH SACH API (CHI DUNG CAC API NAY):\n{{ $('Build Prompt API List').item.json.api_list_text }}\n\nHUONG DAN GOI TOOL Call_API_TraCuu:\n- ApiCode: phai co prefix \"@\" (vi du \"@ton_kho\", \"@xem_don_hang\")\n- params: JSON object chua tham so (vi du {\"@BranchID\": \"MB\", \"@TopN\": \"10\", \"@ItemCode\": \"A008\"})\n- isConfirm: 0=chi xem/tra cuu, 1=xac nhan thuc thi\n\nVI DU:\n- Khach: \"Ton kho branch MB?\" → GOI Call_API_TraCuu voi ApiCode=\"@ton_kho\", params={\"@BranchID\":\"MB\"}, isConfirm=0\n- Khach: \"Ton kho ma A008?\"   → GOI Call_API_TraCuu voi ApiCode=\"@ton_kho\", params={\"@ItemCode\":\"A008\"}, isConfirm=0\n- Khach: \"Doanh so hom nay?\"  → GOI Call_API_TraCuu voi ApiCode=\"@doanh_so\", params={}, isConfirm=0\n- Khach: \"Goi y cho KH001?\"   → GOI Tool_NghiepVu_NangCao voi ApiCode=\"@goi_y_don_hang\", params={\"@ObjectID\":\"KH001\"}\n\nSAU KHI GOI TOOL THANH CONG: Hien thi NGAY KET QUA (bang so lieu, ten hang, so luong). KHONG NOI \"da tra cuu thanh cong\" ma khong show data.\n\nTUYET DOI KHONG DUOC tu tra loi bang van ban khi chua goi tool!"
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -72,9 +72,9 @@
     },
     {
       "parameters": {
-        "model": "=openai/gpt-4o-mini",
+        "model": "=openai/gpt-4-turbo",
         "options": {
-          "temperature": 0.1
+          "temperature": 0.3
         }
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
@@ -95,8 +95,8 @@
     {
       "parameters": {
         "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.body?.userId || 'session_default' }}",
-        "contextWindowLength": 20
+        "sessionKey": "={{ $('Webhook AI Chat').first().json.body?.username || 'default' }}",
+        "contextWindowLength": 50
       },
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1.3,
@@ -118,20 +118,13 @@
         "name": "Tool_RAG_TaiLieu",
         "description": "Dung khi nguoi dung hoi ve KIEN THUC: thong tin thuoc, tac dung phu, co che hoat dong, quy trinh nghiep vu, huong dan su dung san pham. KHONG dung de tra cuu ton kho, don hang, hay du lieu thuc te tu he thong.",
         "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-rag-tracuu",
+        "url": "={{ 'http://localhost:5678/webhook/hook-rag-tracuu?username=' + ($('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '') + '&token=' + ($('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || '').replace('Bearer ', '') }}",
+        "sendHeaders": false,
         "sendBody": true,
         "parametersBody": {
           "values": [
             {
               "name": "cau_hoi"
-            },
-            {
-              "name": "username",
-              "value": "={{ $('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '' }}"
-            },
-            {
-              "name": "token",
-              "value": "={{ $('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || $('Webhook AI Chat').first().json.body?.token || '' }}"
             }
           ]
         },
@@ -156,10 +149,11 @@
     },
     {
       "parameters": {
-        "name": "Tool_NghiepVu_CoBan",
-        "description": "Dung cho nghiep vu CRUD va Tra cuu du lieu thuc te (ExecutionType: QUERY, INSERT, UPDATE, DELETE, CART). Vi du: xem ton kho, xem don hang, xem cong no, tao don hang, tra cuu san pham, xem lich su mua hang cua khach.",
+        "name": "Call_API_TraCuu",
+        "description": "Su dung ham nay DE LAY DU LIEU NGAY LAP TUC tu he thong khi khach hoi cac nghiep vu nhom QUERY, INSERT, UPDATE, DELETE (vi du: doanh so, ton kho, don hang, cong no, tra cuu san pham). KHONG DUOC phep tu choi. KHONG DUOC tu tao ra cau tra loi neu chua goi ham nay.",
         "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-nghiepvu-coban",
+        "url": "={{ 'http://localhost:5678/webhook/hook-nghiepvu-coban?username=' + ($('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '') + '&token=' + ($('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || '').replace('Bearer ', '') }}",
+        "sendHeaders": false,
         "sendBody": true,
         "parametersBody": {
           "values": [
@@ -171,16 +165,6 @@
             },
             {
               "name": "isConfirm"
-            },
-            {
-              "name": "username",
-              "value": "={{ $('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '' }}",
-              "parameterType": "fixed"
-            },
-            {
-              "name": "token",
-              "value": "={{ $('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || $('Webhook AI Chat').first().json.body?.token || '' }}",
-              "parameterType": "fixed"
             }
           ]
         },
@@ -218,7 +202,8 @@
         "name": "Tool_NghiepVu_NangCao",
         "description": "Dung cho phan tich nang cao, goi y AI, bao cao, cham diem khach hang, de xuat upsell/cross-sell (ExecutionType: AI, ANALYSIS, REPORT, SCORING). Vi du: goi y don hang (@goi_y_don_hang), cham diem KH (@cham_diem_kh), san pham ban kem (@upsell_goi_y).",
         "method": "POST",
-        "url": "http://localhost:5678/webhook/hook-nghiepvu-nangcao",
+        "url": "={{ 'http://localhost:5678/webhook/hook-nghiepvu-nangcao?username=' + ($('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '') + '&token=' + ($('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || '').replace('Bearer ', '') }}",
+        "sendHeaders": false,
         "sendBody": true,
         "parametersBody": {
           "values": [
@@ -230,16 +215,6 @@
             },
             {
               "name": "isConfirm"
-            },
-            {
-              "name": "username",
-              "value": "={{ $('Webhook AI Chat').first().json.body?.username || $('Webhook AI Chat').first().json.query?.username || '' }}",
-              "parameterType": "fixed"
-            },
-            {
-              "name": "token",
-              "value": "={{ $('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || $('Webhook AI Chat').first().json.body?.token || '' }}",
-              "parameterType": "fixed"
             }
           ]
         },
@@ -473,7 +448,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT d.StoredProcedure, a.ExecutionType, a.IsConfirm FROM dbo.API_Definition d JOIN dbo.API_Action a ON a.ApiID = d.ApiID AND a.IsDefault=1 WHERE d.ApiCode = '{{ $json.body.ApiCode }}'"
+        "query": "={{ (() => {\n  const raw = $json.body?.ApiCode || $json.query?.ApiCode || '';\n  const code = raw.replace(/^@/, '').replace(/_/g, '').toLowerCase();\n  return \"SELECT TOP 1 d.StoredProcedure, a.ExecutionType, a.IsConfirm \"\n       + \"FROM dbo.API_Definition d WITH(NOLOCK) \"\n       + \"INNER JOIN dbo.API_Action a ON a.ApiID = d.ApiID AND a.IsDefault = 1 \"\n       + \"WHERE d.IsActive = 1 \"\n       + \"AND (d.ApiCode = '\" + raw.replace(/'/g,\"''\") + \"' \"\n       + \"  OR LOWER(REPLACE(d.ApiCode,'_','')) = '\" + code + \"' \"\n       + \"  OR LOWER(REPLACE(REPLACE(d.StoredProcedure,'API_',''),'_AI','')) LIKE '%\" + code + \"%') \"\n       + \"ORDER BY CASE WHEN d.ApiCode = '\" + raw.replace(/'/g,\"''\") + \"' THEN 0 \"\n       + \"  WHEN LOWER(REPLACE(d.ApiCode,'_','')) = '\" + code + \"' THEN 1 ELSE 2 END\";\n})() }}"
       },
       "type": "n8n-nodes-base.microsoftSql",
       "typeVersion": 1,
@@ -489,11 +464,12 @@
           "id": "5XZStIxQA6Sd5chg",
           "name": "Microsoft SQL account"
         }
-      }
+      },
+      "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "const originalWebhook = $('Webhook Co Ban').item ? $('Webhook Co Ban').item : $('Webhook Nang Cao').item;\nconst rawWebhook = originalWebhook.json;\nconst body = rawWebhook.body || rawWebhook;\nconst headers = rawWebhook.headers || {};\nconst ApiCode = (body.ApiCode || '').trim();\nconst isConfirmParam = parseInt(body.isConfirm || '0', 10);\n\nif (!ApiCode) return [{ json: { loi: true, hop_le: false, message: 'Thieu ApiCode' } }];\n\nconst dbItems = $input.all();\nif (!dbItems || dbItems.length === 0 || !dbItems[0].json || dbItems[0].json.error) {\n    return [{ json: { loi: true, hop_le: false, message: 'Metadata error: ' + (dbItems[0]?.json?.error?.message || '') } }];\n}\nlet metadata = dbItems[0].json;\nif (metadata.recordsets && metadata.recordsets[0] && metadata.recordsets[0][0]) {\n  metadata = metadata.recordsets[0][0];\n} else if (metadata.recordset && metadata.recordset[0]) {\n  metadata = metadata.recordset[0];\n}\n\nif (!metadata || !metadata.StoredProcedure) {\n    return [{ json: { loi: true, hop_le: false, message: 'API chưa được đăng ký trong hệ thống: ' + ApiCode } }];\n}\n\nconst spName = metadata.StoredProcedure;\nconst isConfirmReq = metadata.IsConfirm === true || metadata.IsConfirm === 1;\n\nlet tokenStr = body.token || headers.authorization || headers.Authorization || headers.token || '';\nif (tokenStr.startsWith('Bearer ')) tokenStr = tokenStr.split(' ')[1];\n\nlet realUsername = body.username || 'UNKNOWN';\nlet userRoles = ['USER'];\nlet isJwtParsed = false;\nif (tokenStr && tokenStr !== 'Bearer empty' && tokenStr !== 'empty' && tokenStr !== 'null') {\n    try {\n      const parts = tokenStr.split('.');\n      if (parts.length === 3) {\n        const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8'));\n        let r = payload.role || payload.Role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'USER';\n        userRoles = Array.isArray(r) ? r.map(x => String(x).toUpperCase()) : String(r).toUpperCase().split(',');\n        realUsername = payload.UserName || payload.username || payload.sub || payload.unique_name || payload.name || payload.Name || realUsername;\n        isJwtParsed = true;\n      }\n    } catch(e) {}\n}\n\nif (realUsername === 'Demo' || realUsername === 'UNKNOWN') {\n    return [{ json: { loi: true, hop_le: false, message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' } }];\n}\n\n// Chặn quyền\nconst MANAGER_APIS = ['@xem_doanh_so', '@import_trong_tam', '@de_xuat_khuyen_mai'];\nif (MANAGER_APIS.includes(ApiCode)) {\n   const isManager = userRoles.includes('ADMIN') || userRoles.includes('MANAGER') || userRoles.includes('CEO') || userRoles.includes('QUANLY');\n   if (!isManager && isJwtParsed) {\n      return [{ json: { loi: true, hop_le: false, message: '⛔ Từ chối truy cập: API yêu cầu quyền Quản Lý. Ban la ' + userRoles.join(',') } }];\n   }\n}\n\nlet params = {};\nif (typeof body.params === 'string') {\n  try { params = JSON.parse(body.params); } catch(e) {}\n} else if (typeof body.params === 'object' && body.params !== null) {\n  params = body.params;\n}\n\nfunction esc(val) {\n  if (val === undefined || val === null || String(val).trim() === '') return 'NULL';\n  let str = typeof val === 'object' ? JSON.stringify(val) : String(val);\n  return \"N'\" + str.replace(/'/g, \"''\") + \"'\";\n}\n\nlet sqlArgs = Object.keys(params).map(k => `${k}=${esc(params[k])}`);\nsqlArgs.unshift(`@Username=${esc(realUsername)}`);\nlet sql = `EXEC ${spName} ${sqlArgs.join(', ')};`;\n\nif (isConfirmReq && isConfirmParam === 0) {\n    return [{ json: { hop_le: true, need_confirm: true, ApiCode, sql_query: null } }];\n}\n\nreturn [{ json: { hop_le: true, need_confirm: false, ApiCode, sql_query: sql } }];\n"
+        "jsCode": "// === SAFE WEBHOOK READ (try-catch to avoid 'hasn't been executed' error) ===\nlet rawWebhook = null;\ntry { rawWebhook = $('Webhook Co Ban').first()?.json; } catch(e) {}\nif (!rawWebhook) {\n  try { rawWebhook = $('Webhook Nang Cao').first()?.json; } catch(e) {}\n}\nif (!rawWebhook) {\n  try { rawWebhook = $('Webhook RAG').first()?.json; } catch(e) {}\n}\nif (!rawWebhook) {\n  return [{ json: { loi: true, hop_le: false, message: 'Khong tim thay webhook source' } }];\n}\n\nconst body    = rawWebhook.body    || rawWebhook || {};\nconst headers = rawWebhook.headers || {};\nconst query   = rawWebhook.query   || {};\n\nconst ApiCode        = (body.ApiCode || query.ApiCode || '').trim();\nconst isConfirmParam = parseInt(body.isConfirm || query.isConfirm || '0', 10);\n\nif (!ApiCode) return [{ json: { loi: true, hop_le: false, message: 'Thieu ApiCode' } }];\n\n// Doc metadata tu Get API Metadata\nconst dbItems = $input.all();\nif (!dbItems || dbItems.length === 0) {\n  return [{ json: { loi: true, hop_le: false, message: 'Khong co metadata (API khong ton tai): ' + ApiCode } }];\n}\nlet metadata = dbItems[0].json;\nif (!metadata) {\n  return [{ json: { loi: true, hop_le: false, message: 'Metadata null: ' + ApiCode } }];\n}\n// n8n MSSQL boc trong recordsets\nif (metadata.recordsets && metadata.recordsets[0] && metadata.recordsets[0][0]) {\n  metadata = metadata.recordsets[0][0];\n} else if (metadata.recordset && metadata.recordset[0]) {\n  metadata = metadata.recordset[0];\n}\n\nif (!metadata || !metadata.StoredProcedure) {\n  return [{ json: { loi: true, hop_le: false, message: 'API chua duoc dang ky trong he thong: ' + ApiCode } }];\n}\n\nconst spName      = metadata.StoredProcedure;\nconst isConfirmReq = metadata.IsConfirm === true || metadata.IsConfirm === 1;\n\n// === DOC CREDENTIALS ===\nconst usernameFromQuery  = query.username   || '';\nconst usernameFromHeader = headers['x-username'] || headers['X-Username'] || '';\nconst tokenFromQuery     = query.token      || '';\nconst tokenFromHeader    = headers['authorization'] || headers['Authorization'] || '';\n\nlet tokenStr    = tokenFromQuery || tokenFromHeader || body.token || '';\nif (tokenStr.startsWith('Bearer ')) tokenStr = tokenStr.slice(7);\n\nlet realUsername = usernameFromQuery || usernameFromHeader || body.username || 'UNKNOWN';\n\n// === PARSE JWT ===\nlet userRoles   = ['USER'];\nlet isJwtParsed = false;\nif (tokenStr && tokenStr !== 'empty' && tokenStr !== 'null' && tokenStr.length > 20) {\n  try {\n    const parts = tokenStr.split('.');\n    if (parts.length === 3) {\n      const payload = JSON.parse(Buffer.from(parts[1].replace(/-/g,'+').replace(/_/g,'/'), 'base64').toString('utf-8'));\n      let r = payload.role || payload.Role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'USER';\n      userRoles    = Array.isArray(r) ? r.map(x => String(x).toUpperCase()) : String(r).toUpperCase().split(',');\n      realUsername = payload.UserName || payload.username || payload.sub || payload.unique_name || realUsername;\n      isJwtParsed  = true;\n    }\n  } catch(e) {}\n}\n\nif (realUsername === 'Demo' || realUsername === 'UNKNOWN') {\n  return [{ json: { loi: true, hop_le: false, message: 'Phien dang nhap khong hop le hoac da het han.' } }];\n}\n\n// === PARAMS ===\nlet paramsRaw = body.params || query.params || '{}';\nlet params = {};\nif (typeof paramsRaw === 'string') {\n  try { params = JSON.parse(paramsRaw); } catch(e) {}\n} else if (typeof paramsRaw === 'object' && paramsRaw !== null) {\n  params = paramsRaw;\n}\n\nfunction esc(val) {\n  if (val === undefined || val === null || String(val).trim() === '') return 'NULL';\n  let str = typeof val === 'object' ? JSON.stringify(val) : String(val);\n  return \"N'\" + str.replace(/'/g, \"''\") + \"'\";\n}\n\nlet sqlArgs = Object.keys(params).map(k => `${k}=${esc(params[k])}`);\nsqlArgs.unshift(`@Username=${esc(realUsername)}`);\nlet sql = `EXEC ${spName} ${sqlArgs.join(', ')};`;\n\nif (isConfirmReq && isConfirmParam === 0) {\n  return [{ json: { hop_le: true, need_confirm: true, ApiCode, sql_query: null } }];\n}\n\nreturn [{ json: { hop_le: true, need_confirm: false, ApiCode, sql_query: sql, username: realUsername } }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
