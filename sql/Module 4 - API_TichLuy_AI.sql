@@ -5,8 +5,8 @@ CREATE PROCEDURE API_TichLuy_AI
    @Username   VARCHAR(50)   = '',
    @khachhang  VARCHAR(50)   = '',
    @ProgramID  VARCHAR(50)   = '',
-   @FromDate   DATETIME      = NULL,
-   @ToDate     DATETIME      = NULL,
+   @TuNgay   DATETIME      = NULL,
+   @DenNgay     DATETIME      = NULL,
    @ItemIDs    NVARCHAR(MAX) = ''
 AS
 BEGIN
@@ -27,8 +27,8 @@ BEGIN
    IF @ProgramID = ''
        SELECT TOP 1 @ProgramID = DocumentID FROM AR_SanPhamTrongTamTbl ORDER BY ToDate DESC
    
-   IF @FromDate IS NULL OR @ToDate IS NULL
-       SELECT @FromDate = FromDate, @ToDate = ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+   IF @TuNgay IS NULL OR @DenNgay IS NULL
+       SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
 
 
    -- 3. DANH SÁCH SẢN PHẨM TRỌNG TÂM
@@ -43,7 +43,7 @@ BEGIN
    SELECT I.ObjectID, SUM(D.TotalAmount) AS TongHoaDon INTO #HoaDon
    FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
    JOIN #TrongTam T ON D.ItemID = T.ItemID
-   WHERE I.DocumentDate BETWEEN @FromDate AND @ToDate AND ISNULL(I.StatusID, 0) != 10
+   WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
    GROUP BY I.ObjectID
 
@@ -51,7 +51,7 @@ BEGIN
    SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
    FROM AR_ReturnTbl R JOIN AR_ReturnDetailTbl D ON R.DocumentID = D.DocumentID
    JOIN #TrongTam T ON D.ItemID = T.ItemID
-   WHERE R.DocumentDate BETWEEN @FromDate AND @ToDate AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
+   WHERE R.DocumentDate BETWEEN @TuNgay AND @DenNgay AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
    GROUP BY R.ObjectID
 
 
@@ -110,7 +110,7 @@ BEGIN
        INTO #ItemsBought
        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
        WHERE I.ObjectID = @khachhang 
-         AND I.DocumentDate BETWEEN @FromDate AND @ToDate
+         AND I.DocumentDate BETWEEN @TuNgay AND @DenNgay
          AND ISNULL(I.StatusID, 0) != 10
          AND D.ItemID IN (SELECT ItemID FROM #TrongTam)
 

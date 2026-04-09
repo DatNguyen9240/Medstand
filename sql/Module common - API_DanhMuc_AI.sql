@@ -1,11 +1,11 @@
-ALTER PROC [dbo].[API_DanhMuc_AI]
+﻿ALTER PROC [dbo].[API_DanhMuc_AI]
     @Type NVARCHAR(50) = NULL,
-    @SearchText NVARCHAR(255) = ''
+    @timkiem NVARCHAR(255) = ''
 AS
 BEGIN
     SET NOCOUNT ON
 
-    SET @SearchText = ISNULL(@SearchText, '')
+    SET @timkiem = ISNULL(@timkiem, '')
 
     -- =========================================
     -- 1. Không truyền type → trả categories
@@ -35,10 +35,10 @@ BEGIN
             TaxCode
         FROM CF_ObjectTbl
         WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@SearchText = '' 
-               OR ObjectName LIKE N'%' + @SearchText + '%'
-               OR ObjectID LIKE '%' + @SearchText + '%'
-               OR Phone LIKE '%' + @SearchText + '%')
+          AND (@timkiem = '' 
+               OR ObjectName LIKE N'%' + @timkiem + '%'
+               OR ObjectID LIKE '%' + @timkiem + '%'
+               OR Phone LIKE '%' + @timkiem + '%')
 
         UNION ALL
 
@@ -51,9 +51,9 @@ BEGIN
             NULL,
             NULL
         FROM CF_ItemTbl I
-        WHERE @SearchText = ''
-           OR I.ItemID LIKE '%' + @SearchText + '%'
-           OR I.ItemName LIKE N'%' + @SearchText + '%'
+        WHERE @timkiem = ''
+           OR I.ItemID LIKE '%' + @timkiem + '%'
+           OR I.ItemName LIKE N'%' + @timkiem + '%'
 
         UNION ALL
 
@@ -67,9 +67,9 @@ BEGIN
             NULL
         FROM AR_OrderTbl A
         LEFT JOIN CF_ObjectTbl O ON O.ObjectID = A.ObjectID
-        WHERE @SearchText = ''
-           OR A.DocumentID LIKE '%' + @SearchText + '%'
-           OR O.ObjectName LIKE N'%' + @SearchText + '%'
+        WHERE @timkiem = ''
+           OR A.DocumentID LIKE '%' + @timkiem + '%'
+           OR O.ObjectName LIKE N'%' + @timkiem + '%'
 
         UNION ALL
 
@@ -83,9 +83,9 @@ BEGIN
             NULL
         FROM CF_ObjectTbl
         WHERE isEmployee = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@SearchText = ''
-               OR ObjectName LIKE N'%' + @SearchText + '%'
-               OR Phone LIKE '%' + @SearchText + '%')
+          AND (@timkiem = ''
+               OR ObjectName LIKE N'%' + @timkiem + '%'
+               OR Phone LIKE '%' + @timkiem + '%')
 
         RETURN
     END
@@ -104,11 +104,11 @@ BEGIN
             TaxCode
         FROM CF_ObjectTbl
         WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@SearchText = '' 
-               OR ObjectName LIKE N'%' + @SearchText + '%'
-               OR ObjectID LIKE '%' + @SearchText + '%'
-               OR TaxCode LIKE '%' + @SearchText + '%'
-               OR Phone LIKE '%' + @SearchText + '%')
+          AND (@timkiem = '' 
+               OR ObjectName LIKE N'%' + @timkiem + '%'
+               OR ObjectID LIKE '%' + @timkiem + '%'
+               OR TaxCode LIKE '%' + @timkiem + '%'
+               OR Phone LIKE '%' + @timkiem + '%')
         ORDER BY ObjectName
     END
 
@@ -129,9 +129,9 @@ BEGIN
               AND GETDATE() BETWEEN P.FromDate AND P.ToDate
             ORDER BY P.FromDate DESC
         ) P
-        WHERE @SearchText = '' 
-           OR I.ItemID LIKE '%' + @SearchText + '%' 
-           OR I.ItemName LIKE N'%' + @SearchText + '%'
+        WHERE @timkiem = '' 
+           OR I.ItemID LIKE '%' + @timkiem + '%' 
+           OR I.ItemName LIKE N'%' + @timkiem + '%'
         ORDER BY I.ItemName
     END
 
@@ -142,9 +142,9 @@ BEGIN
             StoreHouseID AS MaDanhMuc, 
             StoreHouseName AS Name
         FROM CF_StoreHouseTbl
-        WHERE @SearchText = '' 
-           OR StoreHouseID LIKE '%' + @SearchText + '%' 
-           OR StoreHouseName LIKE N'%' + @SearchText + '%'
+        WHERE @timkiem = '' 
+           OR StoreHouseID LIKE '%' + @timkiem + '%' 
+           OR StoreHouseName LIKE N'%' + @timkiem + '%'
         ORDER BY StoreHouseName
     END
 
@@ -164,10 +164,10 @@ BEGIN
         LEFT JOIN CF_ObjectTbl O ON O.ObjectID = A.ObjectID
         LEFT JOIN CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
         LEFT JOIN AR_OrderStatusTbl S ON S.StatusID = A.StatusID
-        WHERE @SearchText = ''
-           OR A.DocumentID LIKE '%' + @SearchText + '%'
-           OR O.ObjectName LIKE N'%' + @SearchText + '%'
-           OR O.Phone LIKE '%' + @SearchText + '%'
+        WHERE @timkiem = ''
+           OR A.DocumentID LIKE '%' + @timkiem + '%'
+           OR O.ObjectName LIKE N'%' + @timkiem + '%'
+           OR O.Phone LIKE '%' + @timkiem + '%'
         ORDER BY A.DateCreate DESC
     END
 
@@ -181,10 +181,10 @@ BEGIN
             Email
         FROM CF_ObjectTbl
         WHERE isEmployee = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@SearchText = '' 
-               OR ObjectID LIKE '%' + @SearchText + '%' 
-               OR ObjectName LIKE N'%' + @SearchText + '%'
-               OR Phone LIKE '%' + @SearchText + '%')
+          AND (@timkiem = '' 
+               OR ObjectID LIKE '%' + @timkiem + '%' 
+               OR ObjectName LIKE N'%' + @timkiem + '%'
+               OR Phone LIKE '%' + @timkiem + '%')
         ORDER BY ObjectName
     END
 

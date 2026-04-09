@@ -184,13 +184,6 @@ BEGIN
 END
 GO
 
-/* =========================================================
-   1.5) Core UI Metadata Provider: API_GetConfig
-   ========================================================= */
--- Drop legacy wrapper if it exists
-IF OBJECT_ID('dbo.API_GetConfig_AI', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.API_GetConfig_AI;
-GO
 
 CREATE OR ALTER PROCEDURE dbo.API_GetConfig
     @ApiCode VARCHAR(100)
@@ -198,20 +191,32 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Tìm tên Stored Procedure gốc từ API_Definition
     DECLARE @ActualSPName VARCHAR(200);
 
+    -- 1. Tìm chính quy trên API_Definition
     SELECT TOP 1 @ActualSPName = StoredProcedure
     FROM dbo.API_Definition
-    WHERE ApiCode = @ApiCode;
+    WHERE ApiCode = @ApiCode OR ApiCode = '@' + REPLACE(@ApiCode, '@', '');
 
+    -- 2. Nếu rỗng, ép bỏ gạch dưới "_" để tìm Mò cực mạnh trên Base SQL
     IF @ActualSPName IS NULL
     BEGIN
-        SELECT FieldCode = '@Invalid', FieldName = N'Không tìm thấy API', IsRequired = 0, Placeholder = N'';
+        DECLARE @CleanCode VARCHAR(100) = REPLACE(REPLACE(@ApiCode, '@', ''), '_', '');
+
+        SELECT TOP 1 @ActualSPName = name 
+        FROM sys.procedures 
+        WHERE REPLACE(name, '_', '') LIKE '%' + @CleanCode + '%' 
+          AND name LIKE '%_AI';
+    END
+
+    -- Nếu tìm không ra SP nào
+    IF @ActualSPName IS NULL
+    BEGIN
+        SELECT FieldCode = '@Invalid', FieldName = N'Bó tay! Không tìm thấy SP nào tương tự: ' + @ApiCode, IsRequired = 0, Placeholder = N'';
         RETURN;
     END
 
-    -- Quét MetaData trực tiếp từ sys.parameters
+    -- 3. In ra Config tham số
     SELECT 
         FieldCode   = prm.name, 
         FieldName   = REPLACE(prm.name, '@', ''),
@@ -226,6 +231,8 @@ BEGIN
     ORDER BY prm.parameter_id;
 END
 GO
+
+
 
 /* =========================================================
    2) CREATE/REPLACE AUTOSYNC PROCEDURE
@@ -302,9 +309,11 @@ BEGIN
             FieldCode,
             CASE
                 WHEN FieldCode = '@Username'   THEN N'Nguoi dung'
+                WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
                 WHEN FieldCode = '@khachhang'  THEN N'Khach hang'
                 WHEN FieldCode = '@ObjectID'   THEN N'Ma khach hang'
                 WHEN FieldCode = '@ItemID'     THEN N'Ma san pham'
+                WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN N'Ngày'
                 WHEN FieldCode LIKE '%Date' THEN N'Ngay'
                 WHEN FieldCode LIKE '@Top%' THEN N'So luong'
                 ELSE REPLACE(REPLACE(FieldCode, '@', ''), '_', ' ')
@@ -314,6 +323,7 @@ BEGIN
                 WHEN FieldCode = '@Username'  THEN 'hidden'
                 WHEN FieldCode = '@khachhang' THEN 'combobox'
                 WHEN FieldCode = '@ObjectID'  THEN 'combobox'
+                WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
                 ELSE 'text'

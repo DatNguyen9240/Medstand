@@ -1,11 +1,11 @@
 CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
    @khachhang  VARCHAR(50),
    @Username   VARCHAR(50),
-   @ToDate     DATETIME = NULL
+   @DenNgay     DATETIME = NULL
 AS
 BEGIN
    SET NOCOUNT ON
-   IF @ToDate IS NULL SET @ToDate = GETDATE()
+   IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    IF @khachhang = ''
    BEGIN
        SELECT N'Vui lòng cung cấp mã khách hàng để xem chi tiết.' AS [Msg], 1 AS [MsgType]
@@ -28,7 +28,7 @@ BEGIN
        Memo AS [DienGiai],
        COUNT(*) OVER() AS [TongSoHoaDon],
        SUM(DebitAmount - CreditAmount) OVER() AS [TongTienNoThucTe]
-   FROM SY_GetDebitDocFnc(@ToDate, @khachhang, '131', '')
+   FROM SY_GetDebitDocFnc(@DenNgay, @khachhang, '131', '')
    WHERE (DebitAmount - CreditAmount) <> 0
    ORDER BY DocumentDate DESC
 END

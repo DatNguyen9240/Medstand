@@ -3,8 +3,8 @@ GO
 
 CREATE PROCEDURE API_SanPhamTrongTam_Import_AI
     @DocumentID VARCHAR(50),
-    @FromDate   DATETIME,
-    @ToDate     DATETIME,
+    @TuNgay   DATETIME,
+    @DenNgay     DATETIME,
     @Memo       NVARCHAR(200),
     @JsonItems  NVARCHAR(MAX) = '', -- Để trống sẽ giữ nguyên SP cũ
     @JsonRules  NVARCHAR(MAX) = ''  -- Để trống sẽ giữ nguyên mốc cũ
@@ -17,18 +17,18 @@ BEGIN
         -- 1. Cập nhật Header
         IF EXISTS (SELECT 1 FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @DocumentID)
         BEGIN
-            UPDATE AR_SanPhamTrongTamTbl SET FromDate = @FromDate, ToDate = @ToDate, Memo = @Memo WHERE DocumentID = @DocumentID;
+            UPDATE AR_SanPhamTrongTamTbl SET FromDate = @TuNgay, ToDate = @DenNgay, Memo = @Memo WHERE DocumentID = @DocumentID;
         END
         ELSE
         BEGIN
             INSERT INTO AR_SanPhamTrongTamTbl (DocumentID, FromDate, ToDate, Memo, isLock, UserCreate, DateCreate)
-            VALUES (@DocumentID, @FromDate, @ToDate, @Memo, 0, 'AI_IMPORT', GETDATE());
+            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, 'AI_IMPORT', GETDATE());
         END
 
         -- FIX LỖI FOREIGN KEY cho bảng Promotion
         IF NOT EXISTS (SELECT 1 FROM AR_PromotionTbl WHERE DocumentID = @DocumentID)
             INSERT INTO AR_PromotionTbl (DocumentID, FromDate, ToDate, TenChuongTrinh, isDisable, UserCreate, DateCreate)
-            VALUES (@DocumentID, @FromDate, @ToDate, @Memo, 0, 'AI_IMPORT', GETDATE());
+            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, 'AI_IMPORT', GETDATE());
 
         -- 2. Chỉ cập nhật Sản phẩm nếu JSON có dữ liệu
         IF @JsonItems IS NOT NULL AND @JsonItems <> '' AND @JsonItems <> '[]'

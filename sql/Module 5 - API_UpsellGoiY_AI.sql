@@ -1,9 +1,9 @@
-IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
+﻿IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
     @Username    VARCHAR(50)  = '',
     @khachhang   VARCHAR(50)  = '',
-    @SearchKey   NVARCHAR(50) = '',      
+    @timkiem   NVARCHAR(50) = '',      
     @TopN        INT          = 10
 AS
 BEGIN
@@ -133,23 +133,23 @@ BEGIN
         (
             (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
             (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
-            (CASE WHEN @SearchKey != '' AND (
-                CHARINDEX(' '+@SearchKey+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
-                CHARINDEX(' '+@SearchKey+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
+            (CASE WHEN @timkiem != '' AND (
+                CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
+                CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
             ) THEN 100000 ELSE 0 END) +
-            (CASE WHEN @SearchKey != '' AND (
-                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR
-                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%'
+            (CASE WHEN @timkiem != '' AND (
+                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
+                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
             ) THEN 50000 ELSE 0 END) +
             (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
             (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
         ) AS PriorityScore,
         CASE
             WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
-            WHEN @SearchKey != '' AND (
-                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
-                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%')
-                THEN N'🔍 Triệu chứng: ' + @SearchKey + 
+            WHEN @timkiem != '' AND (
+                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
+                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%')
+                THEN N'🔍 Triệu chứng: ' + @timkiem + 
                      CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 
                            THEN N' | ⚠️ Hết hàng' 
                            ELSE N' | ✅ Còn hàng' END
@@ -170,13 +170,13 @@ BEGIN
       AND (
           (TT.ItemID IS NOT NULL AND ISNULL(S.QuantityinStock, 0) > 0)
           OR
-          (@SearchKey != '' AND (
-              I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
-              I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%'
+          (@timkiem != '' AND (
+              I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
+              I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
           ))
-          OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
+          OR (@timkiem = '' AND ISNULL(S.QuantityinStock, 0) > 0
               AND (KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL))
-          OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
+          OR (@timkiem = '' AND ISNULL(S.QuantityinStock, 0) > 0
               AND KQ.ItemID IS NULL AND BC.ItemID IS NULL)
       )
     ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
@@ -187,8 +187,8 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tìm sản phẩm theo triệu chứng (SearchKey)
-EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @SearchKey = N'ho', @TopN = 10;
+EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @timkiem = N'ho', @TopN = 10;
 
 -- Kịch bản 2: Gợi ý Upsell tự động
-EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @SearchKey = '', @TopN = 10;
+EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @timkiem = '', @TopN = 10;
 */
