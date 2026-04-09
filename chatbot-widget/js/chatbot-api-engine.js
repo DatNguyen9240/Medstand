@@ -51,6 +51,10 @@
     var _activeApi = null;   // { apiCode, dispName, execType, config }
     var _cartItems = [];
     var _hideTimer = null;
+    var _lastCatalogType = null; // remember last selected catalog (sanpham, khachhang, ...)
+    var _suppressNextAt = false; // when true, don't append ' @' after selecting a value (used for Tab)
+    var _pillParams = {}; // store selected entity params as hidden state: { '@type': 'VALUE' }
+    var _suppressMenuUntil = 0; // timestamp to prevent reopening menu immediately after selection
 
     // Callbacks từ chatbot.js
     var _cbMsg = null;
@@ -74,8 +78,8 @@
         s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
         s = s.replace(/[ỳýỵỷỹ]/g, 'y');
         s = s.replace(/đ/g, 'd');
-        // Remove combining diacritics as a fallback
-        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        // Remove combining diacritics and all spaces/special chars to allow searching "chữ dính vô nhau"
+        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
         return s;
     }
 
@@ -263,14 +267,38 @@
         cb([]);
     }
 
+    // Mapping from catalog type -> APICODE to fetch entities
+    var _CATALOG_APICODE = {
+        'sanpham': '@tra_cuu_san_pham|@TopN=50',
+        'khachhang': '@danh_muc|@Type=khachhang',
+        'donhang': '@xem_don_hang',
+        'khohang': '@ton_kho_list',
+        'nhanvien': '@danh_muc|@Type=nhanvien'
+    };
+
     /** Normalize response rows → [{value, label, sub}] */
     function _normalizeDs(rows) {
+        function pick(obj, keys) {
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                if (obj === null || obj === undefined) break;
+                if (obj[k] !== undefined && obj[k] !== null) return obj[k];
+            }
+            return '';
+        }
+
         return rows.map(function (r) {
-            return {
-                value: r.value || r.Value || r.MaDanhMuc || r.ObjectID || r.ItemID || r.EmployeeID || r.ID || '',
-                label: r.label || r.Label || r.TenDanhMuc || r.ObjectName || r.ItemName || r.EmployeeName || r.Name || '',
-                sub: r.sub || r.Sub || r.SubText || r.Address || r.Phone || r.Code || ''
-            };
+            // common keys (include Vietnamese column names returned by some SPs)
+            var value = pick(r, ['value', 'Value', 'type', 'Type', 'MaDanhMuc', 'MaSP', 'Mã sp', 'MãSP', 'ObjectID', 'ItemID', 'ID']);
+            var label = pick(r, ['label', 'Label', 'TenDanhMuc', 'PhanLoai', 'Sản Phẩm', 'SảnPhẩm', 'ItemName', 'ItemName', 'ObjectName', 'Name', 'EmployeeName']);
+            var sub = pick(r, ['sub', 'Sub', 'SubText', 'icon', 'Icon', 'Address', 'Phone', 'Email', 'EMail', 'TaxCode', 'Taxcode', 'Code', 'Tồn Kho', 'TonKho', 'DonGia', 'Đơn Giá', 'DonGia', 'UnitPrice']);
+
+            // Ensure strings
+            value = value === undefined || value === null ? '' : String(value);
+            label = label === undefined || label === null ? '' : String(label);
+            sub = sub === undefined || sub === null ? '' : String(sub);
+
+            return { value: value, label: label, sub: sub, raw: r };
         });
     }
 
@@ -292,8 +320,10 @@
         var list = query
             ? _apiList.filter(function (a) {
                 var q = _clearVn(query);
-                return _clearVn(a.ApiCode).indexOf(q) !== -1 ||
-                    _clearVn(a.DisplayName || '').indexOf(q) !== -1;
+                var q2 = q.replace(/sp/g, 'sanpham').replace(/kh/g, 'khachhang').replace(/dh/g, 'donhang');
+                var ac = _clearVn(a.ApiCode);
+                var dn = _clearVn(a.DisplayName || '');
+                return ac.indexOf(q) !== -1 || dn.indexOf(q) !== -1 || ac.indexOf(q2) !== -1 || dn.indexOf(q2) !== -1;
             })
             : _apiList;
         if (!list.length) { _menuHide(); return; }
@@ -339,7 +369,382 @@
         });
     }
 
-    function _menuHide() { if (_menuEl) _menuEl.style.display = 'none'; _menuVis = false; _menuIdx = -1; clearTimeout(_hideTimer); }
+    function _menuHide() { if (_menuEl) _menuEl.style.display = 'none'; _menuVis = false; _menuIdx = -1; clearTimeout(_hideTimer); clearTimeout(_dbt); }
+
+    function _showSelectionCard(meta) {
+        try {
+            var card = document.getElementById('ae-selection-card');
+            if (!card) {
+                card = document.createElement('div');
+                card.id = 'ae-selection-card';
+                card.className = 'ae-selection-card';
+                var bar = _inputBarEl || document.getElementById('chat-input-bar');
+                if (bar) bar.appendChild(card); else document.body.appendChild(card);
+            }
+            var ph = meta.ph || '';
+            var name = meta.name || '';
+            var id = meta.id || '';
+            card.innerHTML = '<div class="ae-sel-left">' + _esc(ph) + '</div>'
+                + '<div class="ae-sel-main">' + _esc(name) + (id ? ' (' + _esc(id) + ')' : '') + '</div>';
+            card.style.display = 'block';
+        } catch (e) { console.warn('showSelectionCard err', e); }
+    }
+
+    function _showSelectionPill(meta) {
+        try {
+            // pill displayed inside input bar after selection: PhanLoai(MaDanhMuc)
+            var pill = document.getElementById('ae-selection-pill');
+            if (!pill) {
+                pill = document.createElement('div');
+                pill.id = 'ae-selection-pill';
+                pill.className = 'ae-selection-pill';
+                var bar = _inputBarEl || document.getElementById('chat-input-bar');
+                if (bar) bar.insertBefore(pill, (bar.firstChild || null)); else document.body.appendChild(pill);
+            }
+            var ph = meta.ph || '';
+            var id = meta.id || '';
+            var label = ph ? ph + (id ? ' (' + id + ')' : '') : (meta.name || id);
+            pill.textContent = label;
+            pill.style.display = 'flex';
+        } catch (e) { console.warn('showSelectionPill err', e); }
+    }
+
+    // remove selection card when hiding menu/panel
+    var _old_menuHide = _menuHide;
+    _menuHide = function() {
+        if (_menuEl) { _menuEl.style.display = 'none'; _menuEl.innerHTML = ''; }
+        _menuVis = false; _menuIdx = -1; clearTimeout(_hideTimer); clearTimeout(_dbt);
+        var c = document.getElementById('ae-selection-card'); if (c && c.parentNode) c.parentNode.removeChild(c);
+        // keep selection pill visible until full close/clear
+    };
+
+    function _menuShowParams(query) {
+        if (!_activeApi || !_activeApi.config) return;
+        _menuCreate();
+        
+        var cfg = _activeApi.config;
+        var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
+        // Bỏ system params
+        fields = fields.filter(function(f) { return !f.IsSystemParam || f.IsSystemParam == 0; });
+
+        var q = _clearVn(query);
+        var list = q
+            ? fields.filter(function (f) {
+                return _clearVn(f.FieldCode).indexOf(q) !== -1 ||
+                    _clearVn(f.FieldName || '').indexOf(q) !== -1;
+            })
+            : fields;
+
+        if (!list.length) { _menuHide(); return; }
+
+        var html = '';
+        list.forEach(function (f) {
+            html += '<div class="ae-menu-item ae-param-item" data-code="' + _esc(f.FieldCode) + '">'
+                + '<span>' + _esc(f.FieldName || f.FieldCode) + '</span>'
+                + '<span class="ae-tag">' + _esc(f.FieldCode) + '</span>'
+                + '</div>';
+        });
+        _menuEl.innerHTML = html;
+
+        var wrap = document.querySelector('.chat-input-wrap');
+        var bar = _inputBarEl || document.getElementById('chat-input-bar');
+        var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
+        var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
+
+        _menuEl.style.display = 'block';
+        _menuEl.style.bottom = '100%';
+        _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
+        _menuEl.style.width = wrapRect.width + 'px';
+        _menuVis = true; _menuIdx = -1;
+
+        _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
+            el.addEventListener('mousedown', function (e) { e.preventDefault(); });
+            el.addEventListener('click', function () {
+                _menuHide();
+                _onParamSelected(this.getAttribute('data-code'));
+            });
+        });
+    }
+
+    function _onParamSelected(fieldCode) {
+        var val = _inputEl.value;
+        var atPos = val.lastIndexOf('@');
+        
+        // Nếu sau dấu @ cuối cùng đã có dấu '=' (tức là param trước đã hoàn thành)
+        // hoặc chưa có @ nào, ta sẽ append (nối tiếp) thay vì replace (thay thế).
+        var afterAt = atPos !== -1 ? val.slice(atPos) : '';
+        var prefix = val;
+        
+        if (atPos !== -1 && afterAt.indexOf('=') === -1) {
+            // Đang gõ dở @tham_so, thay thế phần đang gõ dở đó
+            prefix = val.slice(0, atPos);
+        }
+
+        // Đảm bảo có dấu cách trước @ nếu cần
+        if (prefix && !prefix.endsWith(' ')) prefix += ' ';
+        _inputEl.value = prefix + fieldCode + '=';
+        
+        _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        _inputEl.focus();
+
+        // Kỹ thuật mới: Tự động tải luôn danh sách gợi ý giá trị ngay sau khi chọn Param
+        setTimeout(function () {
+             _showInlineValues(fieldCode, '');
+        }, 150);
+    }
+
+    function _menuShowCatalog(query, atPos) {
+        console.log('[ApiEngine] _menuShowCatalog query=', query, 'atPos=', atPos);
+        _loadDataSource('APICODE', '@danh_muc', query, function(rows) {
+            if (!rows || !rows.length) { _menuHide(); return; }
+            _menuCreate();
+            var html = '';
+            
+                    rows.forEach(function(r) {
+                             // include value as data-val so we can detect type (sanpham, khachhang...)
+                             var rawType = (r.value || r.type || r.Value || r.MaDanhMuc || '') || '';
+                             var valType = String(rawType).replace(/^@/, '').toLowerCase();
+                             html += '<div class="ae-menu-item ae-val-item" data-lbl="' + _esc(r.label) + '" data-val="' + _esc(valType) + '">'
+                                + '<span>' + _esc(r.label) + '</span>'
+                                + (r.sub || valType ? '<span class="ae-tag">' + _esc(r.sub || valType) + '</span>' : '')
+                                + '</div>';
+                            });
+            _menuEl.innerHTML = html;
+            
+            var wrap = document.querySelector('.chat-input-wrap');
+            var bar = _inputBarEl || document.getElementById('chat-input-bar');
+            var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
+            var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
+
+            _menuEl.style.display = 'block';
+            _menuEl.style.bottom = '100%';
+            _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
+            _menuEl.style.width = wrapRect.width + 'px';
+            _menuVis = true; _menuIdx = -1;
+
+            _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
+                el.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                el.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('[ApiEngine] catalog clicked, data-lbl=', this.getAttribute('data-lbl'), 'data-val=', this.getAttribute('data-val'));
+                    var lbl = this.getAttribute('data-lbl');
+                    var valType = (this.getAttribute('data-val') || '').replace(/^@/, '').toLowerCase();
+                    var val = _inputEl.value;
+                    var prefix = val.slice(0, atPos);
+                    // Dán lại text dưới dạng tag text thông thường — if possible insert canonical type and '='
+                    if (valType) {
+                        _lastCatalogType = valType;
+                        _inputEl.value = prefix + '@' + valType + '=';
+                        // show entity suggestions immediately for chosen catalog
+                        setTimeout(function() { console.log('[ApiEngine] triggering _menuShowCatalogValues from click for', valType); _menuShowCatalogValues(valType, ''); }, 80);
+                    } else {
+                        _lastCatalogType = null;
+                        _inputEl.value = prefix + '@' + lbl + ' ';
+                    }
+                    _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    _inputEl.focus();
+                    _menuHide();
+                    // Sau khi chọn danh mục, nếu phía trước có tag API thì tự động xổ tiếp menu param (filter)
+                    setTimeout(function() {
+                        var v = _inputEl.value;
+                        var tagIdx = v.lastIndexOf('#');
+                        var atIdx = v.lastIndexOf('@');
+                        // Nếu có tag API và @ vừa chọn nằm sau tag API
+                        if (tagIdx !== -1 && atIdx > tagIdx) {
+                            _menuShowParams('');
+                        }
+                    }, 80);
+                });
+            });
+        });
+    }
+
+    function _menuShowCatalogValues(type, keyword) {
+        console.log('[ApiEngine] _menuShowCatalogValues called type=', type, 'keyword=', keyword);
+        if (!type) return;
+        // normalize type (strip leading @ and lowercase)
+        type = String(type).replace(/^@/, '').toLowerCase();
+        var ds = _CATALOG_APICODE[type] || ('@danh_muc|@Type=' + type);
+        console.log('[ApiEngine] resolved dsValue=', ds, 'for type=', type);
+        _loadDataSource('APICODE', ds, keyword, function(rows) {
+            if (!rows || !rows.length) { _menuHide(); return; }
+            // DEBUG: print a sample of raw rows so we can see actual backend field names
+            try { console.log('[ApiEngine] RAW ROWS SAMPLE:', (rows.slice ? rows.slice(0,5) : rows)); } catch(e) {}
+            _menuCreate();
+            var html = '';
+            rows.forEach(function(r) {
+                var raw = r.raw || r;
+                function pickRaw(keys) {
+                    for (var i = 0; i < keys.length; i++) {
+                        var k = keys[i];
+                        if (raw && raw[k] !== undefined && raw[k] !== null && String(raw[k]).trim() !== '') return raw[k];
+                    }
+                    return null;
+                }
+
+                // Right-side ID (MaDanhMuc) candidates
+                var mAD = pickRaw(['MaDanhMuc','MaSP','MaKhachHang','Code','ObjectID','ItemID','ID','CustomerCode','ExternalCode']) || r.value || '';
+                // Left-side name candidates (prefer actual name fields)
+                var mName = pickRaw(['Name','FullName','HoTen','HOTEN','TenKhachHang','TEN_KH','Ten','CustomerName','ObjectName','ItemName','DisplayName','label']) || '';
+                var mPhanLoai = pickRaw(['PhanLoai','type','Type']) || '';
+
+                // If mName is missing or equals generic type label (e.g., 'Khách hàng'), try address/company fields
+                var lowName = String(mName || '').toLowerCase();
+                if (!mName || lowName === 'khách hàng' || lowName === 'khachhang' || lowName === (mPhanLoai || '').toLowerCase()) {
+                    mName = pickRaw(['Address','DiaChi','AddressLine','Street','Company','CompanyName','AccountName','FullAddress','TenDiaChi']) || mName || r.label || '';
+                }
+
+                if (!mName) mName = r.label || '';
+
+                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-phanloai="' + _esc(mPhanLoai) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
+                    + '<span class="ae-val-name">' + _esc(mName) + '</span>'
+                    + (mAD ? '<span class="ae-val-id">' + _esc(mAD) + '</span>' : '')
+                    + '</div>';
+            });
+            _menuEl.innerHTML = html;
+
+            var wrap = document.querySelector('.chat-input-wrap');
+            var bar = _inputBarEl || document.getElementById('chat-input-bar');
+            var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
+            var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
+
+            _menuEl.style.display = 'block';
+            _menuEl.style.bottom = '100%';
+            _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
+            _menuEl.style.width = wrapRect.width + 'px';
+            _menuVis = true; _menuIdx = -1;
+
+            _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
+                el.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                el.addEventListener('click', function () {
+                    // read meta
+                    var ph = this.getAttribute('data-phanloai') || '';
+                    var nm = this.getAttribute('data-name') || this.getAttribute('data-code') || '';
+                    var md = this.getAttribute('data-madanhmuc') || this.getAttribute('data-code') || '';
+
+                    // Insert selected catalog value visibly into the input text (no external pill)
+                    try {
+                        var code = this.getAttribute('data-code') || '';
+                        var v = _inputEl.value || '';
+                        var re = new RegExp('@' + type + '=[^@\s]*\s?', 'i');
+                        var insert = '@' + type + '=' + code + ' ';
+                        if (re.test(v)) {
+                            v = v.replace(re, insert);
+                        } else {
+                            // try to find last occurrence of '@type' and replace from there, else append
+                            var atIdx = v.toLowerCase().lastIndexOf('@' + type);
+                            if (atIdx !== -1) {
+                                // keep text before @type and replace rest
+                                v = v.slice(0, atIdx) + insert;
+                            } else {
+                                if (v && !v.endsWith(' ')) v += ' ';
+                                v += insert;
+                            }
+                        }
+                        _inputEl.value = v;
+                    } catch (e) { console.warn('insert catalog into input err', e); }
+
+                    // clear last catalog type after use
+                    _lastCatalogType = null;
+                    // hide menu after selection
+                    _menuHide();
+                });
+            });
+        });
+    }
+
+    function _showInlineValues(fieldCode, keyword) {
+        if (!_activeApi || !_activeApi.config) return;
+        var cfg = _activeApi.config;
+        var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
+        
+        // Tìm config của tham số hiện tại (ví dụ: @ObjectID)
+        var field = fields.find(function(f) { 
+            return (f.FieldCode || '').toLowerCase() === fieldCode.toLowerCase(); 
+        });
+        
+        // Nếu không có DataSource (không cần load danh sách) thì ẩn đi
+        if (!field || (!field.DataSourceType && !field.OptionsJson)) {
+            _menuHide();
+            return;
+        }
+
+        var dsType = field.DataSourceType || (field.OptionsJson ? 'STATIC' : null);
+        var dsVal = field.DataSourceValue || field.OptionsJson;
+
+        _loadDataSource(dsType, dsVal, keyword, function(rows) {
+            if (!rows || !rows.length) {
+                _menuHide();
+                return;
+            }
+            _menuCreate();
+            var html = '';
+            
+            rows.forEach(function(r) {
+                 html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '">'
+                    + '<span>' + _esc(r.label) + '</span>'
+                    + (r.sub || r.value ? '<span class="ae-tag">' + _esc(r.sub || r.value) + '</span>' : '')
+                    + '</div>';
+            });
+            _menuEl.innerHTML = html;
+            
+            var wrap = document.querySelector('.chat-input-wrap');
+            var bar = _inputBarEl || document.getElementById('chat-input-bar');
+            var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
+            var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
+
+            _menuEl.style.display = 'block';
+            _menuEl.style.bottom = '100%';
+            _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
+            _menuEl.style.width = wrapRect.width + 'px';
+            _menuVis = true; _menuIdx = -1;
+
+            _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
+                el.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                el.addEventListener('click', function () {
+                    _menuHide();
+                    _onValueSelected(fieldCode, this.getAttribute('data-code'));
+                });
+            });
+        });
+    }
+
+    function _onValueSelected(fieldCode, pickedVal) {
+        var val = _inputEl.value;
+        var atPos = val.lastIndexOf('@');
+        var prefix = (atPos !== -1 ? val.slice(0, atPos) : val);
+        
+        // Determine selection type
+        var bare = (fieldCode || '').replace(/^@/, '').toLowerCase();
+        var isCatalogEntity = !!_CATALOG_APICODE[bare];
+        var isApiParam = false;
+        if (_activeApi && _activeApi.config) {
+            var cfgParams = (_activeApi.config.filters && _activeApi.config.filters.length > 0)
+                ? _activeApi.config.filters : (_activeApi.config.fields || []);
+            isApiParam = cfgParams.some(function(f) { return (f.FieldCode || '').toLowerCase() === (fieldCode || '').toLowerCase(); });
+        }
+
+        // Decide what to append after the picked value:
+        // - If user used Tab to accept -> single space
+        // - If selection is a catalog entity -> single space
+        // - If selection is an API param value -> append ' @' to continue selecting next param
+        // - Otherwise -> single space
+        var append = ' ';
+        if (_suppressNextAt) append = ' ';
+        else if (isCatalogEntity) append = ' ';
+        else if (isApiParam) append = ' @';
+        else append = ' ';
+
+        _inputEl.value = prefix + fieldCode + '=' + pickedVal + append;
+        
+        // Suppress menu reopening for a short moment to avoid flicker
+        _suppressMenuUntil = Date.now() + 300;
+        _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+        // Ensure menu is hidden and cleared immediately after selection
+        _menuHide();
+        _inputEl.focus();
+    }
 
     function _menuNav(dir) {
         if (!_menuEl || !_menuVis) return false;
@@ -353,9 +758,11 @@
     }
 
     function _menuPick() {
-        if (!_menuEl || !_menuVis || _menuIdx < 0) return false;
+        if (!_menuEl || !_menuVis) return false;
         var items = _menuEl.querySelectorAll('.ae-menu-item');
-        if (items[_menuIdx]) { items[_menuIdx].click(); return true; }
+        if (!items.length) return false;
+        var idx = _menuIdx < 0 ? 0 : _menuIdx; // Tự động chọn dòng đầu tiên nếu chưa cuộn phím mũi tên
+        if (items[idx]) { items[idx].click(); return true; }
         return false;
     }
 
@@ -365,19 +772,27 @@
         var execType = found ? found.ExecutionType : 'QUERY';
         var dispName = found ? found.DisplayName : apiCode;
 
-        _replaceAtTag(apiCode);
         _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null };
+        _replaceAtTag(apiCode);
 
-        // Đảm bảo nút "mở lại panel" được khởi tạo sẵn
-        _createTriggerButton();
+        // Đảm bảo nút "mở lại panel" được khởi tạo sẵn (chỉ cho CART hoặc khi panel mở)
+        if (execType !== 'QUERY') _createTriggerButton();
 
         _loadConfig(apiCode, function (config) {
             _activeApi.config = config;
             _cartItems = [];
-            // Luôn hiện panel filter — user tự chọn giá trị rồi bấm Gửi
-            _openPanel(config, execType, dispName);
-            if (!_activeApi)
-                _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: config };
+            
+            if (execType === 'CART') {
+                _openPanel(config, execType, dispName);
+            } else {
+                // QUERY flow: không hiện panel, tự động hiện menu tham số
+                // Thêm @ vào cuối nếu chưa có để kích hoạt menu
+                if (!_inputEl.value.trim().endsWith('@')) {
+                    _inputEl.value = _inputEl.value.trim() + ' @';
+                    _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                _menuShowParams('');
+            }
         });
     }
 
@@ -385,7 +800,7 @@
         var val = _inputEl.value;
         var atPos = val.lastIndexOf('@');
         var tag = '#' + apiCode.replace('@', '') + ' ';
-        _inputEl.value = (atPos !== -1 ? val.slice(0, atPos) : val) + tag;
+        _inputEl.value = (atPos !== -1 ? val.slice(0, atPos) : '') + tag;
 
         // Phát sự kiện input để chatbot.js biết giá trị đã thay đổi -> cập nhật nút Gửi
         _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
@@ -464,7 +879,8 @@
         }, 200);
     }
     
-    function _closeFull() {
+    function _closeFull(clearAll) {
+        _menuHide();
         if (_panelEl) {
             _panelEl.classList.remove('active');
             var p = _panelEl;
@@ -474,9 +890,20 @@
         document.body.classList.remove('ae-panel-open');
         _activeApi = null;
         _cartItems = [];
-        var tagRegex = /#\S+\s*/g;
-        if (_inputEl && tagRegex.test(_inputEl.value)) {
-            _inputEl.value = _inputEl.value.replace(tagRegex, '').trim();
+        _lastCatalogType = null;
+        _pillParams = {};
+        var p = document.getElementById('ae-selection-pill'); if (p && p.parentNode) p.parentNode.removeChild(p);
+        
+        if (_inputEl) {
+            if (clearAll === true) {
+                _inputEl.value = '';
+            } else {
+                var v = _inputEl.value;
+                v = v.replace(/#\S+\s*/g, ''); // Xóa tag API
+                v = v.replace(/@\w+=[^@]*/g, ''); // Xóa các param đang điền
+                v = v.replace(/@\w*/g, ''); // Xóa ký tự @ thừa
+                _inputEl.value = v.trim();
+            }
             _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
         
@@ -781,46 +1208,80 @@
     // ── Collect Params ────────────────────────────────────────────────
     function _collectParams() {
         var params = {}, hasErr = false;
-        if (!_panelEl || !_activeApi) return params;
+        if (!_activeApi) return params;
 
-        var cfg = _activeApi.config;
-        var fields = cfg && cfg.filters && cfg.filters.length > 0 ? cfg.filters : (cfg ? cfg.fields || [] : []);
+        // --- TH1: Thu thập từ Panel UI ---
+        if (_panelEl) {
+            var cfg = _activeApi.config;
+            var fields = cfg && cfg.filters && cfg.filters.length > 0 ? cfg.filters : (cfg ? cfg.fields || [] : []);
 
-        fields.forEach(function (f) {
-            var code = f.FieldCode || '';
-            var ctrl = f.ControlType || 'text';
-            if (f.IsSystemParam == 1) {
-                if (code.toLowerCase() === '@username') params[code] = _user();
-                return;
-            }
-            var fid = 'ae-f-' + code.replace('@', '').replace(/\W/g, '');
-
-            if (ctrl === 'combobox') {
-                // Combobox: lấy hidden input (value/ID)
-                var hidEl = _panelEl.querySelector('#' + fid);
-                var txtEl = _panelEl.querySelector('#' + fid + '_txt');
-                var id = hidEl ? hidEl.value.trim() : '';
-                var txt = txtEl ? txtEl.value.trim() : '';
-                if (f.IsRequired == 1 && !id && !txt) {
-                    if (txtEl) { txtEl.focus(); txtEl.classList.add('ae-error'); }
-                    hasErr = true;
-                } else {
-                    if (txtEl) txtEl.classList.remove('ae-error');
-                    params[code] = id || txt || ""; // Nếu trống thì gửi chuỗi rỗng
+            fields.forEach(function (f) {
+                var code = f.FieldCode || '';
+                var ctrl = f.ControlType || 'text';
+                if (f.IsSystemParam == 1) {
+                    if (code.toLowerCase() === '@username') params[code] = _user();
+                    return;
                 }
-            } else {
-                var el = _panelEl.querySelector('#' + fid);
-                if (el) {
-                    var v = el.value.trim();
-                    if (f.IsRequired == 1 && !v) {
-                        el.focus(); el.classList.add('ae-error'); hasErr = true;
+                var fid = 'ae-f-' + code.replace('@', '').replace(/\W/g, '');
+
+                if (ctrl === 'combobox') {
+                    var hidEl = _panelEl.querySelector('#' + fid);
+                    var txtEl = _panelEl.querySelector('#' + fid + '_txt');
+                    var id = hidEl ? hidEl.value.trim() : '';
+                    var txt = txtEl ? txtEl.value.trim() : '';
+                    if (f.IsRequired == 1 && !id && !txt) {
+                        if (txtEl) { txtEl.focus(); txtEl.classList.add('ae-error'); }
+                        hasErr = true;
                     } else {
-                        el.classList.remove('ae-error');
-                        params[code] = v || "";
+                        if (txtEl) txtEl.classList.remove('ae-error');
+                        params[code] = id || txt || "";
+                    }
+                } else {
+                    var el = _panelEl.querySelector('#' + fid);
+                    if (el) {
+                        var v = el.value.trim();
+                        if (f.IsRequired == 1 && !v) {
+                            el.focus(); el.classList.add('ae-error'); hasErr = true;
+                        } else {
+                            el.classList.remove('ae-error');
+                            params[code] = v || "";
+                        }
                     }
                 }
+            });
+        } 
+        // --- TH2: Thu thập từ chuỗi văn bản (In-line/QUERY) ---
+        else {
+            var val = _inputEl.value;
+            // Regex tìm @Key=Value cho đến chữ @ tiếp theo hoặc hết chuỗi
+            var regex = /@([\w]+)=([^@]*)/g;
+            var match;
+            while ((match = regex.exec(val)) !== null) {
+                var key = match[1];
+                var v = match[2].trim();
+                if (!key.startsWith('@')) key = '@' + key;
+                params[key] = v;
             }
-        });
+
+            // Merge any pillParams (selected entities) — do not overwrite existing explicit params
+            Object.keys(_pillParams).forEach(function(k) {
+                if (!params[k]) params[k] = _pillParams[k];
+            });
+
+            // Kiểm tra tham số bắt buộc từ config
+            if (_activeApi.config) {
+                var cfgParams = (_activeApi.config.filters && _activeApi.config.filters.length > 0)
+                    ? _activeApi.config.filters : (_activeApi.config.fields || []);
+                cfgParams.forEach(function(f) {
+                    if (f.IsRequired == 1 && (!f.IsSystemParam || f.IsSystemParam == 0)) {
+                        if (!params[f.FieldCode]) {
+                            alert('Thiếu tham số bắt buộc: ' + (f.FieldName || f.FieldCode));
+                            hasErr = true;
+                        }
+                    }
+                });
+            }
+        }
 
         if (hasErr) return null;
         if (!params['@Username']) params['@Username'] = _user();
@@ -926,49 +1387,140 @@
         if (!inp) return;
         inp.addEventListener('input', function () {
             var val = this.value;
+            // If we just selected a value, suppress watcher to avoid reopening menu
+            if (Date.now() < _suppressMenuUntil) {
+                // Allow processing if user currently has a trailing '@' (wants suggestions)
+                var _pos_check = val.lastIndexOf('@');
+                var _tail_check = _pos_check !== -1 ? val.slice(_pos_check + 1) : '';
+                if (_tail_check.trim() !== '') {
+                    console.log('[ApiEngine] input suppressed but trailing token present, allow processing');
+                } else {
+                    console.log('[ApiEngine] input suppressed (until)', _suppressMenuUntil, 'now', Date.now());
+                    clearTimeout(_dbt); return;
+                }
+            }
+            clearTimeout(_dbt); // Xóa ngay timeout cũ để tránh menu vô cớ nhảy lên sau khi xóa chữ nhanh
 
             if (_activeApi) {
-                // Nếu đang mở Panel, hoặc đã thu gọn, kiểm tra tag #ApiCode còn trong input không
+                // Kiểm tra tag #ApiCode còn trong input không
                 var tag = '#' + _activeApi.apiCode.replace('@', '');
                 if (val.indexOf(tag) === -1) {
                     _closeFull(); // Xóa tag -> Đóng hoàn toàn
+                    return;
                 }
 
-                // Nếu gõ thêm @ khi đang mở panel -> xóa @ thừa
-                if (/@\s*$/.test(val)) {
-                    this.value = val.replace(/@\s*$/, '');
-                    _menuHide();
+                // Nếu gõ @ khi đã có tag -> hiện menu tham số hoặc suggestion
+                var lastAt = val.lastIndexOf('@');
+                if (lastAt !== -1) {
+                    var query = val.slice(lastAt + 1);
+                    var eqPos = query.indexOf('=');
+
+                    // Nếu vẫn đang gõ tên param (chưa có phần '='), và chuỗi không chứa khoảng trắng
+                    if (eqPos === -1 && !/[\s]/.test(query)) {
+                        _dbt = setTimeout(function () {
+                            _menuShowParams(query);
+                        }, 40); // Đẩy nhanh tốc độ xổ menu param
+                        return;
+                    }
+                    // Nếu đã có phần '=', tức là đang gõ giá trị cho field
+                    else if (eqPos !== -1) {
+                        var pCode = '@' + query.slice(0, eqPos).trim();
+                        var pVal = query.slice(eqPos + 1).trim();
+                        
+                        // Chặn load value dropdown nếu param kết thúc bằng khoảng trắng (tức là đã điền xong)
+                        if (val.endsWith(' ')) {
+                            _dbt = setTimeout(function () {
+                                _menuShowParams(''); // Hiện lại danh sách chọn param tiếp theo
+                            }, 40); // Đẩy nhanh tốc độ
+                            return;
+                        }
+
+                        _dbt = setTimeout(function () {
+                            _showInlineValues(pCode, pVal);
+                        }, 250); // Đợi load DataSource nhanh
+                        return;
+                    }
                 }
+
+                if (_menuVis) _menuHide();
                 return;
             }
 
             var pos = val.lastIndexOf('@');
-            if (pos === -1) {
-                if (_menuVis) _menuHide();
+            var querySearch = val;
+
+            // Nếu đang có token dạng @type=... (ví dụ @khachhang=), tự động mở menu thực thể
+            if (pos !== -1) {
+                var tail = val.slice(pos + 1);
+                // If there's nothing after '@' (user deleted back to '@'), reopen catalog suggestions
+                if (tail.trim() === '') {
+                    console.log('[ApiEngine] detected lone @ at pos', pos, '— reopening catalog/API menu');
+                    clearTimeout(_dbt);
+                    if (pos > 0 && val.slice(0, pos).trim().length > 0) {
+                        _dbt = setTimeout(function () { console.log('[ApiEngine] calling _menuShowCatalog from watcher'); _menuShowCatalog('', pos); }, 80);
+                    } else {
+                        _dbt = setTimeout(function () { console.log('[ApiEngine] calling _menuShow (API list) from watcher'); _menuShow(''); }, 80);
+                    }
+                    return;
+                }
+
+                var eq = tail.indexOf('=');
+                var tokenName = (eq !== -1 ? tail.slice(0, eq) : tail).split(/\s/)[0];
+                tokenName = (tokenName || '').replace(/^@/, '').toLowerCase();
+                if (tokenName && _CATALOG_APICODE[tokenName]) {
+                    var kw = '';
+                    if (eq !== -1) kw = tail.slice(eq + 1).trim();
+                    console.log('[ApiEngine] detected catalog tokenName=', tokenName, 'kw=', kw);
+                    _lastCatalogType = tokenName;
+                    clearTimeout(_dbt);
+                    _dbt = setTimeout(function () { console.log('[ApiEngine] calling _menuShowCatalogValues from watcher for', tokenName); _menuShowCatalogValues(tokenName, kw); }, 80);
+                    return;
+                }
+            }
+
+            // Tính năng Mention Catalog: Nếu gõ @ ở giữa chừng câu nói (VD: "Tôi muốn mua @para...")
+            if (pos > 0 && val.slice(0, pos).trim().length > 0) {
+                querySearch = val.slice(pos + 1);
+                _dbt = setTimeout(function () {
+                        if (_lastCatalogType) {
+                            _menuShowCatalogValues(_lastCatalogType, querySearch);
+                        } else {
+                            _menuShowCatalog(querySearch, pos);
+                        }
+                    }, 120); // delay một chút cho query gọi API ngoài
                 return;
             }
-            var after = val.slice(pos + 1);
-            if (/\s/.test(after)) { _menuHide(); return; }
 
-            clearTimeout(_dbt);
+            if (pos !== -1) {
+                querySearch = val.slice(pos + 1);
+            } else if (val.trim() === '') {
+                _menuHide();
+                return;
+            }
+
             _dbt = setTimeout(function () {
-                if (!_apiList.length) _loadList(function () { _menuShow(after); });
-                else _menuShow(after);
+                if (!_apiList.length) _loadList(function () { _menuShow(querySearch); });
+                else _menuShow(querySearch);
             }, 120);
         });
 
         inp.addEventListener('keydown', function (e) {
             if (!_menuVis) return;
-            if (e.key === 'ArrowDown') { e.preventDefault(); _menuNav(1); }
-            else if (e.key === 'ArrowUp') { e.preventDefault(); _menuNav(-1); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); _menuNav(1); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); _menuNav(-1); }
             else if (e.key === 'Enter' || e.key === 'Tab') {
+                // If Tab was used to pick, suppress auto-inserting the next '@'
+                _suppressNextAt = (e.key === 'Tab');
                 if (_menuPick()) {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopPropagation(); 
+                    e.stopImmediatePropagation(); // Khóa chặt luồng nổi bọt
                 }
+                // Clear the flag shortly after click handler runs
+                setTimeout(function () { _suppressNextAt = false; }, 50);
             }
-            else if (e.key === 'Escape') { _menuHide(); }
-        });
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _menuHide(); }
+        }, true); // Bắt buộc ưu tiên chạy trước file chatbot.js (Capture Mode)
 
         // Đã gỡ bỏ tự động đóng khi mất focus theo yêu cầu
     }
@@ -1017,13 +1569,13 @@
             } else {
                 _executeApi(api.apiCode, params, api.dispName, api.execType, api.config);
                 // Clear state sau khi gọi xong
-                _closeFull();
+                _closeFull(true);
             }
             return true;
         },
 
         // Dùng khi người dùng xóa hash tag để giải phóng API State
-        clearState: function() { _closeFull(); },
+        clearState: function() { _closeFull(true); },
 
         configure: function (cfg) { Object.assign(CFG, cfg); },
         open: function (code) { _onApiSelected(code); },

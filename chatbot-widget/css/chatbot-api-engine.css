@@ -104,7 +104,8 @@ body.ae-panel-open::before {
 
 /* ─── Filter Panel ─────────────────────────────────────────────── */
 .ae-panel {
-    position: absolute;
+    position: fixed;
+    /* QUAN TRỌNG: Cần dùng fixed để nó không bị đẩy bởi chiều cao chat container */
     top: 50%;
     /* Trả lại căn giữa màn hình */
     left: 50%;
@@ -123,6 +124,17 @@ body.ae-panel-open::before {
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* Điều chỉnh lại vị trí ở màn hình lớn để tránh bị lệch do có sidebar */
+@media (min-width: 768px) {
+    .ae-panel {
+        left: calc(50% + var(--sidebar-width, 240px) / 2);
+    }
+
+    body.sidebar-collapsed .ae-panel {
+        left: calc(50% + var(--sidebar-collapsed-width, 64px) / 2);
+    }
 }
 
 .ae-panel.active {
@@ -181,7 +193,6 @@ body.ae-panel-open::before {
     flex: 1;
     overflow-y: visible;
     /* Cho dropdown menu vượt ranh giới if needed */
-    max-height: 60vh;
 }
 
 /* Controls */
@@ -302,6 +313,8 @@ body.ae-panel-open::before {
     /* Nổi lên trên panel */
     max-height: 280px;
     overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    /* Thêm box-shadow cho nó nổi bật hơn */
 }
 
 .ae-sug-header {
@@ -366,6 +379,85 @@ body.ae-panel-open::before {
     font-size: 12px;
     line-height: 1.4;
     display: block;
+}
+
+/* Selection card shown after picking an entity */
+.ae-selection-card {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 8px;
+    right: 8px;
+    background: var(--ae-bg);
+    border: 1px solid var(--ae-border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    display: none;
+    z-index: 1005;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.ae-selection-card .ae-sel-left {
+    font-size: 13px;
+    color: var(--ae-text-muted);
+    font-weight: 700;
+}
+
+.ae-selection-card .ae-sel-main {
+    font-size: 14px;
+    color: var(--ae-text);
+    font-weight: 700;
+}
+
+/* Pill inside input bar to show chosen PhanLoai(MaDanhMuc) */
+.ae-selection-pill {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: var(--ae-bg-alt);
+    border: 1px solid var(--ae-border);
+    color: var(--ae-text);
+    font-weight: 700;
+    margin-right: 8px;
+    font-size: 13px;
+}
+
+.ae-val-name {
+    flex: 1;
+    font-weight: 600;
+    color: var(--ae-text);
+    padding-right: 12px;
+}
+
+.ae-val-id {
+    white-space: nowrap;
+    margin-left: 8px;
+    background: var(--ae-accent);
+    color: #fff;
+    padding: 6px 10px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+/* Ensure menu item layout: name left, id pill right */
+.ae-menu-item.ae-val-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.ae-menu-item.ae-val-item .ae-val-name {
+    padding-right: 12px;
+}
+
+.ae-menu-item.ae-val-item .ae-val-id {
+    flex-shrink: 0;
 }
 
 /* Cart Row */
