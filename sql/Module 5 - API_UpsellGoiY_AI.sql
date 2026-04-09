@@ -1,10 +1,10 @@
 IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
-    @Username      VARCHAR(50)  = '',
-    @ObjectID      VARCHAR(50)  = '',
-    @SearchKey     NVARCHAR(50) = '',      
-    @TopN          INT          = 10
+    @Username    VARCHAR(50)  = '',
+    @khachhang   VARCHAR(50)  = '',
+    @SearchKey   NVARCHAR(50) = '',      
+    @TopN        INT          = 10
 AS
 BEGIN
     SET NOCOUNT ON
@@ -24,8 +24,8 @@ BEGIN
     DECLARE @SoTienThieu    FLOAT = 0
     DECLARE @ProgramID      VARCHAR(50) = ''
 
-    -- ═══ Validate ObjectID ═══
-    IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+    -- ═══ Validate khachhang ═══
+    IF @khachhang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @khachhang)
     BEGIN
         SELECT N'❌ Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
@@ -41,12 +41,12 @@ BEGIN
     SELECT @DoanhSoHienTai = ISNULL(SUM(D.TotalAmount), 0)
     FROM AR_InvoiceTbl I
     JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @ObjectID
+    WHERE I.ObjectID = @khachhang
       AND ISNULL(I.StatusID, 0) != 10
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
 
-    -- ═══ 3. Tự động tìm mốc thưởng tiếp theo (Cách 3) ═══
+    -- ═══ 3. Tự động tìm mốc thưởng tiếp theo ═══
     IF @ProgramID <> ''
     BEGIN
         SELECT TOP 1 @MucTarget = CAST(TuDiem AS FLOAT)
@@ -58,7 +58,7 @@ BEGIN
     SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END
 
     -- ════════════════════════════════════════════════════
-    -- BẢNG 1: THÔNG BÁO DOANH SỐ (TỰ ĐỘNG THEO MỐC)
+    -- BẢNG 1: THÔNG BÁO DOANH SỐ
     -- ════════════════════════════════════════════════════
     SELECT
         CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
@@ -70,7 +70,7 @@ BEGIN
             ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
         END AS LoiNhacAI
 
-    -- ═══ 4. Lấy giá mới nhất từ Bảng giá (Price List) ═══
+    -- ═══ 4. Giá mới nhất từ Bảng giá ═══
     SELECT
         D.ItemID,
         MAX(H.FromDate) AS MaxFromDate
@@ -96,12 +96,12 @@ BEGIN
     SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
     INTO #KhachQuen 
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @ObjectID 
+    WHERE I.ObjectID = @khachhang 
       AND ISNULL(I.StatusID,0) != 10 
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
     GROUP BY D.ItemID
 
-    -- ═══ 6. Top 50 bán chạy tại chi nhánh (6 tháng gần nhất) ═══
+    -- ═══ 6. Top 50 bán chạy tại chi nhánh ═══
     SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
     INTO #BanChay 
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
@@ -116,7 +116,7 @@ BEGIN
     FROM IV_StockTbl
     GROUP BY ItemID
 
-    -- ═══ 7.5. Danh sách sản phẩm trọng tâm (Focus Items) ═══
+    -- ═══ 7.5. Danh sách sản phẩm trọng tâm ═══
     SELECT DISTINCT ItemID INTO #TrongTam 
     FROM AR_SanPhamTrongTamDetailTbl 
     WHERE DocumentID = @ProgramID
@@ -131,29 +131,21 @@ BEGIN
         CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
         ISNULL(S.QuantityinStock, 0)               AS TonKho,
         (
-            -- Ưu tiên hàng trong chương trình trọng tâm (+300,000đ)
             (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
-            -- Ưu tiên hàng còn tồn kho (+200,000đ)
             (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
-            -- Khớp từ khóa chính xác - word boundary (+100,000đ)
             (CASE WHEN @SearchKey != '' AND (
                 CHARINDEX(' '+@SearchKey+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
                 CHARINDEX(' '+@SearchKey+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
             ) THEN 100000 ELSE 0 END) +
-            -- Khớp từ khóa chuỗi con (+50,000đ)
             (CASE WHEN @SearchKey != '' AND (
                 I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR
                 I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%'
             ) THEN 50000 ELSE 0 END) +
-            -- Hàng bán chạy tại chi nhánh (+100,000đ)
             (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
-            -- Hàng khách từng mua (+500đ)
             (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
         ) AS PriorityScore,
         CASE
-            -- Kịch bản 1: Hàng trọng tâm của chương trình
             WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
-            -- Kịch bản 2: Tìm theo triệu chứng → Gắn nhãn tình trạng kho
             WHEN @SearchKey != '' AND (
                 I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
                 I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%')
@@ -161,7 +153,6 @@ BEGIN
                      CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 
                            THEN N' | ⚠️ Hết hàng' 
                            ELSE N' | ✅ Còn hàng' END
-            -- Kịch bản 3: Upsell → Phân loại lý do gợi ý
             WHEN KQ.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng khách quen'
             WHEN BC.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng bán chạy'
             ELSE N'✨ Gợi ý sẵn có'
@@ -171,21 +162,18 @@ BEGIN
     LEFT JOIN #GiaThiTruong  G  ON I.ItemID = G.ItemID
     LEFT JOIN #KhachQuen     KQ ON I.ItemID = KQ.ItemID
     LEFT JOIN #BanChay       BC ON I.ItemID = BC.ItemID
-    LEFT JOIN #TrongTam      TT ON I.ItemID = TT.ItemID  -- JOIN thêm bảng trọng tâm
+    LEFT JOIN #TrongTam      TT ON I.ItemID = TT.ItemID
     WHERE ISNULL(I.isDisable, 0) = 0
       AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
       AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' 
       AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
       AND (
-          -- Kịch bản 1: Ưu tiên hàng trọng tâm (Dù có search key hay không)
           (TT.ItemID IS NOT NULL AND ISNULL(S.QuantityinStock, 0) > 0)
           OR
-          -- Kịch bản 2: Tìm theo triệu chứng
           (@SearchKey != '' AND (
               I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%' OR 
               I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@SearchKey+N'%'
           ))
-          -- Kịch bản 3: Upsell thông thường
           OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
               AND (KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL))
           OR (@SearchKey = '' AND ISNULL(S.QuantityinStock, 0) > 0
@@ -199,8 +187,8 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tìm sản phẩm theo triệu chứng (SearchKey)
-EXEC API_UpsellGoiY_AI @Username = 'admin', @ObjectID = 'KH001', @SearchKey = N'ho', @TopN = 10;
+EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @SearchKey = N'ho', @TopN = 10;
 
--- Kịch bản 2: Gợi ý Upsell tự động (Trọng tâm + Bán chạy + Khách quen)
-EXEC API_UpsellGoiY_AI @Username = 'admin', @ObjectID = 'KH001', @SearchKey = '', @TopN = 10;
+-- Kịch bản 2: Gợi ý Upsell tự động
+EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @SearchKey = '', @TopN = 10;
 */

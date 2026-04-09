@@ -2,15 +2,15 @@ IF OBJECT_ID('API_DoanhSo_AI', 'P') IS NOT NULL DROP PROCEDURE API_DoanhSo_AI;
 GO
 
 CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
-    @Username VARCHAR(50) = '',
-    @ObjectID VARCHAR(50) = '',
-    @ObjectName NVARCHAR(200) = '',
-    @EmployeeID VARCHAR(50) = '',
-    @EmployeeName NVARCHAR(200) = '',
-    @ItemName NVARCHAR(200) = '',
-    @FromDate DATETIME = NULL,
-    @ToDate DATETIME = NULL,
-    @TopN INT = 10
+    @Username     VARCHAR(50)    = '',
+    @khachhang    VARCHAR(50)    = '',
+    @ObjectName   NVARCHAR(200)  = '',
+    @EmployeeID   VARCHAR(50)    = '',
+    @EmployeeName NVARCHAR(200)  = '',
+    @ItemName     NVARCHAR(200)  = '',
+    @FromDate     DATETIME       = NULL,
+    @ToDate       DATETIME       = NULL,
+    @TopN         INT            = 10
 AS
 BEGIN
     SET NOCOUNT ON
@@ -48,7 +48,7 @@ BEGIN
     FROM AR_OrderAndReturnView A
     WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
         AND A.StatusID NOT IN (-2, -1, 0, 10)
-        AND (@ObjectID = '' OR A.ObjectID = @ObjectID)
+        AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
         AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
         AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
@@ -68,7 +68,7 @@ BEGIN
     FROM AR_OrderAndReturnView A
     WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
         AND A.StatusID NOT IN (-2, -1, 0, 10)
-        AND (@ObjectID = '' OR A.ObjectID = @ObjectID)
+        AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
         AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
         AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
@@ -89,7 +89,7 @@ BEGIN
     INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
     WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
         AND A.StatusID NOT IN (-2, -1, 0, 10)
-        AND (@ObjectID = '' OR A.ObjectID = @ObjectID)
+        AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
         AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
         AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')

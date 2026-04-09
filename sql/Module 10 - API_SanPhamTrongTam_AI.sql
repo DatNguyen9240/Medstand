@@ -3,9 +3,9 @@ GO
 
 
 CREATE PROCEDURE API_SanPhamTrongTam_AI
-    @Username VARCHAR(50),
-    @ObjectID VARCHAR(50) = '', -- Mã khách hàng
-    @TopN     INT = 500         
+    @Username   VARCHAR(50),
+    @khachhang  VARCHAR(50) = '', -- Mã khách hàng
+    @TopN       INT = 500         
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -18,14 +18,14 @@ BEGIN
     ORDER BY ToDate DESC
 
 
-    -- 2. Kết quả Bảng 1: TRẠNG THÁI & LỘ TRÌNH (Header + Doanh số + Thang quà tặng)
+    -- 2. Kết quả Bảng 1: TRẠNG THÁI & LỘ TRÌNH
     DECLARE @ProgramInfo TABLE (DocumentID VARCHAR(50), TenChuongTrinh NVARCHAR(200), FromDate DATETIME, ToDate DATETIME)
     INSERT INTO @ProgramInfo SELECT DocumentID, Memo, FromDate, ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID;
 
     DECLARE @CurrentSales BIGINT = 0;
     SELECT @CurrentSales = CAST(ISNULL(SUM(AmountTotal), 0) AS BIGINT)
     FROM AR_InvoiceTbl
-    WHERE ObjectID = @ObjectID AND StatusID <> 10
+    WHERE ObjectID = @khachhang AND StatusID <> 10
       AND MONTH(DocumentDate) = MONTH(GETDATE()) AND YEAR(DocumentDate) = YEAR(GETDATE());
 
     -- Nén thang quà tặng thành chuỗi mũi tên trực quan
@@ -44,7 +44,7 @@ BEGIN
     SELECT 
         P.TenChuongTrinh AS [Chương Trình],
         P.FromDate AS [Từ Ngày], P.ToDate AS [Đến Ngày],
-        @ObjectID AS [Mã Khách], 
+        @khachhang AS [Mã Khách], 
         @CurrentSales AS [Doanh Số Hiện Tại],
         CAST(ISNULL(G.TuDiem, 0) AS BIGINT) AS [Mốc Kế Tiếp],
         CASE WHEN G.TuDiem IS NOT NULL THEN CAST(G.TuDiem - @CurrentSales AS BIGINT) ELSE 0 END AS [Còn Thiếu],
