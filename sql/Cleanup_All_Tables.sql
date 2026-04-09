@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- DỌN DẸP TOÀN BỘ CẤU TRÚC BẢNG METADATA CŨ (RESET TỪ ĐẦU)
--- Chạy file này TRƯỚC KHI import lại Schema_API_Metadata.sql
+-- Chạy file này TRƯỚC KHI import lại Bootstrap_API_Metadata_Auto.sql
 -- ═══════════════════════════════════════════════════════════════════════════
 USE [medtest];
 GO
@@ -59,5 +59,5 @@ BEGIN
     PRINT N' - Đã xóa procedure API_GetConfig';
 END
 
-PRINT N'✅ ĐÃ XÓA SẠCH SẼ HOÀN TOÀN! BẠN CÓ THỂ CHẠY IMPORT 2 FILE KIA BÂY GIỜ.';
+PRINT N'✅ ĐÃ XÓA SẠCH SẼ HOÀN TOÀN! BẠN CÓ THỂ CHẠY IMPORT Bootstrap_API_Metadata_Auto.sql BÂY GIỜ.';
 GO

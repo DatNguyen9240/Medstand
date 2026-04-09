@@ -4,7 +4,7 @@ Tài liệu này tập trung vào việc cài đặt n8n để đáp ứng chín
 
 ---
 
-## 1. Nhóm Module Lõi (`Schema_API_Metadata.sql`)
+## 1. Nhóm Module Lõi (`Bootstrap_API_Metadata_Auto.sql`)
 
 Đây là các module chuyên sâu (AI Specialized), n8n cần cấu hình để nhận diện **10 module** sau:
 
@@ -23,7 +23,7 @@ Tài liệu này tập trung vào việc cài đặt n8n để đáp ứng chín
 
 ---
 
-## 2. Nhóm Module Dùng Chung (`Schema_API_Metadata_Patch.sql`)
+## 2. Nhóm Module Dùng Chung (`Bootstrap_API_Metadata_Auto.sql`)
 
 Nhóm này xử lý các nghiệp vụ Sale Hub cơ bản, thường hội tụ về một Webhook router (`ai_sale`):
 
