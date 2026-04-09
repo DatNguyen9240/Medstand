@@ -507,6 +507,13 @@
         }
 
         var text = $input.value.trim();
+        // Nếu người dùng nhập lệnh bắt đầu bằng '#code' → hiển thị tham số API thay vì gửi chat
+        var hashMatch = text.match(/^#\s*([@A-Za-z0-9_\-]+)/);
+        if (hashMatch) {
+            var apiCode = hashMatch[1].replace(/^@/, '');
+            _fetchApiConfigAndShow(apiCode);
+            return;
+        }
         if (!text && selectedFiles.length === 0) return;
 
 
@@ -632,6 +639,62 @@
         _hideTyping();
         _setStopMode(false);
         _addMessage('ai', 'Xin lỗi, tôi không thể phản hồi lúc này. Vui lòng thử lại sau.');
+    }
+
+    // Nếu user nhập '#code' thì gọi n8n webhook 'api-get-config' để lấy cấu hình tham số và hiển thị
+    function _fetchApiConfigAndShow(apiCode) {
+        if (!apiCode) {
+            _addMessage('ai', 'Không tìm thấy mã API. Vui lòng nhập ví dụ: #goi_y_don_hang');
+            return;
+        }
+        var url = API_CONFIG.N8N_BASE + '/webhook/api-get-config';
+        var body = { ApiCode: '@' + apiCode };
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + _getToken()
+            },
+            body: JSON.stringify(body)
+        })
+            .then(function (r) { return r.json().catch(function () { return r.text(); }); })
+            .then(function (res) {
+                var msg = '';
+                // N8N flow có thể trả về nhiều định dạng → bình thường hóa
+                var fields = null;
+                // Case: { code:0, msg:'', data: { FieldCode:..., FieldName:... } }
+                if (res && res.data && !Array.isArray(res.data) && (res.data.FieldCode || res.data.field || res.data.name)) {
+                    fields = [res.data];
+                }
+                else if (res && res.data && Array.isArray(res.data.fields)) fields = res.data.fields;
+                else if (res && res.data && Array.isArray(res.data)) fields = res.data;
+                else if (res && Array.isArray(res.fields)) fields = res.fields;
+                else if (res && Array.isArray(res)) fields = res;
+
+                if (!fields || fields.length === 0) {
+                    msg = 'Không có cấu hình tham số cho API: ' + apiCode;
+                } else {
+                    msg = 'Tham số cho ' + apiCode + ':\n';
+                    fields.forEach(function (f) {
+                        var code = f.FieldCode || f.field || f.name || '';
+                        var name = f.FieldName || f.placeholder || f.placeholderText || '';
+                        var req = f.IsRequired || f.required ? ' (bắt buộc)' : '';
+                        msg += '- ' + code + req + (name ? ' — ' + name : '') + '\n';
+                    });
+                }
+                _addMessage('ai', msg);
+
+                // Gợi ý ghost text -> đặt ví dụ nhanh trong input nếu có hàm ghost helper
+                try {
+                    if (window._ghostSet && fields && fields.length) {
+                        var hint = fields.map(function (f) { return (f.FieldCode || f.field || '').replace(/^@/, '') + ':'; }).join(' ');
+                        window._ghostSet('@' + apiCode + ' ' + hint + ' ');
+                    }
+                } catch (e) { }
+            })
+            .catch(function () {
+                _addMessage('ai', 'Không thể lấy cấu hình API.');
+            });
     }
 
     // ── Auto-resize textarea ──
@@ -1139,6 +1202,7 @@
     var ghostText = '';
     var ghostFull = '';
     var $ghost = null;
+    var ghostExternalActive = false; // when set by external helper (API hints)
 
     function _ghostCreate() {
         $ghost = document.createElement('div');
@@ -1152,7 +1216,28 @@
         $ghostWrap.appendChild($ghost);
     }
 
+    // External helper for setting ghost hint from other modules (e.g. API config)
+    window._ghostSet = function (text) {
+        try {
+            if (!$ghost) _ghostCreate();
+            ghostExternalActive = true;
+            ghostFull = text || '';
+            var inputVal = $input.value || '';
+            ghostText = ghostFull.indexOf(inputVal) === 0 ? ghostFull.substring(inputVal.length) : ghostFull;
+            $ghost.innerHTML = '<span style="visibility:hidden;white-space:pre-wrap">' + _esc(inputVal) + '</span>' + _esc(ghostText);
+            $ghost.style.display = '';
+            $ghost.scrollTop = $input.scrollTop;
+            $ghost.scrollLeft = $input.scrollLeft;
+        } catch (e) { }
+    };
+
+    window._ghostClear = function () {
+        ghostExternalActive = false;
+        _ghostClear();
+    };
+
     function _ghostUpdate() {
+        if (ghostExternalActive) return; // keep external ghost hint visible
         if (mentionState.active) { _ghostClear(); return; }
         var text = $input.value;
         if (text.length < 2 || text.charAt(0) === '@') { _ghostClear(); return; }

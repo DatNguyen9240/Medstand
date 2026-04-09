@@ -432,6 +432,14 @@
   word-wrap: break-word;
   overflow: hidden;
   text-align: left;
+  z-index: 3; /* ensure ghost overlay is visible above the textarea */
+}
+
+/* Ensure the textarea/input stays below the ghost overlay */
+.chat-input {
+  position: relative;
+  z-index: 1;
+  background: transparent;
 }
 
 .chat-send-btn {

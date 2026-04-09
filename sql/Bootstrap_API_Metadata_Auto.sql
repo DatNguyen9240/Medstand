@@ -185,6 +185,32 @@ END
 GO
 
 /* =========================================================
+   1.5) Ensure wrapper procedures for discovery
+   (Create lightweight wrapper names matching pattern API_*_AI)
+   ========================================================= */
+-- Wrapper for API_GetConfig so Bootstrap can discover metadata
+IF OBJECT_ID('dbo.API_GetConfig_AI', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.API_GetConfig_AI;
+GO
+
+CREATE PROCEDURE dbo.API_GetConfig_AI
+    @ApiCode VARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    -- If original implementation missing, return an empty row to avoid failures
+    IF OBJECT_ID('dbo.API_GetConfig', 'P') IS NULL
+    BEGIN
+        SELECT FieldCode = '@q', FieldName = N'No implementation', IsRequired = 0, Placeholder = N'';
+        RETURN;
+    END
+
+    -- Delegate to original implementation
+    EXEC dbo.API_GetConfig @ApiCode = @ApiCode;
+END
+GO
+
+/* =========================================================
    2) CREATE/REPLACE AUTOSYNC PROCEDURE
    ========================================================= */
 IF EXISTS (SELECT 1 FROM sys.triggers WHERE name = 'trg_API_Metadata_AutoSync_OnSPDDL' AND parent_class_desc = 'DATABASE')
