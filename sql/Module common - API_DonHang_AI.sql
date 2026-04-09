@@ -3,13 +3,13 @@ GO
 
 CREATE PROCEDURE [dbo].[API_DonHang_AI]
    @Username    VARCHAR(50)   = '',
-   @FromDate    DATETIME      = NULL,
-   @ToDate      DATETIME      = NULL,
+   @TuNgay    DATETIME      = NULL,
+   @DenNgay      DATETIME      = NULL,
    @StatusID    INT           = NULL,
    @StatusName  NVARCHAR(50)  = '',
    @EmployeeID  VARCHAR(50)   = '',
    @khachhang   VARCHAR(50)   = '',
-   @SearchText  NVARCHAR(50)  = '',
+   @timkiem  NVARCHAR(50)  = '',
    @TopN        INT           = 10
 AS
 BEGIN
@@ -23,10 +23,10 @@ BEGIN
    END
 
    -- 2. Defaults
-   IF @FromDate IS NULL SET @FromDate = DATEADD(MONTH, -1, GETDATE())
-   IF @ToDate IS NULL SET @ToDate = GETDATE()
+   IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
+   IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    
-   SET @SearchText = ISNULL(@SearchText, '')
+   SET @timkiem = ISNULL(@timkiem, '')
    SET @StatusName = ISNULL(@StatusName, '')
 
    -- 3. Resolve StatusName → StatusID
@@ -74,7 +74,7 @@ BEGIN
    LEFT JOIN dbo.CF_ObjectTbl O ON O.ObjectID = A.ObjectID
    LEFT JOIN dbo.CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
    LEFT JOIN dbo.AR_OrderStatusTbl S ON S.StatusID = A.StatusID
-   WHERE CAST(A.DocumentDate AS DATE) BETWEEN @FromDate AND @ToDate
+   WHERE CAST(A.DocumentDate AS DATE) BETWEEN @TuNgay AND @DenNgay
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
        AND (@khachhang = '' OR A.ObjectID = @khachhang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -83,10 +83,10 @@ BEGIN
        AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID      OR @Username IN ('demo', 'admin'))
        AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID OR @Username IN ('demo', 'admin'))
        AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID           OR @Username IN ('demo', 'admin'))
-       AND (@SearchText = ''
-            OR A.DocumentID LIKE '%' + @SearchText + '%'
-            OR O.ObjectName LIKE N'%' + @SearchText + '%'
-            OR O.Phone LIKE '%' + @SearchText + '%')
+       AND (@timkiem = ''
+            OR A.DocumentID LIKE '%' + @timkiem + '%'
+            OR O.ObjectName LIKE N'%' + @timkiem + '%'
+            OR O.Phone LIKE '%' + @timkiem + '%')
    ORDER BY A.DateCreate DESC, A.DocumentID DESC
 END
 GO

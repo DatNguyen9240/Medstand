@@ -8,8 +8,8 @@ CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
     @EmployeeID   VARCHAR(50)    = '',
     @EmployeeName NVARCHAR(200)  = '',
     @ItemName     NVARCHAR(200)  = '',
-    @FromDate     DATETIME       = NULL,
-    @ToDate       DATETIME       = NULL,
+    @TuNgay     DATETIME       = NULL,
+    @DenNgay       DATETIME       = NULL,
     @TopN         INT            = 10
 AS
 BEGIN
@@ -23,8 +23,8 @@ BEGIN
     END
 
     -- 2. Defaults
-    IF @FromDate IS NULL SET @FromDate = DATEADD(MONTH, -1, GETDATE())
-    IF @ToDate IS NULL SET @ToDate = GETDATE()
+    IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
+    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
 
     -- 3. Lấy thông tin quyền hạn của User
     DECLARE @SYSBranchID   VARCHAR(50) = ''
@@ -42,11 +42,11 @@ BEGIN
     -------------------------------------------------
     -- 1. Doanh số theo nhân viên
     -------------------------------------------------
-    SELECT @FromDate AS FromDate, @ToDate AS ToDate,
+    SELECT @TuNgay AS TuNgay, @DenNgay AS DenNgay,
         A.EmployeeID, A.EmployeeName, SUM(A.Amount) AS DoanhSo
     INTO #BC
     FROM AR_OrderAndReturnView A
-    WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
+    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
         AND A.StatusID NOT IN (-2, -1, 0, 10)
         AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
@@ -62,11 +62,11 @@ BEGIN
     -------------------------------------------------
     -- 2. Doanh số theo khách hàng
     -------------------------------------------------
-    SELECT @FromDate AS FromDate, @ToDate AS ToDate,
+    SELECT @TuNgay AS TuNgay, @DenNgay AS DenNgay,
         A.ObjectID, A.ObjectName, SUM(A.Amount) AS DoanhSo
     INTO #BC2
     FROM AR_OrderAndReturnView A
-    WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
+    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
         AND A.StatusID NOT IN (-2, -1, 0, 10)
         AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
@@ -81,13 +81,13 @@ BEGIN
     -------------------------------------------------
     -- 3. Top sản phẩm bán chạy
     -------------------------------------------------
-    SELECT @FromDate AS FromDate, @ToDate AS ToDate,
+    SELECT @TuNgay AS TuNgay, @DenNgay AS DenNgay,
         B.ItemID, B.ItemName, SUM(D.Quantity) AS SoLuong, SUM(D.Amount) AS DoanhSo
     INTO #BC3
     FROM AR_OrderAndReturnView A
     INNER JOIN AR_OrderDetailTbl D ON A.DocumentID = D.DocumentID
     INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
-    WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
+    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
         AND A.StatusID NOT IN (-2, -1, 0, 10)
         AND (@khachhang = '' OR A.ObjectID = @khachhang)
         AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')

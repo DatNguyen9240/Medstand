@@ -3,9 +3,9 @@ GO
 
 CREATE PROCEDURE [dbo].[API_HoaDon_AI]
     @Username   VARCHAR(50)   = '',
-    @FromDate   DATETIME      = NULL,
-    @ToDate     DATETIME      = NULL,
-    @SearchText NVARCHAR(50)  = ''
+    @TuNgay   DATETIME      = NULL,
+    @DenNgay     DATETIME      = NULL,
+    @timkiem NVARCHAR(50)  = ''
 AS
 BEGIN
     SET NOCOUNT ON
@@ -18,8 +18,8 @@ BEGIN
     END
 
     -- 2. Defaults (Mặc định xem 10 ngày gần nhất)
-    IF @FromDate IS NULL SET @FromDate = DATEADD(DAY, -10, GETDATE())
-    IF @ToDate IS NULL SET @ToDate = GETDATE()
+    IF @TuNgay IS NULL SET @TuNgay = DATEADD(DAY, -10, GETDATE())
+    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
 
     -- 3. Phân quyền
     DECLARE @SYSBranchID    VARCHAR(50) = ''
@@ -52,11 +52,11 @@ BEGIN
     LEFT JOIN dbo.CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
     LEFT JOIN dbo.CF_ObjectTbl M ON M.ObjectID = A.ManagerID
     LEFT JOIN dbo.AR_InvoiceStatusTbl S ON S.StatusID = A.StatusID
-    WHERE A.DocumentDate BETWEEN @FromDate AND @ToDate
-      AND (@SearchText = '' OR A.ObjectID LIKE '%' + @SearchText + '%' 
-           OR O.ObjectName LIKE N'%' + @SearchText + '%'  
-           OR O.Address LIKE N'%' + @SearchText + '%' 
-           OR O.Phone LIKE '%' + @SearchText + '%')
+    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
+      AND (@timkiem = '' OR A.ObjectID LIKE '%' + @timkiem + '%' 
+           OR O.ObjectName LIKE N'%' + @timkiem + '%'  
+           OR O.Address LIKE N'%' + @timkiem + '%' 
+           OR O.Phone LIKE '%' + @timkiem + '%')
       -- Phân quyền mượt: Cho phép AI (demo/admin) xem toàn bộ
       AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @Username IN ('demo', 'admin'))
       AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @Username IN ('demo', 'admin'))

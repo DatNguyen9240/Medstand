@@ -1,9 +1,9 @@
-IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
+﻿IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
 GO
 
 
 CREATE PROCEDURE API_TraCuuSanPham_AI
-    @SearchKey NVARCHAR(100) = '',
+    @timkiem NVARCHAR(100) = '',
     @TopN      INT = 50
 AS
 BEGIN
@@ -18,11 +18,11 @@ BEGIN
     FROM CF_ItemTbl I
     WHERE (ISNULL(I.isDisable, 0) = 0)
       AND (
-          @SearchKey = '' OR
-          I.ItemID LIKE @SearchKey + '%' OR
-          I.ItemID LIKE '%' + @SearchKey + '%' OR
-          I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @SearchKey + N'%' OR
-          ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @SearchKey + N'%'
+          @timkiem = '' OR
+          I.ItemID LIKE @timkiem + '%' OR
+          I.ItemID LIKE '%' + @timkiem + '%' OR
+          I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
+          ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%'
       )
       AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
     ORDER BY I.ItemName ASC;

@@ -1,11 +1,11 @@
 CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
-   @ToDate     DATETIME     = NULL,
+   @DenNgay     DATETIME     = NULL,
    @khachhang  VARCHAR(50)  = '',
    @Username   VARCHAR(50)
 AS
 BEGIN
    SET NOCOUNT ON
-   IF @ToDate IS NULL SET @ToDate = GETDATE()
+   IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    DECLARE @BanLanhDao BIT
    SELECT @BanLanhDao = COALESCE(Manager, 0) FROM dbo.SY_User WHERE UserName = @Username
    IF @khachhang = '' OR @khachhang IS NULL
@@ -15,7 +15,7 @@ BEGIN
        INSERT INTO #CongNo
        SELECT ObjectID, SUM(Amount) AS TongNo
        FROM vCongNoBanHang
-       WHERE DocumentDate <= @ToDate
+       WHERE DocumentDate <= @DenNgay
        GROUP BY ObjectID
        HAVING SUM(Amount) > 0
        SELECT TOP 20
@@ -36,7 +36,7 @@ BEGIN
        O.ObjectName,
        SUM(A.DebitAmount - A.CreditAmount) AS TongNo,
        A.ObjectID
-   FROM SY_GetDebitDocFnc(@ToDate, @khachhang, '131', '') A
+   FROM SY_GetDebitDocFnc(@DenNgay, @khachhang, '131', '') A
    LEFT JOIN dbo.CF_ObjectTbl O ON A.ObjectID = O.ObjectID
    WHERE A.ObjectID = @khachhang
      AND (

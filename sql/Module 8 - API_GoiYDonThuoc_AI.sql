@@ -1,13 +1,13 @@
-IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
+﻿IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
 GO
 CREATE PROCEDURE API_GoiYDonThuoc_AI
-    @Keyword NVARCHAR(500) = ''
+    @timkiem NVARCHAR(500) = ''
 AS
 BEGIN
     SET NOCOUNT ON
    
     SELECT CAST(value AS NVARCHAR(100)) AS TuKhoa INTO #Keys
-    FROM STRING_SPLIT(REPLACE(@Keyword, ';', ','), ',') WHERE value != ''
+    FROM STRING_SPLIT(REPLACE(@timkiem, ';', ','), ',') WHERE value != ''
 
 
     -- BẢNG 1: Tìm sản phẩm thay thế (Món khớp trực tiếp)
