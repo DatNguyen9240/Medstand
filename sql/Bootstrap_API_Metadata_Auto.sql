@@ -185,28 +185,45 @@ END
 GO
 
 /* =========================================================
-   1.5) Ensure wrapper procedures for discovery
-   (Create lightweight wrapper names matching pattern API_*_AI)
+   1.5) Core UI Metadata Provider: API_GetConfig
    ========================================================= */
--- Wrapper for API_GetConfig so Bootstrap can discover metadata
+-- Drop legacy wrapper if it exists
 IF OBJECT_ID('dbo.API_GetConfig_AI', 'P') IS NOT NULL
     DROP PROCEDURE dbo.API_GetConfig_AI;
 GO
 
-CREATE PROCEDURE dbo.API_GetConfig_AI
+CREATE OR ALTER PROCEDURE dbo.API_GetConfig
     @ApiCode VARCHAR(100)
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- If original implementation missing, return an empty row to avoid failures
-    IF OBJECT_ID('dbo.API_GetConfig', 'P') IS NULL
+
+    -- Tìm tên Stored Procedure gốc từ API_Definition
+    DECLARE @ActualSPName VARCHAR(200);
+
+    SELECT TOP 1 @ActualSPName = StoredProcedure
+    FROM dbo.API_Definition
+    WHERE ApiCode = @ApiCode;
+
+    IF @ActualSPName IS NULL
     BEGIN
-        SELECT FieldCode = '@q', FieldName = N'No implementation', IsRequired = 0, Placeholder = N'';
+        SELECT FieldCode = '@Invalid', FieldName = N'Không tìm thấy API', IsRequired = 0, Placeholder = N'';
         RETURN;
     END
 
-    -- Delegate to original implementation
-    EXEC dbo.API_GetConfig @ApiCode = @ApiCode;
+    -- Quét MetaData trực tiếp từ sys.parameters
+    SELECT 
+        FieldCode   = prm.name, 
+        FieldName   = REPLACE(prm.name, '@', ''),
+        Placeholder = N'Nhập ' + REPLACE(prm.name, '@', '') + ' (' + UPPER(t.name) + ')',
+        IsRequired  = CASE WHEN prm.has_default_value = 1 THEN 0 ELSE 1 END,
+        ControlType = 'TEXT',
+        OrderIndex  = prm.parameter_id
+    FROM sys.procedures p
+    JOIN sys.parameters prm ON prm.object_id = p.object_id
+    JOIN sys.types t ON t.user_type_id = prm.user_type_id
+    WHERE p.name = @ActualSPName
+    ORDER BY prm.parameter_id;
 END
 GO
 
@@ -368,6 +385,28 @@ BEGIN
     FROM dbo.API_Definition d
     WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META)
       AND NOT EXISTS (SELECT 1 FROM dbo.API_Action a WHERE a.ApiID = d.ApiID AND a.IsDefault = 1);
+    -- Xoá các tham số rác (Orphaned fields) nếu tham số bị xóa khỏi Stored Procedure
+    IF @UpdateExisting = 1
+    BEGIN
+        DELETE af
+        FROM dbo.API_Action_Field af
+        JOIN dbo.API_Field f ON f.FieldID = af.FieldID
+        JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
+        WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META)
+          AND NOT EXISTS (SELECT 1 FROM #AI_META a WHERE a.ApiCode = d.ApiCode AND a.FieldCode = f.FieldCode);
+
+        DELETE fl
+        FROM dbo.API_Filter fl
+        JOIN dbo.API_Definition d ON d.ApiID = fl.ApiID
+        WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META)
+          AND NOT EXISTS (SELECT 1 FROM #AI_META a WHERE a.ApiCode = d.ApiCode AND a.FieldCode = fl.FieldCode);
+
+        DELETE f
+        FROM dbo.API_Field f
+        JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
+        WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META)
+          AND NOT EXISTS (SELECT 1 FROM #AI_META a WHERE a.ApiCode = d.ApiCode AND a.FieldCode = f.FieldCode);
+    END
 
     -- Upsert API_Field
     INSERT INTO dbo.API_Field

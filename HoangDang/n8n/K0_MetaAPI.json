@@ -274,7 +274,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({\n  code: 0,\n  msg: \"Thành công\",\n  data: $json\n}) }}",
+        "responseBody": "={{ JSON.stringify({\n  code: 0,\n  msg: \"Thành công\",\n  data: $(\"MS SQL API_GetConfig\").all().map(i => i.json)\n}) }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {

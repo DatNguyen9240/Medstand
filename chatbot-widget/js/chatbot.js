@@ -3,7 +3,7 @@
     var CHAT_API = 'https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-ai-dainao';
     var CHAT_API_KEY = 'test123456';
     var CACHE_KEY = 'ai_chat_history';
-    var CACHE_TTL = 30 * 60 * 1000; // 30 phút
+    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 giờ (Phase 1 MVP)
     var USER_PHRASES_KEY = 'ai_user_phrases';
     var MAX_USER_PHRASES = 50;
     var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -28,14 +28,30 @@
         return sid;
     }
 
-    // ── SessionStorage cache with TTL ──
+    // ── LocalStorage cache with TTL (Phase 1) ──
+    function _getSessionKey() {
+        return CACHE_KEY + '_' + (userName || 'anonymous');
+    }
+
     function _loadCache() {
+        // Fallback: Migrate logic sessionStorage nếu có user đang mở tab cũ
         try {
-            var raw = sessionStorage.getItem(CACHE_KEY);
+            var oldRaw = sessionStorage.getItem(CACHE_KEY);
+            if (oldRaw) {
+                var oldData = JSON.parse(oldRaw);
+                if (oldData.messages && oldData.messages.length > 0) {
+                    _saveCache(oldData.messages);
+                }
+                sessionStorage.removeItem(CACHE_KEY);
+            }
+        } catch(e) {}
+
+        try {
+            var raw = localStorage.getItem(_getSessionKey());
             if (!raw) return [];
             var data = JSON.parse(raw);
             if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
-                sessionStorage.removeItem(CACHE_KEY);
+                localStorage.removeItem(_getSessionKey());
                 return [];
             }
             return data.messages || [];
@@ -44,15 +60,17 @@
 
     function _saveCache(messages) {
         try {
-            sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+            var msgsToSave = messages;
+            if (messages && messages.length > 100) msgsToSave = messages.slice(-100);
+            localStorage.setItem(_getSessionKey(), JSON.stringify({
                 ts: Date.now(),
-                messages: messages
+                messages: msgsToSave
             }));
         } catch (e) { }
     }
 
     function _clearCache() {
-        sessionStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(_getSessionKey());
     }
 
     // ── User Phrase Cache (localStorage, persistent) ──
@@ -302,9 +320,16 @@
 
     // ── Add message ──
     function _addMessage(role, content, fileName) {
+        if (role === 'user') {
+            console.log('User message:', content);
+        }
         var msg = { role: role, content: content, time: Date.now() };
         if (fileName) msg.fileName = fileName;
         chatHistory.push(msg);
+        
+        console.log('Messages array after update:', chatHistory);
+        console.log('Chat container:', document.getElementById('chat-messages') || document.querySelector('.chat-messages'));
+
         _saveCache(chatHistory);
 
         $welcome.style.display = 'none';
@@ -599,7 +624,53 @@
                 payload.file_type = firstFile.type;
             }
 
-            fetch(CHAT_API, {
+            // -- Phase 1: Error Recovery (Exponential Backoff Wrapper) --
+            var MAX_RETRIES = 3;
+            var INITIAL_DELAY = 2000;
+
+            function _sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
+            function _updateRetryUI(currentAttempt, maxAttempts) {
+                var msg = '⏳ Đang kết nối mạng lại (' + currentAttempt + '/' + maxAttempts + ')...';
+                var retryMsgDiv = document.getElementById('chat-retry-message');
+                if (retryMsgDiv) {
+                    retryMsgDiv.textContent = msg;
+                } else {
+                    $messages.insertAdjacentHTML('beforeend', '<div class="chat-bubble ai" id="chat-retry-message" style="opacity: 0.8; font-style: italic; font-size: 13px;">' + msg + '</div>');
+                    _scrollBottom();
+                }
+            }
+            function _removeRetryUI() {
+                var retryMsgDiv = document.getElementById('chat-retry-message');
+                if (retryMsgDiv) retryMsgDiv.parentNode.removeChild(retryMsgDiv);
+            }
+
+            function _fetchWithRetry(url, options, retryCount) {
+                if (retryCount === undefined) retryCount = 0;
+                return fetch(url, options)
+                    .then(function(response) {
+                        if (!response.ok) throw new Error('HTTP Error ' + response.status);
+                        _removeRetryUI();
+                        return response;
+                    })
+                    .catch(function(error) {
+                        if (error.name === 'AbortError' || (options.signal && options.signal.aborted)) {
+                            _removeRetryUI();
+                            throw error; // User pressed stop
+                        }
+                        if (retryCount < MAX_RETRIES) {
+                            var delay = INITIAL_DELAY * Math.pow(2, retryCount);
+                            console.warn('⚠️ Fetch retry ' + (retryCount + 1) + '/' + MAX_RETRIES + ' in ' + delay + 'ms');
+                            _updateRetryUI(retryCount + 1, MAX_RETRIES);
+                            return _sleep(delay).then(function() {
+                                return _fetchWithRetry(url, options, retryCount + 1);
+                            });
+                        }
+                        _removeRetryUI();
+                        throw error;
+                    });
+            }
+
+            _fetchWithRetry(CHAT_API, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -609,27 +680,72 @@
                 body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-                .then(function (res) { return res.json().catch(function () { return res.text(); }); })
-                .then(_handleReply)
-                .catch(_handleError);
+                .then(function (res) {
+                    console.log('API Raw Response Status:', res.status);
+                    return res.json().catch(function () { return res.text(); });
+                })
+                .then(function(data) {
+                    console.log('API Parsed Data:', data);
+                    _handleReply(data);
+                })
+                .catch(function(err) {
+                    console.error('Fetch chain error:', err);
+                    _handleError(err);
+                });
         });
     }
 
     function _handleReply(res) {
+        console.log('API Response:', res);
         _hideTyping();
         _setStopMode(false);
         var reply = '';
-        if (typeof res === 'string') {
-            reply = res;
-        } else if (res && res.reply) {
-            reply = res.reply;
-        } else if (res && res.message) {
-            reply = res.message;
-        } else if (res && res.data) {
-            reply = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-        } else {
-            reply = JSON.stringify(res);
+
+        // 1. Kiểm tra nested data structure đặc biệt từ N8N (chứa JSON_F52E...)
+        if (res && Array.isArray(res.data) && res.data.length > 0) {
+            var firstData = res.data[0];
+            if (firstData && typeof firstData === 'object') {
+                var keys = Object.keys(firstData);
+                if (keys.length > 0) {
+                    var dynamicKey = keys[0];
+                    var nestedArray = firstData[dynamicKey];
+                    if (Array.isArray(nestedArray) && nestedArray.length > 0) {
+                        var item = nestedArray[0];
+                        if (item && item.msg) {
+                            reply = item.msg;
+                        }
+                    }
+                }
+            }
         }
+
+        // 2. Fallbacks
+        if (!reply) {
+            if (typeof res === 'string') {
+                reply = res;
+            } else if (res && res.response) {
+                reply = res.response;
+            } else if (res && res.reply) {
+                reply = res.reply;
+            } else if (res && res.message) {
+                reply = res.message;
+            } else if (res && res.output) {
+                reply = res.output;
+            } else if (res && res.data) {
+                if (typeof res.data === 'string') {
+                    reply = res.data;
+                } else if (res.data.response) {
+                    reply = res.data.response;
+                } else if (res.data.message) {
+                    reply = res.data.message;
+                } else {
+                    reply = JSON.stringify(res.data);
+                }
+            } else {
+                reply = JSON.stringify(res);
+            }
+        }
+        
         _addMessage('ai', reply);
     }
 
@@ -647,6 +763,7 @@
             _addMessage('ai', 'Không tìm thấy mã API. Vui lòng nhập ví dụ: #goi_y_don_hang');
             return;
         }
+        console.log('Fetching config for:', apiCode);
         var url = API_CONFIG.N8N_BASE + '/webhook/api-get-config';
         var body = { ApiCode: '@' + apiCode };
         fetch(url, {
@@ -657,12 +774,23 @@
             },
             body: JSON.stringify(body)
         })
-            .then(function (r) { return r.json().catch(function () { return r.text(); }); })
-            .then(function (res) {
+            .then(function (r) { 
+                console.log('Config API Raw Response Status:', r.status);
+                // Safe text parsing first to avoid body consumption errors
+                return r.text();
+            })
+            .then(function (textRes) {
+                console.log('Config API raw text:', textRes);
+                var res = null;
+                try {
+                    res = JSON.parse(textRes);
+                } catch(e) {
+                    res = textRes; // fall back to string if not JSON
+                }
+                console.log('Config API parsed res:', res);
+
                 var msg = '';
-                // N8N flow có thể trả về nhiều định dạng → bình thường hóa
                 var fields = null;
-                // Case: { code:0, msg:'', data: { FieldCode:..., FieldName:... } }
                 if (res && res.data && !Array.isArray(res.data) && (res.data.FieldCode || res.data.field || res.data.name)) {
                     fields = [res.data];
                 }
@@ -682,17 +810,18 @@
                         msg += '- ' + code + req + (name ? ' — ' + name : '') + '\n';
                     });
                 }
+                console.log('Final config message to add:', msg);
                 _addMessage('ai', msg);
 
-                // Gợi ý ghost text -> đặt ví dụ nhanh trong input nếu có hàm ghost helper
                 try {
                     if (window._ghostSet && fields && fields.length) {
                         var hint = fields.map(function (f) { return (f.FieldCode || f.field || '').replace(/^@/, '') + ':'; }).join(' ');
                         window._ghostSet('@' + apiCode + ' ' + hint + ' ');
                     }
-                } catch (e) { }
+                } catch (e) { console.error('Ghost set error:', e); }
             })
-            .catch(function () {
+            .catch(function (err) {
+                console.error('Fetch config error:', err);
                 _addMessage('ai', 'Không thể lấy cấu hình API.');
             });
     }
