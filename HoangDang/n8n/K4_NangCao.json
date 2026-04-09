@@ -1,16 +1,19 @@
 {
-  "name": "K4 · Nghiệp Vụ Nâng Cao",
   "nodes": [
     {
       "parameters": {
+        "httpMethod": "POST",
         "path": "hook-nghiepvu-nangcao",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-800, 0],
-      "id": "wh-nangcao",
+      "position": [
+        -1056,
+        352
+      ],
+      "id": "a64ec6a8-1880-4370-8f88-bc7043c50143",
       "name": "Webhook Nâng Cao",
       "webhookId": "nghiepvu-nangcao-001"
     },
@@ -20,19 +23,28 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-512, 0],
-      "id": "parse-input-nangcao",
+      "position": [
+        -768,
+        352
+      ],
+      "id": "1de0670d-680a-4e39-8c92-b10f56578867",
       "name": "Parse Input"
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": false, "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": false,
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "leftValue": "={{ $json.hop_le }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true" }
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ],
           "combinator": "and"
@@ -41,8 +53,11 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [-224, 0],
-      "id": "check-valid-nangcao",
+      "position": [
+        -480,
+        352
+      ],
+      "id": "478063a4-fed3-4bb4-8bec-6732cbac7c7c",
       "name": "Input Hợp Lệ?"
     },
     {
@@ -52,19 +67,30 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $json.token }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({\n  ApiCode:   $json.ApiCode,\n  params:    $json.params,\n  isConfirm: $json.isConfirm\n}) }}",
-        "options": { "timeout": 60000 }
+        "options": {
+          "timeout": 60000
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [64, -80],
-      "id": "call-backend-nangcao",
+      "position": [
+        -192,
+        272
+      ],
+      "id": "04d02666-eabe-499b-98da-76b9d5c86e7f",
       "name": "Gọi Backend AI/Analytics"
     },
     {
@@ -73,8 +99,11 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [352, -80],
-      "id": "format-result-nangcao",
+      "position": [
+        96,
+        272
+      ],
+      "id": "0969f0b6-cd48-430c-bc60-27b27db94c39",
       "name": "Format Kết Quả"
     },
     {
@@ -83,26 +112,145 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [64, 128],
-      "id": "return-error-nangcao",
+      "position": [
+        -192,
+        480
+      ],
+      "id": "5b267345-4033-47be-811d-e31e363b03ab",
       "name": "Trả Lỗi"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', result: $json.ket_qua, ApiCode: $json.ApiCode, so_ban_ghi: $json.so_ban_ghi }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        272
+      ],
+      "id": "18507ac6-7cf2-42c7-bf0e-f8ba82052744",
+      "name": "Trả Về OK"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'error', result: $json.ket_qua }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        480
+      ],
+      "id": "8042fd1c-33d7-4762-adf0-1f4603712d47",
+      "name": "Trả Về Lỗi"
     }
   ],
   "connections": {
     "Webhook Nâng Cao": {
-      "main": [[{ "node": "Parse Input", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parse Input": {
-      "main": [[{ "node": "Input Hợp Lệ?", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Input Hợp Lệ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Input Hợp Lệ?": {
       "main": [
-        [{ "node": "Gọi Backend AI/Analytics", "type": "main", "index": 0 }],
-        [{ "node": "Trả Lỗi", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Gọi Backend AI/Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Trả Lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Gọi Backend AI/Analytics": {
-      "main": [[{ "node": "Format Kết Quả", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Format Kết Quả",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Kết Quả": {
+      "main": [
+        [
+          {
+            "node": "Trả Về OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trả Lỗi": {
+      "main": [
+        [
+          {
+            "node": "Trả Về Lỗi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
