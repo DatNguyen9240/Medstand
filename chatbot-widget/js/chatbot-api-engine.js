@@ -125,26 +125,7 @@
     }
 
     // ── Load API List ─────────────────────────────────────────────────
-    var _FALLBACK_LIST = [
-        { ApiCode: '@goi_y_don_hang', DisplayName: '🛒 Gợi ý đơn hàng', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@upsell_goi_y', DisplayName: '✨ Upsell & Gợi ý SP', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@tao_don_hang', DisplayName: '📝 Tạo đơn hàng', Category: 'Bán hàng', ExecutionType: 'CART' },
-        { ApiCode: '@them_khach_hang', DisplayName: '👤+ Thêm khách hàng', Category: 'Khách hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@goi_y_don_thuoc', DisplayName: '💊 Gợi ý đơn thuốc', Category: 'Bán hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@tuyen_ban_hang', DisplayName: '🗺️ Lịch tuyến bán hàng', Category: 'Khách hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@cham_diem_kh', DisplayName: '⭐ Chấm điểm KH', Category: 'Khách hàng', ExecutionType: 'QUERY' },
-        { ApiCode: '@tich_luy', DisplayName: '🎁 Tích lũy chương trình', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-        { ApiCode: '@san_pham_trong_tam', DisplayName: '🔥 Sản phẩm trọng tâm', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-        { ApiCode: '@de_xuat_khuyen_mai', DisplayName: '📢 Đề xuất khuyến mãi', Category: 'Khuyến mại', ExecutionType: 'QUERY' },
-        { ApiCode: '@tra_cuu_san_pham', DisplayName: '🔍 Tra cứu sản phẩm', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@ton_kho_list', DisplayName: '🏭 Tồn kho chi tiết', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@xem_hoa_don', DisplayName: '🧾 Xem hóa đơn', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@xem_don_hang', DisplayName: '📋 Xem đơn hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@xem_doanh_so', DisplayName: '📊 Xem doanh số', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@cong_no_kh', DisplayName: '💳 Công nợ khách hàng', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@cong_no_chi_tiet', DisplayName: '🧾 Chi tiết công nợ', Category: 'Tra cứu', ExecutionType: 'QUERY' },
-        { ApiCode: '@danh_muc', DisplayName: '📚 Tra cứu danh mục', Category: 'Tra cứu', ExecutionType: 'QUERY' }
-    ];
+    var _FALLBACK_LIST = [];
 
     function _normalizeApiList(list) {
         if (!Array.isArray(list)) return [];
@@ -411,8 +392,8 @@
                 var q2C = q2.replace(/[\s\-_]/g, '');
                 var acC = ac.replace(/[\s\-_]/g, '');
                 var dnC = dn.replace(/[\s\-_]/g, '');
-                
-                return ac.indexOf(q) !== -1 || dn.indexOf(q) !== -1 
+
+                return ac.indexOf(q) !== -1 || dn.indexOf(q) !== -1
                     || ac.indexOf(q2) !== -1 || dn.indexOf(q2) !== -1
                     || acC.indexOf(qC) !== -1 || dnC.indexOf(qC) !== -1
                     || acC.indexOf(q2C) !== -1 || dnC.indexOf(q2C) !== -1;
@@ -865,10 +846,10 @@
             // Chỉ thêm id vào trong ngoặc nếu id khác rỗng và khác với name
             var display = dispName;
             if (selectedMeta && selectedMeta.id && selectedMeta.id !== dispName && selectedMeta.id !== pickedVal) {
-                 display += '(' + selectedMeta.id + ')';
+                display += '(' + selectedMeta.id + ')';
             } else if (!selectedMeta || !selectedMeta.name || pickedVal !== dispName) {
-                 // Nếu không có tên thân thiện rõ ràng, hoặc pickedVal khác dispName (như ID gốc)
-                 display += '(' + pickedVal + ')';
+                // Nếu không có tên thân thiện rõ ràng, hoặc pickedVal khác dispName (như ID gốc)
+                display += '(' + pickedVal + ')';
             }
             _inputEl.value = prefix + display + append;
         }
@@ -1385,13 +1366,13 @@
                 var ctrl = f.ControlType || 'text';
                 // @Username luôn auto-fill từ localStorage, bất kể IsSystemParam
                 var fcLow = code.toLowerCase();
-                
+
                 // Bỏ qua validate bắt buộc cho các field được thiết kế tự chọn
                 if (fcLow === '@username' || fcLow === 'username') {
                     if (fcLow === '@username' || fcLow === 'username') params[code] = _user();
                     return;
                 }
-                
+
                 var fid = 'ae-f-' + code.replace('@', '').replace(/\W/g, '');
 
                 if (ctrl === 'combobox') {
@@ -1476,8 +1457,8 @@
                 cfgParams.forEach(function (f) {
                     var fcLow = (f.FieldCode || '').toLowerCase();
                     // Bypass validate cho các system param
-                    if (fcLow === '@username' || fcLow === 'username') return; 
-                    
+                    if (fcLow === '@username' || fcLow === 'username') return;
+
                     if (f.IsRequired == 1 && (!f.IsSystemParam || f.IsSystemParam == 0)) {
                         if (!params[f.FieldCode]) {
                             alert('Thiếu tham số bắt buộc: ' + (f.FieldName || f.FieldCode));

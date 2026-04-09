@@ -1,11 +1,4 @@
-USE [medtest]
-GO
-/****** Object:  StoredProcedure [dbo].[API_GetTonKho_List_AI]    Script Date: 3/20/2026 9:57:19 PM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-ALTER PROC [dbo].[API_GetTonKho_List_AI]
+CREATE PROCEDURE dbo.API_DanhSachTonKho_AI
     @Username VARCHAR(50),
     @ItemID VARCHAR(50) = '',
     @ItemName VARCHAR(200) = ''
@@ -17,7 +10,6 @@ BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
         RETURN
     END
-    -- Phân quyền: lấy BranchID từ user
     DECLARE @SYSBranchID VARCHAR(50) = ''
     SELECT @SYSBranchID = COALESCE(BranchID, '')
     FROM SY_User WHERE UserName = @Username
@@ -35,3 +27,4 @@ BEGIN
     GROUP BY A.ItemID, I.ItemName, A.StoreHouseID, A.BranchID,
              A.Lot, A.ExpireDate
 END
+GO
