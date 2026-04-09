@@ -1,9 +1,9 @@
 IF OBJECT_ID('API_ChamDiemKH_AI', 'P') IS NOT NULL DROP PROCEDURE API_ChamDiemKH_AI;
 GO
 CREATE PROCEDURE API_ChamDiemKH_AI
-    @Username       VARCHAR(50) = '',
-    @ObjectID       VARCHAR(50) = '',
-    @NhomFilter     VARCHAR(5)  = ''
+    @Username    VARCHAR(50) = '',
+    @khachhang   VARCHAR(50) = '',
+    @NhomFilter  VARCHAR(5)  = ''
 AS
 BEGIN
     SET NOCOUNT ON
@@ -71,26 +71,14 @@ BEGIN
             ROW_NUMBER() OVER (PARTITION BY (CASE WHEN DS.SoNgayKhongMua >= 90 THEN 'C' WHEN DS.DoanhSoTBThang >= 50000000 THEN 'A' WHEN DS.DoanhSoTBThang >= 30000000 THEN 'B' END) ORDER BY DS.DoanhSoTBThang DESC) AS STT
         FROM CF_ObjectTbl KH JOIN #DoanhSo DS ON KH.ObjectID = DS.ObjectID
         WHERE ISNULL(KH.isDisable, 0) = 0 AND ISNULL(KH.isCustomer, 0) = 1
-          AND (@ObjectID = '' OR KH.ObjectID = @ObjectID)
-          AND (@ObjectID != '' OR (DS.SoNgayKhongMua >= 90 OR DS.DoanhSoTBThang >= 30000000))
+          AND (@khachhang = '' OR KH.ObjectID = @khachhang)
+          AND (@khachhang != '' OR (DS.SoNgayKhongMua >= 90 OR DS.DoanhSoTBThang >= 30000000))
     ) T
     WHERE (@NhomFilter = '' OR Nhom = @NhomFilter)
-      AND (@ObjectID != '' OR STT <= 5)
+      AND (@khachhang != '' OR STT <= 5)
     ORDER BY Nhom ASC, DoanhSoTBThang DESC
 
 
     DROP TABLE #DoanhSo
 END
 GO
-
-
-
-
-
-
-
-
-
-
-
-

@@ -2,15 +2,15 @@ IF OBJECT_ID('API_TuyenBanHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_TuyenBan
 GO
 CREATE PROCEDURE API_TuyenBanHang_AI
     @Username      VARCHAR(50) = '',
-    @ObjectID      VARCHAR(50) = '',
+    @khachhang     VARCHAR(50) = '',
     @SoNgayVangMat INT        = 45,
     @TopN          INT        = 8
 AS
 BEGIN
     SET NOCOUNT ON
    
-   -- 0. KIỂM TRA ObjectID HỢP LỆ (Nếu có truyền vào)
-   IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+   -- 0. KIỂM TRA khachhang HỢP LỆ (Nếu có truyền vào)
+   IF @khachhang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @khachhang)
    BEGIN
        SELECT 'N/A' AS ObjectID, N'❌ Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
        RETURN;
@@ -46,7 +46,7 @@ BEGIN
     INTO #LanMuaCuoi
     FROM AR_InvoiceTbl I
     WHERE ISNULL(I.StatusID, 0) != 10
-      AND (@ObjectID     = '' OR I.ObjectID  = @ObjectID)
+      AND (@khachhang   = '' OR I.ObjectID  = @khachhang)
       AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
       AND (@SYSCeoID     = '' OR I.CeoID     = @SYSCeoID)
       AND (@SYSManagerID = '' OR I.ManagerID = @SYSManagerID)
@@ -66,7 +66,7 @@ BEGIN
     FROM AR_InvoiceTbl I
     WHERE I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
       AND ISNULL(I.StatusID, 0) != 10
-      AND (@ObjectID     = '' OR I.ObjectID  = @ObjectID)
+      AND (@khachhang   = '' OR I.ObjectID  = @khachhang)
       AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
       AND (@SYSCeoID     = '' OR I.CeoID     = @SYSCeoID)
       AND (@SYSManagerID = '' OR I.ManagerID = @SYSManagerID)
@@ -118,7 +118,7 @@ BEGIN
         ) AS LyDoGhe
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
-    WHERE (@ObjectID = '' OR KH.ObjectID = @ObjectID)
+    WHERE (@khachhang = '' OR KH.ObjectID = @khachhang)
       AND L.SoNgayKhongMua >= @SoNgayVangMat
     ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC;
 

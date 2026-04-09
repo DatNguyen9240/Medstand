@@ -2,12 +2,12 @@ IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
 GO
 
 CREATE PROCEDURE API_TichLuy_AI
-   @Username  VARCHAR(50)   = '',
-   @ObjectID  VARCHAR(50)   = '',
-   @ProgramID VARCHAR(50)   = '',
-   @FromDate  DATETIME      = NULL,
-   @ToDate    DATETIME      = NULL,
-   @ItemIDs   NVARCHAR(MAX) = ''
+   @Username   VARCHAR(50)   = '',
+   @khachhang  VARCHAR(50)   = '',
+   @ProgramID  VARCHAR(50)   = '',
+   @FromDate   DATETIME      = NULL,
+   @ToDate     DATETIME      = NULL,
+   @ItemIDs    NVARCHAR(MAX) = ''
 AS
 BEGIN
    SET NOCOUNT ON
@@ -74,9 +74,8 @@ BEGIN
        -- Quà tặng hiện tại
        ISNULL((SELECT TOP 1 QuaTang FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem <= ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem DESC), N'Chưa đạt quà') AS QuaDaDat,
        
-       -- Số lượng quà (Dành cho AI robot hiển thị số phần)
+       -- Số lượng quà
        CASE WHEN ISNULL(TL.TongTichLuy,0) >= 1000000 THEN (SELECT COUNT(*) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem <= ISNULL(TL.TongTichLuy,0)) ELSE 0 END AS SoPhanQua,
-
 
        -- Mốc mục tiêu tiếp theo
        ISNULL((SELECT TOP 1 CAST(TuDiem AS BIGINT) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC),
@@ -89,37 +88,32 @@ BEGIN
           ELSE 100
        END AS [Percentage],
 
-
        CASE
            WHEN EXISTS (SELECT 1 FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0))
                 THEN N'💡 Thiếu ' + FORMAT((SELECT TOP 1 TuDiem FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC) - ISNULL(TL.TongTichLuy,0), 'N0') + N'đ để đạt mốc tiếp theo.'
            ELSE N'🎉 Tuyệt vời! Bạn đã đạt mốc quà cao nhất trong chương trình.'
        END AS LoiNhacAI
 
-
    FROM CF_ObjectTbl KH
    LEFT JOIN #TichLuy TL ON KH.ObjectID = TL.ObjectID
-   WHERE (@ObjectID != '' AND KH.ObjectID = @ObjectID)
-      OR (@ObjectID = '' AND EXISTS (SELECT 1 FROM AR_PromotionGiftTbl G WHERE G.DocumentID = @ProgramID AND ISNULL(TL.TongTichLuy,0) >= G.TuDiem * 0.7))
+   WHERE (@khachhang != '' AND KH.ObjectID = @khachhang)
+      OR (@khachhang = '' AND EXISTS (SELECT 1 FROM AR_PromotionGiftTbl G WHERE G.DocumentID = @ProgramID AND ISNULL(TL.TongTichLuy,0) >= G.TuDiem * 0.7))
    ORDER BY ISNULL(TL.TongTichLuy,0) DESC;
 
 
    -- ════════════════════════════════════════════════════
    -- BẢNG 2: SẢN PHẨM TRỌNG TÂM CHƯA PHÁT SINH DOANH SỐ (GỢI Ý)
    -- ════════════════════════════════════════════════════
-   -- Chỉ gợi ý khi tra cứu 1 khách hàng cụ thể
-   IF @ObjectID != ''
+   IF @khachhang != ''
    BEGIN
-       -- Lấy danh sách ItemID đã mua trong kỳ của khách này
        SELECT DISTINCT D.ItemID
        INTO #ItemsBought
        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-       WHERE I.ObjectID = @ObjectID 
+       WHERE I.ObjectID = @khachhang 
          AND I.DocumentDate BETWEEN @FromDate AND @ToDate
          AND ISNULL(I.StatusID, 0) != 10
          AND D.ItemID IN (SELECT ItemID FROM #TrongTam)
 
-       -- Trả về các món trong danh mục trọng tâm mà chưa mua
        SELECT TOP 12
            I.ItemID,
            I.ItemName,
@@ -133,7 +127,6 @@ BEGIN
    END
    ELSE
    BEGIN
-       -- Nếu tra cứu tổng quát (Admin), trả về bảng trống để n8n không lỗi
        SELECT TOP 0 '' AS ItemID, '' AS ItemName, '' AS Unit
    END
 
@@ -144,8 +137,8 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tra cứu tích lũy và gợi ý hàng chưa mua cho 1 khách
-EXEC API_TichLuy_AI @Username = 'admin', @ObjectID = 'KH001';
+EXEC API_TichLuy_AI @Username = 'admin', @khachhang = 'KH001';
 
 -- Kịch bản 2: Tra cứu tổng hợp toàn bộ các khách hàng tiềm năng
-EXEC API_TichLuy_AI @Username = 'admin', @ObjectID = '';
+EXEC API_TichLuy_AI @Username = 'admin', @khachhang = '';
 */

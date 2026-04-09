@@ -301,30 +301,35 @@ BEGIN
             parameter_id,
             FieldCode,
             CASE
-                WHEN FieldCode = '@Username' THEN N'Nguoi dung'
-                WHEN FieldCode = '@ObjectID' THEN N'Ma khach hang'
-                WHEN FieldCode = '@ItemID' THEN N'Ma san pham'
+                WHEN FieldCode = '@Username'   THEN N'Nguoi dung'
+                WHEN FieldCode = '@khachhang'  THEN N'Khach hang'
+                WHEN FieldCode = '@ObjectID'   THEN N'Ma khach hang'
+                WHEN FieldCode = '@ItemID'     THEN N'Ma san pham'
                 WHEN FieldCode LIKE '%Date' THEN N'Ngay'
                 WHEN FieldCode LIKE '@Top%' THEN N'So luong'
                 ELSE REPLACE(REPLACE(FieldCode, '@', ''), '_', ' ')
             END AS FieldName,
             DataType,
             CASE
-                WHEN FieldCode = '@Username' THEN 'hidden'
-                WHEN FieldCode LIKE '%Date' THEN 'date'
+                WHEN FieldCode = '@Username'  THEN 'hidden'
+                WHEN FieldCode = '@khachhang' THEN 'combobox'
+                WHEN FieldCode = '@ObjectID'  THEN 'combobox'
+                WHEN FieldCode LIKE '%Date'   THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
                 ELSE 'text'
             END AS ControlType,
             CASE WHEN has_default_value = 0 THEN 1 ELSE 0 END AS IsRequired,
             CASE WHEN FieldCode = '@Username' THEN 1 ELSE 0 END AS IsSystemParam,
             CASE
-                WHEN FieldCode = '@ObjectID' THEN 'APICODE'
-                WHEN FieldCode = '@ItemID' THEN 'APICODE'
+                WHEN FieldCode = '@khachhang' THEN 'APICODE'
+                WHEN FieldCode = '@ObjectID'   THEN 'APICODE'
+                WHEN FieldCode = '@ItemID'     THEN 'APICODE'
                 ELSE NULL
             END AS DataSourceType,
             CASE
-                WHEN FieldCode = '@ObjectID' THEN '@danh_muc|@Type=khachhang'
-                WHEN FieldCode = '@ItemID' THEN '@tra_cuu_san_pham|@TopN=50'
+                WHEN FieldCode = '@khachhang' THEN '@danh_muc|@Type=khachhang'
+                WHEN FieldCode = '@ObjectID'   THEN '@danh_muc|@Type=khachhang'
+                WHEN FieldCode = '@ItemID'     THEN '@tra_cuu_san_pham|@TopN=50'
                 ELSE NULL
             END AS DataSourceValue
         FROM P
