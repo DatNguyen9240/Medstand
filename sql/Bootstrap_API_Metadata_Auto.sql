@@ -28,6 +28,7 @@ BEGIN
         ApiDescription  NVARCHAR(500)  NULL,
         StoredProcedure VARCHAR(200)   NOT NULL,
         Category        NVARCHAR(100)  NULL,
+        UiTemplate      VARCHAR(50)    NOT NULL DEFAULT 'DEFAULT',
         IconEmoji       NVARCHAR(20)   NULL,
         IsActive        BIT            NOT NULL DEFAULT 1,
         OrderIndex      INT            NOT NULL DEFAULT 0
@@ -88,6 +89,29 @@ BEGIN
 END
 GO
 
+IF OBJECT_ID('dbo.API_Field_Role', 'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.API_Field_Role (
+        FieldName VARCHAR(100) NOT NULL PRIMARY KEY,
+        FieldRole VARCHAR(50)  NOT NULL, -- TITLE, ID, BADGE, MONEY, TREND, PHONE, NAME, HIDDEN
+        IsActive  BIT          NOT NULL DEFAULT 1
+    );
+
+    -- Dữ liệu mẫu (seeding từ Heuristics cũ của Chatbot)
+    INSERT INTO dbo.API_Field_Role (FieldName, FieldRole) VALUES
+    ('TenKhachHang','TITLE'), ('TenCuaHang','TITLE'), ('TenNhaCungCap','TITLE'), ('TenSanPham','TITLE'), 
+    ('EmployeeName','TITLE'), ('ItemName','TITLE'), ('DisplayName','TITLE'), ('Name','TITLE'), 
+    ('TenNhanVien','TITLE'), ('TenHang','TITLE'), ('TenDoiTac','TITLE'), ('MaHD','TITLE'),
+    ('MaKhachHang','ID'), ('EmployeeID','ID'), ('ItemID','ID'), ('MaSP','ID'), ('Code','ID'), ('ObjectID','ID'),
+    ('PhanLoai','BADGE'), ('NhomKH','BADGE'), ('TrangThai','BADGE'), ('Status','BADGE'),
+    ('DoanhSo','MONEY'), ('TongNo','MONEY'), ('TonKho','MONEY'), ('DonGia','MONEY'), ('SoTien','MONEY'), 
+    ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'),
+    ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'),
+    ('TenKhachHang','NAME'), ('CustomerName','NAME'), ('ObjectName','NAME'), ('DisplayName', 'NAME'),
+    ('_debug_llm','HIDDEN'), ('JSON_F52E2B61-18A1-11d1-B105-00805F49916B','HIDDEN');
+END
+GO
+
 IF OBJECT_ID('dbo.API_Filter', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.API_Filter (
@@ -130,6 +154,7 @@ BEGIN
         ApiName            NVARCHAR(200) NULL,
         ApiDescription     NVARCHAR(500) NULL,
         Category           NVARCHAR(100) NULL,
+        UiTemplate         VARCHAR(50) NULL,
         IconEmoji          NVARCHAR(20) NULL,
         IsActive           BIT NULL,
         OrderIndex         INT NULL,
@@ -216,10 +241,34 @@ BEGIN
         OrderIndex  = f.OrderIndex,
         IsSystemParam = ISNULL(f.IsSystemParam, 0),
         DataSourceType = f.DataSourceType,
-        DataSourceValue = f.DataSourceValue
+        DataSourceValue = f.DataSourceValue,
+        UiTemplate = (SELECT TOP 1 UiTemplate FROM dbo.API_Definition WHERE ApiID = @ApiID)
     FROM dbo.API_Field f
     WHERE f.ApiID = @ApiID
     ORDER BY f.OrderIndex;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.API_ListActive
+    @SearchKey NVARCHAR(100) = ''
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        ApiCode, 
+        ApiName AS DisplayName, 
+        Category, 
+        UiTemplate,
+        'QUERY' AS ExecutionType 
+    FROM dbo.API_Definition
+    WHERE IsActive = 1
+      AND ApiCode NOT LIKE '@metadata_%' 
+      AND (
+          @SearchKey = '' 
+          OR ApiCode LIKE '%' + @SearchKey + '%'
+          OR ApiName LIKE '%' + @SearchKey + '%'
+      )
+    ORDER BY OrderIndex, ApiName;
 END
 GO
 
@@ -314,6 +363,7 @@ BEGIN
                 WHEN FieldCode = '@Username'  THEN 'hidden'
                 WHEN FieldCode = '@khachhang' THEN 'combobox'
                 WHEN FieldCode = '@ObjectID'  THEN 'combobox'
+                WHEN FieldCode = '@Type'      THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
@@ -323,16 +373,25 @@ BEGIN
             CASE WHEN FieldCode = '@Username' THEN 1 ELSE 0 END AS IsSystemParam,
             CASE
                 WHEN FieldCode = '@khachhang' THEN 'APICODE'
-                WHEN FieldCode = '@ObjectID'   THEN 'APICODE'
-                WHEN FieldCode = '@ItemID'     THEN 'APICODE'
+                WHEN FieldCode = '@ObjectID'  THEN 'APICODE'
+                WHEN FieldCode = '@ItemID'    THEN 'APICODE'
+                WHEN FieldCode = '@Type'      THEN 'APICODE'
+                WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@itemname') THEN 'APICODE'
                 ELSE NULL
             END AS DataSourceType,
             CASE
-                WHEN FieldCode = '@khachhang' THEN '@danh_muc|@Type=khachhang'
-                WHEN FieldCode = '@ObjectID'   THEN '@danh_muc|@Type=khachhang'
-                WHEN FieldCode = '@ItemID'     THEN '@tra_cuu_san_pham|@TopN=50'
+                WHEN FieldCode = '@khachhang' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
+                WHEN FieldCode = '@ObjectID'  THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
+                WHEN FieldCode = '@ItemID'    THEN '@tra_cuu_san_pham|@TopN=50|@timkiem={q}'
+                WHEN FieldCode = '@Type'      THEN '@danh_muc|@timkiem={q}'
                 ELSE NULL
-            END AS DataSourceValue
+            END AS DataSourceValue,
+            CASE
+                WHEN StoredProcedure LIKE '%CongNoChiTiet%' THEN 'CONG_NO'
+                WHEN StoredProcedure LIKE '%TichLuy%'       THEN 'TICH_LUY'
+                WHEN StoredProcedure LIKE '%DanhMuc%'       THEN 'CATALOG'
+                ELSE 'DEFAULT'
+            END AS UiTemplate
         FROM P
     )
     SELECT * INTO #AI_META FROM M;
@@ -364,13 +423,14 @@ BEGIN
       );
 
     -- Upsert API_Definition
-    INSERT INTO dbo.API_Definition (ApiCode, ApiName, ApiDescription, StoredProcedure, Category, IconEmoji, IsActive, OrderIndex)
+    INSERT INTO dbo.API_Definition (ApiCode, ApiName, ApiDescription, StoredProcedure, Category, UiTemplate, IconEmoji, IsActive, OrderIndex)
     SELECT DISTINCT
         a.ApiCode,
         a.ApiNameRaw,
         N'Auto metadata from SP: ' + a.StoredProcedure,
         a.StoredProcedure,
         N'AutoSync',
+        a.UiTemplate,
         N'AI',
         1,
         999
@@ -380,9 +440,10 @@ BEGIN
     IF @UpdateExisting = 1
     BEGIN
         UPDATE d
-        SET d.StoredProcedure = a.StoredProcedure
+        SET d.StoredProcedure = a.StoredProcedure,
+            d.UiTemplate = a.UiTemplate
         FROM dbo.API_Definition d
-        JOIN (SELECT DISTINCT ApiCode, StoredProcedure FROM #AI_META) a ON a.ApiCode = d.ApiCode;
+        JOIN (SELECT DISTINCT ApiCode, StoredProcedure, UiTemplate FROM #AI_META) a ON a.ApiCode = d.ApiCode;
     END
 
     -- Ensure default action
@@ -691,6 +752,20 @@ BEGIN
             VALUES (@EventType, @SchemaName, @ObjectName, @CommandText, 0, ERROR_MESSAGE());
         END
     END CATCH
+END
+GO
+
+/* =========================================================
+   PROCEDURE: API_GetSystemMeta
+   Muc tieu: Lay metadata he thong (Field Roles) cho Chatbot
+   ========================================================= */
+IF OBJECT_ID('dbo.API_GetSystemMeta', 'P') IS NOT NULL DROP PROCEDURE dbo.API_GetSystemMeta;
+GO
+CREATE PROCEDURE dbo.API_GetSystemMeta
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT FieldName, FieldRole FROM dbo.API_Field_Role WHERE IsActive = 1;
 END
 GO
 

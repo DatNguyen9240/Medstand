@@ -1,4 +1,4 @@
-﻿ALTER PROC [dbo].[API_DanhMuc_AI]
+ALTER PROC [dbo].[API_DanhMuc_AI]
     @Type NVARCHAR(50) = NULL,
     @timkiem NVARCHAR(255) = ''
 AS
@@ -12,11 +12,11 @@ BEGIN
     -- =========================================
     IF ISNULL(@Type, '') = ''
     BEGIN
-        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'💊' AS icon
-        UNION ALL SELECT 'khachhang', N'Khách hàng', N'👤'
-        UNION ALL SELECT 'donhang', N'Đơn hàng', N'📋'
-        UNION ALL SELECT 'khohang', N'Kho hàng', N'🏭'
-        UNION ALL SELECT 'nhanvien', N'Nhân viên', N'👨‍💼'
+        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'💊' AS icon, '@tra_cuu_san_pham|@TopN=50' AS DataSourceValue
+        UNION ALL SELECT 'khachhang', N'Khách hàng', N'👤', '@danh_muc|@Type=khachhang'
+        UNION ALL SELECT 'donhang', N'Đơn hàng', N'📋', '@xem_don_hang'
+        UNION ALL SELECT 'khohang', N'Kho hàng', N'📦', '@ton_kho_list'
+        UNION ALL SELECT 'nhanvien', N'Nhân viên', N'👨‍💼', '@danh_muc|@Type=nhanvien'
         RETURN
     END
 
