@@ -1,95 +1,75 @@
 /**
- * Chatbot Quick Suggestions
- * Dựa trên các Stored Procedures:
- * - API_DoanhSo_AI         → Doanh số theo nhân viên, khách hàng, thời gian
- * - API_CongNoKhachHang_AI → Công nợ khách hàng (top nợ, nợ theo KH)
- * - API_CongNoChiTiet_AI   → Chi tiết công nợ theo mã KH
- * - API_DanhMuc_AI          → Tra cứu sản phẩm, khách hàng, đơn hàng, kho, nhân viên
- * - API_GetTonKho_List_AI  → Tồn kho theo sản phẩm
- * - API_DonHangChiTiet_Insert_AI → Tạo đơn hàng
+ * Chatbot Quick Suggestions (Tabbed Version)
  */
 window.CHAT_SUGGESTIONS = [
+    // ══════════════════════════════════════
+    //  📊 PHÂN TÍCH
+    // ══════════════════════════════════════
+    { category: 'Phân tích', label: 'Hôm nay', text: 'Doanh số hôm nay', icon: '📊' },
+    { category: 'Phân tích', label: 'Tuần này', text: 'Doanh số tuần này', icon: '📊' },
+    { category: 'Phân tích', label: 'Tháng này', text: 'Doanh số tháng này', icon: '📊' },
+    { category: 'Phân tích', label: 'Tháng trước', text: 'Doanh số tháng trước', icon: '📊' },
+    { category: 'Phân tích', label: 'Quý này', text: 'Doanh số quý này', icon: '📊' },
+    { category: 'Phân tích', label: 'Năm nay', text: 'Doanh số năm nay', icon: '📊' },
+    { category: 'Phân tích', label: 'Theo nhân viên', text: 'Doanh số theo nhân viên tháng này', icon: '👨‍💼' },
+    { category: 'Phân tích', label: 'Theo khách hàng', text: 'Doanh số theo khách hàng tháng này', icon: '👤' },
+    { category: 'Phân tích', label: 'Từ đầu năm', text: 'Doanh số từ ngày 01/01 đến hôm nay', icon: '📈' },
+    { category: 'Phân tích', label: 'Tổng tất cả NV', text: 'Tổng doanh số tất cả nhân viên', icon: '🌐' },
+    { category: 'Phân tích', label: 'So sánh tháng', text: 'So sánh doanh số tháng này và tháng trước', icon: '⚖️' },
+    { category: 'Phân tích', label: 'Top nhân viên', text: 'Top nhân viên bán nhiều nhất tháng này', icon: '🏆' },
+    { category: 'Phân tích', label: 'Top khách hàng', text: 'Top khách hàng mua nhiều nhất tháng này', icon: '⭐' },
 
     // ══════════════════════════════════════
-    //  📊 DOANH SỐ (API_DoanhSo_AI)
+    //  💰 CÔNG NỢ
     // ══════════════════════════════════════
-    { text: 'Doanh số hôm nay', icon: '📊' },
-    { text: 'Doanh số tuần này', icon: '📊' },
-    { text: 'Doanh số tháng này', icon: '📊' },
-    { text: 'Doanh số tháng trước', icon: '📊' },
-    { text: 'Doanh số quý này', icon: '📊' },
-    { text: 'Doanh số năm nay', icon: '📊' },
-    { text: 'Doanh số theo nhân viên tháng này', icon: '📊' },
-    { text: 'Doanh số theo khách hàng tháng này', icon: '📊' },
-    { text: 'Doanh số từ ngày 01/01 đến hôm nay', icon: '📊' },
-    { text: 'Tổng doanh số tất cả nhân viên', icon: '📊' },
-    { text: 'So sánh doanh số tháng này và tháng trước', icon: '📊' },
-    { text: 'Top nhân viên bán nhiều nhất tháng này', icon: '📊' },
-    { text: 'Top khách hàng mua nhiều nhất tháng này', icon: '📊' },
+    { category: 'Công nợ', label: 'Tổng hợp', text: 'Công nợ khách hàng', icon: '💰' },
+    { category: 'Công nợ', label: 'Top nợ nhiều', text: 'Top khách hàng nợ nhiều nhất', icon: '🚨' },
+    { category: 'Công nợ', label: 'Khách còn nợ', text: 'Danh sách khách hàng còn nợ', icon: '📝' },
+    { category: 'Công nợ', label: 'Tổng hiện tại', text: 'Tổng công nợ hiện tại', icon: '💸' },
+    { category: 'Công nợ', label: 'Tính đến hôm nay', text: 'Công nợ đến ngày hôm nay', icon: '📅' },
+    { category: 'Công nợ', label: 'Chi tiết khách', text: 'Chi tiết công nợ khách hàng', icon: '💳' },
+    { category: 'Công nợ', label: 'Hóa đơn nợ', text: 'Hóa đơn nợ của khách hàng', icon: '🧾' },
 
     // ══════════════════════════════════════
-    //  💰 CÔNG NỢ (API_CongNoKhachHang_AI)
+    //  📦 TỒN KHO
     // ══════════════════════════════════════
-    { text: 'Công nợ khách hàng', icon: '💰' },
-    { text: 'Top khách hàng nợ nhiều nhất', icon: '💰' },
-    { text: 'Danh sách khách hàng còn nợ', icon: '💰' },
-    { text: 'Tổng công nợ hiện tại', icon: '💰' },
-    { text: 'Công nợ đến ngày hôm nay', icon: '💰' },
+    { category: 'Kho hàng', label: 'Hiện tại', text: 'Tồn kho hiện tại', icon: '📦' },
+    { category: 'Kho hàng', label: 'Kiểm tra SP', text: 'Kiểm tra tồn kho sản phẩm', icon: '🔍' },
+    { category: 'Kho hàng', label: 'Hết hàng', text: 'Sản phẩm hết hàng', icon: '🚫' },
+    { category: 'Kho hàng', label: 'Sắp hết', text: 'Sản phẩm sắp hết hàng', icon: '⚠️' },
+    { category: 'Kho hàng', label: 'Theo kho', text: 'Tồn kho theo kho hàng', icon: '🏭' },
+    { category: 'Kho hàng', label: 'Sắp hết hạn', text: 'Sản phẩm sắp hết hạn', icon: '⏰' },
+    { category: 'Kho hàng', label: 'XNT hôm nay', text: 'Xuất nhập tồn hôm nay', icon: '🔄' },
 
     // ══════════════════════════════════════
-    //  💳 CHI TIẾT CÔNG NỢ (API_CongNoChiTiet_AI)
+    //  🛒 ĐƠN HÀNG
     // ══════════════════════════════════════
-    { text: 'Chi tiết công nợ khách hàng', icon: '💳' },
-    { text: 'Hóa đơn nợ của khách hàng', icon: '💳' },
-    { text: 'Xem chi tiết nợ khách', icon: '💳' },
+    { category: 'Đơn hàng', label: 'Tạo đơn mới', text: 'Tạo đơn hàng mới', icon: '🛒' },
+    { category: 'Đơn hàng', label: 'Hôm nay', text: 'Đơn hàng hôm nay', icon: '📋' },
+    { category: 'Đơn hàng', label: 'Tháng này', text: 'Đơn hàng tháng này', icon: '📅' },
+    { category: 'Đơn hàng', label: 'Chờ duyệt', text: 'Đơn hàng chờ duyệt', icon: '⏳' },
+    { category: 'Đơn hàng', label: 'Nhận đơn', text: 'Đơn hàng nhận đơn', icon: '📥' },
+    { category: 'Đơn hàng', label: 'Xuống kho', text: 'Đơn hàng đã chuyển xuống kho', icon: '🏭' },
+    { category: 'Đơn hàng', label: 'Xuất hàng', text: 'Đơn hàng đã xuất hàng', icon: '📦' },
+    { category: 'Đơn hàng', label: 'Đi gửi', text: 'Đơn hàng đã đi gửi hàng', icon: '🚚' },
+    { category: 'Đơn hàng', label: 'Đã nhận', text: 'Đơn hàng khách đã nhận hàng', icon: '✅' },
+    { category: 'Đơn hàng', label: 'Thu tiền', text: 'Đơn hàng đã thu tiền', icon: '💵' },
+    { category: 'Đơn hàng', label: 'Đã hủy', text: 'Đơn hàng đã hủy', icon: '❌' },
 
     // ══════════════════════════════════════
-    //  📦 TỒN KHO (API_GetTonKho_List_AI)
+    //  🔍 TRA CỨU
     // ══════════════════════════════════════
-    { text: 'Tồn kho hiện tại', icon: '📦' },
-    { text: 'Kiểm tra tồn kho sản phẩm', icon: '📦' },
-    { text: 'Sản phẩm hết hàng', icon: '📦' },
-    { text: 'Sản phẩm sắp hết hàng', icon: '📦' },
-    { text: 'Tồn kho theo kho hàng', icon: '📦' },
-    { text: 'Sản phẩm sắp hết hạn', icon: '⏰' },
-    { text: 'Xuất nhập tồn hôm nay', icon: '📦' },
-
-    // ══════════════════════════════════════
-    //  🛒 ĐƠN HÀNG (API_DonHang_AI)
-    // ══════════════════════════════════════
-    { text: 'Tạo đơn hàng mới', icon: '🛒' },
-    { text: 'Đơn hàng hôm nay', icon: '📋' },
-    { text: 'Đơn hàng tháng này', icon: '📋' },
-    { text: 'Đơn hàng chờ duyệt', icon: '📋' },
-    { text: 'Đơn hàng chờ duyệt hôm nay', icon: '📋' },
-    { text: 'Đơn hàng nhận đơn', icon: '📋' },
-    { text: 'Đơn hàng đã chuyển xuống kho', icon: '📋' },
-    { text: 'Đơn hàng đã xuất hàng', icon: '📋' },
-    { text: 'Đơn hàng đã đi gửi hàng', icon: '🚚' },
-    { text: 'Đơn hàng khách đã nhận hàng', icon: '✅' },
-    { text: 'Đơn hàng đã thu tiền', icon: '💵' },
-    { text: 'Đơn hàng đã hủy', icon: '❌' },
-    { text: 'Đơn hàng nháp', icon: '📝' },
-    { text: 'Đơn hàng TDV kiểm tra lại', icon: '⚠️' },
-    { text: 'Đơn hàng đã giao hôm nay', icon: '📋' },
-
-    // ══════════════════════════════════════
-    //  🔍 TRA CỨU (API_DanhMuc_AI)
-    // ══════════════════════════════════════
-    { text: 'Tìm sản phẩm', icon: '💊' },
-    { text: 'Tìm khách hàng', icon: '👤' },
-    { text: 'Tra cứu đơn hàng', icon: '📋' },
-    { text: 'Tra cứu kho hàng', icon: '🏭' },
-    { text: 'Tìm nhân viên', icon: '👨‍💼' },
-    { text: 'Giá sản phẩm', icon: '💊' },
-    { text: 'Danh sách sản phẩm', icon: '💊' },
-    { text: 'Danh sách khách hàng', icon: '👤' },
-    { text: 'Danh sách nhân viên', icon: '👨‍💼' },
+    { category: 'Tra cứu', label: 'Sản phẩm', text: 'Tìm sản phẩm', icon: '💊' },
+    { category: 'Tra cứu', label: 'Khách hàng', text: 'Tìm khách hàng', icon: '👤' },
+    { category: 'Tra cứu', label: 'Đơn hàng', text: 'Tra cứu đơn hàng', icon: '📋' },
+    { category: 'Tra cứu', label: 'Kho hàng', text: 'Tra cứu kho hàng', icon: '🏭' },
+    { category: 'Tra cứu', label: 'Nhân viên', text: 'Tìm nhân viên', icon: '👨‍💼' },
+    { category: 'Tra cứu', label: 'Giá SP', text: 'Giá sản phẩm', icon: '💲' },
 
     // ══════════════════════════════════════
     //  ❓ HƯỚNG DẪN
     // ══════════════════════════════════════
-    { text: 'Hướng dẫn tạo đơn hàng', icon: '❓' },
-    { text: 'Hướng dẫn tra cứu bằng @mention', icon: '❓' },
-    { text: 'Bạn có thể làm gì?', icon: '❓' },
+    { category: 'Hướng dẫn', label: 'Tạo đơn hàng', text: 'Hướng dẫn tạo đơn hàng', icon: '❓' },
+    { category: 'Hướng dẫn', label: 'Tra cứu nhanh', text: 'Hướng dẫn tra cứu bằng @mention', icon: '💡' },
+    { category: 'Hướng dẫn', label: 'Xem tính năng', text: 'Bạn có thể làm gì?', icon: '🤖' },
 ];

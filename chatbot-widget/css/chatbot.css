@@ -1621,61 +1621,154 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Feature 3: Suggestion Chips Bar (trên ô input)
+   Feature 3: Suggestion Chips Bar (Tabbed Version)
    ───────────────────────────────────────────────────────────── */
 
 .ai-sales-chips-bar {
   border-top: 1px solid rgba(0, 0, 0, 0.07);
   background: var(--color-surface, #fff);
-  padding: 6px 0 4px;
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
 }
 
 .ai-sales-chips-scroll {
   display: flex;
-  gap: 8px;
   overflow-x: auto;
-  padding: 2px 12px 4px;
   scrollbar-width: none;        /* Firefox */
   -ms-overflow-style: none;     /* IE/Edge */
 }
-
 .ai-sales-chips-scroll::-webkit-scrollbar {
   display: none;                /* Chrome/Safari */
+}
+
+/* Tabs */
+.ai-sales-chips-tabs {
+  gap: 16px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.ai-sales-tab-btn {
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #65676b);
+  padding: 6px 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.ai-sales-tab-btn:hover {
+  color: var(--color-primary, #1565c0);
+}
+
+.ai-sales-tab-btn.active {
+  color: var(--color-primary, #1565c0);
+}
+
+.ai-sales-tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--color-primary, #1565c0);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Chips List */
+.ai-sales-chips-list {
+  gap: 8px;
+  padding: 10px 14px 10px;
 }
 
 .ai-sales-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: 18px;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
   background: var(--color-bg, #f0f2f5);
-  border: 1px solid rgba(0, 0, 0, 0.10);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   font-size: 13px;
-  font-family: inherit;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
   flex-shrink: 0;
-  color: inherit;
-  transition: background 0.15s, transform 0.12s;
+  color: var(--color-text-primary, #1c1e21);
+  transition: all 0.2s;
   -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.01);
 }
 
 .ai-sales-chip:active {
   transform: scale(0.95);
-  background: rgba(0, 0, 0, 0.1);
 }
 
-.ai-sales-chip:hover {
-  background: rgba(var(--color-primary-rgb, 21,101,192), 0.1);
-  border-color: rgba(var(--color-primary-rgb, 21,101,192), 0.3);
+/* Vibrant Variants (Gradients) */
+.chip-vibrant-analytics {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #047857;
+}
+.chip-vibrant-analytics:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1));
+}
+
+.chip-vibrant-debt {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+.chip-vibrant-debt:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
+}
+
+.chip-vibrant-inventory {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+  border-color: rgba(59, 130, 246, 0.2);
+  color: #1d4ed8;
+}
+.chip-vibrant-inventory:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
+}
+
+.chip-vibrant-orders {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
+  border-color: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+.chip-vibrant-orders:hover {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
+}
+
+.chip-vibrant-search {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05));
+  border-color: rgba(139, 92, 246, 0.2);
+  color: #6d28d9;
+}
+.chip-vibrant-search:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.1));
 }
 
 @media (prefers-color-scheme: dark) {
-  .ai-sales-chips-bar   { background: var(--color-surface, #1e1e2e); border-top-color: rgba(255,255,255,0.08); }
-  .ai-sales-chip        { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
-  .ai-sales-chip:active { background: rgba(255,255,255,0.15); }
+  .ai-sales-chips-bar   { background: var(--color-surface, #1e1e2e); border-top-color: rgba(255,255,255,0.05); }
+  .ai-sales-tab-btn     { color: #a1a1aa; }
+  .ai-sales-tab-btn:hover { color: #fff; }
+  .ai-sales-tab-btn.active { color: #fff; }
+  .ai-sales-chips-tabs  { border-bottom-color: rgba(255,255,255,0.05); }
+  .ai-sales-chip        { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); color: #e4e4e7;}
+  
+  .chip-vibrant-analytics, .chip-vibrant-debt, .chip-vibrant-inventory, .chip-vibrant-orders, .chip-vibrant-search {
+    color: #e4e4e7;
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────

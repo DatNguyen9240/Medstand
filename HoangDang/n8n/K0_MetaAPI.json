@@ -1,927 +1,997 @@
 {
-    "name":  "K0 · MetaAPI Gateway",
-    "nodes":  [
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "api-list-active",
-                                         "responseMode":  "responseNode",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -1100,
-                                       -300
-                                   ],
-                      "id":  "wh-list-active",
-                      "name":  "Webhook ListActive",
-                      "webhookId":  "list-active-001"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers[\u0027x-forwarded-method\u0027] || \u0027POST\u0027;\n\nif (!headers.authorization \u0026\u0026 headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = \u0027Bearer \u0027 + m[1];\n}\n\nreturn [{ json: { ...inputJson, headers: headers, _method: method.toUpperCase() } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -860,
-                                       -300
-                                   ],
-                      "id":  "check-method-list",
-                      "name":  "Check Method ListActive"
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  false,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict"
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "leftValue":  "={{ $json._method }}",
-                                                                                   "rightValue":  "OPTIONS",
-                                                                                   "operator":  {
-                                                                                                    "type":  "string",
-                                                                                                    "operation":  "equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -640,
-                                       -300
-                                   ],
-                      "id":  "if-options-list",
-                      "name":  "Is OPTIONS? (ListActive)"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "{}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Methods",
-                                                                                                     "value":  "GET, POST, OPTIONS"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -420,
-                                       -220
-                                   ],
-                      "id":  "cors-list",
-                      "name":  "CORS OK (ListActive)"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "executeQuery",
-                                         "query":  "EXEC dbo.API_ListActive @SearchKey = \u0027\u0027;"
-                                     },
-                      "type":  "n8n-nodes-base.microsoftSql",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -420,
-                                       -380
-                                   ],
-                      "id":  "http-list-active",
-                      "name":  "MS SQL API_ListActive",
-                      "credentials":  {
-                                          "microsoftSql":  {
-                                                               "id":  "",
-                                                               "name":  "MS SQL account"
-                                                           }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const items = $input.all();\nreturn [{ json: { records: items.map(i =\u003e i.json) } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -200,
-                                       -380
-                                   ],
-                      "id":  "format-list-active",
-                      "name":  "Format ListActive Response"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "={{ JSON.stringify($json.records) }}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       20,
-                                       -380
-                                   ],
-                      "id":  "res-list-active",
-                      "name":  "Respond ListActive"
-                  },
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "api-get-config",
-                                         "responseMode":  "responseNode",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -1100,
-                                       -100
-                                   ],
-                      "id":  "wh-get-config",
-                      "name":  "Webhook GetConfig",
-                      "webhookId":  "get-config-001"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers[\u0027x-forwarded-method\u0027] || \u0027POST\u0027;\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || \u0027\u0027;\n\nif (!headers.authorization \u0026\u0026 headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = \u0027Bearer \u0027 + m[1];\n}\n\n// --- CHỐNG SQL INJECTION ---\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = \u0027@invalid_code\u0027;\n}\n\nreturn [{ json: { ...inputJson, headers: headers, body: { ...body, ApiCode: apiCode }, _method: method.toUpperCase() } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -860,
-                                       -100
-                                   ],
-                      "id":  "check-method-cfg",
-                      "name":  "Check Method GetConfig"
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  false,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict"
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "leftValue":  "={{ $json._method }}",
-                                                                                   "rightValue":  "OPTIONS",
-                                                                                   "operator":  {
-                                                                                                    "type":  "string",
-                                                                                                    "operation":  "equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -640,
-                                       -100
-                                   ],
-                      "id":  "if-options-cfg",
-                      "name":  "Is OPTIONS? (GetConfig)"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "{}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Methods",
-                                                                                                     "value":  "GET, POST, OPTIONS"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -420,
-                                       -20
-                                   ],
-                      "id":  "cors-cfg",
-                      "name":  "CORS OK (GetConfig)"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "// Build SQL query cho GetConfig\nconst apiCode = $(\u0027Check Method GetConfig\u0027).first().json.body.ApiCode || \u0027@invalid_code\u0027;\nconst query = `EXEC dbo.API_GetConfig @ApiCode = \u0027${apiCode.replace(/\u0027/g, \"\u0027\u0027\")}\u0027;`;\nreturn [{ json: { query } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -560,
-                                       -180
-                                   ],
-                      "id":  "build-getcfg-sql",
-                      "name":  "Build GetConfig SQL"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "executeQuery",
-                                         "query":  "={{ $json.query }}"
-                                     },
-                      "type":  "n8n-nodes-base.microsoftSql",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -340,
-                                       -180
-                                   ],
-                      "id":  "http-get-config",
-                      "name":  "MS SQL API_GetConfig",
-                      "credentials":  {
-                                          "microsoftSql":  {
-                                                               "id":  "",
-                                                               "name":  "MS SQL account"
-                                                           }
-                                      }
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "={{ JSON.stringify({\n  code: 0,\n  msg: \"Thành công\",\n  data: $(\u0027MS SQL API_GetConfig\u0027).all().map(i =\u003e i.json)\n}) }}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -120,
-                                       -180
-                                   ],
-                      "id":  "res-get-config",
-                      "name":  "Respond GetConfig"
-                  },
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "api-execute",
-                                         "responseMode":  "responseNode",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -1100,
-                                       100
-                                   ],
-                      "id":  "wh-execute",
-                      "name":  "Webhook Execute",
-                      "webhookId":  "execute-001"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers[\u0027x-forwarded-method\u0027] || \u0027POST\u0027;\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || body.StoredProcedure || \u0027\u0027;\n\nif (!headers.authorization \u0026\u0026 headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = \u0027Bearer \u0027 + m[1];\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = \u0027@invalid_code\u0027;\n}\n\nconst params = body.params || {};\nconst paramsSafeStr = JSON.stringify(params).replace(/\u0027/g, \"\u0027\u0027\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, ApiCode: apiCode}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -860,
-                                       100
-                                   ],
-                      "id":  "check-execute",
-                      "name":  "Check Method Execute"
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  false,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict"
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "leftValue":  "={{ $json._method }}",
-                                                                                   "rightValue":  "OPTIONS",
-                                                                                   "operator":  {
-                                                                                                    "type":  "string",
-                                                                                                    "operation":  "equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -640,
-                                       100
-                                   ],
-                      "id":  "if-options-exec",
-                      "name":  "Is OPTIONS? (Execute)"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "{}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Methods",
-                                                                                                     "value":  "GET, POST, OPTIONS"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -420,
-                                       180
-                                   ],
-                      "id":  "cors-exec",
-                      "name":  "CORS OK (Execute)"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "// Build dynamic EXEC SQL từ ApiCode + params JSON\nconst execNode = $(\u0027Check Method Execute\u0027).first().json;\nconst apiCode = execNode.body.ApiCode || \u0027@invalid_code\u0027;\nconst paramsStr = execNode._paramsSafeStr || \u0027{}\u0027;\n\n// Build query: tra cuu SP name tu API_Definition, roi dong goi voi params\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = \u0027${apiCode}\u0027;\nDECLARE @ParamsJSON NVARCHAR(MAX) = \u0027${paramsStr}\u0027;\nDECLARE @SPName NVARCHAR(MAX);\n\nSELECT @SPName = StoredProcedure FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, \u0027Missing para or Object not support\u0027 AS msg FOR JSON PATH;\n    RETURN;\nEND\n\nDECLARE @SQL NVARCHAR(MAX) = N\u0027EXEC \u0027 + QUOTENAME(@SPName) + N\u0027 \u0027;\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != \u0027\u0027 AND @ParamsJSON != \u0027{}\u0027\nBEGIN\n    SELECT @SQL = @SQL + [key] + N\u0027 = N\u0027\u0027\u0027 + REPLACE(CAST([value] AS NVARCHAR(MAX)), \u0027\u0027\u0027\u0027, \u0027\u0027\u0027\u0027\u0027\u0027) + N\u0027\u0027\u0027, \u0027\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE \u0027@%\u0027;\n\n    IF RIGHT(@SQL, 2) = \u0027, \u0027 SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -560,
-                                       20
-                                   ],
-                      "id":  "build-execute-sql",
-                      "name":  "Build Execute SQL"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "executeQuery",
-                                         "query":  "={{ $json.query }}"
-                                     },
-                      "type":  "n8n-nodes-base.microsoftSql",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -340,
-                                       20
-                                   ],
-                      "id":  "http-execute",
-                      "name":  "MS SQL Execute",
-                      "credentials":  {
-                                          "microsoftSql":  {
-                                                               "id":  "",
-                                                               "name":  "MS SQL account"
-                                                           }
-                                      },
-                      "alwaysOutputData": true
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { reply: \u0027Khong tim thay du lieu\u0027, status: \u0027success\u0027, count: 0, data: [] } }];\n}\n\nconst JSON_KEY = \u0027JSON_F52E2B61-18A1-11d1-B105-00805F49916B\u0027;\nlet payload = items.map(i =\u003e i.json);\n\n// Xu ly SQL FOR JSON PATH output (khi SP khong tim thay trong API_Definition)\n// N8N MS SQL tra ve [{JSON_F52E...: \u0027[{\"code\":2,\"msg\":\"...\"}]\u0027}]\nif (payload.length === 1 \u0026\u0026 payload[0][JSON_KEY] !== undefined) {\n  try {\n    const inner = JSON.parse(payload[0][JSON_KEY]);\n    if (Array.isArray(inner) \u0026\u0026 inner.length \u003e 0) {\n      if (inner[0].code === 1 || inner[0].code === 2) {\n        return [{ json: { reply: inner[0].msg || \u0027ApiCode chua duoc dang ky trong he thong\u0027, status: \u0027error\u0027, data: [] } }];\n      }\n      payload = inner;\n    }\n  } catch(e) {\n    return [{ json: { reply: \u0027Loi xu ly ket qua SQL\u0027, status: \u0027error\u0027, data: [] } }];\n  }\n  if (payload.length === 1 \u0026\u0026 payload[0][JSON_KEY] !== undefined) {\n    return [{ json: { reply: \u0027Khong tim thay API phu hop\u0027, status: \u0027error\u0027, data: [] } }];\n  }\n}\n\n// Kiem tra loi don gian {code, msg}\nif (payload.length === 1 \u0026\u0026 (payload[0].code === 1 || payload[0].code === 2 || payload[0].error)) {\n  return [{ json: { reply: payload[0].msg || payload[0].error || \u0027Loi khong xac dinh\u0027, status: \u0027error\u0027, data: [] } }];\n}\n\n// Loc bo cac row con JSON_KEY\npayload = payload.filter(r =\u003e r[JSON_KEY] === undefined);\n\nif (payload.length === 0) {\n  return [{ json: { reply: \u0027Khong tim thay du lieu\u0027, status: \u0027success\u0027, count: 0, data: [] } }];\n}\n\nreturn [{ json: { \n  reply: \u0027Tim thay \u0027 + payload.length + \u0027 ket qua.\u0027, \n  status: \u0027success\u0027, \n  count: payload.length, \n  data: payload \n} }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -120,
-                                       20
-                                   ],
-                      "id":  "format-execute",
-                      "name":  "Format Execute Response"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "={{ JSON.stringify($json) }}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       100,
-                                       20
-                                   ],
-                      "id":  "res-execute",
-                      "name":  "Respond Execute"
-                  },
-                  {
-                      "parameters":  {
-                                         "httpMethod":  "POST",
-                                         "path":  "api-datasource",
-                                         "responseMode":  "responseNode",
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.webhook",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -1100,
-                                       300
-                                   ],
-                      "id":  "wh-datasource",
-                      "name":  "Webhook DataSource",
-                      "webhookId":  "datasource-001"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers[\u0027x-forwarded-method\u0027] || \u0027POST\u0027;\nconst body = inputJson.body || {};\nlet dsVal = body.DataSourceValue || \u0027\u0027;\nlet searchKey = body.SearchKey || \u0027\u0027;\n\nif (!headers.authorization \u0026\u0026 headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = \u0027Bearer \u0027 + m[1];\n}\n\ndsVal = dsVal.replace(/\u0027/g, \"\u0027\u0027\");\nsearchKey = searchKey.replace(/\u0027/g, \"\u0027\u0027\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, DataSourceValueSafe: dsVal, SearchKeySafe: searchKey}, _method: method.toUpperCase() } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -860,
-                                       300
-                                   ],
-                      "id":  "check-datasource",
-                      "name":  "Check Method DataSource"
-                  },
-                  {
-                      "parameters":  {
-                                         "conditions":  {
-                                                            "options":  {
-                                                                            "caseSensitive":  false,
-                                                                            "leftValue":  "",
-                                                                            "typeValidation":  "strict"
-                                                                        },
-                                                            "conditions":  [
-                                                                               {
-                                                                                   "leftValue":  "={{ $json._method }}",
-                                                                                   "rightValue":  "OPTIONS",
-                                                                                   "operator":  {
-                                                                                                    "type":  "string",
-                                                                                                    "operation":  "equals"
-                                                                                                }
-                                                                               }
-                                                                           ],
-                                                            "combinator":  "and"
-                                                        },
-                                         "options":  {
-
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.if",
-                      "typeVersion":  2.2,
-                      "position":  [
-                                       -640,
-                                       300
-                                   ],
-                      "id":  "if-options-ds",
-                      "name":  "Is OPTIONS? (DataSource)"
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "{}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Methods",
-                                                                                                     "value":  "GET, POST, OPTIONS"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -420,
-                                       380
-                                   ],
-                      "id":  "cors-ds",
-                      "name":  "CORS OK (DataSource)"
-                  },
-                  {
-                      "parameters":  {
-                                         "jsCode":  "// Build DataSource SQL\nconst dsNode = $(\u0027Check Method DataSource\u0027).first().json;\nconst spName = dsNode.body.DataSourceValueSafe || \u0027\u0027;\nconst searchKey = dsNode.body.SearchKeySafe || \u0027\u0027;\n\n// Validate SP name pattern\nif (!(/^(API_|sp_)/i.test(spName))) {\n  return [{ json: { query: \"SELECT 1 AS code, \u0027Invalid DataSource SP Name\u0027 AS msg FOR JSON PATH;\" } }];\n}\n\nlet query = `EXEC ${spName.replace(/[^a-zA-Z0-9_]/g, \u0027\u0027)}`;\nif (searchKey) {\n  query += ` @SearchText = N\u0027${searchKey}\u0027`;\n}\nquery += \u0027;\u0027;\n\nreturn [{ json: { query } }];"
-                                     },
-                      "type":  "n8n-nodes-base.code",
-                      "typeVersion":  2,
-                      "position":  [
-                                       -560,
-                                       220
-                                   ],
-                      "id":  "build-datasource-sql",
-                      "name":  "Build DataSource SQL"
-                  },
-                  {
-                      "parameters":  {
-                                         "operation":  "executeQuery",
-                                         "query":  "={{ $json.query }}"
-                                     },
-                      "type":  "n8n-nodes-base.microsoftSql",
-                      "typeVersion":  1,
-                      "position":  [
-                                       -340,
-                                       220
-                                   ],
-                      "id":  "http-datasource",
-                      "name":  "MS SQL DataSource",
-                      "credentials":  {
-                                          "microsoftSql":  {
-                                                               "id":  "",
-                                                               "name":  "MS SQL account"
-                                                           }
-                                      },
-                      "alwaysOutputData": true
-                  },
-                  {
-                      "parameters":  {
-                                         "respondWith":  "json",
-                                         "responseBody":  "={{ JSON.stringify($json) }}",
-                                         "options":  {
-                                                         "responseCode":  200,
-                                                         "responseHeaders":  {
-                                                                                 "entries":  [
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Origin",
-                                                                                                     "value":  "*"
-                                                                                                 },
-                                                                                                 {
-                                                                                                     "name":  "Access-Control-Allow-Headers",
-                                                                                                     "value":  "Content-Type, Authorization"
-                                                                                                 }
-                                                                                             ]
-                                                                             }
-                                                     }
-                                     },
-                      "type":  "n8n-nodes-base.respondToWebhook",
-                      "typeVersion":  1.1,
-                      "position":  [
-                                       -120,
-                                       220
-                                   ],
-                      "id":  "res-datasource",
-                      "name":  "Respond DataSource"
-                  }
-              ],
-    "connections":  {
-                        "Webhook ListActive":  {
-                                                   "main":  [
-                                                                [
-                                                                    {
-                                                                        "node":  "Check Method ListActive",
-                                                                        "type":  "main",
-                                                                        "index":  0
-                                                                    }
-                                                                ]
-                                                            ]
-                                               },
-                        "Check Method ListActive":  {
-                                                        "main":  [
-                                                                     [
-                                                                         {
-                                                                             "node":  "Is OPTIONS? (ListActive)",
-                                                                             "type":  "main",
-                                                                             "index":  0
-                                                                         }
-                                                                     ]
-                                                                 ]
-                                                    },
-                        "Is OPTIONS? (ListActive)":  {
-                                                         "main":  [
-                                                                      [
-                                                                          {
-                                                                              "node":  "CORS OK (ListActive)",
-                                                                              "type":  "main",
-                                                                              "index":  0
-                                                                          }
-                                                                      ],
-                                                                      [
-                                                                          {
-                                                                              "node":  "MS SQL API_ListActive",
-                                                                              "type":  "main",
-                                                                              "index":  0
-                                                                          }
-                                                                      ]
-                                                                  ]
-                                                     },
-                        "MS SQL API_ListActive":  {
-                                                      "main":  [
-                                                                   [
-                                                                       {
-                                                                           "node":  "Format ListActive Response",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
-                                                                   ]
-                                                               ]
-                                                  },
-                        "Format ListActive Response":  {
-                                                           "main":  [
-                                                                        [
-                                                                            {
-                                                                                "node":  "Respond ListActive",
-                                                                                "type":  "main",
-                                                                                "index":  0
-                                                                            }
-                                                                        ]
-                                                                    ]
-                                                       },
-                        "Webhook GetConfig":  {
-                                                  "main":  [
-                                                               [
-                                                                   {
-                                                                       "node":  "Check Method GetConfig",
-                                                                       "type":  "main",
-                                                                       "index":  0
-                                                                   }
-                                                               ]
-                                                           ]
-                                              },
-                        "Check Method GetConfig":  {
-                                                       "main":  [
-                                                                    [
-                                                                        {
-                                                                            "node":  "Is OPTIONS? (GetConfig)",
-                                                                            "type":  "main",
-                                                                            "index":  0
-                                                                        }
-                                                                    ]
-                                                                ]
-                                                   },
-                        "Is OPTIONS? (GetConfig)":  {
-                                                        "main":  [
-                                                                     [
-                                                                         {
-                                                                             "node":  "CORS OK (GetConfig)",
-                                                                             "type":  "main",
-                                                                             "index":  0
-                                                                         }
-                                                                     ],
-                                                                     [
-                                                                         {
-                                                                             "node":  "Build GetConfig SQL",
-                                                                             "type":  "main",
-                                                                             "index":  0
-                                                                         }
-                                                                     ]
-                                                                 ]
-                                                    },
-                        "Build GetConfig SQL":  {
-                                                    "main":  [
-                                                                 [
-                                                                     {
-                                                                         "node":  "MS SQL API_GetConfig",
-                                                                         "type":  "main",
-                                                                         "index":  0
-                                                                     }
-                                                                 ]
-                                                             ]
-                                                },
-                        "MS SQL API_GetConfig":  {
-                                                     "main":  [
-                                                                  [
-                                                                      {
-                                                                          "node":  "Respond GetConfig",
-                                                                          "type":  "main",
-                                                                          "index":  0
-                                                                      }
-                                                                  ]
-                                                              ]
-                                                 },
-                        "Webhook Execute":  {
-                                                "main":  [
-                                                             [
-                                                                 {
-                                                                     "node":  "Check Method Execute",
-                                                                     "type":  "main",
-                                                                     "index":  0
-                                                                 }
-                                                             ]
-                                                         ]
-                                            },
-                        "Check Method Execute":  {
-                                                     "main":  [
-                                                                  [
-                                                                      {
-                                                                          "node":  "Is OPTIONS? (Execute)",
-                                                                          "type":  "main",
-                                                                          "index":  0
-                                                                      }
-                                                                  ]
-                                                              ]
-                                                 },
-                        "Is OPTIONS? (Execute)":  {
-                                                      "main":  [
-                                                                   [
-                                                                       {
-                                                                           "node":  "CORS OK (Execute)",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
-                                                                   ],
-                                                                   [
-                                                                       {
-                                                                           "node":  "Build Execute SQL",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
-                                                                   ]
-                                                               ]
-                                                  },
-                        "Build Execute SQL":  {
-                                                  "main":  [
-                                                               [
-                                                                   {
-                                                                       "node":  "MS SQL Execute",
-                                                                       "type":  "main",
-                                                                       "index":  0
-                                                                   }
-                                                               ]
-                                                           ]
-                                              },
-                        "MS SQL Execute":  {
-                                               "main":  [
-                                                            [
-                                                                {
-                                                                    "node":  "Format Execute Response",
-                                                                    "type":  "main",
-                                                                    "index":  0
-                                                                }
-                                                            ]
-                                                        ]
-                                           },
-                        "Format Execute Response":  {
-                                                        "main":  [
-                                                                     [
-                                                                         {
-                                                                             "node":  "Respond Execute",
-                                                                             "type":  "main",
-                                                                             "index":  0
-                                                                         }
-                                                                     ]
-                                                                 ]
-                                                    },
-                        "Webhook DataSource":  {
-                                                   "main":  [
-                                                                [
-                                                                    {
-                                                                        "node":  "Check Method DataSource",
-                                                                        "type":  "main",
-                                                                        "index":  0
-                                                                    }
-                                                                ]
-                                                            ]
-                                               },
-                        "Check Method DataSource":  {
-                                                        "main":  [
-                                                                     [
-                                                                         {
-                                                                             "node":  "Is OPTIONS? (DataSource)",
-                                                                             "type":  "main",
-                                                                             "index":  0
-                                                                         }
-                                                                     ]
-                                                                 ]
-                                                    },
-                        "Is OPTIONS? (DataSource)":  {
-                                                         "main":  [
-                                                                      [
-                                                                          {
-                                                                              "node":  "CORS OK (DataSource)",
-                                                                              "type":  "main",
-                                                                              "index":  0
-                                                                          }
-                                                                      ],
-                                                                      [
-                                                                          {
-                                                                              "node":  "Build DataSource SQL",
-                                                                              "type":  "main",
-                                                                              "index":  0
-                                                                          }
-                                                                      ]
-                                                                  ]
-                                                     },
-                        "Build DataSource SQL":  {
-                                                     "main":  [
-                                                                  [
-                                                                      {
-                                                                          "node":  "MS SQL DataSource",
-                                                                          "type":  "main",
-                                                                          "index":  0
-                                                                      }
-                                                                  ]
-                                                              ]
-                                                 },
-                        "MS SQL DataSource":  {
-                                                  "main":  [
-                                                               [
-                                                                   {
-                                                                       "node":  "Respond DataSource",
-                                                                       "type":  "main",
-                                                                       "index":  0
-                                                                   }
-                                                               ]
-                                                           ]
-                                              }
+    "name": "K0 · MetaAPI Gateway",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "api-list-active",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1100,
+                -300
+            ],
+            "id": "wh-list-active",
+            "name": "Webhook ListActive",
+            "webhookId": "list-active-001"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nreturn [{ json: { ...inputJson, headers: headers, _method: method.toUpperCase() } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -860,
+                -300
+            ],
+            "id": "check-method-list",
+            "name": "Check Method ListActive"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": false,
+                        "leftValue": "",
+                        "typeValidation": "strict"
                     },
-    "pinData":  {
-
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json._method }}",
+                            "rightValue": "OPTIONS",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
                 },
-    "meta":  {
-                 "instanceId":  "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
-             }
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -640,
+                -300
+            ],
+            "id": "if-options-list",
+            "name": "Is OPTIONS? (ListActive)"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "GET, POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -420,
+                -220
+            ],
+            "id": "cors-list",
+            "name": "CORS OK (ListActive)"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "EXEC dbo.API_ListActive @SearchKey = '';"
+            },
+            "type": "n8n-nodes-base.microsoftSql",
+            "typeVersion": 1,
+            "position": [
+                -420,
+                -380
+            ],
+            "id": "http-list-active",
+            "name": "MS SQL API_ListActive",
+            "credentials": {
+                "microsoftSql": {
+                    "id": "",
+                    "name": "MS SQL account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\nreturn [{ json: { records: items.map(i => i.json) } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -200,
+                -380
+            ],
+            "id": "format-list-active",
+            "name": "Format ListActive Response"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify($json.records) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                20,
+                -380
+            ],
+            "id": "res-list-active",
+            "name": "Respond ListActive"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "api-get-config",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1100,
+                -100
+            ],
+            "id": "wh-get-config",
+            "name": "Webhook GetConfig",
+            "webhookId": "get-config-001"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\n// --- CHỐNG SQL INJECTION ---\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nreturn [{ json: { ...inputJson, headers: headers, body: { ...body, ApiCode: apiCode }, _method: method.toUpperCase() } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -860,
+                -100
+            ],
+            "id": "check-method-cfg",
+            "name": "Check Method GetConfig"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": false,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json._method }}",
+                            "rightValue": "OPTIONS",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -640,
+                -100
+            ],
+            "id": "if-options-cfg",
+            "name": "Is OPTIONS? (GetConfig)"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "GET, POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -420,
+                -20
+            ],
+            "id": "cors-cfg",
+            "name": "CORS OK (GetConfig)"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Build SQL query cho GetConfig\nconst apiCode = $('Check Method GetConfig').first().json.body.ApiCode || '@invalid_code';\nconst query = `EXEC dbo.API_GetConfig @ApiCode = '${apiCode.replace(/'/g, \"''\")}';`;\nreturn [{ json: { query } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -560,
+                -180
+            ],
+            "id": "build-getcfg-sql",
+            "name": "Build GetConfig SQL"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "={{ $json.query }}"
+            },
+            "type": "n8n-nodes-base.microsoftSql",
+            "typeVersion": 1,
+            "position": [
+                -340,
+                -180
+            ],
+            "id": "http-get-config",
+            "name": "MS SQL API_GetConfig",
+            "credentials": {
+                "microsoftSql": {
+                    "id": "",
+                    "name": "MS SQL account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({\n  code: 0,\n  msg: \"Thành công\",\n  data: $('MS SQL API_GetConfig').all().map(i => i.json)\n}) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -120,
+                -180
+            ],
+            "id": "res-get-config",
+            "name": "Respond GetConfig"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "api-execute",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1100,
+                100
+            ],
+            "id": "wh-execute",
+            "name": "Webhook Execute",
+            "webhookId": "execute-001"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, ApiCode: apiCode}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -860,
+                100
+            ],
+            "id": "check-execute",
+            "name": "Check Method Execute"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": false,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json._method }}",
+                            "rightValue": "OPTIONS",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -640,
+                100
+            ],
+            "id": "if-options-exec",
+            "name": "Is OPTIONS? (Execute)"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "GET, POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -420,
+                180
+            ],
+            "id": "cors-exec",
+            "name": "CORS OK (Execute)"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Build dynamic EXEC SQL từ ApiCode + params JSON\nconst execNode = $('Check Method Execute').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nconst paramsStr = execNode._paramsSafeStr || '{}';\n\n// Build query: tra cuu SP name tu API_Definition, roi dong goi voi params\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = '${paramsStr}';\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = \\u0027DEFAULT\\u0027;\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, \\u0027DEFAULT\\u0027) FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, \\u0027Missing para or Object not support\\u0027 AS msg, \\u0027DEFAULT\\u0027 AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N\\u0027EXEC \\u0027 + QUOTENAME(@SPName) + N\\u0027 \\u0027;\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', '\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%';\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -560,
+                20
+            ],
+            "id": "build-execute-sql",
+            "name": "Build Execute SQL"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "={{ $json.query }}"
+            },
+            "type": "n8n-nodes-base.microsoftSql",
+            "typeVersion": 1,
+            "position": [
+                -340,
+                20
+            ],
+            "id": "http-execute",
+            "name": "MS SQL Execute",
+            "credentials": {
+                "microsoftSql": {
+                    "id": "",
+                    "name": "MS SQL account"
+                }
+            },
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "jsCode": "const items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\nconst JSON_KEY = 'JSON_F52E2B61-18A1-11d1-B105-00805F49916B';\nlet payload = items.map(i => i.json);\n\n// 0. Extract Metadata\nlet uiTemplate = 'DEFAULT';\nconst metaIdx = payload.findIndex(r => r.Metadata_UiTemplate !== undefined);\nif (metaIdx !== -1) {\n  uiTemplate = payload[metaIdx].Metadata_UiTemplate;\n  payload.splice(metaIdx, 1);\n}\n\n// Xu ly SQL FOR JSON PATH output (khi SP khong tim thay trong API_Definition)\n// N8N MS SQL tra ve [{JSON_F52E...: '[{\"code\":2,\"msg\":\"...\"}]'}]\nif (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n  try {\n    const inner = JSON.parse(payload[0][JSON_KEY]);\n    if (Array.isArray(inner) && inner.length > 0) {\n      if (inner[0].code === 1 || inner[0].code === 2) {\n        return [{ json: { reply: inner[0].msg || 'ApiCode chua duoc dang ky trong he thong', status: 'error', data: [], uiTemplate: uiTemplate } }];\n      }\n      payload = inner;\n    }\n  } catch(e) {\n    return [{ json: { reply: 'Loi xu ly ket qua SQL', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n  if (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n    return [{ json: { reply: 'Khong tim thay API phu hop', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n}\n\n// Kiem tra loi don gian {code, msg}\nif (payload.length === 1 && (payload[0].code === 1 || payload[0].code === 2 || payload[0].error)) {\n  return [{ json: { reply: payload[0].msg || payload[0].error || 'Loi khong xac dinh', status: 'error', data: [], uiTemplate: uiTemplate } }];\n}\n\n// Loc bo cac row con JSON_KEY\npayload = payload.filter(r => r[JSON_KEY] === undefined);\n\nif (payload.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\nreturn [{ json: { \n  reply: 'Tim thay ' + payload.length + ' ket qua.', \n  status: 'success', \n  count: payload.length, \n  data: payload, uiTemplate: uiTemplate \n} }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -120,
+                20
+            ],
+            "id": "format-execute",
+            "name": "Format Execute Response"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify($json) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                100,
+                20
+            ],
+            "id": "res-execute",
+            "name": "Respond Execute"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "api-datasource",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1100,
+                300
+            ],
+            "id": "wh-datasource",
+            "name": "Webhook DataSource",
+            "webhookId": "datasource-001"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet dsVal = body.DataSourceValue || '';\nlet searchKey = body.SearchKey || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\ndsVal = dsVal.replace(/'/g, \"''\");\nsearchKey = searchKey.replace(/'/g, \"''\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, DataSourceValueSafe: dsVal, SearchKeySafe: searchKey}, _method: method.toUpperCase() } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -860,
+                300
+            ],
+            "id": "check-datasource",
+            "name": "Check Method DataSource"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": false,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json._method }}",
+                            "rightValue": "OPTIONS",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                -640,
+                300
+            ],
+            "id": "if-options-ds",
+            "name": "Is OPTIONS? (DataSource)"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "{}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Methods",
+                                "value": "GET, POST, OPTIONS"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -420,
+                380
+            ],
+            "id": "cors-ds",
+            "name": "CORS OK (DataSource)"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Build DataSource SQL\nconst dsNode = $('Check Method DataSource').first().json;\nconst spName = dsNode.body.DataSourceValueSafe || '';\nconst searchKey = dsNode.body.SearchKeySafe || '';\n\n// Validate SP name pattern\nif (!(/^(API_|sp_)/i.test(spName))) {\n  return [{ json: { query: \"SELECT 1 AS code, 'Invalid DataSource SP Name' AS msg FOR JSON PATH;\" } }];\n}\n\nlet query = `EXEC ${spName.replace(/[^a-zA-Z0-9_]/g, '')}`;\nif (searchKey) {\n  query += ` @SearchText = N'${searchKey}'`;\n}\nquery += ';';\n\nreturn [{ json: { query } }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -560,
+                220
+            ],
+            "id": "build-datasource-sql",
+            "name": "Build DataSource SQL"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "={{ $json.query }}"
+            },
+            "type": "n8n-nodes-base.microsoftSql",
+            "typeVersion": 1,
+            "position": [
+                -340,
+                220
+            ],
+            "id": "http-datasource",
+            "name": "MS SQL DataSource",
+            "credentials": {
+                "microsoftSql": {
+                    "id": "",
+                    "name": "MS SQL account"
+                }
+            },
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify($json) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                -120,
+                220
+            ],
+            "id": "res-datasource",
+            "name": "Respond DataSource"
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "api-get-system-meta",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -1100,
+                100
+            ],
+            "id": "wh-sys-meta",
+            "name": "Webhook GetSystemMeta",
+            "webhookId": "get-sys-meta-001"
+        },
+        {
+            "parameters": {
+                "operation": "executeQuery",
+                "query": "EXEC dbo.API_GetSystemMeta;"
+            },
+            "type": "n8n-nodes-base.microsoftSql",
+            "typeVersion": 1,
+            "position": [
+                -420,
+                100
+            ],
+            "id": "sql-sys-meta",
+            "name": "MS SQL GetSystemMeta",
+            "credentials": {
+                "microsoftSql": {
+                    "id": "",
+                    "name": "MS SQL account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                20,
+                100
+            ],
+            "id": "res-sys-meta",
+            "name": "Respond GetSystemMeta"
+        }
+    ],
+    "connections": {
+        "Webhook ListActive": {
+            "main": [
+                [
+                    {
+                        "node": "Check Method ListActive",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Method ListActive": {
+            "main": [
+                [
+                    {
+                        "node": "Is OPTIONS? (ListActive)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is OPTIONS? (ListActive)": {
+            "main": [
+                [
+                    {
+                        "node": "CORS OK (ListActive)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "MS SQL API_ListActive",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MS SQL API_ListActive": {
+            "main": [
+                [
+                    {
+                        "node": "Format ListActive Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format ListActive Response": {
+            "main": [
+                [
+                    {
+                        "node": "Respond ListActive",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook GetConfig": {
+            "main": [
+                [
+                    {
+                        "node": "Check Method GetConfig",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Method GetConfig": {
+            "main": [
+                [
+                    {
+                        "node": "Is OPTIONS? (GetConfig)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is OPTIONS? (GetConfig)": {
+            "main": [
+                [
+                    {
+                        "node": "CORS OK (GetConfig)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Build GetConfig SQL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build GetConfig SQL": {
+            "main": [
+                [
+                    {
+                        "node": "MS SQL API_GetConfig",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MS SQL API_GetConfig": {
+            "main": [
+                [
+                    {
+                        "node": "Respond GetConfig",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook Execute": {
+            "main": [
+                [
+                    {
+                        "node": "Check Method Execute",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Method Execute": {
+            "main": [
+                [
+                    {
+                        "node": "Is OPTIONS? (Execute)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is OPTIONS? (Execute)": {
+            "main": [
+                [
+                    {
+                        "node": "CORS OK (Execute)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Build Execute SQL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build Execute SQL": {
+            "main": [
+                [
+                    {
+                        "node": "MS SQL Execute",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MS SQL Execute": {
+            "main": [
+                [
+                    {
+                        "node": "Format Execute Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Execute Response": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Execute",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook DataSource": {
+            "main": [
+                [
+                    {
+                        "node": "Check Method DataSource",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Method DataSource": {
+            "main": [
+                [
+                    {
+                        "node": "Is OPTIONS? (DataSource)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is OPTIONS? (DataSource)": {
+            "main": [
+                [
+                    {
+                        "node": "CORS OK (DataSource)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Build DataSource SQL",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Build DataSource SQL": {
+            "main": [
+                [
+                    {
+                        "node": "MS SQL DataSource",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MS SQL DataSource": {
+            "main": [
+                [
+                    {
+                        "node": "Respond DataSource",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook GetSystemMeta": {
+            "main": [
+                [
+                    {
+                        "node": "MS SQL GetSystemMeta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "MS SQL GetSystemMeta": {
+            "main": [
+                [
+                    {
+                        "node": "Respond GetSystemMeta",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+    }
 }

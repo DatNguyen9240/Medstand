@@ -37,500 +37,21 @@
         CFG_URL: _n8n + '/webhook/api-get-config',
         EXEC_URL: _n8n + '/webhook/api-execute',
         DS_URL: _n8n + '/webhook/api-datasource',
+        META_URL: _n8n + '/webhook/api-get-system-meta',
         CACHE_TTL: 10 * 60 * 1000,
-        CACHE_KEY: 'api_engine_v3_list'
+        CACHE_KEY: 'api_engine_v3_list',
+
+        // --- Cấu hình API Gốc (Hạn chế sửa trực tiếp trong Logic) ---
+        CATALOG_ROOT_API: '@danh_muc',
+        CART_CUSTOMER_DS: '@danh_muc|@Type=khachhang|@timkiem={q}',
+        
+        // --- Mapping tham số hệ thống ---
+        SYS_PARAMS: { USERNAME: "username" }
     };
-
-    // Lightweight POST helper (ensure defined early for runtime)
-    function _post(url, body) {
-        return fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok() },
-            body: JSON.stringify(body)
-        }).then(function (r) {
-            return r.text().then(function(txt) {
-                if (!txt || txt.trim() === '') return []; // N8N trả rỗng -> mảng rỗng (0 kết quả)
-                try { return JSON.parse(txt); } catch(e) { throw new Error('Dữ liệu máy chủ trả về không hợp lệ'); }
-            });
-        });
-    }
-
-    // ── State ─────────────────────────────────────────────────────────
-    var _apiList = [];
-    var _cfgCache = {};
-    var _menuEl = null;
-    var _panelEl = null;
-    var _menuVis = false;
-    var _menuIdx = -1;
-    var _activeApi = null;   // { apiCode, dispName, execType, config }
-    var _cartItems = [];
-    var _hideTimer = null;
-    var _lastCatalogType = null; // remember last selected catalog (sanpham, khachhang, ...)
-    var _suppressNextAt = false; // when true, don't append ' @' after selecting a value (used for Tab)
-    var _pillParams = {}; // store selected entity params as hidden state: { '@type': 'VALUE' }
-    var _suppressMenuUntil = 0; // timestamp to prevent reopening menu immediately after selection
-    var _cleanupFns = []; // transient listeners cleanup registry
-    var _catalogDsMap = {}; // runtime map loaded from @danh_muc categories
-    var _prevPlaceholder = '';
-
-    // Callbacks từ chatbot.js
-    var _cbMsg = null;
-    var _cbHtml = null;
-    var _cbRender = null;
-    var _cbShow = null;
-    var _cbHide = null;
-    var _inputEl = null;
-    var _inputBarEl = null;
-
-    // ── Helpers ───────────────────────────────────────────────────────
-    function _tok() { var m = document.cookie.match(/(?:^|; )auth_token=([^;]*)/); return m ? m[1] : ''; }
-    function _user() { try { return (JSON.parse(localStorage.getItem('auth_user') || '{}')).UserName || ''; } catch (e) { return ''; } }
-    function _esc(s) { var d = document.createElement('div'); d.appendChild(document.createTextNode(String(s || ''))); return d.innerHTML; }
-    function _fmtMoney(n) { return Number(n).toLocaleString('vi-VN') + 'đ'; }
-    function _clearVn(s) {
-        if (!s) return '';
-        s = String(s).toLowerCase();
-        s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
-        s = s.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
-        s = s.replace(/[ìíịỉĩ]/g, 'i');
-        s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
-        s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
-        s = s.replace(/[ỳýỵỷỹ]/g, 'y');
-        s = s.replace(/đ/g, 'd');
-        // Remove combining diacritics and all spaces/special chars to allow searching "chữ dính vô nhau"
-        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-        return s;
-    }
-
-    function _registerCleanup(fn) {
-        if (typeof fn === 'function') _cleanupFns.push(fn);
-    }
-
-    function _runCleanup() {
-        while (_cleanupFns.length) {
-            try { _cleanupFns.pop()(); } catch (e) { }
-        }
-    }
-
-    function _parseApiCodeDataSource(dsValue) {
-        var src = String(dsValue || '');
-        var parts = src.split('|');
-        var apiCode = parts[0] || '';
-        var params = {};
-        for (var i = 1; i < parts.length; i++) {
-            if (!parts[i]) continue;
-            var segs = String(parts[i]).split('&');
-            for (var j = 0; j < segs.length; j++) {
-                var seg = segs[j];
-                if (!seg) continue;
-                var eq = seg.indexOf('=');
-                if (eq <= 0) continue;
-                params[seg.slice(0, eq)] = seg.slice(eq + 1);
-            }
-        }
-        return { apiCode: apiCode, params: params };
-    }
-
-    // ── Load API List ─────────────────────────────────────────────────
-    var _FALLBACK_LIST = [];
-
-    function _normalizeApiList(list) {
-        if (!Array.isArray(list)) return [];
-        return list
-            .map(function (r) {
-                if (!r) return null;
-                var code = r.ApiCode || r.apiCode || r.code || '';
-                if (!code) return null;
-                var displayName = r.DisplayName || r.ApiName || r.Name || code;
-                return {
-                    ApiCode: code,
-                    DisplayName: displayName,
-                    Category: r.Category || r.category || 'Khác',
-                    ExecutionType: r.ExecutionType || r.executionType || 'QUERY'
-                };
-            })
-            .filter(Boolean);
-    }
-
-    function _loadList(cb) {
-        try {
-            var c = JSON.parse(sessionStorage.getItem(CFG.CACHE_KEY));
-            if (c && c.data && c.data.length > 0 && Date.now() - c.ts < CFG.CACHE_TTL) { _apiList = c.data; cb && cb(_apiList); return; }
-        } catch (e) { }
-
-        _post(CFG.LIST_URL, { SearchKey: '' })
-            .then(function (res) {
-                var raw = Array.isArray(res) ? res : (res.data || res.records || []);
-                var list = _normalizeApiList(raw);
-                _apiList = (list && list.length > 0) ? list : _FALLBACK_LIST;
-                try { sessionStorage.setItem(CFG.CACHE_KEY, JSON.stringify({ data: _apiList, ts: Date.now() })); } catch (e) { }
-                cb && cb(_apiList);
-            })
-            .catch(function () {
-                _apiList = _FALLBACK_LIST;
-                cb && cb(_apiList);
-            });
-    }
-
-    function _loadConfig(apiCode, cb) {
-        if (_cfgCache[apiCode]) { cb(_cfgCache[apiCode]); return; }
-        _post(CFG.CFG_URL, { ApiCode: apiCode })
-            .then(function (res) {
-                // API_GetConfig trả 1 row với FieldsJSON + FiltersJSON (FOR JSON PATH)
-                // Backend có thể gói trong: res[0][0] / res.data[0] / res trực tiếp
-                var row = null;
-                if (Array.isArray(res) && Array.isArray(res[0])) {
-                    row = res[0][0]; // [[row]] format
-                } else if (Array.isArray(res) && res[0] && !Array.isArray(res[0])) {
-                    row = res[0];    // [row] format
-                } else if (res && res.data && Array.isArray(res.data)) {
-                    row = res.data[0]; // {data:[row]} format
-                } else if (res && res.data && !Array.isArray(res.data)) {
-                    row = res.data;    // {data:row} format
-                } else if (res && res.ApiCode) {
-                    row = res;         // raw row format
-                }
-
-                var c;
-                if (row && (row.FieldsJSON !== undefined || row.FiltersJSON !== undefined)) {
-                    // Format mới: FOR JSON PATH — parse JSON string
-                    c = {
-                        info: row,
-                        fields: _parseJson(row.FieldsJSON),
-                        filters: _parseJson(row.FiltersJSON)
-                    };
-                } else {
-                    // Fallback format: check for flat flat structures returned from N8N like {data: {FieldCode:...}}
-                    var inferredFields = [];
-                    var flatData = (res && res.data) ? res.data : res;
-                    if (Array.isArray(flatData) && flatData.length > 0 && (flatData[0].FieldCode || flatData[0].field)) {
-                        inferredFields = flatData;
-                    } else if (flatData && (flatData.FieldCode || flatData.field)) {
-                        inferredFields = [flatData];
-                    } else {
-                        inferredFields = Array.isArray(res[1]) ? res[1] : (res.fields || []);
-                    }
-
-                    c = {
-                        info: Array.isArray(res[0]) ? res[0][0] : (res.api || {}),
-                        fields: inferredFields,
-                        filters: Array.isArray(res[2]) ? res[2] : (res.filters || [])
-                    };
-                }
-                _cfgCache[apiCode] = c;
-                cb(c);
-            })
-            .catch(function () { cb(null); });
-    }
-
-    function _parseJson(str) {
-        if (!str) return [];
-        if (Array.isArray(str)) return str;
-        try { return JSON.parse(str); } catch (e) { return []; }
-    }
-
-    // ── DataSource Loader ─────────────────────────────────────────────
-    /**
-     * Load options từ DataSource
-     * @param {string} dsType   STATIC | SQL | APICODE
-     * @param {string} dsValue  JSON | SP_Name | "@apicode|@Param=val"
-     * @param {string} keyword  Search keyword
-     * @param {function} cb     callback([ {value, label, sub} ])
-     */
-    function _loadDataSource(dsType, dsValue, keyword, cb) {
-        if (!dsType || !dsValue) { cb([]); return; }
-
-        // ── STATIC: parse JSON array ──────────────────────────────────
-        if (dsType === 'STATIC') {
-            var opts;
-            try { opts = typeof dsValue === 'string' ? JSON.parse(dsValue) : dsValue; }
-            catch (e) { opts = []; }
-            if (keyword) {
-                var kw = _clearVn(keyword);
-                opts = opts.filter(function (o) {
-                    return _clearVn(o.label || '').indexOf(kw) !== -1;
-                });
-            }
-            cb(opts.slice(0, 20));
-            return;
-        }
-
-        // ── SQL: gọi /api-datasource endpoint ────────────────────────
-        if (dsType === 'SQL') {
-            _post(CFG.DS_URL, {
-                DataSourceType: 'SQL',
-                DataSourceValue: dsValue,
-                SearchKey: keyword || ''
-            })
-                .then(function (res) {
-                    console.log('--- API RESPONSE ---', res);
-                    var rawData = Array.isArray(res) ? res : (res.data || res.records || []);
-                    console.log('--- EXTRACTED DATA ---', rawData, 'isArray:', Array.isArray(rawData));
-                    cb(_normalizeDs(rawData));
-                })
-                .catch(function () { cb([]); });
-            return;
-        }
-
-        // ── APICODE: "@apicode|@Param1=val1|@Param2=val2" ────────────
-        if (dsType === 'APICODE') {
-            var parsed = _parseApiCodeDataSource(dsValue);
-            var apiCode = parsed.apiCode;        // @danh_muc
-            var params = parsed.params;
-            // Thêm keyword làm search param, xử lý riêng từng API ngầm để tránh lỗi SQL param không tồn tại
-            if (keyword) {
-                var cleanCode = apiCode.replace(/^@/, '').toLowerCase();
-                if (cleanCode === 'danh_muc' || cleanCode === 'tra_cuu_san_pham') {
-                    params['@timkiem'] = keyword;
-                } else {
-                    params['@SearchText'] = keyword; // Mặc định chung
-                }
-            }
-
-            _post(CFG.EXEC_URL, { ApiCode: apiCode, params: params })
-                .then(function (res) {
-                    console.log('--- API RESPONSE ---', res);
-                    var rawData = Array.isArray(res) ? res : (res.data || res.records || []);
-                    console.log('--- EXTRACTED DATA ---', rawData, 'isArray:', Array.isArray(rawData));
-                    cb(_normalizeDs(rawData));
-                })
-                .catch(function () { cb([]); });
-            return;
-        }
-
-        // ── API: external URL ─────────────────────────────────────────
-        if (dsType === 'API') {
-            var url = dsValue + (dsValue.indexOf('?') >= 0 ? '&' : '?') + 'q=' + encodeURIComponent(keyword || '');
-            fetch(url).then(function (r) { return r.json(); })
-                .then(function (res) { cb(_normalizeDs(Array.isArray(res) ? res : (res.data || []))); })
-                .catch(function () { cb([]); });
-            return;
-        }
-
-        cb([]);
-    }
-
-    // Fallback mapping when backend category response doesn't provide DataSourceValue
-    var _CATALOG_APICODE_FALLBACK = {
-        'sanpham': '@tra_cuu_san_pham|@TopN=50',
-        'khachhang': '@danh_muc|@Type=khachhang',
-        'donhang': '@xem_don_hang',
-        'khohang': '@ton_kho_list',
-        'nhanvien': '@danh_muc|@Type=nhanvien'
-    };
-
-    function _resolveCatalogDataSource(type) {
-        var key = String(type || '').replace(/^@/, '').toLowerCase();
-        return _catalogDsMap[key] || _CATALOG_APICODE_FALLBACK[key] || ('@danh_muc|@Type=' + key);
-    }
-
-    function _isCatalogToken(type) {
-        var key = String(type || '').replace(/^@/, '').toLowerCase();
-        return !!_catalogDsMap[key] || !!_CATALOG_APICODE_FALLBACK[key];
-    }
-
-    /** Normalize response rows → [{value, label, sub}] */
-    function _normalizeDs(rows) {
-        function pick(obj, keys) {
-            for (var i = 0; i < keys.length; i++) {
-                var k = keys[i];
-                if (obj === null || obj === undefined) break;
-                if (obj[k] !== undefined && obj[k] !== null) return obj[k];
-            }
-            return '';
-        }
-
-        return rows.map(function (r) {
-            // common keys (include Vietnamese column names returned by some SPs)
-            // Prefer business IDs first (ObjectID/MaDanhMuc/ItemID) to avoid selecting generic "type"
-            var value = pick(r, ['value', 'Value', 'MaDanhMuc', 'ObjectID', 'ItemID', 'ID', 'MaSP', 'Mã sp', 'MãSP', 'Code', 'CustomerCode', 'ExternalCode', 'type', 'Type']);
-            // Prefer real name fields before category labels
-            var label = pick(r, ['label', 'Label', 'Name', 'ObjectName', 'ItemName', 'EmployeeName', 'TenDanhMuc', 'TenKhachHang', 'PhanLoai', 'Sản Phẩm', 'SảnPhẩm']);
-            var sub = pick(r, ['sub', 'Sub', 'SubText', 'Code', 'CustomerCode', 'ExternalCode', 'Address', 'Phone', 'Email', 'EMail', 'TaxCode', 'Taxcode', 'Tồn Kho', 'TonKho', 'DonGia', 'Đơn Giá', 'DonGia', 'UnitPrice', 'icon', 'Icon']);
-
-            // Ensure strings
-            value = value === undefined || value === null ? '' : String(value);
-            label = label === undefined || label === null ? '' : String(label);
-            sub = sub === undefined || sub === null ? '' : String(sub);
-
-            return { value: value, label: label, sub: sub, raw: r };
-        });
-    }
-
-    // ── @ Dropdown Menu ───────────────────────────────────────────────
-    function _menuCreate() {
-        if (_menuEl) return;
-        _menuEl = document.createElement('div');
-        _menuEl.id = 'ae-menu';
-        _menuEl.className = 'ae-menu';
-        _menuEl.style.display = 'none';
-
-        var bar = _inputBarEl || document.getElementById('chat-input-bar');
-        if (bar) bar.appendChild(_menuEl);
-        else document.body.appendChild(_menuEl);
-    }
-
-    function _positionMenu() {
-        if (!_menuEl || !_inputEl) return;
-        var wrap = document.querySelector('.chat-input-wrap');
-        var bar = _inputBarEl || document.getElementById('chat-input-bar');
-        var wrapRect = wrap ? wrap.getBoundingClientRect() : _inputEl.getBoundingClientRect();
-        var barRect = bar ? bar.getBoundingClientRect() : wrapRect;
-
-        _menuEl.style.display = 'block';
-        _menuEl.style.bottom = '100%';
-        _menuEl.style.left = (wrapRect.left - barRect.left) + 'px';
-        _menuEl.style.width = wrapRect.width + 'px';
-        _menuVis = true;
-        _menuIdx = -1;
-    }
-
-    function _bindMenuItems(onPick) {
-        if (!_menuEl) return;
-        _menuEl.querySelectorAll('.ae-menu-item').forEach(function (el) {
-            el.addEventListener('mousedown', function (e) { e.preventDefault(); });
-            el.addEventListener('click', function (e) { onPick && onPick(this, e); });
-        });
-    }
-
-    function _menuShow(query) {
-        _menuCreate();
-        var list = query
-            ? _apiList.filter(function (a) {
-                var q = _clearVn(query);
-                var q2 = q.replace(/sp/g, 'sanpham').replace(/kh/g, 'khachhang').replace(/dh/g, 'donhang');
-                var ac = _clearVn(a.ApiCode);
-                var dn = _clearVn(a.DisplayName || '');
-                // Nén chuỗi (bỏ khoảng trắng, dấu gạch ngang, gạch dưới) để tìm kiếm mượt hơn
-                var qC = q.replace(/[\s\-_]/g, '');
-                var q2C = q2.replace(/[\s\-_]/g, '');
-                var acC = ac.replace(/[\s\-_]/g, '');
-                var dnC = dn.replace(/[\s\-_]/g, '');
-
-                return ac.indexOf(q) !== -1 || dn.indexOf(q) !== -1
-                    || ac.indexOf(q2) !== -1 || dn.indexOf(q2) !== -1
-                    || acC.indexOf(qC) !== -1 || dnC.indexOf(qC) !== -1
-                    || acC.indexOf(q2C) !== -1 || dnC.indexOf(q2C) !== -1;
-            })
-            : _apiList;
-        if (!list.length) { _menuHide(); return; }
-
-        var groups = {}, order = [];
-        list.forEach(function (a) {
-            var cat = a.Category || 'Khác';
-            if (!groups[cat]) { groups[cat] = []; order.push(cat); }
-            groups[cat].push(a);
-        });
-
-        var html = '';
-        order.forEach(function (cat) {
-            html += '<div class="ae-menu-group">' + _esc(cat) + '</div>';
-            groups[cat].forEach(function (a) {
-                html += '<div class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
-                    + '<span>' + _esc(a.DisplayName) + '</span>'
-                    + '<span class="ae-tag">' + _esc(a.ExecutionType) + '</span>'
-                    + '</div>';
-            });
-        });
-        _menuEl.innerHTML = html;
-
-        _positionMenu();
-        // Vì đã là absolute bên trong bar, ta chỉ cần chỉnh left/width theo wrap
-        _menuEl.style.borderRadius = '12px 12px 0 0';
-        _bindMenuItems(function (el) {
-            _menuHide();
-            _onApiSelected(el.getAttribute('data-code'));
-        });
-    }
-
-    function _menuHide() {
-        if (_menuEl) {
-            _menuEl.style.display = 'none';
-            _menuEl.innerHTML = '';
-        }
-        _menuVis = false;
-        _menuIdx = -1;
-        clearTimeout(_hideTimer);
-        clearTimeout(_dbt);
-        // selection card/pill UI disabled: no DOM removal here
-    }
-
-    function _showSelectionPill(meta) {
-        // selection pill disabled
-    }
-
-    function _menuShowParams(query) {
-        if (!_activeApi || !_activeApi.config) return;
-        _menuCreate();
-
-        var cfg = _activeApi.config;
-        var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
-        // Bỏ system params + luôn ẩn @Username bất kể IsSystemParam trong DB
-        fields = fields.filter(function (f) {
-            if (!f.IsSystemParam || f.IsSystemParam == 0) {
-                var fc = (f.FieldCode || '').toLowerCase();
-                return fc !== '@username' && fc !== 'username';
-            }
-            return false;
-        });
-
-        var q = _clearVn(query);
-        var list = q
-            ? fields.filter(function (f) {
-                return _clearVn(f.FieldCode).indexOf(q) !== -1 ||
-                    _clearVn(f.FieldName || '').indexOf(q) !== -1;
-            })
-            : fields;
-
-        if (!list.length) { _menuHide(); return; }
-
-        var html = '';
-        list.forEach(function (f) {
-            html += '<div class="ae-menu-item ae-param-item" data-code="' + _esc(f.FieldCode) + '">'
-                + '<span>' + _esc(f.FieldName || f.FieldCode) + '</span>'
-                + '<span class="ae-tag">' + _esc(f.FieldCode) + '</span>'
-                + '</div>';
-        });
-        _menuEl.innerHTML = html;
-
-        _positionMenu();
-
-        _bindMenuItems(function (el) {
-            _menuHide();
-            _onParamSelected(el.getAttribute('data-code'));
-        });
-    }
-
-    function _onParamSelected(fieldCode) {
-        var val = _inputEl.value;
-        var atPos = val.lastIndexOf('@');
-
-        // Nếu sau dấu @ cuối cùng đã có dấu '=' (tức là param trước đã hoàn thành)
-        // hoặc chưa có @ nào, ta sẽ append (nối tiếp) thay vì replace (thay thế).
-        var afterAt = atPos !== -1 ? val.slice(atPos) : '';
-        var prefix = val;
-
-        if (atPos !== -1 && afterAt.indexOf('=') === -1) {
-            // Đang gõ dở @tham_so, thay thế phần đang gõ dở đó
-            prefix = val.slice(0, atPos);
-        }
-
-        // Đảm bảo có dấu cách trước @ nếu cần
-        if (prefix && !prefix.endsWith(' ')) prefix += ' ';
-        _inputEl.value = prefix + fieldCode + '=';
-
-        _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-        _inputEl.focus();
-
-        // Kỹ thuật mới: Tự động tải luôn danh sách gợi ý giá trị ngay sau khi chọn Param
-        setTimeout(function () {
-            _showInlineValues(fieldCode, '');
-        }, 150);
-    }
 
     function _menuShowCatalog(query, atPos) {
         console.log('[ApiEngine] _menuShowCatalog query=', query, 'atPos=', atPos);
-        _loadDataSource('APICODE', '@danh_muc', query, function (rows) {
+        _loadDataSource('APICODE', CFG.CATALOG_ROOT_API, query, function (rows) {
             if (!rows || !rows.length) { _menuHide(); return; }
             _menuCreate();
             var html = '';
@@ -685,9 +206,12 @@
             return (f.FieldCode || '').toLowerCase() === fieldCode.toLowerCase();
         });
 
-        // ─ BẮT BUỘC ÉP KIỂU LỊCH NẾU LÀ @TuNgay, @DenNgay ĐỂ CHỐNG CACHE BACKEND ─
-        var _fcLow = (fieldCode || '').toLowerCase();
-        if (_fcLow === '@tungay' || _fcLow === '@denngay') {
+        // --- BẮT BUỘC ÉP KIỂU LỊCH NẾU DataType là Date ĐỂ CHỐNG CACHE BACKEND ---
+        var isDateField = (field && (field.DataType === 'DATE' || field.DataType === 'DATETIME' || field.ControlType === 'date'))
+                         || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.START_DATE 
+                         || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.END_DATE;
+
+        if (isDateField) {
             if (!field) field = { FieldCode: fieldCode, FieldName: 'Ngày' };
             field.ControlType = 'date';
         }
@@ -739,38 +263,8 @@
             return;
         }
 
-        // Nếu không có DataSource, kiểm tra fallback cho search fields
+        // Nếu không có DataSource, không hiển thị menu gợi ý (Tuân thủ No-Hardcode)
         if (!field || (!field.DataSourceType && !field.OptionsJson)) {
-            // Fallback: @SearchKey / @SearchText → live search sản phẩm
-            var _fc = (fieldCode || '').replace(/^@/, '').toLowerCase();
-            var _SEARCH_FALLBACK = { 'timkiem': '@tra_cuu_san_pham', 'searchkey': '@tra_cuu_san_pham', 'searchtext': '@tra_cuu_san_pham', 'tensanpham': '@tra_cuu_san_pham', 'itemname': '@tra_cuu_san_pham' };
-            if (_SEARCH_FALLBACK[_fc] && keyword) {
-                _post(CFG.EXEC_URL, { ApiCode: _SEARCH_FALLBACK[_fc], params: { '@timkiem': keyword, '@TopN': 15 } })
-                    .then(function (res) {
-                        var rawData = Array.isArray(res) ? res : (res.data || res.records || []);
-                        if (!rawData || !rawData.length) { _menuHide(); return; }
-                        _menuCreate();
-                        var html = '';
-                        rawData.forEach(function (r) {
-                            var id = r['Mã sp'] || r['MaSP'] || r['ItemID'] || r['value'] || '';
-                            var nm = r['Sản Phẩm'] || r['ItemName'] || r['label'] || r['Name'] || '';
-                            html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(id) + '" data-name="' + _esc(nm) + '">'
-                                + '<span class="ae-val-name">' + _esc(nm) + '</span>'
-                                + (id ? '<span class="ae-val-id">' + _esc(id) + '</span>' : '')
-                                + '</div>';
-                        });
-                        _menuEl.innerHTML = html;
-                        _positionMenu();
-                        _bindMenuItems(function (el) {
-                            _menuHide();
-                            var selId = el.getAttribute('data-code') || '';
-                            var selName = el.getAttribute('data-name') || selId;
-                            _onValueSelected(fieldCode, selName, { name: selName });
-                        });
-                    })
-                    .catch(function () { _menuHide(); });
-                return;
-            }
             _menuHide();
             return;
         }
@@ -791,7 +285,7 @@
                 var idVal = raw.MaDanhMuc || raw.ObjectID || raw.ItemID || raw.Code || r.value || '';
                 var nameVal = raw.Name || raw.ObjectName || raw.ItemName || r.label || '';
                 var phVal = raw.PhanLoai || raw.Type || raw.type || '';
-                var isObjectLike = (fieldCode || '').toLowerCase() === '@objectid';
+                var isObjectLike = (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.OBJECT_ID || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.DOC_ID;
                 var rightText = isObjectLike ? idVal : (r.sub || r.value || '');
 
                 html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '">'
@@ -912,7 +406,6 @@
 
         _loadConfig(apiCode, function (config) {
             _activeApi.config = config;
-            _cartItems = [];
 
             if (execType === 'CART') {
                 _openPanel(config, execType, dispName);
@@ -1042,7 +535,6 @@
         }
         document.body.classList.remove('ae-panel-open');
         _activeApi = null;
-        _cartItems = [];
         _lastCatalogType = null;
         _pillParams = {};
         // selection pill UI removed
@@ -1153,8 +645,6 @@
                     return;
                 }
 
-
-
                 timer = setTimeout(function () {
                     _loadDataSource(dsType, dsVal, kw, function (rows) {
                         console.log('--- RENDER SUG (input) ---', rows.length, 'rows'); _renderComboSug(sug, txt, hid, rows, false);
@@ -1212,103 +702,6 @@
     }
 
     // ── Cart Panel ─────────────────────────────────────────────────────
-    function _buildCartPanel(fields) {
-        var khFields = (fields || []).filter(function (f) {
-            var c = (f.FieldCode || '').toLowerCase();
-            return c === '@objectid' || c === '@documentid';
-        });
-        return '<div class="ae-panel-fields">' + khFields.map(_buildField).join('') + '</div>'
-            + '<div class="ae-cart-wrap">'
-            + '<div class="ae-cart-search-row">'
-            + '<input type="text" id="ae-cart-q" class="ae-ctrl" placeholder="🔍 Tìm sản phẩm...">'
-            + '<div id="ae-cart-sug" class="ae-cart-sug" style="display:none"></div>'
-            + '</div>'
-            + '<div id="ae-cart-list" class="ae-cart-list"><p class="ae-sug-empty">Chưa có sản phẩm.</p></div>'
-            + '<div id="ae-cart-total" class="ae-cart-total">Tổng: <strong>0đ</strong></div>'
-            + '</div>';
-    }
-
-    function _initCartEvents() {
-        var q = _panelEl.querySelector('#ae-cart-q');
-        var sug = _panelEl.querySelector('#ae-cart-sug');
-        var list = _panelEl.querySelector('#ae-cart-list');
-        var tot = _panelEl.querySelector('#ae-cart-total');
-        var t = null;
-
-        q.addEventListener('input', function () {
-            clearTimeout(t);
-            var kw = this.value.trim();
-            if (!kw) { sug.style.display = 'none'; return; }
-            t = setTimeout(function () {
-                _loadDataSource('APICODE', '@tra_cuu_san_pham|@SearchText=' + kw + '&@TopN=10', kw, function (rows) {
-                    if (!rows.length) { sug.style.display = 'none'; return; }
-                    var html = '<div class="ae-sug-header"><span class="ae-sug-col-id">Mã SP</span><span class="ae-sug-col-name">Tên sản phẩm</span></div>';
-                    html += rows.map(function (r) {
-                        return '<div class="ae-sug-row" data-val="' + _esc(r.value) + '" data-lbl="' + _esc(r.label) + '" data-price="' + _esc(r.price || 0) + '">'
-                            + '<div class="ae-sug-col-id"><span class="ae-sug-val">' + _esc(r.value) + '</span></div>'
-                            + '<div class="ae-sug-col-name">'
-                            + '<span class="ae-sug-lbl">' + _esc(r.label) + '</span>'
-                            + (r.sub ? '<span class="ae-sug-sub">' + _esc(r.sub) + '</span>' : '')
-                            + '</div>'
-                            + '</div>';
-                    }).join('');
-                    sug.innerHTML = html;
-                    sug.style.display = 'block';
-                    sug.querySelectorAll('.ae-sug-row').forEach(function (el) {
-                        el.addEventListener('click', function () {
-                            _cartItems.push({ ItemID: this.getAttribute('data-val'), ItemName: this.getAttribute('data-lbl'), UnitPrice: parseFloat(this.getAttribute('data-price')) || 0, Quantity: 1 });
-                            q.value = ''; sug.style.display = 'none';
-                            _cartRender(list, tot);
-                        });
-                    });
-                });
-            }, 350);
-        });
-
-        var onDocClick = function (e) {
-            if (sug && !sug.contains(e.target) && e.target !== q) sug.style.display = 'none';
-        };
-        document.addEventListener('click', onDocClick);
-        _registerCleanup(function () { document.removeEventListener('click', onDocClick); });
-    }
-
-    function _cartAdd(item) {
-        var ex = _cartItems.find(function (i) { return i.ItemID === item.ItemID; });
-        if (ex) ex.Quantity++; else _cartItems.push(Object.assign({}, item));
-    }
-
-    function _cartRender(listEl, totEl) {
-        if (!listEl) return;
-        if (!_cartItems.length) {
-            listEl.innerHTML = '<p class="ae-sug-empty">Chưa có sản phẩm.</p>';
-            if (totEl) totEl.innerHTML = 'Tổng: <strong>0đ</strong>';
-            return;
-        }
-        var total = 0;
-        listEl.innerHTML = _cartItems.map(function (it, i) {
-            total += (it.UnitPrice || 0) * it.Quantity;
-            return '<div class="ae-cart-row">'
-                + '<span class="ae-cart-name">' + _esc(it.ItemName) + '</span>'
-                + '<input type="number" class="ae-cart-qty" data-i="' + i + '" value="' + it.Quantity + '" min="1">'
-                + '<span class="ae-cart-price">' + _fmtMoney((it.UnitPrice || 0) * it.Quantity) + '</span>'
-                + '<button class="ae-cart-del" data-i="' + i + '">✕</button>'
-                + '</div>';
-        }).join('');
-        if (totEl) totEl.innerHTML = 'Tổng: <strong>' + _fmtMoney(total) + '</strong>';
-
-        listEl.querySelectorAll('.ae-cart-qty').forEach(function (inp) {
-            inp.addEventListener('change', function () {
-                _cartItems[+this.getAttribute('data-i')].Quantity = Math.max(1, +this.value || 1);
-                _cartRender(listEl, totEl);
-            });
-        });
-        listEl.querySelectorAll('.ae-cart-del').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                _cartItems.splice(+this.getAttribute('data-i'), 1);
-                _cartRender(listEl, totEl);
-            });
-        });
-    }
 
     // ── Close Panel ───────────────────────────────────────────────────
     function _closePanel(silent) {
@@ -1320,7 +713,6 @@
             _panelEl = null;
         }
         document.body.classList.remove('ae-panel-open'); // Gỡ bỏ đánh dấu
-        _cartItems = [];
 
         // Hiển thị nút "Mũi tên lên" ở thanh chat nếu không đóng hoàn toàn (đóng tạm)
         var triggerBtn = document.getElementById('ae-panel-trigger');
@@ -1378,12 +770,11 @@
             fields.forEach(function (f) {
                 var code = f.FieldCode || '';
                 var ctrl = f.ControlType || 'text';
-                // @Username luôn auto-fill từ localStorage, bất kể IsSystemParam
-                var fcLow = code.toLowerCase();
+                // System params (như @Username) luôn auto-fill từ hệ thống
+                var isUserParam = (fcLow === CFG.SYS_PARAMS.USERNAME || fcLow === 'username');
 
-                // Bỏ qua validate bắt buộc cho các field được thiết kế tự chọn
-                if (fcLow === '@username' || fcLow === 'username') {
-                    if (fcLow === '@username' || fcLow === 'username') params[code] = _user();
+                if (f.IsSystemParam || isUserParam) {
+                    if (isUserParam) params[code] = _user();
                     return;
                 }
 
@@ -1481,12 +872,16 @@
                 cfgParams.forEach(function (f) {
                     var fcLow = (f.FieldCode || '').toLowerCase();
                     // Bypass validate cho các system param
-                    if (fcLow === '@username' || fcLow === 'username') return;
+                    var isUserField = (fcLow === CFG.SYS_PARAMS.USERNAME || fcLow === 'username');
+                    if (isUserField) return;
 
                     // Tự động tính tham số thời gian cho TH2 (nhập qua Chat)
-                    if (!params[f.FieldCode] && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
+                    var isStartD = (fcLow === CFG.SYS_PARAMS.START_DATE || fcLow.indexOf('tu_ngay') > -1);
+                    var isEndD = (fcLow === CFG.SYS_PARAMS.END_DATE || fcLow.indexOf('den_ngay') > -1);
+
+                    if (!params[f.FieldCode] && (isStartD || isEndD)) {
                         var d = new Date();
-                        if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
+                        if (isStartD) d.setMonth(d.getMonth() - 1);
                         var mm = (d.getMonth() + 1).toString().padStart(2, '0');
                         var dd = d.getDate().toString().padStart(2, '0');
                         params[f.FieldCode] = d.getFullYear() + '-' + mm + '-' + dd;
@@ -1494,8 +889,8 @@
 
                     if (f.IsRequired == 1 && (!f.IsSystemParam || f.IsSystemParam == 0)) {
                         if (!params[f.FieldCode]) {
-                            alert('Thiếu tham số bắt buộc: ' + (f.FieldName || f.FieldCode));
-                            hasErr = true;
+                            console.warn('Thiếu tham số bắt buộc (đã bỏ qua chặn): ' + (f.FieldName || f.FieldCode));
+                            // hasErr = false; // Bỏ qua chặn lỗi để AI/Backend tự handle
                         }
                     }
                 });
@@ -1503,11 +898,14 @@
         }
 
         if (hasErr) return null;
-        if (!params['@Username']) params['@Username'] = _user();
+
+        var uKey = CFG.SYS_PARAMS.USERNAME;
+        if (!params[uKey]) params[uKey] = _user();
 
         if (_activeApi.execType === 'CART') {
             if (!_cartItems.length) { alert('Vui lòng thêm ít nhất 1 sản phẩm.'); return null; }
-            params['@ItemList'] = JSON.stringify(_cartItems.map(function (it) {
+            var iKey = CFG.SYS_PARAMS.ITEM_LIST;
+            params[iKey] = JSON.stringify(_cartItems.map(function (it) {
                 return { ItemID: it.ItemID, Quantity: it.Quantity };
             }));
         }
@@ -1551,7 +949,9 @@
         // Tạo chuỗi hiển thị: chỉ hiện các field có giá trị
         var ps = Object.keys(params)
             .filter(function (k) {
-                return k !== '@Username' && k !== '@ItemList' && params[k] !== "" && params[k] !== null;
+                var uKey = CFG.SYS_PARAMS.USERNAME;
+                var iKey = CFG.SYS_PARAMS.ITEM_LIST;
+                return k !== uKey && k !== iKey && params[k] !== "" && params[k] !== null;
             })
             .map(function (k) {
                 // Tìm label của field để hiển thị cho thân thiện
@@ -1815,6 +1215,47 @@
             }
         }
     });
+    
+    /** Lay vai tro cua mot field tu Metadata SQL */
+    function _getFieldRole(fieldName) {
+        return _sysMeta[fieldName] || null;
+    }
+
+    /** Tim field trong row theo vai tro (Role) */
+    function _getFieldByRole(row, targetRole) {
+        if (!row) return null;
+        for (var k in row) {
+            if (_sysMeta[k] === targetRole) return { key: k, val: row[k] };
+        }
+        return null;
+    }
+
+    /** Lay danh sach fields theo vai tro */
+    function _getFieldsByRole(role) {
+        var keys = [];
+        for (var k in _sysMeta) {
+            if (_sysMeta[k] === role) keys.push(k);
+        }
+        return keys;
+    }
+
+    /** Tai metadata he thong tu n8n/SQL */
+    function _loadSystemMeta() {
+        return _post(CFG.META_URL, {}).then(function(res) {
+            var data = Array.isArray(res) ? res : (res.data || []);
+            _sysMeta = {};
+            data.forEach(function(item) {
+                if (item.FieldName && item.FieldRole) {
+                    _sysMeta[item.FieldName] = item.FieldRole.toUpperCase();
+                }
+            });
+            console.log('[ApiEngine] System Meta Loaded:', Object.keys(_sysMeta).length, 'rules');
+            return _sysMeta;
+        }).catch(function(e) {
+            console.warn('[ApiEngine] Load System Meta failed:', e);
+            return {};
+        });
+    }
 
     // ── Public API ────────────────────────────────────────────────────
     window.ApiEngine = {
@@ -1856,6 +1297,16 @@
 
         configure: function (cfg) { Object.assign(CFG, cfg); },
         open: function (code) { _onApiSelected(code); },
+        getUiTemplate: function (apiCode) {
+            if (!apiCode) return 'DEFAULT';
+            var codeClean = apiCode.startsWith('@') ? apiCode : '@' + apiCode;
+            // 1. Check in config cache
+            if (_cfgCache[codeClean] && _cfgCache[codeClean].uiTemplate) return _cfgCache[codeClean].uiTemplate;
+            // 2. Check in list cache
+            var found = _apiList.find(function (a) { return a.ApiCode === codeClean; });
+            return (found && found.UiTemplate) || 'DEFAULT';
+        },
+        getConfig: function (apiCode, cb) { _loadConfig(apiCode, cb); },
 
         // Mở @ menu từ button click (không cần gõ @)
         showMenu: function (inputEl) {
@@ -1904,7 +1355,12 @@
             sessionStorage.removeItem(CFG.CACHE_KEY);
             _cfgCache = {};
             _loadList();
-        }
+        },
+        
+        loadSystemMeta: _loadSystemMeta,
+        getRoleMapping: function() { return _sysMeta; },
+        getFieldRole: _getFieldRole,
+        getFieldByRole: _getFieldByRole,
+        getFieldsByRole: _getFieldsByRole
     };
-
 })();

@@ -8,8 +8,10 @@
     var MAX_USER_PHRASES = 50;
     var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
-    var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
-    var userName = user.UserName || '';
+    // Khởi tạo Engine và tải Metadata hệ thống ngay khi load
+    if (typeof ApiEngine !== 'undefined') {
+        ApiEngine.loadSystemMeta();
+    }
 
     // Get auth token from cookie
     function _getToken() {
@@ -22,7 +24,7 @@
         var key = 'ai_chat_session_id';
         var sid = sessionStorage.getItem(key);
         if (!sid) {
-            sid = userName + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            sid = 'user_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
             sessionStorage.setItem(key, sid);
         }
         return sid;
@@ -30,22 +32,10 @@
 
     // ── LocalStorage cache with TTL (Phase 1) ──
     function _getSessionKey() {
-        return CACHE_KEY + '_' + (userName || 'anonymous');
+        return CACHE_KEY;
     }
 
     function _loadCache() {
-        // Fallback: Migrate logic sessionStorage nếu có user đang mở tab cũ
-        try {
-            var oldRaw = sessionStorage.getItem(CACHE_KEY);
-            if (oldRaw) {
-                var oldData = JSON.parse(oldRaw);
-                if (oldData.messages && oldData.messages.length > 0) {
-                    _saveCache(oldData.messages);
-                }
-                sessionStorage.removeItem(CACHE_KEY);
-            }
-        } catch(e) {}
-
         try {
             var raw = localStorage.getItem(_getSessionKey());
             if (!raw) return [];
@@ -83,19 +73,15 @@
 
     function _saveUserPhrase(text) {
         if (!text || text.length < 3) return;
-        // Bỏ qua nếu chỉ là file attachment
         if (text.charAt(0) === '📎') return;
         try {
             var phrases = _loadUserPhrases();
-            // Xóa duplicate (case-insensitive)
             var lower = text.toLowerCase();
             phrases = phrases.filter(function (p) { return p.toLowerCase() !== lower; });
-            // Thêm vào đầu (mới nhất trước)
             phrases.unshift(text);
-            // Giới hạn số lượng
             if (phrases.length > MAX_USER_PHRASES) phrases = phrases.slice(0, MAX_USER_PHRASES);
             localStorage.setItem(USER_PHRASES_KEY, JSON.stringify(phrases));
-        } catch (e) { /* localStorage đầy */ }
+        } catch (e) { }
     }
 
     // ── DOM ──
@@ -104,18 +90,18 @@
     var $welcome = document.getElementById('chat-welcome');
     var $input = document.getElementById('chat-input');
     var $btnSend = document.getElementById('btn-send');
-    var $btnClear = document.getElementById('btn-clear-chat');
     var $btnAttach = document.getElementById('btn-attach');
     var $fileInput = document.getElementById('chat-file-input');
     var $filePreview = document.getElementById('chat-file-preview');
     var $fileList = document.getElementById('chat-file-list');
 
     var chatHistory = _loadCache();
-    var selectedFiles = [];    // Danh sách file đang chọn (multi)
-    var abortController = null; // AbortController cho fetch
-    var isWaitingAI = false;    // Đang chờ AI phản hồi
-    var _modalDataCache = {};   // Cache dữ liệu cho modal bảng
-    var _modalIdCounter = 0;    // ID counter cho modal
+    var selectedFiles = [];
+    var abortController = null;
+    var isWaitingAI = false;
+    var _modalIdCounter = 0;
+    var _UI_RENDERERS = {};
+    var _modalDataCache = {}; // Cache cho data bảng/thẻ
 
     // ── Render cached messages ──
     function _renderHistory() {
@@ -127,11 +113,7 @@
         $welcome.style.display = 'none';
         var html = '';
         chatHistory.forEach(function (msg) {
-            if (msg.isHtml && msg.htmlContent) {
-                html += _bubbleHTML(msg.role, msg.content, msg.time, msg.fileName, msg.htmlContent);
-            } else {
-                html += _bubbleHTML(msg.role, msg.content, msg.time, msg.fileName);
-            }
+            html += _bubbleHTML(msg.role, msg.content, msg.time, msg.fileName, msg.htmlContent);
         });
         $messages.innerHTML = html;
         _scrollBottom();
@@ -140,15 +122,8 @@
     function _bubbleHTML(role, content, time, fileName, rawHtml) {
         var cls = role === 'user' ? 'user' : 'ai';
         var timeStr = time ? _formatTime(time) : '';
-        var text;
-        if (rawHtml) {
-            // rawHtml: bypass _formatAI/_esc hoàn toàn
-            text = rawHtml;
-        } else {
-            text = role === 'user' ? _esc(content) : _formatAI(content);
-        }
+        var text = rawHtml ? rawHtml : (role === 'user' ? _esc(content) : _formatAI(content));
 
-        // Mở rộng bubble khi có card/table
         var hasCard = role === 'ai' && (text.indexOf('ai-card') !== -1 || text.indexOf('ai-table') !== -1 || text.indexOf('ai-summary') !== -1);
         if (hasCard) cls += ' has-table';
 
@@ -169,12 +144,10 @@
     }
 
     function _formatAI(text) {
-        // Split by code blocks first to avoid formatting inside them
         var parts = text.split(/(```[\s\S]*?```)/g);
         var html = '';
         for (var i = 0; i < parts.length; i++) {
             if (parts[i].match(/^```/)) {
-                // Code block
                 var code = parts[i].replace(/^```(\w*)\n?/, '').replace(/\n?```$/, '');
                 html += '<pre class="ai-code-block"><code>' + _esc(code) + '</code></pre>';
             } else {
@@ -185,22 +158,16 @@
     }
 
     function _formatAIBlock(text) {
-        // Split into paragraphs by double newline
         var paragraphs = text.split(/\n\n+/);
         var result = [];
-
         paragraphs.forEach(function (para) {
             para = para.trim();
             if (!para) return;
-
-            // Check if it's a table block
             var lines = para.split('\n');
             if (lines.length >= 2 && lines[0].indexOf('|') !== -1 && lines[1].match(/^\s*\|[\s\-:|]+\|\s*$/)) {
                 result.push(_formatTable(lines));
                 return;
             }
-
-            // Check if it's a list block (all lines start with - or * or 1.)
             var isList = lines.every(function (l) {
                 return l.trim() === '' || /^(\s*[-*•]\s|^\s*\d+[.)]\s)/.test(l);
             });
@@ -208,48 +175,34 @@
                 result.push(_formatList(lines));
                 return;
             }
-
-            // Process line by line for headers & normal text
             var lineResults = [];
             lines.forEach(function (line) {
                 var trimmed = line.trim();
                 if (!trimmed) return;
-
-                // Horizontal rule
                 if (/^[-*_]{3,}$/.test(trimmed)) {
                     lineResults.push('<hr class="ai-hr">');
                     return;
                 }
-
-                // Headers
                 var hMatch = trimmed.match(/^(#{1,6})\s+(.*)/);
                 if (hMatch) {
                     var level = hMatch[1].length;
                     lineResults.push('<h' + level + ' class="ai-heading">' + _inlineFormat(hMatch[2]) + '</h' + level + '>');
                     return;
                 }
-
-                // Normal line
                 lineResults.push(_inlineFormat(trimmed));
             });
-
             if (lineResults.length > 0) {
                 result.push('<p class="ai-para">' + lineResults.join('<br>') + '</p>');
             }
         });
-
         return result.join('');
     }
 
     function _inlineFormat(text) {
         return _esc(text)
-            // Bold + italic
             .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
-            // Bold
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Italic
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            // Inline code
             .replace(/`([^`]+)`/g, '<code class="ai-inline-code">$1</code>');
     }
 
@@ -268,21 +221,15 @@
 
     function _formatTable(lines) {
         var html = '<div class="ai-table-wrap"><table class="ai-table">';
-        // Header row
         var headers = lines[0].split('|').map(function (c) { return c.trim(); }).filter(function (c) { return c !== ''; });
         html += '<thead><tr>';
-        headers.forEach(function (h) {
-            html += '<th>' + _inlineFormat(h) + '</th>';
-        });
+        headers.forEach(function (h) { html += '<th>' + _inlineFormat(h) + '</th>'; });
         html += '</tr></thead><tbody>';
-        // Data rows (skip separator line at index 1)
         for (var i = 2; i < lines.length; i++) {
             var cells = lines[i].split('|').map(function (c) { return c.trim(); }).filter(function (c) { return c !== ''; });
             if (cells.length === 0) continue;
             html += '<tr>';
-            cells.forEach(function (c) {
-                html += '<td>' + _inlineFormat(c) + '</td>';
-            });
+            cells.forEach(function (c) { html += '<td>' + _inlineFormat(c) + '</td>'; });
             html += '</tr>';
         }
         html += '</tbody></table></div>';
@@ -302,20 +249,6 @@
         return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
     }
 
-    function _clearVn(s) {
-        if (!s) return '';
-        s = String(s).toLowerCase();
-        s = s.replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a');
-        s = s.replace(/[èéẹẻẽêềếệểễ]/g, 'e');
-        s = s.replace(/[ìíịỉĩ]/g, 'i');
-        s = s.replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o');
-        s = s.replace(/[ùúụủũưừứựửữ]/g, 'u');
-        s = s.replace(/[ỳýỵỷỹ]/g, 'y');
-        s = s.replace(/đ/g, 'd');
-        s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        return s;
-    }
-
     function _formatFileSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -324,48 +257,31 @@
 
     function _scrollBottom() {
         requestAnimationFrame(function () {
-            setTimeout(function () {
-                $container.scrollTop = $container.scrollHeight;
-            }, 80);
+            setTimeout(function () { $container.scrollTop = $container.scrollHeight; }, 80);
         });
     }
 
-    // ── Add message ──
     function _addMessage(role, content, fileName) {
         var msg = { role: role, content: content, time: Date.now() };
         if (fileName) msg.fileName = fileName;
         chatHistory.push(msg);
         _saveCache(chatHistory);
         $welcome.style.display = 'none';
-        if (typeof _updateChipsVisibility === 'function') _updateChipsVisibility();
         $messages.insertAdjacentHTML('beforeend', _bubbleHTML(role, content, msg.time, fileName));
         _scrollBottom();
     }
 
-    // ── Add HTML message (bypasses _formatAI, inserts raw HTML) ──
     function _addHtmlMessage(htmlContent, summaryText) {
-        var msg = {
-            role: 'ai',
-            content: summaryText || '📊 Kết quả',
-            time: Date.now(),
-            isHtml: true,
-            htmlContent: htmlContent
-        };
+        var msg = { role: 'ai', content: summaryText || '📊 Kết quả', time: Date.now(), isHtml: true, htmlContent: htmlContent };
         chatHistory.push(msg);
         _saveCache(chatHistory);
         $welcome.style.display = 'none';
-        if (typeof _updateChipsVisibility === 'function') _updateChipsVisibility();
         $messages.insertAdjacentHTML('beforeend', _bubbleHTML('ai', msg.content, msg.time, null, htmlContent));
         _scrollBottom();
     }
 
-    // ── Typing indicator ──
     function _showTyping() {
-        var html = '<div class="chat-typing" id="chat-typing">'
-            + '<div class="chat-typing-dot"></div>'
-            + '<div class="chat-typing-dot"></div>'
-            + '<div class="chat-typing-dot"></div>'
-            + '</div>';
+        var html = '<div class="chat-typing" id="chat-typing"><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div><div class="chat-typing-dot"></div></div>';
         $messages.insertAdjacentHTML('beforeend', html);
         _scrollBottom();
     }
@@ -375,17 +291,11 @@
         if (el) el.remove();
     }
 
-    // ── Update send button state ──
     function _updateSendBtn() {
         var hasText = $input.value.trim().length > 0;
         var hasFile = selectedFiles.length > 0;
-        // Nếu đang đợi AI (đang hiện nút Stop) thì không được disabled nút
         $btnSend.disabled = !(hasText || hasFile || isWaitingAI);
     }
-
-    // ══════════════════════════════════════════
-    //  FILE UPLOAD
-    // ══════════════════════════════════════════
 
     function _renderFileList() {
         if (selectedFiles.length === 0) {
@@ -401,19 +311,15 @@
                 + '<span class="chat-file-item-size">' + _formatFileSize(f.size) + '</span>'
                 + '<button type="button" class="chat-file-item-remove" data-idx="' + i + '" aria-label="Xóa">'
                 + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
-                + '</button>'
-                + '</div>';
+                + '</button></div>';
         }).join('');
 
-        // Gán sự kiện cho các nút xóa
         $fileList.querySelectorAll('.chat-file-item-remove').forEach(function (btn) {
-            btn.addEventListener('mousedown', function (e) { e.preventDefault(); }); // Giữ keyboard focus
             btn.addEventListener('click', function () {
                 var idx = parseInt(this.getAttribute('data-idx'), 10);
                 selectedFiles.splice(idx, 1);
                 _renderFileList();
                 _updateSendBtn();
-                $input.focus();
             });
         });
     }
@@ -425,99 +331,17 @@
         _updateSendBtn();
     }
 
-    $btnAttach.addEventListener('click', function () {
-        $fileInput.click();
-    });
-
+    $btnAttach.addEventListener('click', function () { $fileInput.click(); });
     $fileInput.addEventListener('change', function () {
         var files = $fileInput.files;
-        if (!files || files.length === 0) return;
-
-        var oversized = [];
+        if (!files) return;
         for (var i = 0; i < files.length; i++) {
-            if (files[i].size > MAX_FILE_SIZE) {
-                oversized.push(files[i].name);
-            } else {
-                selectedFiles.push(files[i]);
-            }
+            if (files[i].size <= MAX_FILE_SIZE) selectedFiles.push(files[i]);
         }
-
-        if (oversized.length > 0) {
-            alert('File quá lớn (tối đa 10 MB): ' + oversized.join(', '));
-        }
-
-        $fileInput.value = ''; // Reset để có thể chọn lại cùng 1 file
         _renderFileList();
         _updateSendBtn();
     });
 
-    // ── Drag & Drop Logic ──
-    var _dragCounter = 0;
-    var $dropOverlay = document.createElement('div');
-    $dropOverlay.className = 'chat-drop-overlay';
-    $dropOverlay.innerHTML = '<div class="chat-drop-inner">'
-        + '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'
-        + '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>'
-        + '<span>Thả tập tin vào đây</span></div>';
-    $container.style.position = 'relative';
-    $container.appendChild($dropOverlay);
-
-    function _addDroppedFiles(fileList) {
-        var oversized = [];
-        for (var i = 0; i < fileList.length; i++) {
-            if (fileList[i].size > MAX_FILE_SIZE) {
-                oversized.push(fileList[i].name);
-            } else {
-                selectedFiles.push(fileList[i]);
-            }
-        }
-        if (oversized.length > 0) alert('File quá lớn: ' + oversized.join(', '));
-        _renderFileList();
-        _updateSendBtn();
-    }
-
-    $container.addEventListener('dragenter', function (e) {
-        e.preventDefault();
-        _dragCounter++;
-        if (_dragCounter === 1) $dropOverlay.classList.add('active');
-    });
-
-    $container.addEventListener('dragleave', function (e) {
-        _dragCounter--;
-        if (_dragCounter === 0) $dropOverlay.classList.remove('active');
-    });
-
-    $container.addEventListener('dragover', function (e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-    });
-
-    $container.addEventListener('drop', function (e) {
-        e.preventDefault();
-        _dragCounter = 0;
-        $dropOverlay.classList.remove('active');
-        if (e.dataTransfer && e.dataTransfer.files.length > 0) {
-            _addDroppedFiles(e.dataTransfer.files);
-        }
-    });
-
-    // ══════════════════════════════════════════
-    //  API BUTTON — mở ApiEngine @ menu
-    // ══════════════════════════════════════════
-    var $btnApi = document.getElementById('btn-api');
-    if ($btnApi) {
-        $btnApi.addEventListener('click', function () {
-            if (window.ApiEngine) {
-                ApiEngine.showMenu($input);
-            }
-        });
-    }
-
-    // ══════════════════════════════════════════
-    //  SEND MESSAGE
-    // ══════════════════════════════════════════
-
-    // ── Stop AI icon SVG ──
     var STOP_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>';
     var SEND_ICON = $btnSend.innerHTML;
 
@@ -545,24 +369,10 @@
     }
 
     function _send() {
-        // ApiEngine intercept: panel đang mở → thu params & execute
         if (window.ApiEngine && ApiEngine.handleSend && ApiEngine.handleSend()) return;
-
-        if (isWaitingAI) {
-            _stopAI();
-            return;
-        }
-
+        if (isWaitingAI) { _stopAI(); return; }
         var text = $input.value.trim();
-        // Nếu người dùng nhập lệnh bắt đầu bằng '#code' → hiển thị tham số API thay vì gửi chat
-        var hashMatch = text.match(/^#\s*([@A-Za-z0-9_\-]+)/);
-        if (hashMatch) {
-            var apiCode = hashMatch[1].replace(/^@/, '');
-            _fetchApiConfigAndShow(apiCode);
-            return;
-        }
         if (!text && selectedFiles.length === 0) return;
-
 
         var fileNames = selectedFiles.map(function (f) { return f.name; });
         var attachedFileName = fileNames.length > 0 ? fileNames.join(', ') : null;
@@ -571,155 +381,33 @@
         _saveUserPhrase(text);
         _addMessage('user', displayText, attachedFileName);
         $input.value = '';
-        _autoResize();
-
-        if (window.ApiEngine && window.ApiEngine.clearState) {
-            window.ApiEngine.clearState();
-        }
-
-        if (window.innerWidth <= 768) $input.blur();
+        _updateSendBtn();
 
         _showTyping();
         abortController = new AbortController();
         _setStopMode(true);
 
         var sessionId = _getSessionId();
-
-        // Helper: Nén ảnh
-        function _compressImage(file, maxSize, quality, callback) {
-            var img = new Image();
-            var url = URL.createObjectURL(file);
-            img.onload = function () {
-                URL.revokeObjectURL(url);
-                var w = img.width, h = img.height;
-                if (w > maxSize || h > maxSize) {
-                    if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
-                    else { w = Math.round(w * maxSize / h); h = maxSize; }
-                }
-                var canvas = document.createElement('canvas');
-                canvas.width = w; canvas.height = h;
-                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                callback(canvas.toDataURL('image/jpeg', quality));
-            };
-            img.onerror = function () {
-                URL.revokeObjectURL(url);
-                var reader = new FileReader();
-                reader.onload = function () { callback(reader.result); };
-                reader.readAsDataURL(file);
-            };
-            img.src = url;
-        }
-
-        // Helper: Đọc file sang base64
-        function _readFile(file) {
-            return new Promise(function (resolve) {
-                var type = file.type.startsWith('image/') ? 'image' : (file.type.startsWith('audio/') ? 'audio' : 'file');
-                if (type === 'image') {
-                    _compressImage(file, 1024, 0.7, function (base64) {
-                        resolve({ name: file.name, type: type, data: base64 });
-                    });
-                } else {
-                    var reader = new FileReader();
-                    reader.onload = function () { resolve({ name: file.name, type: type, data: reader.result }); };
-                    reader.onerror = function () { resolve({ name: file.name, type: type, data: null }); };
-                    reader.readAsDataURL(file);
-                }
-            });
-        }
-
         var filesToSend = selectedFiles.slice();
         _clearFiles();
 
-        Promise.all(filesToSend.map(_readFile)).then(function (fileList) {
-            var firstFile = fileList.length > 0 ? fileList[0] : null;
-            var payload = {
-                action: 'chat',
-                chatInput: text || displayText,
-                text: text || displayText,
-                username: userName || 'Demo',
-                session_id: sessionId,
-                files: fileList
-            };
-            // Backward compatibility
-            if (firstFile) {
-                payload.image_url = firstFile.data;
-                payload.file_type = firstFile.type;
-            }
-
-            // -- Phase 1: Error Recovery (Exponential Backoff Wrapper) --
-            var MAX_RETRIES = 3;
-            var INITIAL_DELAY = 2000;
-
-            function _sleep(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); }
-            function _updateRetryUI(currentAttempt, maxAttempts) {
-                var msg = '⏳ Đang kết nối mạng lại (' + currentAttempt + '/' + maxAttempts + ')...';
-                var retryMsgDiv = document.getElementById('chat-retry-message');
-                if (retryMsgDiv) {
-                    retryMsgDiv.textContent = msg;
-                } else {
-                    $messages.insertAdjacentHTML('beforeend', '<div class="chat-bubble ai" id="chat-retry-message" style="opacity: 0.8; font-style: italic; font-size: 13px;">' + msg + '</div>');
-                    _scrollBottom();
-                }
-            }
-            function _removeRetryUI() {
-                var retryMsgDiv = document.getElementById('chat-retry-message');
-                if (retryMsgDiv) retryMsgDiv.parentNode.removeChild(retryMsgDiv);
-            }
-
-            function _fetchWithRetry(url, options, retryCount) {
-                if (retryCount === undefined) retryCount = 0;
-                return fetch(url, options)
-                    .then(function(response) {
-                        if (!response.ok) throw new Error('HTTP Error ' + response.status);
-                        _removeRetryUI();
-                        return response;
-                    })
-                    .catch(function(error) {
-                        if (error.name === 'AbortError' || (options.signal && options.signal.aborted)) {
-                            _removeRetryUI();
-                            throw error; // User pressed stop
-                        }
-                        if (retryCount < MAX_RETRIES) {
-                            var delay = INITIAL_DELAY * Math.pow(2, retryCount);
-                            console.warn('⚠️ Fetch retry ' + (retryCount + 1) + '/' + MAX_RETRIES + ' in ' + delay + 'ms');
-                            _updateRetryUI(retryCount + 1, MAX_RETRIES);
-                            return _sleep(delay).then(function() {
-                                return _fetchWithRetry(url, options, retryCount + 1);
-                            });
-                        }
-                        _removeRetryUI();
-                        throw error;
-                    });
-            }
-
-            _fetchWithRetry(CHAT_API, {
+        Promise.all(filesToSend.map(function(file) {
+            return new Promise(function (resolve) {
+                var reader = new FileReader();
+                reader.onload = function () { resolve({ name: file.name, data: reader.result }); };
+                reader.readAsDataURL(file);
+            });
+        })).then(function (fileList) {
+            var payload = { action: 'chat', text: text || displayText, session_id: sessionId, files: fileList };
+            fetch(CHAT_API, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + _getToken(),
-                    'x-api-key': CHAT_API_KEY
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken(), 'x-api-key': CHAT_API_KEY },
                 body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-                .then(function (res) {
-                    console.log('API Raw Response Status:', res.status);
-                    return res.text().then(function(text) {
-                        try {
-                            return JSON.parse(text);
-                        } catch(e) {
-                            return { error: true, message: 'Server returned non-JSON', raw: text };
-                        }
-                    });
-                })
-                .then(function(data) {
-                    console.log('API Parsed Data:', data);
-                    _handleReply(data);
-                })
-                .catch(function(err) {
-                    console.error('Fetch chain error:', err);
-                    _handleError(err);
-                });
+            .then(function (res) { return res.json(); })
+            .then(function(data) { _handleReply(data); })
+            .catch(function(err) { _handleError(err); });
         });
     }
 
@@ -728,33 +416,35 @@
         _hideTyping();
         _setStopMode(false);
 
-        // -- Format moi tu K_SieuLuong: { status, message, data:[], count } --
+        // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
         if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-            // Loại bỏ row rác kiểu [{}] do SQL query empty trả về
-            var cleanData = res.data.filter(function(r) { return Object.keys(r).length > 0 && Object.keys(r).some(function(k) { return HIDDEN_FIELDS.indexOf(k) === -1; }); });
+            // 1. Lọc data (ẩn các field hidden)
+            var cleanData = res.data.filter(function(r) { 
+                return Object.keys(r).length > 0 && Object.keys(r).some(function(k) { return _getHiddenFields().indexOf(k) === -1; }); 
+            });
             
-            var apiCode = res.apiCode || '';
-            var isCongNo = apiCode === '@cong_no_chi_tiet' || (cleanData.length > 0 && cleanData[0].hasOwnProperty('TongTienNoThucTe') && cleanData[0].hasOwnProperty('MaHD'));
-            var isTichLuy = apiCode === '@tich_luy' || (cleanData.length > 0 && cleanData[0].hasOwnProperty('TichLuyDatDuoc'));
+            // 2. Tìm Mã Đối Tượng (Customer Code) từ metadata
+            var idF = ApiEngine.getFieldByRole(res.intentParams || {}, 'ID');
+            var khCode = idF ? idF.val : '';
             
-            var khCode = (res.intentParams && res.intentParams['@khachhang']) || '';
+            // 3. Xác định UI Template & Renderer
+            var apiCode = (res.apiCode || '').toLowerCase();
+            var uiTpl = res.uiTemplate || ApiEngine.getUiTemplate(apiCode);
+            var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
             
-            var cardHtml = '';
-            if (isCongNo) cardHtml = _renderCongNoChiTiet(cleanData, res.message, khCode);
-            else if (isTichLuy) cardHtml = _renderTichLuy(cleanData, res.message, khCode);
-            else cardHtml = _renderCardView(cleanData, res.message || ('✅ Tìm thấy ' + cleanData.length + ' kết quả.'), apiCode);
-            
-            _addHtmlMessage(cardHtml, res.message || ('✅ Giao dịch thành công.'));
+            // 4. Render
+            var cardHtml = renderFn(cleanData, res.message, khCode || apiCode);
+            _addHtmlMessage(cardHtml, '📊 Kết quả');
             return;
         }
 
-        // -- Loi --
+        // -- Xử lý Lỗi --
         if (res && res.status === 'error') {
             _addMessage('ai', '❌ ' + (res.message || 'Có lỗi xảy ra.'));
             return;
         }
 
-        // -- Fallbacks --
+        // -- Các trường hợp trả về Text (Fallbacks) --
         var reply = '';
         if (typeof res === 'string') {
             reply = res;
@@ -766,14 +456,6 @@
             reply = res.message;
         } else if (res && res.output) {
             reply = res.output;
-        } else if (res && Array.isArray(res.data) && res.data.length > 0) {
-            var cleanData2 = res.data.filter(function(r) { return Object.keys(r).length > 0 && Object.keys(r).some(function(k) { return HIDDEN_FIELDS.indexOf(k) === -1; }); });
-            var apiCode2 = res.apiCode || '';
-            var isCongNo2 = apiCode2 === '@cong_no_chi_tiet' || (cleanData2.length > 0 && cleanData2[0].hasOwnProperty('TongTienNoThucTe') && cleanData2[0].hasOwnProperty('MaHD'));
-            var khCode2 = (res.intentParams && res.intentParams['@khachhang']) || '';
-            var cardHtml2 = isCongNo2 ? _renderCongNoChiTiet(cleanData2, '', khCode2) : _renderCardView(cleanData2, '', apiCode2);
-            _addHtmlMessage(cardHtml2, '📊 Kết quả');
-            return;
         } else if (res && res.data) {
             reply = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
         } else {
@@ -782,20 +464,11 @@
         _addMessage('ai', reply);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  CARD VIEW — Mobile-first data rendering
-    // ══════════════════════════════════════════════════════════════
+    function _getHiddenFields() {
+        return ApiEngine.getFieldsByRole ? ApiEngine.getFieldsByRole('HIDDEN') : ['_debug_llm'];
+    }
 
-    var HIDDEN_FIELDS = ['_debug_llm', 'JSON_F52E2B61-18A1-11d1-B105-00805F49916B'];
-
-    // ══════════════════════════════════════════════════════════════
-    //  FEATURE 1: QUICK ACTION BUTTONS
-    // ══════════════════════════════════════════════════════════════
-
-    var PHONE_FIELDS = ['SoDienThoai', 'DienThoai', 'Phone', 'Tel', 'Mobile', 'SoDT', 'DT', 'SDT', 'PhoneNumber', 'CellPhone'];
-    var NAME_FIELDS  = ['TenKhachHang', 'CustomerName', 'ObjectName', 'DisplayName', 'FullName', 'HoTen', 'Ten', 'Name', 'TenKH'];
-
-    /** Validate số điện thoại VN đơn giản — tránh XSS qua href */
+    /** Valiate số điện thoại VN đơn giản — tránh XSS qua href */
     function _isValidPhone(v) {
         return /^\+?[\d]{8,15}$/.test(String(v).replace(/[\s\-\.]/g, ''));
     }
@@ -804,15 +477,22 @@
         return String(v).replace(/[\s\-\.]/g, '');
     }
 
-    /** Tìm phone và name từ 1 row JSON */
+    // ══════════════════════════════════════════════════════════════
+    //  FEATURE 1: QUICK ACTION BUTTONS
+    // ══════════════════════════════════════════════════════════════
+
+    /** Tìm phone và name từ 1 row JSON (Dùng Metadata SQL) */
     function _detectContactFields(row) {
         var phone = null, name = null;
-        for (var i = 0; i < PHONE_FIELDS.length; i++) {
-            var v = row[PHONE_FIELDS[i]];
+        var phoneFields = ApiEngine.getFieldsByRole ? ApiEngine.getFieldsByRole('PHONE') : [];
+        var nameFields = ApiEngine.getFieldsByRole ? ApiEngine.getFieldsByRole('NAME') : [];
+        
+        for (var i = 0; i < phoneFields.length; i++) {
+            var v = row[phoneFields[i]];
             if (v && _isValidPhone(String(v))) { phone = _normalizePhone(String(v)); break; }
         }
-        for (var j = 0; j < NAME_FIELDS.length; j++) {
-            var nv = row[NAME_FIELDS[j]];
+        for (var j = 0; j < nameFields.length; j++) {
+            var nv = row[nameFields[j]];
             if (nv && String(nv).trim()) { name = String(nv).trim(); break; }
         }
         return { phone: phone, name: name };
@@ -842,25 +522,15 @@
         _updateSendBtn();
     }
 
-    // Ưu tiên detect field theo vai trò
-    var FIELD_ROLES = {
-        title: ['TenKhachHang', 'TenCuaHang', 'TenNhaCungCap', 'TenSanPham', 'EmployeeName', 'ItemName',
-                'DisplayName', 'Name', 'TenDanhMuc', 'ObjectName', 'FullName', 'HoTen', 'Ten', 'CustomerName',
-                'TenNhanVien', 'TenHang', 'TenDoiTac', 'TenKho', 'TenDonHang', 'MaHD', 'DocumentID'],
-        id: ['MaKhachHang', 'EmployeeID', 'ItemID', 'MaSP', 'Code', 'ObjectID', 'ExternalCode', 'CustomerCode', 'MaDanhMuc', 'ID'],
-        badge: ['PhanLoai', 'NhomKH', 'Type', 'Category', 'TrangThai', 'Status', 'LoaiKH'],
-        money: ['DoanhSo', 'TongNo', 'TonKho', 'DonGia', 'SoTien', 'GiaTri', 'TongTien', 'DoanhThu', 'GiaBan',
-                'DoanhSoTBThang', 'DoanhSo3Thang', 'DoanhSoThang'],
-        trend: ['XuHuong', 'TangGiam', 'PhanTram', 'TyLe', 'CanhBao', 'NhanXet']
-    };
+    
 
-    function _pickField(row, candidates) {
-        for (var i = 0; i < candidates.length; i++) {
-            if (row[candidates[i]] !== undefined && row[candidates[i]] !== null && String(row[candidates[i]]).trim() !== '') {
-                return { key: candidates[i], val: row[candidates[i]] };
-            }
-        }
-        return null;
+        function _pickValue(row, role) {
+        var f = ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
+        return f ? f.val : null;
+    }
+
+    function _pickField(row, role) {
+        return ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
     }
 
     function _fmtCellVal(v) {
@@ -885,24 +555,32 @@
         var keys = [];
         rows.forEach(function(r) {
             Object.keys(r).forEach(function(k) {
-                if (keys.indexOf(k) === -1 && HIDDEN_FIELDS.indexOf(k) === -1) keys.push(k);
+                if (keys.indexOf(k) === -1 && _getHiddenFields().indexOf(k) === -1) keys.push(k);
             });
         });
         return keys;
     }
 
-    // ── Mode 1: Full Card (count ≤ 5) ──────────────────────────────
-    function _renderFullCards(rows, headerMsg) {
+    /**
+     * Renderer ĐỘNG 100%: Tự động nhận diện Role từ Metadata
+     * Hợp nhất từ FullCard, Accordion và Summary.
+     */
+    function _renderCardView(rows, headerMsg) {
         var keys = _getKeys(rows);
         var html = '';
         if (headerMsg) html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
-        html += '<div class="ai-card-list">';
+        
+        var viewId = 'view-' + (++_modalIdCounter);
+        html += '<div class="ai-inline-container" id="' + viewId + '">';
+        html += '<div class="ai-view-cards">';
+        html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
+        
         rows.forEach(function(row, idx) {
-            var titleF = _pickField(row, FIELD_ROLES.title);
-            var idF = _pickField(row, FIELD_ROLES.id);
-            var badgeF = _pickField(row, FIELD_ROLES.badge);
-            var moneyF = _pickField(row, FIELD_ROLES.money);
-            var trendF = _pickField(row, FIELD_ROLES.trend);
+            var titleF = _pickField(row, 'TITLE');
+            var idF = _pickField(row, 'ID');
+            var badgeF = _pickField(row, 'BADGE');
+            var moneyF = _pickField(row, 'MONEY');
+            var trendF = _pickField(row, 'TREND');
 
             var usedKeys = [];
             if (titleF) usedKeys.push(titleF.key);
@@ -923,158 +601,43 @@
             html += '</div>'; // header
 
             html += '<div class="ai-card-body">';
-            // Hiện money nổi bật
             if (moneyF) {
                 html += '<div class="ai-card-money">💰 ' + _esc(moneyF.key) + ': <strong>' + _fmtCellVal(moneyF.val) + '</strong></div>';
                 usedKeys.push(moneyF.key);
             }
-            // Trend
             if (trendF) {
                 var tv = String(trendF.val);
-                var trendCls = (tv.indexOf('-') !== -1 || tv.indexOf('giảm') !== -1 || tv.indexOf('Giam') !== -1) ? 'ai-trend-down' : 'ai-trend-up';
+                var trendCls = (tv.indexOf('-') !== -1 || tv.indexOf('giảm') !== -1) ? 'ai-trend-down' : 'ai-trend-up';
                 html += '<div class="ai-card-trend ' + trendCls + '">📈 ' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
                 usedKeys.push(trendF.key);
             }
-            // Các field còn lại
+
+            // Hiện các field còn lại
             keys.forEach(function(k) {
                 if (usedKeys.indexOf(k) !== -1) return;
-                if (row[k] === null || row[k] === undefined || String(row[k]).trim() === '') return;
+                var val = row[k];
+                if (val === null || val === undefined || String(val).trim() === '') return;
                 html += '<div class="ai-card-row">';
                 html += '<span class="ai-card-label">' + _esc(k) + '</span>';
-                html += '<span class="ai-card-value">' + _esc(_fmtCellVal(row[k])) + '</span>';
+                html += '<span class="ai-card-value">' + _esc(_fmtCellVal(val)) + '</span>';
                 html += '</div>';
             });
             html += '</div>'; // body
-            // ── Feature 1: Action Bar ──
             html += _buildActionBar(row);
             html += '</div>'; // card
         });
-        html += '</div>'; // card-list
-        return html;
-    }
 
-    // ── Mode 2: Accordion (count 6-20) ─────────────────────────────
-    function _renderAccordion(rows, headerMsg) {
-        var keys = _getKeys(rows);
-        var viewId = 'view-' + (++_modalIdCounter);
-
-        var html = '';
-        if (headerMsg) html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
-        html += '<div class="ai-inline-container" id="' + viewId + '">';
-
-        // ── Phần card (mặc định hiện) ──
-        html += '<div class="ai-view-cards">';
-        html += '<div class="ai-card-list accordion">';
-        rows.forEach(function(row, idx) {
-            var titleF = _pickField(row, FIELD_ROLES.title);
-            var idF = _pickField(row, FIELD_ROLES.id);
-            var badgeF = _pickField(row, FIELD_ROLES.badge);
-            var moneyF = _pickField(row, FIELD_ROLES.money);
-            var trendF = _pickField(row, FIELD_ROLES.trend);
-
-            var usedKeys = [];
-            if (titleF) usedKeys.push(titleF.key);
-            if (idF) usedKeys.push(idF.key);
-            if (badgeF) usedKeys.push(badgeF.key);
-            if (moneyF) usedKeys.push(moneyF.key);
-            if (trendF) usedKeys.push(trendF.key);
-
-            html += '<div class="ai-card ai-card-compact">';
-            html += '<div class="ai-card-summary">';
-            html += '<div class="ai-card-sum-main">';
-            html += '<div class="ai-card-title">' + _esc(titleF ? String(titleF.val) : 'Mục ' + (idx+1)) + '</div>';
-            html += '<div class="ai-card-meta">';
-            if (idF) html += '<span class="ai-card-id">' + _esc(String(idF.val)) + '</span>';
-            if (badgeF) html += '<span class="ai-badge ' + _badgeClass(badgeF.val) + '">' + _esc(String(badgeF.val)) + '</span>';
-            html += '</div>';
-            html += '</div>'; // sum-main
-            if (moneyF) {
-                html += '<div class="ai-card-sum-value">💰' + _esc(_fmtCellVal(moneyF.val)) + '</div>';
-            } else if (trendF) {
-                var tv = String(trendF.val);
-                var tCls = tv.indexOf('-') !== -1 ? 'ai-trend-down' : 'ai-trend-up';
-                html += '<div class="ai-card-sum-value ' + tCls + '">' + _esc(tv) + '</div>';
-            }
-            html += '<button class="ai-card-expand-btn" aria-label="Xem chi tiết">▾</button>';
-            html += '</div>'; // summary
-            html += '<div class="ai-card-detail" hidden>';
-            keys.forEach(function(k) {
-                if (usedKeys.indexOf(k) !== -1) return;
-                if (row[k] === null || row[k] === undefined || String(row[k]).trim() === '') return;
-                html += '<div class="ai-card-row">';
-                html += '<span class="ai-card-label">' + _esc(k) + '</span>';
-                html += '<span class="ai-card-value">' + _esc(_fmtCellVal(row[k])) + '</span>';
-                html += '</div>';
-            });
-            html += _buildActionBar(row);
-            html += '</div>'; // detail
-            html += '</div>'; // card
-        });
         html += '</div>'; // card-list
         html += '</div>'; // ai-view-cards
 
-        // ── Nút toggle ──
-        // Lưu text gốc vào data attribute để restore khi toggle-back
-        var toggleText = '📊 Xem toàn bộ dạng bảng';
+        // Nút toggle bảng
+        var toggleText = '📊 Xem dạng bảng';
         html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
-
-        // ── Inline table (mặc định ẩn) ──
         html += '<div class="ai-view-table" style="display:none">';
         html += _buildInlineTable(rows, keys);
         html += '</div>';
-
         html += '</div>'; // ai-inline-container
-        return html;
-    }
 
-    // ── Mode 3: Summary + Modal (count > 20) ───────────────────────
-    function _renderSummary(rows, headerMsg) {
-        var keys = _getKeys(rows);
-        var viewId = 'view-' + (++_modalIdCounter);
-
-        // Đếm theo badge field nếu có
-        var groups = {};
-        var badgeKey = null;
-        if (rows.length > 0) {
-            var bf = _pickField(rows[0], FIELD_ROLES.badge);
-            if (bf) {
-                badgeKey = bf.key;
-                rows.forEach(function(r) {
-                    var v = String(r[badgeKey] || 'Khác').trim();
-                    groups[v] = (groups[v] || 0) + 1;
-                });
-            }
-        }
-
-        var html = '<div class="ai-inline-container" id="' + viewId + '">';
-
-        // ── Summary box (hiện mặc định) ──
-        html += '<div class="ai-view-cards">';
-        html += '<div class="ai-summary-box">';
-        html += '<div class="ai-summary-icon">📊</div>';
-        html += '<div class="ai-summary-content">';
-        html += '<div class="ai-summary-title">' + _esc(headerMsg || ('Tìm thấy ' + rows.length + ' kết quả')) + '</div>';
-        if (badgeKey && Object.keys(groups).length > 0) {
-            html += '<div class="ai-summary-groups">';
-            Object.keys(groups).forEach(function(g) {
-                html += '<span class="ai-badge ' + _badgeClass(g) + '">' + _esc(g) + ' <strong>' + groups[g] + '</strong></span> ';
-            });
-            html += '</div>';
-        }
-        html += '</div>';
-        html += '</div>'; // summary-box
-        html += '</div>'; // ai-view-cards
-
-        // ── Nút toggle ──
-        var toggleText2 = '📋 Xem bảng chi tiết';
-        html += '<button class="ai-table-btn ai-table-btn-primary ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText2) + '">' + toggleText2 + '</button>';
-
-        // ── Inline table (mặc định ẩn) ──
-        html += '<div class="ai-view-table" style="display:none">';
-        html += _buildInlineTable(rows, keys);
-        html += '</div>';
-
-        html += '</div>'; // ai-inline-container
         return html;
     }
 
@@ -1082,8 +645,8 @@
     // ── Custom View: Công Nợ Chi Tiết (Financial Report) ──
     function _renderCongNoChiTiet(rows, headerMsg, khachHangCode) {
         var safeRows = (rows && rows.length > 0) ? rows : [];
-        var tongNo = safeRows.length > 0 ? (safeRows[0].TongTienNoThucTe || 0) : 0;
-        var tongHD = safeRows.length > 0 ? (safeRows[0].TongSoHoaDon || safeRows.length) : 0;
+        var tongNo = safeRows.length > 0 ? (_pickValue(safeRows[0], 'MONEY') || 0) : 0;
+        var tongHD = safeRows.length > 0 ? (_pickValue(safeRows[0], ['TongSoHoaDon', 'Count']) || safeRows.length) : 0;
         var phatSinhDuong = 0;
         var phatSinhAm = 0;
         var hasReturn = false;
@@ -1091,10 +654,10 @@
         var cardId = 'congno-async-' + Date.now() + Math.floor(Math.random()*1000);
 
         safeRows.forEach(function(r) {
-            var tien = Number(r.SoTien || 0);
+            var tien = Number(_pickValue(r, 'MONEY') || 0);
             if (tien > 0) phatSinhDuong += tien;
             else phatSinhAm += tien;
-            var dg = (r.DienGiai || '').toLowerCase();
+            var dg = String(_pickValue(r, 'TITLE') || '').toLowerCase(); // Dung TITLE lam dien giai
             if (tien < 0 && (dg.indexOf('trả') >= 0 || dg.indexOf('lỗi') >= 0 || dg.indexOf('hỏng') >= 0)) {
                 hasReturn = true; 
             }
@@ -1132,14 +695,17 @@
         // 2. Danh sách chi tiết
         html += '<div class="ai-sales-debt-list" id="list-' + cardId + '" style="display:none;">';
         safeRows.forEach(function(r) {
-            var tien = Number(r.SoTien || 0);
+            var tien = Number(_pickValue(r, 'MONEY') || 0);
+            var idVal = _pickValue(r, 'ID') || '';
+            var titleVal = _pickValue(r, 'TITLE') || '';
+            var dateVal = _pickValue(r, 'TREND') || ''; // Gia su dung TREND cho Ngay neu ko co role rieng
 
             html += '<div class="ai-sales-debt-item">';
             html += '<div class="ai-sales-debt-item-top">';
-            html += '<span class="ai-sales-item-id">Mã: <b>' + _esc(r.MaHD || '') + '</b></span>';
-            html += '<span class="ai-sales-item-date">' + _esc(r.Ngay || '') + '</span>';
+            html += '<span class="ai-sales-item-id">Mã: <b>' + _esc(idVal) + '</b></span>';
+            html += '<span class="ai-sales-item-date">' + _esc(dateVal) + '</span>';
             html += '</div>';
-            html += '<div class="ai-sales-debt-item-middle">' + _esc(r.DienGiai || '') + '</div>';
+            html += '<div class="ai-sales-debt-item-middle">' + _esc(titleVal) + '</div>';
             html += '<div class="ai-sales-debt-item-bottom">';
             html += '<span class="ai-sales-item-amount ' + (tien > 0 ? 'ai-sales-positive' : 'ai-sales-negative') + '">' + _fmtCellVal(tien) + '</span>';
             html += '</div>';
@@ -1347,15 +913,10 @@
         return html;
     }
 
-    // ── Router ─────────────────────────────────────────────────────
-    function _renderCardView(rows, headerMsg, apiCode) {
-        if (!rows || rows.length === 0) {
-            return '<p class="ai-para">📭 ' + _esc(headerMsg || 'Không tìm thấy dữ liệu.') + '</p>';
-        }
-        if (rows.length <= 5) return _renderFullCards(rows, headerMsg);
-        if (rows.length <= 20) return _renderAccordion(rows, headerMsg);
-        return _renderSummary(rows, headerMsg);
-    }
+    // ── Registry Registration ─────────────────────────────────────
+    _UI_RENDERERS['DEFAULT']  = _renderCardView;
+    _UI_RENDERERS['CONG_NO']  = _renderCongNoChiTiet;
+    _UI_RENDERERS['TICH_LUY'] = _renderTichLuy;
 
     // ── Inline Toggle & Modal table helpers ─────────────────────────
 
@@ -1371,8 +932,8 @@
         // ── Phát hiện field phân loại (badge) để tạo filter chip động ──
         var badgeKeyFound = null;
         var badgeValues = {};
-        for (var bi = 0; bi < FIELD_ROLES.badge.length; bi++) {
-            var bk = FIELD_ROLES.badge[bi];
+        for (var bi = 0; bi < 'BADGE'.length; bi++) {
+            var bk = 'BADGE'[bi];
             if (keys.indexOf(bk) !== -1) {
                 // Đếm distinct values
                 rows.forEach(function(r) {
@@ -1467,87 +1028,6 @@
             });
         }
         return filtered;
-    }
-
-    function _showTableModal(rows) {
-        var existing = document.getElementById('ai-table-modal');
-        if (existing) existing.remove();
-
-        var keys = _getKeys(rows);
-        var currentFilter = 'all';
-        var currentSearch = '';
-
-        // Build toolbar HTML
-        var toolbarHtml = '<div class="ai-sales-filter-bar">'
-            + '<input class="ai-sales-filter-input" id="ai-modal-search" type="search" placeholder="🔍 Tìm nhanh trong kết quả..." autocomplete="off" />'
-            + '<div class="ai-sales-filter-chips">'
-            + '<button class="ai-sales-filter-chip active" data-filter="all" type="button">Tất cả</button>'
-            + '<button class="ai-sales-filter-chip" data-filter="vip" type="button">⭐ Khách VIP</button>'
-            + '<span class="ai-sales-filter-count" id="ai-modal-count">' + rows.length + ' dòng</span>'
-            + '</div></div>';
-
-        // Build table HTML (only header, body will be rendered separately)
-        var tableHtml = '<div class="ai-table-wrap"><table class="ai-table" id="ai-modal-table"><thead><tr>';
-        keys.forEach(function(k) { tableHtml += '<th>' + _esc(k) + '</th>'; });
-        tableHtml += '</tr></thead><tbody id="ai-modal-tbody">' + _renderTableBody(rows, keys) + '</tbody></table></div>';
-
-        var modal = document.createElement('div');
-        modal.id = 'ai-table-modal';
-        modal.className = 'ai-modal-overlay';
-        modal.innerHTML = '<div class="ai-modal">'
-            + '<div class="ai-modal-header">'
-            + '<span>📊 Bảng kết quả (' + rows.length + ' dòng)</span>'
-            + '<button class="ai-modal-close" id="ai-modal-close-btn">✕</button>'
-            + '</div>'
-            + '<div class="ai-modal-body">' + toolbarHtml + tableHtml + '</div>'
-            + '</div>';
-        document.body.appendChild(modal);
-        requestAnimationFrame(function() { modal.classList.add('active'); });
-
-        // ── Filter logic ──
-        function _doFilter() {
-            var filtered = _applyModalFilter(rows, keys, currentSearch, currentFilter);
-            var tbody = document.getElementById('ai-modal-tbody');
-            var countEl = document.getElementById('ai-modal-count');
-            if (tbody) tbody.innerHTML = _renderTableBody(filtered, keys);
-            if (countEl) countEl.textContent = filtered.length + ' dòng';
-        }
-
-        // Search input
-        var searchEl = document.getElementById('ai-modal-search');
-        if (searchEl) {
-            var _searchTimer = null;
-            searchEl.addEventListener('input', function() {
-                clearTimeout(_searchTimer);
-                var val = searchEl.value;
-                _searchTimer = setTimeout(function() {
-                    currentSearch = val;
-                    _doFilter();
-                }, 200);
-            });
-        }
-
-        // Filter chips
-        modal.querySelectorAll('.ai-sales-filter-chip').forEach(function(chip) {
-            chip.addEventListener('click', function() {
-                modal.querySelectorAll('.ai-sales-filter-chip').forEach(function(c) { c.classList.remove('active'); });
-                chip.classList.add('active');
-                currentFilter = chip.getAttribute('data-filter');
-                _doFilter();
-            });
-        });
-
-        // Close
-        document.getElementById('ai-modal-close-btn').addEventListener('click', function() {
-            modal.classList.remove('active');
-            setTimeout(function() { modal.remove(); }, 300);
-        });
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                modal.classList.remove('active');
-                setTimeout(function() { modal.remove(); }, 300);
-            }
-        });
     }
 
     // ── Click delegation cho accordion + modal + action bar ────────
@@ -1661,12 +1141,7 @@
         _addMessage('ai', 'Xin lỗi, tôi không thể phản hồi lúc này. Vui lòng thử lại sau.');
     }
 
-    // Nếu user nhập '#code' thì gọi n8n webhook 'api-get-config' để lấy cấu hình tham số và hiển thị
-    function _fetchApiConfigAndShow(apiCode) {
-        if (!apiCode) {
-            _addMessage('ai', 'Không tìm thấy mã API. Vui lòng nhập ví dụ: #goi_y_don_hang');
-            return;
-        }
+    function _getApiConfig(apiCode) {
         console.log('Fetching config for:', apiCode);
         var url = API_CONFIG.N8N_BASE + '/webhook/api-get-config';
         var body = { ApiCode: '@' + apiCode };
@@ -1680,20 +1155,12 @@
         })
             .then(function (r) { 
                 console.log('Config API Raw Response Status:', r.status);
-                // Safe text parsing first to avoid body consumption errors
                 return r.text();
             })
             .then(function (textRes) {
-                console.log('Config API raw text:', textRes);
                 var res = null;
-                try {
-                    res = JSON.parse(textRes);
-                } catch(e) {
-                    res = textRes; // fall back to string if not JSON
-                }
-                console.log('Config API parsed res:', res);
-
-                var msg = '';
+                try { res = JSON.parse(textRes); } catch(e) { res = textRes; }
+                
                 var fields = null;
                 if (res && res.data && !Array.isArray(res.data) && (res.data.FieldCode || res.data.field || res.data.name)) {
                     fields = [res.data];
@@ -1703,30 +1170,24 @@
                 else if (res && Array.isArray(res.fields)) fields = res.fields;
                 else if (res && Array.isArray(res)) fields = res;
 
-                if (!fields || fields.length === 0) {
-                    msg = 'Không có cấu hình tham số cho API: ' + apiCode;
-                } else {
-                    msg = 'Tham số cho ' + apiCode + ':\n';
+                if (fields && fields.length > 0) {
+                    var msg = 'Tham số cho ' + apiCode + ':\n';
                     fields.forEach(function (f) {
                         var code = f.FieldCode || f.field || f.name || '';
                         var name = f.FieldName || f.placeholder || f.placeholderText || '';
                         var req = f.IsRequired || f.required ? ' (bắt buộc)' : '';
                         msg += '- ' + code + req + (name ? ' — ' + name : '') + '\n';
                     });
-                }
-                console.log('Final config message to add:', msg);
-                _addMessage('ai', msg);
+                    _addMessage('ai', msg);
 
-                try {
-                    if (window._ghostSet && fields && fields.length) {
+                    if (window._ghostSet) {
                         var hint = fields.map(function (f) { return (f.FieldCode || f.field || '').replace(/^@/, '') + ':'; }).join(' ');
                         window._ghostSet('@' + apiCode + ' ' + hint + ' ');
                     }
-                } catch (e) { console.error('Ghost set error:', e); }
+                }
             })
             .catch(function (err) {
                 console.error('Fetch config error:', err);
-                _addMessage('ai', 'Không thể lấy cấu hình API.');
             });
     }
 
@@ -1770,14 +1231,9 @@
     // ══════════════════════════════════════════
 
     // Khởi tạo mặc định ngay — đảm bảo @mention luôn hoạt động
-    var MENTION_TRIGGERS = {
-        'sanpham': { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
-        'khachhang': { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
-        'donhang': { type: 'donhang', label: 'Đơn hàng', icon: '📋' },
-        'khohang': { type: 'khohang', label: 'Kho hàng', icon: '🏭' },
-        'nhanvien': { type: 'nhanvien', label: 'Nhân viên', icon: '👨‍💼' }
-    };
-    var mentionKeysPattern = /@(sanpham|khachhang|donhang|khohang|nhanvien)(\s(.*))?$/i;
+    // Khởi tạo mặc định rỗng — hoàn toàn phụ thuộc vào API
+    var MENTION_TRIGGERS = {};
+    var mentionKeysPattern = null;
     var MENTION_CACHE_KEY = 'mention_categories';
     var MENTION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 giờ
 
@@ -2408,44 +1864,104 @@
     // ══════════════════════════════════════════════════════
 
     var _chipsBar = null;
-    var CHIPS_MAX = 8;
 
     function _initSuggestionBar() {
         var suggestions = window.CHAT_SUGGESTIONS;
         if (!suggestions || !suggestions.length) return;
 
+        // Xây dựng cấu trúc danh mục
+        var categories = {};
+        suggestions.forEach(function(s) {
+            var cat = s.category || 'Khác';
+            if (!categories[cat]) categories[cat] = [];
+            categories[cat].push(s);
+        });
+        
+        var catNames = Object.keys(categories);
+        // Đẩy tab "Hướng dẫn" xuống cuối cùng
+        var idxHd = catNames.indexOf('Hướng dẫn');
+        if (idxHd > -1) {
+            catNames.splice(idxHd, 1);
+            catNames.push('Hướng dẫn');
+        }
+
+        // Load tab dã lưu từ localStorage hoặc mặc định tab Mở đầu
+        var lastCat = localStorage.getItem('ai_sales_last_tab');
+        if (!lastCat || catNames.indexOf(lastCat) === -1) {
+            lastCat = catNames[0];
+        }
+
         _chipsBar = document.createElement('div');
         _chipsBar.className = 'ai-sales-chips-bar';
         _chipsBar.id = 'ai-sales-chips';
 
+        // 1. Tầng Tab (Categories)
+        var tabBar = document.createElement('div');
+        tabBar.className = 'ai-sales-chips-tabs ai-sales-chips-scroll';
+        _chipsBar.appendChild(tabBar);
+
+        // 2. Tầng Data (Chips)
         var scroll = document.createElement('div');
-        scroll.className = 'ai-sales-chips-scroll';
-
-        var shown = suggestions.slice(0, CHIPS_MAX);
-        shown.forEach(function(s) {
-            var btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'ai-sales-chip';
-            // textContent an toàn, không cần _esc
-            btn.textContent = (s.icon ? s.icon + ' ' : '') + s.text;
-            btn.addEventListener('click', function() {
-                $input.value = s.text;
-                _autoResize();
-                _updateSendBtn();
-                _send();
-            });
-            scroll.appendChild(btn);
-        });
-
+        scroll.className = 'ai-sales-chips-list ai-sales-chips-scroll';
         _chipsBar.appendChild(scroll);
 
-        // Inject ngay trên #chat-input-bar
-        var $inputBar = document.getElementById('chat-input-bar');
-        if ($inputBar && $inputBar.parentNode) {
-            $inputBar.parentNode.insertBefore(_chipsBar, $inputBar);
+        // Hàm render Chips cho 1 Category
+        function renderChips(catName) {
+            scroll.innerHTML = ''; // reset
+            var items = categories[catName] || [];
+            
+            // Map màu sắc Vibrant cho từng Tab
+            var colorClass = '';
+            if (catName === 'Phân tích') colorClass = 'chip-vibrant-analytics';
+            else if (catName === 'Công nợ') colorClass = 'chip-vibrant-debt';
+            else if (catName === 'Kho hàng') colorClass = 'chip-vibrant-inventory';
+            else if (catName === 'Đơn hàng') colorClass = 'chip-vibrant-orders';
+            else if (catName === 'Tra cứu') colorClass = 'chip-vibrant-search';
+            
+            items.forEach(function(s) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'ai-sales-chip ' + colorClass;
+                // Hiển thị nội dung cực ngắn đã được tối ưu
+                btn.textContent = (s.icon ? s.icon + ' ' : '') + (s.label || s.text);
+                btn.addEventListener('click', function() {
+                    $input.value = s.text; // Text đầy đủ để AI hiểu
+                    _autoResize();
+                    _updateSendBtn();
+                    _send();
+                });
+                scroll.appendChild(btn);
+            });
         }
 
-        // Ẩn chips nếu đã có lịch sử chat
+        // Hàm render UI Tabs
+        function renderTabs() {
+            tabBar.innerHTML = '';
+            catNames.forEach(function(c) {
+                var tBtn = document.createElement('button');
+                tBtn.type = 'button';
+                tBtn.className = 'ai-sales-tab-btn' + (c === lastCat ? ' active' : '');
+                tBtn.textContent = c;
+                tBtn.addEventListener('click', function() {
+                    lastCat = c;
+                    localStorage.setItem('ai_sales_last_tab', c);
+                    renderTabs(); // Cập nhật class active
+                    renderChips(c);
+                });
+                tabBar.appendChild(tBtn);
+            });
+        }
+
+        renderTabs();
+        renderChips(lastCat);
+
+        // Inject vào trong #chat-input-bar (ở vị trí trên cùng)
+        var $inputBar = document.getElementById('chat-input-bar');
+        if ($inputBar) {
+            $inputBar.insertBefore(_chipsBar, $inputBar.firstChild);
+        }
+
+        // Ẩn chips nếu đã có lịch sử chat (tối ưu UI)
         _updateChipsVisibility();
     }
 
