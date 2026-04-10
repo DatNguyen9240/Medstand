@@ -36,6 +36,8 @@ BEGIN
             A.ObjectName, 
             A.Address, 
             A.Phone,
+            A.LocationID,
+            A.XaPhuong,
             A.ObjectID + ' - ' + A.ObjectName AS DisplayName
         FROM dbo.vKhachHangList A
         INNER JOIN dbo.AR_OrderTbl O ON O.ObjectID = A.ObjectID
