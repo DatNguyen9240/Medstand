@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.item.json.headers || {};\n// nếu không có Authorization nhưng có cookie chứa auth_token -> map vào Authorization\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\nconst method = headers['x-forwarded-method'] || $input.item.json.method || 'POST';\nreturn [{ json: { ...$input.item.json, headers: headers, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nreturn [{ json: { ...inputJson, headers: headers, _method: method.toUpperCase() } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -97,41 +97,41 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://medtest.bms79.com/api/chatbot-action",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ $('Webhook ListActive').item.json.headers.authorization || 'Bearer empty' }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"StoredProcedure\": \"API_ListActive\",\n  \"SearchKey\": \"{{ $('Webhook ListActive').item.json.body.SearchKey || '' }}\"\n}",
-        "options": {
-          "timeout": 10000
-        }
+        "operation": "executeQuery",
+        "query": "EXEC dbo.API_ListActive @SearchKey = '';"
       },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
       "position": [
         -420,
         -380
       ],
       "id": "http-list-active",
-      "name": "EXEC API_ListActive"
+      "name": "MS SQL API_ListActive",
+      "credentials": {
+        "microsoftSql": {
+          "id": "",
+          "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn [{ json: { records: items.map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -310,
+        -380
+      ],
+      "id": "format-list-active",
+      "name": "Format ListActive Response"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
+        "responseBody": "={{ JSON.stringify($json.records) }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
@@ -151,7 +151,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        -200,
+        -110,
         -380
       ],
       "id": "res-list-active",
@@ -176,7 +176,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.item.json.headers || {};\n// nếu không có Authorization nhưng có cookie chứa auth_token -> map vào Authorization\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\nconst method = headers['x-forwarded-method'] || $input.item.json.method || 'POST';\nconst body = $input.item.json.body || {};\nlet apiCode = body.ApiCode || '';\n\n// --- CHỐNG SQL INJECTION KẸT ---\n// Chỉ cho phép định dạng: @ và chữ cái, số, dấu gạch dưới (VD: @goi_y_don_hang)\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  // Thay thế bằng mã an toàn rỗng để chọc vào SQL không có kết quả, không vỡ DB\n  apiCode = '@invalid_code';\n}\n\nreturn [{ json: { ...$input.item.json, headers: headers, body: { ...body, ApiCode: apiCode }, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\n// --- CHỐNG SQL INJECTION KẸT ---\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nreturn [{ json: { ...inputJson, headers: headers, body: { ...body, ApiCode: apiCode }, _method: method.toUpperCase() } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -319,7 +319,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.item.json.headers || {};\n// nếu không có Authorization nhưng có cookie chứa auth_token -> map vào Authorization\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\nconst method = headers['x-forwarded-method'] || $input.item.json.method || 'POST';\nconst body = $input.item.json.body || {};\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { ...$input.item.json, headers: headers, body: {...body, ApiCode: apiCode}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, ApiCode: apiCode}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -340,11 +340,11 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json._isOptions }}",
-              "rightValue": true,
+              "leftValue": "={{ $json._method }}",
+              "rightValue": "OPTIONS",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "equals"
               }
             }
           ],
@@ -475,7 +475,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.item.json.headers || {};\n// nếu không có Authorization nhưng có cookie chứa auth_token -> map vào Authorization\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\nconst method = headers['x-forwarded-method'] || $input.item.json.method || 'POST';\nconst body = $input.item.json.body || {};\nlet dsVal = body.DataSourceValue || '';\nlet searchKey = body.SearchKey || '';\n\ndsVal = dsVal.replace(/'/g, \"''\");\nsearchKey = searchKey.replace(/'/g, \"''\");\n\nreturn [{ json: { ...$input.item.json, headers: headers, body: {...body, DataSourceValueSafe: dsVal, SearchKeySafe: searchKey}, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet dsVal = body.DataSourceValue || '';\nlet searchKey = body.SearchKey || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\ndsVal = dsVal.replace(/'/g, \"''\");\nsearchKey = searchKey.replace(/'/g, \"''\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, DataSourceValueSafe: dsVal, SearchKeySafe: searchKey}, _method: method.toUpperCase() } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -496,11 +496,11 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json._isOptions }}",
-              "rightValue": true,
+              "leftValue": "={{ $json._method }}",
+              "rightValue": "OPTIONS",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "equals"
               }
             }
           ],
@@ -634,14 +634,25 @@
         ],
         [
           {
-            "node": "EXEC API_ListActive",
+            "node": "MS SQL API_ListActive",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "EXEC API_ListActive": {
+    "MS SQL API_ListActive": {
+      "main": [
+        [
+          {
+            "node": "Format ListActive Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format ListActive Response": {
       "main": [
         [
           {
