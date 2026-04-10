@@ -319,7 +319,7 @@ BEGIN
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
                 ELSE 'text'
             END AS ControlType,
-            CASE WHEN has_default_value = 0 THEN 1 ELSE 0 END AS IsRequired,
+            0 AS IsRequired, -- Mặc định AI API là linh hoạt, SP sẽ tự handle giá trị default nội bộ
             CASE WHEN FieldCode = '@Username' THEN 1 ELSE 0 END AS IsSystemParam,
             CASE
                 WHEN FieldCode = '@khachhang' THEN 'APICODE'
