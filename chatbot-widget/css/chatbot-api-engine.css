@@ -16,7 +16,11 @@
 /* ─── @ API Dropdown Menu ──────────────────────────────────────── */
 .ae-menu {
     position: absolute;
-    bottom: 100%;
+    bottom: calc(100% + 8px); /* Cách thanh input một khoảng nhỏ */
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 16px); /* Co dãn theo chiều rộng thanh chat */
+    max-width: 768px; /* Tăng độ rộng tối đa lên 768px */
     z-index: 1000;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
@@ -33,12 +37,12 @@
 @keyframes aeSlideUp {
     from {
         opacity: 0;
-        transform: translateY(8px);
+        transform: translate(-50%, 8px);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate(-50%, 0);
     }
 }
 
@@ -79,7 +83,7 @@ body.ae-panel-open::before {
 .ae-menu-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start; /* Sửa lại để chủ động căn chỉnh */
     padding: 10px 16px;
     gap: 12px;
     cursor: pointer;
@@ -87,13 +91,15 @@ body.ae-panel-open::before {
     transition: background 0.1s;
 }
 
-.ae-menu-item:hover,
-.ae-menu-item.active {
-    background: var(--ae-accent-soft);
-    color: var(--ae-accent);
+.ae-val-name {
+    flex: 1; /* Chiếm hết khoảng trống để đẩy tag sang phải */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .ae-tag {
+    flex-shrink: 0; /* Không cho phép mã bị co lại */
     font-size: 11px;
     background: var(--ae-accent-soft);
     color: var(--ae-accent);

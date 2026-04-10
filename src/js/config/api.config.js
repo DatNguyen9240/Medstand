@@ -125,9 +125,26 @@ const API_CONFIG = {
     },
   },
 
-  // ─── N8N Workflow Base URL ───────────────────────────────────────────────
-  // Development: use local n8n. Change to tunnel URL for remote environment.
-  N8N_BASE: 'http://localhost:5678',
+  // ─── N8N Workflow Base URL ────────────────────────────────────────────────
+  // Dev: http://127.0.0.1:8080 (Proxy) | Prod: URL tunnel / domain n8n thực tế
+  N8N_BASE: 'http://127.0.0.1:8080',
+
+  // ─── AI Chatbot Widget Config ─────────────────────────────────────────────
+  CHAT_WEBHOOK: '/webhook/hook-ai-dainao', // append vào N8N_BASE
+  CHAT_API_KEY: 'test123456',
+
+  // ─── ApiEngine — Catalog / DataSource ────────────────────────────────────
+  CATALOG_ROOT_API: '@danh_muc',                         // dùng cho @mention
+  CART_CUSTOMER_DS: '@danh_muc|@Type=khachhang|@timkiem={q}', // dropdown cart
+  ENTITY_LOOKUP_DS: '@danh_muc|@timkiem={q}',            // hydrate tên/SĐT
+
+  // ─── Medstand-specific Renderer Config ───────────────────────────────────
+  DEBT_WARN_THRESHOLD: 50000000,                         // ngưỡng cảnh báo nợ (VND)
+  RETURN_KEYWORDS: ['trả', 'lỗi', 'hỏng'],              // từ khóa phát hiện TH
+  MSG_DEBT_RETURN:  'Có giao dịch trả hàng → Kiểm tra chất lượng SP trước khi giao.',
+  MSG_DEBT_HIGH:    'Công nợ vượt ngưỡng → Ưu tiên đôn đốc thu hồi trước khi xuất đơn mới.',
+  MSG_DEBT_ZERO:    'Thanh toán đúng hạn → Đề xuất đẩy mạnh up-sale.',
+  MSG_DEBT_NORMAL:  'Giao dịch đều đặn → Duy trì chăm sóc khách hàng thường xuyên.',
 };
 
 // Đóng băng để tránh bị ghi đè ngoài ý muốn

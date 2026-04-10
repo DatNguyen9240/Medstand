@@ -105,6 +105,9 @@ self.addEventListener('fetch', (event) => {
   // Bỏ qua các request không phải GET
   if (request.method !== 'GET') return;
 
+  // Bỏ qua các request gọi sang n8n (localhost:5678) — để trình duyệt tự xử lý CORS
+  if (request.url.includes(':5678')) return;
+
   // API call, Navigation (trang HTML), hoặc các tệp chatbot-widget → luôn lấy từ network trước (Network-first)
   if (request.url.includes('/api/') ||
     request.url.includes('/chatbot-widget/') ||

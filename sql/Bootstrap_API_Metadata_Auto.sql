@@ -101,13 +101,16 @@ BEGIN
     INSERT INTO dbo.API_Field_Role (FieldName, FieldRole) VALUES
     ('TenKhachHang','TITLE'), ('TenCuaHang','TITLE'), ('TenNhaCungCap','TITLE'), ('TenSanPham','TITLE'), 
     ('EmployeeName','TITLE'), ('ItemName','TITLE'), ('DisplayName','TITLE'), ('Name','TITLE'), 
-    ('TenNhanVien','TITLE'), ('TenHang','TITLE'), ('TenDoiTac','TITLE'), ('MaHD','TITLE'),
-    ('MaKhachHang','ID'), ('EmployeeID','ID'), ('ItemID','ID'), ('MaSP','ID'), ('Code','ID'), ('ObjectID','ID'),
-    ('PhanLoai','BADGE'), ('NhomKH','BADGE'), ('TrangThai','BADGE'), ('Status','BADGE'),
+    ('TenNhanVien','TITLE'), ('TenHang','TITLE'), ('TenDoiTac','TITLE'), ('MaHD','TITLE'), ('DienGiai','TITLE'),
+    ('MaKhachHang','ID'), ('EmployeeID','ID'), ('ItemID','ID'), ('MaSP','ID'), ('Code','ID'), ('ObjectID','ID'), ('MaChungTu','ID'),
+    ('PhanLoai','BADGE'), ('NhomKH','BADGE'), ('TrangThai','BADGE'), ('Status','BADGE'), ('QuaDaDat','BADGE'), ('PhanThuong','BADGE'),
     ('DoanhSo','MONEY'), ('TongNo','MONEY'), ('TonKho','MONEY'), ('DonGia','MONEY'), ('SoTien','MONEY'), 
-    ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'),
+    ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'), ('TichLuyDatDuoc','MONEY'),
     ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'),
-    ('TenKhachHang','NAME'), ('CustomerName','NAME'), ('ObjectName','NAME'), ('DisplayName', 'NAME'),
+    ('Ngay','TREND'), ('NgayChungTu','TREND'), ('ThoiGian','TREND'), ('LoiNhacAI','TREND'), ('NgayGiao','TREND'),
+    ('TyLe','PERCENT'), ('TangTruong','PERCENT'), ('PhanTram','PERCENT'), ('HoanThanh','PERCENT'), ('Percentage','PERCENT'),
+    ('MucTieu','TARGET'), ('Target','TARGET'), ('DinhMuc','TARGET'), ('ChiTieu','TARGET'),
+    ('SoLuong','COUNT'), ('SoPhanQua','COUNT'), ('Count','COUNT'), ('TotalRows','COUNT'),
     ('_debug_llm','HIDDEN'), ('JSON_F52E2B61-18A1-11d1-B105-00805F49916B','HIDDEN');
 END
 GO

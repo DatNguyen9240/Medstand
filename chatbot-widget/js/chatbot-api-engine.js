@@ -27,10 +27,19 @@
     'use strict';
 
     // ── Config ────────────────────────────────────────────────────────
-    // URL lấy từ api.config.js (API_CONFIG.N8N_BASE) — khi đổi tunnel chỉ sửa 1 chỗ
-    var _n8n = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE)
-        ? API_CONFIG.N8N_BASE
-        : 'https://bridges-duplicate-hiv-aside.trycloudflare.com'; // fallback
+    // Tất cả URL/keys đọc từ api.config.js (API_CONFIG) — KHÔNG hardcode ở đây
+    // Cấu trúc API_CONFIG tối thiểu:
+    // {
+    //   N8N_BASE: 'https://your-n8n-host.com',          // bắt buộc
+    //   CHAT_WEBHOOK: '/webhook/hook-ai-dainao',         // bắt buộc
+    //   CHAT_API_KEY: 'your-key',                        // bắt buộc
+    //   CATALOG_ROOT_API: '@danh_muc',                   // tuỳ project
+    //   CART_CUSTOMER_DS: '@danh_muc|@Type=kh|...',      // tuỳ project
+    // }
+    if (typeof API_CONFIG === 'undefined' || !API_CONFIG.N8N_BASE) {
+        console.error('[ApiEngine] API_CONFIG.N8N_BASE chưa được cấu hình. Widget sẽ không hoạt động.');
+    }
+    var _n8n = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE) ? API_CONFIG.N8N_BASE : '';
 
     var CFG = {
         LIST_URL: _n8n + '/webhook/api-list-active',
@@ -41,13 +50,330 @@
         CACHE_TTL: 10 * 60 * 1000,
         CACHE_KEY: 'api_engine_v3_list',
 
-        // --- Cấu hình API Gốc (Hạn chế sửa trực tiếp trong Logic) ---
-        CATALOG_ROOT_API: '@danh_muc',
-        CART_CUSTOMER_DS: '@danh_muc|@Type=khachhang|@timkiem={q}',
-        
-        // --- Mapping tham số hệ thống ---
-        SYS_PARAMS: { USERNAME: "username" }
+        // --- Có thể override từ API_CONFIG ---
+        CATALOG_ROOT_API: (typeof API_CONFIG !== 'undefined' && API_CONFIG.CATALOG_ROOT_API) || '',
+        CART_CUSTOMER_DS: (typeof API_CONFIG !== 'undefined' && API_CONFIG.CART_CUSTOMER_DS) || '',
+
+        // --- Tham số hệ thống mặc định ---
+        SYS_PARAMS: {
+            USERNAME: (typeof API_CONFIG !== 'undefined' && API_CONFIG.SYS_PARAM_USERNAME) || 'username'
+        }
     };
+
+    // ── Internal State ────────────────────────────────────────────────
+    var _inputEl, _inputBarEl, _panelEl, _menuEl;
+    var _apiList = [], _cfgCache = {}, _sysMeta = {};
+    var _activeApi = null, _lastCatalogType = null;
+    var _pillParams = {}, _cartItems = [];
+    var _menuVis = false, _menuIdx = -1;
+    var _dbt = null, _hideTimer = null, _registerCleanupQueue = [];
+    var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide;
+    var _suppressMenuUntil = 0, _suppressNextAt = false;
+    var _catalogDsMap = {}; // mapping type -> datasource string
+    var _prevPlaceholder = '';
+
+    // ── Networking Helpers ────────────────────────────────────────────
+    function _post(url, data) {
+        var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key
+            },
+            body: JSON.stringify(data || {})
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Network error: ' + res.status);
+            return res.json();
+        });
+    }
+
+    function _get(url) {
+        var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
+        return fetch(url, {
+            headers: { 'x-api-key': key }
+        }).then(function (res) {
+            if (!res.ok) throw new Error('Network error: ' + res.status);
+            return res.json();
+        });
+    }
+
+    // ── Data Source Logic ─────────────────────────────────────────────
+    function _loadDataSource(dsType, dsVal, keyword, cb) {
+        console.log('[ApiEngine] _loadDataSource type=', dsType, 'val=', dsVal, 'kw=', keyword);
+        if (!dsType || !dsVal) { cb([]); return; }
+
+        if (dsType === 'STATIC') {
+            try {
+                var rows = typeof dsVal === 'string' ? JSON.parse(dsVal) : dsVal;
+                if (keyword) {
+                    var kw = String(keyword).toLowerCase();
+                    rows = rows.filter(function (r) {
+                        return String(r.label || '').toLowerCase().indexOf(kw) !== -1 ||
+                            String(r.value || '').toLowerCase().indexOf(kw) !== -1;
+                    });
+                }
+                cb(rows);
+            } catch (e) { console.error('Parse STATIC DS err', e); cb([]); }
+            return;
+        }
+
+        // Với SQL hoặc APICODE -> gọi qua n8n datasource webhook
+        _post(CFG.DS_URL, {
+            DataSourceType: dsType,
+            DataSourceValue: dsVal,
+            SearchKey: keyword || ''
+        }).then(function (res) {
+            var rows = [];
+            if (Array.isArray(res)) {
+                rows = res;
+            } else if (res && res.data && Array.isArray(res.data)) {
+                rows = res.data;
+            } else if (res && typeof res === 'object') {
+                // Nếu là object đơn lẻ (có chứa các trường dữ liệu), bọc nó vào mảng
+                if (res.PhanLoai || res.Name || res.label || res.MaDanhMuc) {
+                    rows = [res];
+                }
+            }
+            cb(rows);
+        }).catch(function (e) {
+            console.error('Load DS failed', e);
+            cb([]);
+        });
+    }
+
+    function _isCatalogToken(token) {
+        if (!token) return false;
+        var t = String(token).replace(/^@/, '').toLowerCase();
+        // Check list cache
+        var inList = _apiList.some(function (a) {
+            return a.ExecutionType === 'CATALOG' && a.ApiCode.replace(/^@/, '').toLowerCase() === t;
+        });
+        if (inList) return true;
+        // Check known catalog types
+        return !!_catalogDsMap[t];
+    }
+
+    function _resolveCatalogDataSource(type) {
+        var t = String(type).replace(/^@/, '').toLowerCase();
+        return _catalogDsMap[t] || '';
+    }
+
+    // ── Config & List Logic ───────────────────────────────────────────
+    function _loadConfig(apiCode, cb) {
+        if (_cfgCache[apiCode]) { cb(_cfgCache[apiCode]); return; }
+        _post(CFG.CFG_URL, { ApiCode: apiCode }).then(function (res) {
+            _cfgCache[apiCode] = res;
+            cb(res);
+        }).catch(function (e) { console.error('Load config failed', e); cb(null); });
+    }
+
+    function _loadList(cb) {
+        // Cache list for 10 mins
+        var cached = sessionStorage.getItem(CFG.CACHE_KEY);
+        if (cached) {
+            var data = JSON.parse(cached);
+            if (Date.now() - data.ts < CFG.CACHE_TTL) {
+                _apiList = data.list;
+                if (cb) cb(_apiList);
+                return;
+            }
+        }
+
+        _post(CFG.LIST_URL, {}).then(function (res) {
+            _apiList = Array.isArray(res) ? res : (res.data || []);
+            sessionStorage.setItem(CFG.CACHE_KEY, JSON.stringify({
+                ts: Date.now(),
+                list: _apiList
+            }));
+            if (cb) cb(_apiList);
+        }).catch(function (e) { console.error('Load list failed', e); if (cb) cb([]); });
+    }
+
+    // ── Utility Helpers ───────────────────────────────────────────────
+    function _esc(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function _user() {
+        return (typeof API_CONFIG !== 'undefined' && API_CONFIG.SYS_PARAM_USERNAME) || 'Guest';
+    }
+
+    function _resolveDefault(v) {
+        if (!v) return '';
+        var s = String(v);
+        if (s.indexOf('{{TODAY}}') !== -1) {
+            return (new Date()).toISOString().split('T')[0];
+        }
+        if (s.indexOf('{{USERNAME}}') !== -1) return _user();
+        return s;
+    }
+
+    function _registerCleanup(fn) {
+        if (typeof fn === 'function') _registerCleanupQueue.push(fn);
+    }
+
+    function _runCleanup() {
+        while (_registerCleanupQueue.length > 0) {
+            var fn = _registerCleanupQueue.shift();
+            try { fn(); } catch (e) { }
+        }
+    }
+
+    // ── Menu UI Logic ─────────────────────────────────────────────────
+    function _menuCreate() {
+        if (_menuEl) return;
+        _menuEl = document.createElement('div');
+        _menuEl.id = 'ae-menu';
+        _menuEl.className = 'ae-menu';
+        _inputBarEl.appendChild(_menuEl);
+        _menuVis = true;
+    }
+
+    function _menuHide() {
+        if (_menuEl) {
+            _menuEl.parentNode.removeChild(_menuEl);
+            _menuEl = null;
+        }
+        _menuVis = false;
+        _menuIdx = -1;
+    }
+
+    function _positionMenu() {
+        if (!_menuEl || !_inputEl) return;
+        _menuEl.style.display = 'block';
+        _menuVis = true;
+    }
+
+    function _bindMenuItems(onPick) {
+        if (!_menuEl) return;
+        var items = _menuEl.querySelectorAll('.ae-menu-item');
+        items.forEach(function (el, idx) {
+            el.addEventListener('click', function (e) {
+                onPick(el, e);
+            });
+            el.addEventListener('mouseenter', function () {
+                _menuIdx = idx;
+                _menuNav(0);
+            });
+        });
+    }
+
+    function _menuNav(dir) {
+        if (!_menuEl) return;
+        var items = _menuEl.querySelectorAll('.ae-menu-item');
+        if (!items.length) return;
+
+        items.forEach(function (el) { el.classList.remove('active'); });
+        _menuIdx += dir;
+        if (_menuIdx < 0) _menuIdx = items.length - 1;
+        if (_menuIdx >= items.length) _menuIdx = 0;
+
+        var active = items[_menuIdx];
+        if (active) {
+            active.classList.add('active');
+            active.scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    function _menuPick() {
+        if (!_menuEl || _menuIdx === -1) return false;
+        var items = _menuEl.querySelectorAll('.ae-menu-item');
+        var active = items[_menuIdx];
+        if (active) {
+            active.click();
+            return true;
+        }
+        return false;
+    }
+
+    function _menuShow(query) {
+        _menuCreate();
+        var q = (query || '').toLowerCase().replace(/^@/, '');
+        var filtered = _apiList.filter(function (a) {
+            var code = (a.ApiCode || '').toLowerCase().replace(/^@/, '');
+            var name = (a.DisplayName || '').toLowerCase();
+            return code.indexOf(q) !== -1 || name.indexOf(q) !== -1;
+        });
+
+        if (!filtered.length) { _menuHide(); return; }
+
+        var html = '';
+        filtered.forEach(function (a) {
+            html += '<div class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
+                + '<span class="ae-val-name">' + _esc(a.DisplayName || a.ApiCode) + '</span>'
+                + '<span class="ae-tag">' + _esc(a.ApiCode) + '</span>'
+                + '</div>';
+        });
+        _menuEl.innerHTML = html;
+        _positionMenu();
+
+        _bindMenuItems(function (el) {
+            var code = el.getAttribute('data-code');
+            _onApiSelected(code);
+            _menuHide();
+        });
+    }
+
+    function _menuShowParams(query) {
+        if (!_activeApi || !_activeApi.config) { _menuHide(); return; }
+        _menuCreate();
+        var q = (query || '').toLowerCase().replace(/^@/, '');
+        var cfg = _activeApi.config;
+        var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
+
+        var val = _inputEl.value.toLowerCase();
+        var filtered = fields.filter(function (f) {
+            if (f.IsSystemParam == 1) return false;
+            var code = (f.FieldCode || '').toLowerCase();
+            // KHÔNG hiện lại tham số đã có trong input
+            if (val.indexOf(code) !== -1) return false;
+
+            var name = (f.FieldName || '').toLowerCase();
+            var q = (query || '').toLowerCase().replace(/^@/, '');
+            return code.replace(/^@/, '').indexOf(q) !== -1 || name.indexOf(q) !== -1;
+        });
+
+        if (!filtered.length) { _menuHide(); return; }
+
+        var html = '';
+        filtered.forEach(function (f) {
+            html += '<div class="ae-menu-item" data-code="' + _esc(f.FieldCode) + '">'
+                + '<span class="ae-val-name">' + _esc(f.FieldName || f.FieldCode) + '</span>'
+                + '<span class="ae-tag">' + _esc(f.FieldCode) + '</span>'
+                + '</div>';
+        });
+        _menuEl.innerHTML = html;
+        _positionMenu();
+
+        _bindMenuItems(function (el) {
+            var code = el.getAttribute('data-code');
+            var val = _inputEl.value;
+            var insert = (code.startsWith('@') ? code : '@' + code) + '=';
+
+            // Kiểm tra xem có đang thực sự gõ phím '@' không
+            var lastAt = val.lastIndexOf('@');
+            // Nếu dấu @ nằm ở cuối hoặc đang gõ dở thì mới ghi đè, 
+            // còn nếu đã cách ra (space) thì phải chèn thêm
+            if (lastAt !== -1 && lastAt >= val.lastIndexOf(' ')) {
+                var prefix = val.slice(0, lastAt);
+                _inputEl.value = prefix + insert;
+            } else {
+                // Chèn thêm vào cuối nếu không có dấu @ hợp lệ để ghi đè
+                var prefix = val.endsWith(' ') ? val : val + ' ';
+                _inputEl.value = prefix + insert;
+            }
+            _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            _inputEl.focus();
+            _menuHide();
+
+            // Nếu tham số có DataSource hoặc là Ngày, hãy hiển thị gợi ý giá trị ngay lập tức
+            setTimeout(function () {
+                _showInlineValues(code, '');
+            }, 50);
+        });
+    }
 
     function _menuShowCatalog(query, atPos) {
         console.log('[ApiEngine] _menuShowCatalog query=', query, 'atPos=', atPos);
@@ -56,18 +382,38 @@
             _menuCreate();
             var html = '';
 
-            rows.forEach(function (r) {
-                // include value as data-val so we can detect type (sanpham, khachhang...)
-                var rawType = (r.value || r.type || r.Value || r.MaDanhMuc || '') || '';
-                var valType = String(rawType).replace(/^@/, '').toLowerCase();
-                var raw = r.raw || r;
-                var dsVal = raw.DataSourceValue || raw.datasourcevalue || raw.dataSourceValue || '';
-                if (valType && dsVal) _catalogDsMap[valType] = String(dsVal);
-                html += '<div class="ae-menu-item ae-val-item" data-lbl="' + _esc(r.label) + '" data-val="' + _esc(valType) + '" data-ds="' + _esc(dsVal) + '">'
-                    + '<span>' + _esc(r.label) + '</span>'
-                    + (r.sub || valType ? '<span class="ae-tag">' + _esc(r.sub || valType) + '</span>' : '')
-                    + '</div>';
-            });
+        rows.forEach(function (r, idx) {
+            var raw = r.json || r.raw || r.data || r;
+            // Hàm pick không phân biệt hoa thường
+            function pick(keys) {
+                var rawKeys = Object.keys(raw || {});
+                for (var i = 0; i < keys.length; i++) {
+                    var target = keys[i].toLowerCase();
+                    for (var j = 0; j < rawKeys.length; j++) {
+                        if (rawKeys[j].toLowerCase() === target) {
+                            var val = raw[rawKeys[j]];
+                            if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+                        }
+                    }
+                }
+                return null;
+            }
+
+            var dispName = pick(['Name', 'ObjectName', 'FullName', 'label']) || r.label || r.value || '';
+            var dispId = pick(['MaDanhMuc', 'MaKhachHang', 'MA_KH', 'ID', 'Code', 'CustomerID']) || r.value || '';
+            var pl = pick(['PhanLoai', 'type', 'Type']) || '';
+
+            var vType = String(pl || (r.value || r.type || '')).replace(/^@/, '').toLowerCase();
+            var dsVal = raw.DataSourceValue || raw.datasourcevalue || '';
+            if (vType && dsVal) _catalogDsMap[vType] = String(dsVal);
+            
+            var tagLabel = dispId || vType;
+            
+            html += '<div class="ae-menu-item ae-val-item" data-lbl="' + _esc(dispName) + '" data-val="' + _esc(vType) + '" data-ds="' + _esc(dsVal) + '">'
+                + '<span class="ae-val-name">' + _esc(dispName) + '</span>'
+                + (tagLabel ? '<span class="ae-tag">' + _esc(tagLabel) + '</span>' : '')
+                + '</div>';
+        });
             _menuEl.innerHTML = html;
 
             _positionMenu();
@@ -123,28 +469,32 @@
             try { console.log('[ApiEngine] RAW ROWS SAMPLE:', (rows.slice ? rows.slice(0, 5) : rows)); } catch (e) { }
             _menuCreate();
             var html = '';
-            rows.forEach(function (r) {
-                var raw = r.raw || r;
+            rows.forEach(function (r, idx) {
+                var raw = r.json || r.raw || r.data || r;
                 function pickRaw(keys) {
+                    var rawKeys = Object.keys(raw || {});
                     for (var i = 0; i < keys.length; i++) {
-                        var k = keys[i];
-                        if (raw && raw[k] !== undefined && raw[k] !== null && String(raw[k]).trim() !== '') return raw[k];
+                        var target = keys[i].toLowerCase();
+                        for (var j = 0; j < rawKeys.length; j++) {
+                            if (rawKeys[j].toLowerCase() === target) {
+                                var val = raw[rawKeys[j]];
+                                if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+                            }
+                        }
                     }
                     return null;
                 }
 
-                // ID candidates (prefer real business keys first)
-                var mAD = pickRaw(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'CustomerCode', 'ItemID', 'MaSP', 'ID', 'Code', 'ExternalCode']) || '';
-                // Name candidates (do not fallback to address)
-                var mName = pickRaw(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TenKhachHang', 'TEN_KH', 'Ten', 'CustomerName', 'ItemName', 'DisplayName', 'label']) || '';
-                var mPhanLoai = pickRaw(['PhanLoai', 'type', 'Type']) || '';
+                var mAD = pickRaw(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'MA_KH', 'CUSTOMER_ID', 'CustomerCode', 'CustomerID', 'Ma', 'Code', 'ID']) || r.value || '';
+                var mName = pickRaw(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TEN_KH', 'TenKhachHang', 'Ten', 'label']) || r.label || r.Name || '';
+                var mPL = pickRaw(['PhanLoai', 'type', 'Type']) || '';
 
-                if (!mName) mName = r.label || '';
-                if (!mAD && r.value && r.value !== mName) mAD = r.value;
-
-                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-phanloai="' + _esc(mPhanLoai) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
+                if (!mName) mName = (r.label || r.value || '');
+                if (!mAD) mAD = r.value || '';
+                
+                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-phanloai="' + _esc(mPL) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
                     + '<span class="ae-val-name">' + _esc(mName) + '</span>'
-                    + (mAD ? '<span class="ae-val-id">' + _esc(mAD) + '</span>' : '')
+                    + (mAD ? '<span class="ae-tag">' + _esc(mAD) + '</span>' : '')
                     + '</div>';
             });
             _menuEl.innerHTML = html;
@@ -161,8 +511,15 @@
                 try {
                     var code = el.getAttribute('data-code') || '';
                     var v = _inputEl.value || '';
+                    var ph = el.getAttribute('data-phanloai') || '';
+                    var nm = el.getAttribute('data-name') || el.getAttribute('data-code') || '';
+                    var md = el.getAttribute('data-madanhmuc') || el.getAttribute('data-code') || '';
+
                     var display = (nm || code || '');
                     if (md && md !== display) display = display + '(' + md + ')';
+                    // Bổ sung Phân loại vào trước tên
+                    if (ph) display = ph + ' ' + display;
+                    
                     var insert = '"' + display + '" ';
                     try { _pillParams['@' + type] = code; } catch (e) { }
 
@@ -208,8 +565,8 @@
 
         // --- BẮT BUỘC ÉP KIỂU LỊCH NẾU DataType là Date ĐỂ CHỐNG CACHE BACKEND ---
         var isDateField = (field && (field.DataType === 'DATE' || field.DataType === 'DATETIME' || field.ControlType === 'date'))
-                         || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.START_DATE 
-                         || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.END_DATE;
+            || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.START_DATE
+            || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.END_DATE;
 
         if (isDateField) {
             if (!field) field = { FieldCode: fieldCode, FieldName: 'Ngày' };
@@ -281,16 +638,32 @@
             var html = '';
 
             rows.forEach(function (r) {
-                var raw = r.raw || r;
-                var idVal = raw.MaDanhMuc || raw.ObjectID || raw.ItemID || raw.Code || r.value || '';
-                var nameVal = raw.Name || raw.ObjectName || raw.ItemName || r.label || '';
-                var phVal = raw.PhanLoai || raw.Type || raw.type || '';
+                var raw = r.json || r.raw || r.data || r;
+                // Hàm pick không phân biệt hoa thường
+                function pick(keys) {
+                    var rawKeys = Object.keys(raw || {});
+                    for (var i = 0; i < keys.length; i++) {
+                        var target = keys[i].toLowerCase();
+                        for (var j = 0; j < rawKeys.length; j++) {
+                            if (rawKeys[j].toLowerCase() === target) {
+                                var val = raw[rawKeys[j]];
+                                if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+                            }
+                        }
+                    }
+                    return null;
+                }
+
+                var idVal = pick(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'MA_KH', 'CUSTOMER_ID', 'CustomerCode', 'CustomerID', 'Ma', 'Code', 'ID', 'ExternalCode', 'PartnerID']) || r.value || '';
+                var nameVal = pick(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TEN_KH', 'TenKhachHang', 'Ten', 'label']) || r.label || r.Name || '';
+                var phVal = pick(['PhanLoai', 'Type', 'type', 'Group']) || '';
+
                 var isObjectLike = (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.OBJECT_ID || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.DOC_ID;
                 var rightText = isObjectLike ? idVal : (r.sub || r.value || '');
 
                 html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '">'
-                    + '<span>' + _esc(nameVal || r.label) + '</span>'
-                    + (rightText ? '<span class="ae-tag">' + _esc(rightText) + '</span>' : '')
+                    + '<span class="ae-val-name">' + _esc(nameVal) + '</span>'
+                    + (idVal ? '<span class="ae-tag">' + _esc(idVal) + '</span>' : '')
                     + '</div>';
             });
             _menuEl.innerHTML = html;
@@ -328,25 +701,32 @@
         // - If selection is a catalog entity -> single space
         // - If selection is an API param value -> append ' @' to continue selecting next param
         // - Otherwise -> single space
-        var append = ' ';
-        if (_suppressNextAt) append = ' ';
-        else if (isCatalogEntity) append = ' ';
-        else if (isApiParam) append = ' ';
-        else append = ' ';
+        var append = '';
+        if (_suppressNextAt) append = '';
+        else if (isCatalogEntity) append = '';
+        else if (isApiParam) append = '';
+        else append = '';
+        var phVal = (selectedMeta && selectedMeta.ph) || '';
 
-        var isObjectParam = bare === 'objectid';
-        if (isObjectParam) {
-            var meta = selectedMeta || {};
-            var dispPh = meta.ph || 'Khách hàng';
-            var dispId = meta.id || pickedVal || '';
-            var displayVal = dispPh + '(' + dispId + ')';
-            _pillParams[fieldCode] = pickedVal;
-            // selection pill UI removed — only store hidden param mapping
-            _inputEl.value = prefix + displayVal + append;
-        } else if (isApiParam) {
-            // Đối với các tham số API thông thường (như @TuNgay, @TrangThai...), giữ nguyên định dạng @Param=Value thay vì rút gọn thành Name(ID)
+        if (isApiParam || phVal) {
+            // Trường hợp tham số API hoặc có PhanLoai từ Catalog: Hiện định dạng "PhanLoai Tên(Mã)"
             try { _pillParams[fieldCode] = pickedVal; } catch (e) { }
-            _inputEl.value = prefix + fieldCode + '=' + pickedVal + append;
+
+            var ph = (selectedMeta && selectedMeta.ph) ? selectedMeta.ph + ' ' : '';
+            var dispName = (selectedMeta && selectedMeta.name) ? selectedMeta.name : (fieldCode || '').replace(/^@/, '');
+            var dispId = (selectedMeta && selectedMeta.id) ? selectedMeta.id : pickedVal;
+
+            var fullDisplay = ph + dispName;
+            // Chỉ thêm mã ID vào ngoặc nếu mã ID khác với tên
+            if (dispId && dispId !== dispName) fullDisplay += '(' + dispId + ')';
+
+            // XÓA TRẠNG THÁI tra cứu cũ TRƯỚC khi dispatch event để watcher không bị nhầm
+            _lastCatalogType = null;
+
+            // CHỈ CHÈN GIÁ TRỊ HIỂN THỊ
+            var finalValue = (fullDisplay.indexOf(' ') !== -1 || fullDisplay.indexOf('(') !== -1) ? '"' + fullDisplay + '"' : fullDisplay;
+            var finalInsert = finalValue + append;
+            _inputEl.value = prefix + finalInsert;
         } else {
             // Store real value and insert friendly display (no leading '@')
             try { _pillParams[fieldCode] = pickedVal; } catch (e) { }
@@ -356,14 +736,15 @@
             if (selectedMeta && selectedMeta.id && selectedMeta.id !== dispName && selectedMeta.id !== pickedVal) {
                 display += '(' + selectedMeta.id + ')';
             } else if (!selectedMeta || !selectedMeta.name || pickedVal !== dispName) {
-                // Nếu không có tên thân thiện rõ ràng, hoặc pickedVal khác dispName (như ID gốc)
                 display += '(' + pickedVal + ')';
             }
             _inputEl.value = prefix + '"' + display + '"' + append;
         }
 
         // Suppress menu reopening for a short moment to avoid flicker
-        _suppressMenuUntil = Date.now() + 300;
+        _suppressMenuUntil = Date.now() + 500;
+        clearTimeout(_dbt); // Hủy mọi yêu cầu mở menu đang chờ xử lý
+        
         _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
         // Ensure menu is hidden and cleared immediately after selection
         _menuHide();
@@ -971,7 +1352,12 @@
                 // --- Tự động render mảng Data ---
                 if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
                     if (_cbRender && _cbHtml) {
-                        var html = _cbRender(res.data, r || ('🔍 Tìm thấy ' + res.data.length + ' kết quả'), apiCode);
+                        var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
+                        var html = _cbRender(res.data, r || ('🔍 Tìm thấy ' + res.data.length + ' kết quả'), apiCode, {
+                            uiTemplate: uiTpl,
+                            fieldRoles: ApiEngine.getRoleMapping(),
+                            khCode: ''  // engine không có context khCode, chatbot.js sẽ tự resolve
+                        });
                         _cbHtml(html, r || '📊 Kết quả tra cứu');
                     } else {
                         // Fallback Text Markdown (nếu không có UI mới)
@@ -1115,6 +1501,12 @@
                         }, 250); // Đợi load DataSource nhanh
                         return;
                     }
+                } else if (_activeApi && val.endsWith(' ')) {
+                    // TRƯỜNG HỢP MỚI: Không có '@' nhưng đang trong API và kết thúc bằng dấu cách -> Hiện lại list param
+                    _dbt = setTimeout(function () {
+                        _menuShowParams('');
+                    }, 40);
+                    return;
                 }
 
                 if (_menuVis) _menuHide();
@@ -1215,7 +1607,7 @@
             }
         }
     });
-    
+
     /** Lay vai tro cua mot field tu Metadata SQL */
     function _getFieldRole(fieldName) {
         return _sysMeta[fieldName] || null;
@@ -1241,17 +1633,17 @@
 
     /** Tai metadata he thong tu n8n/SQL */
     function _loadSystemMeta() {
-        return _post(CFG.META_URL, {}).then(function(res) {
+        return _post(CFG.META_URL, {}).then(function (res) {
             var data = Array.isArray(res) ? res : (res.data || []);
             _sysMeta = {};
-            data.forEach(function(item) {
+            data.forEach(function (item) {
                 if (item.FieldName && item.FieldRole) {
                     _sysMeta[item.FieldName] = item.FieldRole.toUpperCase();
                 }
             });
             console.log('[ApiEngine] System Meta Loaded:', Object.keys(_sysMeta).length, 'rules');
             return _sysMeta;
-        }).catch(function(e) {
+        }).catch(function (e) {
             console.warn('[ApiEngine] Load System Meta failed:', e);
             return {};
         });
@@ -1270,6 +1662,15 @@
             _cbHide = opts.hideTyping || null;
             _loadList(function () { console.log('[ApiEngine v3] ' + _apiList.length + ' APIs'); });
             _watchInput(_inputEl);
+
+            // Tự động gắn sự kiện cho nút mở Grid (nếu có)
+            var apiBtn = opts.apiBtn || document.getElementById('btn-api');
+            if (apiBtn) {
+                apiBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    window.ApiEngine.showMenu(_inputEl);
+                });
+            }
         },
 
         // Intercept _send() — trả true nếu ApiEngine xử lý
@@ -1356,11 +1757,14 @@
             _cfgCache = {};
             _loadList();
         },
-        
+
         loadSystemMeta: _loadSystemMeta,
-        getRoleMapping: function() { return _sysMeta; },
+        getRoleMapping: function () { return _sysMeta; },
         getFieldRole: _getFieldRole,
         getFieldByRole: _getFieldByRole,
-        getFieldsByRole: _getFieldsByRole
+        getFieldsByRole: _getFieldsByRole,
+        // Cho phép project-specific renderer gọi datasource qua n8n
+        // Signature: loadDataSource(apiCode, dsString, keyword, callback)
+        loadDataSource: _loadDataSource
     };
 })();
