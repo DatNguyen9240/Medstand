@@ -30,7 +30,7 @@
     // URL lấy từ api.config.js (API_CONFIG.N8N_BASE) — khi đổi tunnel chỉ sửa 1 chỗ
     var _n8n = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE)
         ? API_CONFIG.N8N_BASE
-        : 'https://seasonal-homes-portraits-fired.trycloudflare.com'; // fallback
+        : 'https://bridges-duplicate-hiv-aside.trycloudflare.com'; // fallback
 
     var CFG = {
         LIST_URL: _n8n + '/webhook/api-list-active',
@@ -47,7 +47,12 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _tok() },
             body: JSON.stringify(body)
-        }).then(function (r) { return r.json(); });
+        }).then(function (r) {
+            return r.text().then(function(txt) {
+                if (!txt || txt.trim() === '') return []; // N8N trả rỗng -> mảng rỗng (0 kết quả)
+                try { return JSON.parse(txt); } catch(e) { throw new Error('Dữ liệu máy chủ trả về không hợp lệ'); }
+            });
+        });
     }
 
     // ── State ─────────────────────────────────────────────────────────
@@ -70,6 +75,8 @@
 
     // Callbacks từ chatbot.js
     var _cbMsg = null;
+    var _cbHtml = null;
+    var _cbRender = null;
     var _cbShow = null;
     var _cbHide = null;
     var _inputEl = null;
@@ -270,8 +277,15 @@
             var parsed = _parseApiCodeDataSource(dsValue);
             var apiCode = parsed.apiCode;        // @danh_muc
             var params = parsed.params;
-            // Thêm keyword làm search param
-            if (keyword) params['@SearchText'] = keyword;
+            // Thêm keyword làm search param, xử lý riêng từng API ngầm để tránh lỗi SQL param không tồn tại
+            if (keyword) {
+                var cleanCode = apiCode.replace(/^@/, '').toLowerCase();
+                if (cleanCode === 'danh_muc' || cleanCode === 'tra_cuu_san_pham') {
+                    params['@timkiem'] = keyword;
+                } else {
+                    params['@SearchText'] = keyword; // Mặc định chung
+                }
+            }
 
             _post(CFG.EXEC_URL, { ApiCode: apiCode, params: params })
                 .then(function (res) {
@@ -628,11 +642,11 @@
                     var v = _inputEl.value || '';
                     var display = (nm || code || '');
                     if (md && md !== display) display = display + '(' + md + ')';
-                    var insert = display + ' ';
+                    var insert = '"' + display + '" ';
                     try { _pillParams['@' + type] = code; } catch (e) { }
 
-                    var reAt = new RegExp('@' + type + '=[^@\s]*\s?', 'i');
-                    var reNoAt = new RegExp(type + '=[^@\s]*\s?', 'i');
+                    var reAt = new RegExp('@' + type + '=[^@\\s]*\\s?', 'i');
+                    var reNoAt = new RegExp(type + '=[^@\\s]*\\s?', 'i');
                     if (reAt.test(v)) {
                         v = v.replace(reAt, insert);
                     } else if (reNoAt.test(v)) {
@@ -851,7 +865,7 @@
                 // Nếu không có tên thân thiện rõ ràng, hoặc pickedVal khác dispName (như ID gốc)
                 display += '(' + pickedVal + ')';
             }
-            _inputEl.value = prefix + display + append;
+            _inputEl.value = prefix + '"' + display + '"' + append;
         }
 
         // Suppress menu reopening for a short moment to avoid flicker
@@ -1391,6 +1405,16 @@
                     var el = _panelEl.querySelector('#' + fid);
                     if (el) {
                         var v = el.value.trim();
+                        // Tự động gán mặc định cho các tham số ngày (nếu trống)
+                        if (!v && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
+                            var d = new Date();
+                            if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
+                            var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                            var dd = d.getDate().toString().padStart(2, '0');
+                            v = d.getFullYear() + '-' + mm + '-' + dd;
+                            el.value = v; // Hiện lên UI luôn
+                        }
+
                         if (f.IsRequired == 1 && !v) {
                             el.focus(); el.classList.add('ae-error'); hasErr = true;
                         } else {
@@ -1458,6 +1482,15 @@
                     var fcLow = (f.FieldCode || '').toLowerCase();
                     // Bypass validate cho các system param
                     if (fcLow === '@username' || fcLow === 'username') return;
+
+                    // Tự động tính tham số thời gian cho TH2 (nhập qua Chat)
+                    if (!params[f.FieldCode] && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
+                        var d = new Date();
+                        if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
+                        var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                        var dd = d.getDate().toString().padStart(2, '0');
+                        params[f.FieldCode] = d.getFullYear() + '-' + mm + '-' + dd;
+                    }
 
                     if (f.IsRequired == 1 && (!f.IsSystemParam || f.IsSystemParam == 0)) {
                         if (!params[f.FieldCode]) {
@@ -1535,32 +1568,39 @@
                 _cbHide && _cbHide();
                 var r = typeof res === 'string' ? res : (res.reply || res.message || '');
 
-                // --- Tự động render mảng Data thành Bảng Markdown (Table) ---
+                // --- Tự động render mảng Data ---
                 if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
-                    var arr = res.data;
-                    // Lấy tiêu đề cột (bỏ các cột hệ thống dư thừa nếu có)
-                    var keys = Object.keys(arr[0]).filter(function (k) {
-                        var l = k.toLowerCase();
-                        return l !== 'rowindex' && l !== 'totalrows' && l !== 'isdeleted';
-                    });
-
-                    if (keys.length > 0) {
-                        var tb = '\n\n| ' + keys.join(' | ') + ' |\n';
-                        tb += '|' + keys.map(function () { return '---'; }).join('|') + '|\n';
-                        arr.forEach(function (item) {
-                            tb += '| ' + keys.map(function (k) {
-                                var v = item[k];
-                                if (v === null || v === undefined) return '';
-                                return String(v).replace(/\|/g, '-').replace(/\n/g, ' ');
-                            }).join(' | ') + ' |\n';
+                    if (_cbRender && _cbHtml) {
+                        var html = _cbRender(res.data, r || ('🔍 Tìm thấy ' + res.data.length + ' kết quả'), apiCode);
+                        _cbHtml(html, r || '📊 Kết quả tra cứu');
+                    } else {
+                        // Fallback Text Markdown (nếu không có UI mới)
+                        var arr = res.data;
+                        var keys = Object.keys(arr[0]).filter(function (k) {
+                            var l = k.toLowerCase();
+                            return l !== 'rowindex' && l !== 'totalrows' && l !== 'isdeleted';
                         });
-                        r += tb;
-                    }
-                } else if (!r && typeof res === 'object') {
-                    r = JSON.stringify(res, null, 2);
-                }
 
-                _cbMsg && _cbMsg('ai', r);
+                        if (keys.length > 0) {
+                            var tb = '\n\n| ' + keys.join(' | ') + ' |\n';
+                            tb += '|' + keys.map(function () { return '---'; }).join('|') + '|\n';
+                            arr.forEach(function (item) {
+                                tb += '| ' + keys.map(function (k) {
+                                    var v = item[k];
+                                    if (v === null || v === undefined) return '';
+                                    return String(v).replace(/\|/g, '-').replace(/\n/g, ' ');
+                                }).join(' | ') + ' |\n';
+                            });
+                            r += tb;
+                        }
+                        _cbMsg && _cbMsg('ai', r);
+                    }
+                } else {
+                    if (!r && typeof res === 'object') {
+                        r = JSON.stringify(res, null, 2);
+                    }
+                    _cbMsg && _cbMsg('ai', r);
+                }
             })
             .catch(function (err) {
                 _cbHide && _cbHide();
@@ -1783,6 +1823,8 @@
             _inputEl = opts.inputEl;
             _inputBarEl = opts.inputBarEl || document.getElementById('chat-input-bar');
             _cbMsg = opts.addMessage || null;
+            _cbHtml = opts.addHtmlMessage || null;
+            _cbRender = opts.renderCardView || null;
             _cbShow = opts.showTyping || null;
             _cbHide = opts.hideTyping || null;
             _loadList(function () { console.log('[ApiEngine v3] ' + _apiList.length + ' APIs'); });

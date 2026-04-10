@@ -10,10 +10,7 @@
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        9856,
-        912
-      ],
+      "position": [9856, 912],
       "id": "36d98c20-76f6-480c-b2e1-b2f64bcd2e59",
       "name": "Webhook AI Chat",
       "webhookId": "822b0b0a-99d3-455e-9347-fa0cbbb380e8"
@@ -21,16 +18,11 @@
     {
       "parameters": {
         "model": "=openai/gpt-4o-mini",
-        "options": {
-          "temperature": 0
-        }
+        "options": { "temperature": 0 }
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
-      "position": [
-        9020,
-        1060
-      ],
+      "position": [9020, 1060],
       "id": "openai-intent-model",
       "name": "OpenAI Intent Model",
       "credentials": {
@@ -43,35 +35,29 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $('Webhook AI Chat').first().json.body.message || $('Webhook AI Chat').first().json.body.text || '' }}",
+        "text": "={{ $('Webhook AI Chat').first().json.body.message || $('Webhook AI Chat').first().json.body.text || $('Webhook AI Chat').first().json.body.content || $('Webhook AI Chat').first().json.body.query || '' }}",
         "messages": {
           "messageValues": [
             {
-              "type": "SystemMessage",
-              "message": "Ban la bo trich xuat y dinh (intent extractor). CHI OUTPUT valid JSON, khong them bat ky text nao.\n\nFormat output:\n{\"apiCode\": \"@ten_api\", \"params\": {}, \"isComplex\": false}\n\nRULES:\n1. apiCode PHAI chinh xac nam trong danh sach (voi dau @)\n2. params: chi tham so nguoi dung chi ro (KHONG bao gom @Username)\n3. Dates: format YYYY-MM-DD. 'hom nay'=[TODAY], 'dau thang'=[MONTH_START], 'cuoi thang'=[MONTH_END]\n4. isComplex=true chi khi: so sanh nhieu thang/ky, phan tich xu huong, multi-step\n5. Cau khong khop API nao: {\"apiCode\": null, \"params\": {}, \"isComplex\": false}\n\nDANH SACH API (dung chinh xac ten param):\n@get_ton_kho_list | Ton kho san pham | params: @ItemID (ma sp, vd A008), @ItemName (ten sp)\n@doanh_so | Doanh so ban hang | params: @khachhang (ma KH), @EmployeeID (ma NV), @TuNgay, @DenNgay, @TopN\n@don_hang | Danh sach don hang | params: @TuNgay, @DenNgay, @StatusID, @StatusName, @khachhang, @timkiem, @TopN\n@hoa_don | Hoa don xuat | params: @TuNgay, @DenNgay, @timkiem\n@cong_no_khach_hang | Cong no KH (tong hop) | params: @DenNgay, @khachhang (ma KH)\n@cong_no_chi_tiet | Cong no toan bo | params: @DenNgay\n@goi_y_don_hang | Goi y dat hang ca nhan hoa | params: @khachhang, @TopN\n@cham_diem_kh | Phan loai KH A/B/C, xu huong | params: @khachhang, @NhomFilter (A/B/C)\n@tra_cuu_san_pham | Tim san pham + gia ban + ton kho | params: @timkiem (tu khoa), @TopN\n@san_pham_trong_tam | SP trong tam dang push | params: @khachhang, @TopN\n@danh_muc | Tim kiem danh muc | params: @Type (khachhang/sanpham/khohang/nhanvien/donhang), @timkiem\n@de_xuat_khuyen_mai | De xuat khuyen mai phu hop | params: (khong can)\n\nEXAMPLES (output JSON ONLY, no explanation):\nUser: ton kho A008 -> {\"apiCode\":\"@get_ton_kho_list\",\"params\":{\"@ItemID\":\"A008\"},\"isComplex\":false}\nUser: ton kho hien tai -> {\"apiCode\":\"@get_ton_kho_list\",\"params\":{},\"isComplex\":false}\nUser: doanh so hom nay -> {\"apiCode\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[TODAY]\",\"@DenNgay\":\"[TODAY]\"},\"isComplex\":false}\nUser: doanh so thang nay -> {\"apiCode\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[MONTH_START]\",\"@DenNgay\":\"[TODAY]\"},\"isComplex\":false}\nUser: cong no KH001 -> {\"apiCode\":\"@cong_no_khach_hang\",\"params\":{\"@khachhang\":\"KH001\"},\"isComplex\":false}\nUser: so sanh doanh so thang nay vs thang truoc -> {\"apiCode\":\"@doanh_so\",\"params\":{},\"isComplex\":true}"
+              "type": "SystemMessagePromptTemplate",
+              "message": "Ban la bo trich xuat y dinh (intent extractor). CHI OUTPUT valid JSON, khong them bat ky text nao.\n\nFormat output:\n{\"apiCode\": \"@ten_api\", \"params\": {}, \"isComplex\": false}\n\nRULES:\n1. apiCode PHAI chinh xac nam trong danh sach (voi dau @)\n2. params: chi tham so nguoi dung chi ro (KHONG bao gom @Username)\n3. Dates: format YYYY-MM-DD. Dung CHINH XAC cac placeholder sau:\n   - 'hom nay' = [TODAY]\n   - 'dau thang nay' hoac 'thang nay' (TuNgay) = [MONTH_START]\n   - 'cuoi thang nay' hoac 'thang nay' (DenNgay) = [MONTH_END]\n   - 'dau thang truoc' hoac 'thang truoc' (TuNgay) = [PREV_MONTH_START]\n   - 'cuoi thang truoc' hoac 'thang truoc' (DenNgay) = [PREV_MONTH_END]\n4. isComplex=true chi khi: so sanh nhieu thang/ky, phan tich xu huong, multi-step\n5. Cau khong khop API nao: {\"apiCode\": null, \"params\": {}, \"isComplex\": false}\n\nDANH SACH API (dung chinh xac ten param):\n@danh_sach_ton_kho | Ton kho san pham | params: @ItemID (ma sp, vd A008), @ItemName (ten sp)\n@doanh_so | Doanh so ban hang | params: @khachhang (ma KH), @EmployeeID (ma NV), @TuNgay, @DenNgay, @TopN\n@don_hang | Danh sach don hang | params: @TuNgay, @DenNgay, @StatusID, @StatusName, @khachhang, @timkiem, @TopN\n@hoa_don | Hoa don xuat | params: @TuNgay, @DenNgay, @timkiem\n@cong_no_khach_hang | Cong no KH (tong hop) | params: @DenNgay, @khachhang (ma KH)\n@cong_no_chi_tiet | Cong no toan bo | params: @khachhang (ma KH), @DenNgay\n@goi_y_don_hang | Goi y dat hang ca nhan hoa | params: @khachhang, @TopN\n@cham_diem_kh | Phan loai KH A/B/C, xu huong | params: @khachhang, @NhomFilter (A/B/C)\n@tra_cuu_san_pham | Tim san pham + gia ban + ton kho | params: @timkiem (tu khoa), @TopN\n@san_pham_trong_tam | SP trong tam dang push | params: @khachhang, @TopN\n@tich_luy | Tra cuu tich luy, khuyen mai, qua tang | params: @khachhang, @ProgramID, @TuNgay, @DenNgay\n@danh_muc | Tim kiem danh muc | params: @Type (khachhang/sanpham/khohang/nhanvien/donhang), @timkiem\n@de_xuat_khuyen_mai | De xuat khuyen mai phu hop | params: (khong can)\n\nEXAMPLES (output JSON ONLY, no explanation):\nUser: ton kho A008 -> {\"apiCode\":\"@danh_sach_ton_kho\",\"params\":{\"@ItemID\":\"A008\"},\"isComplex\":false}\nUser: ton kho hien tai -> {\"apiCode\":\"@danh_sach_ton_kho\",\"params\":{},\"isComplex\":false}\nUser: ton kho Aquamed -> {\"apiCode\":\"@danh_sach_ton_kho\",\"params\":{\"@ItemName\":\"Aquamed\"},\"isComplex\":false}\nUser: doanh so hom nay -> {\"apiCode\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[TODAY]\",\"@DenNgay\":\"[TODAY]\"},\"isComplex\":false}\nUser: doanh so thang nay -> {\"apiCode\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[MONTH_START]\",\"@DenNgay\":\"[MONTH_END]\"},\"isComplex\":false}\nUser: doanh so thang truoc -> {\"apiCode\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[PREV_MONTH_START]\",\"@DenNgay\":\"[PREV_MONTH_END]\"},\"isComplex\":false}\nUser: cong no KH001 -> {\"apiCode\":\"@cong_no_khach_hang\",\"params\":{\"@khachhang\":\"KH001\"},\"isComplex\":false}\nUser: so sanh doanh so thang nay vs thang truoc -> {\"apiCode\":\"@doanh_so\",\"params\":{},\"isComplex\":true}"
             }
           ]
         }
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.4,
-      "position": [
-        9020,
-        900
-      ],
+      "position": [9020, 900],
       "id": "extract-intent-chain",
       "name": "Extract Intent Chain"
     },
     {
       "parameters": {
-        "jsCode": "// 1. Lay output cua LLM\nconst llmRaw = $input.first().json.text || $input.first().json.output || '';\n\n// 2. Parse JSON tu LLM output\nlet intent = { apiCode: null, params: {}, isComplex: false };\ntry {\n  const m = llmRaw.match(/\\{[\\s\\S]*\\}/);\n  if (m) intent = JSON.parse(m[0]);\n} catch(e) {\n  intent = { apiCode: null, params: {}, isComplex: true };\n}\n\n// 3. Decode JWT lay username\nlet username = 'demo';\ntry {\n  const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || '';\n  const token = authHeader.replace(/^Bearer\\s+/i, '').trim();\n  if (token && token.split('.').length === 3) {\n    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));\n    username = payload.Username || payload.username || payload.sub || 'demo';\n  }\n} catch(e) { username = 'demo'; }\n\n// 4. Inject @Username vao params (tat ca SP deu can)\nif (intent.apiCode) {\n  intent.params = Object.assign({}, intent.params, { '@Username': username });\n}\n\n// 5. Replace date placeholders\nconst now = new Date();\nconst today = now.toISOString().split('T')[0];\nconst monthStart = today.substring(0, 7) + '-01';\nconst lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);\nconst monthEnd = lastDay.toISOString().split('T')[0];\n\nfor (const k of Object.keys(intent.params || {})) {\n  if (intent.params[k] === '[TODAY]') intent.params[k] = today;\n  if (intent.params[k] === '[MONTH_START]') intent.params[k] = monthStart;\n  if (intent.params[k] === '[MONTH_END]') intent.params[k] = monthEnd;\n}\n\nreturn [{ json: {\n  apiCode: intent.apiCode,\n  params: intent.params || {},\n  isComplex: !!intent.isComplex,\n  username: username,\n  isValid: !!intent.apiCode && !intent.isComplex\n} }];"
+        "jsCode": "// 1. Lay output cua LLM - chainLlm tra ve field 'output'\nconst inp = $input.first().json;\nconst llmRaw = inp.output || inp.text || inp.response || inp.content || '';\n\n// 2. Parse JSON tu LLM output - GREEDY regex de bat toan bo JSON ke ca nested\nlet intent = { apiCode: null, params: {}, isComplex: false };\ntry {\n  const m = llmRaw.match(/{[\\s\\S]*}/);\n  if (m) intent = JSON.parse(m[0]);\n} catch(e) {\n  intent = { apiCode: null, params: {}, isComplex: true };\n}\n\n// 3. Decode JWT lay username\nlet username = 'demo';\ntry {\n  const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || '';\n  const token = authHeader.replace(/^Bearer\\s+/i, '').trim();\n  if (token && token.split('.').length === 3) {\n    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));\n    username = payload.Username || payload.username || payload.sub || 'demo';\n  }\n} catch(e) { username = 'demo'; }\n\n// 4. Inject @Username vao params\nif (intent.apiCode) {\n  intent.params = Object.assign({}, intent.params, { '@Username': username });\n}\n\n// 5. Replace date placeholders\nconst now = new Date();\nconst today = now.toISOString().split('T')[0];\nconst monthStart = today.substring(0, 7) + '-01';\nconst monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];\n\n// Previous month\nconst prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);\nconst prevMonthStart = prevMonthDate.toISOString().split('T')[0].substring(0, 7) + '-01';\nconst prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];\n\nconst placeholders = {\n  '[TODAY]': today,\n  '[MONTH_START]': monthStart,\n  '[MONTH_END]': monthEnd,\n  '[PREV_MONTH_START]': prevMonthStart,\n  '[PREV_MONTH_END]': prevMonthEnd,\n  '[MONTH_START_PREV]': prevMonthStart,\n  '[MONTH_END_PREV]': prevMonthEnd,\n  '[LAST_MONTH_START]': prevMonthStart,\n  '[LAST_MONTH_END]': prevMonthEnd\n};\n\nfor (const k of Object.keys(intent.params || {})) {\n  const v = intent.params[k];\n  if (typeof v === 'string' && placeholders[v]) {\n    intent.params[k] = placeholders[v];\n  }\n}\n\nconst isValid = !!intent.apiCode && !intent.isComplex;\nreturn [{ json: {\n  apiCode: intent.apiCode,\n  params: intent.params || {},\n  isComplex: !!intent.isComplex,\n  username: username,\n  isValid: isValid,\n  _debug_llm: llmRaw.substring(0, 300)\n} }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        9280,
-        900
-      ],
+      "position": [9280, 900],
       "id": "parse-intent-auth",
       "name": "Parse Intent & Auth"
     },
@@ -81,15 +67,15 @@
           "options": {
             "caseSensitive": false,
             "leftValue": "",
-            "typeValidation": "strict"
+            "typeValidation": "loose"
           },
           "conditions": [
             {
               "leftValue": "={{ $json.isValid }}",
-              "rightValue": true,
+              "rightValue": "true",
               "operator": {
-                "type": "boolean",
-                "operation": "true"
+                "type": "string",
+                "operation": "equals"
               }
             }
           ],
@@ -99,10 +85,7 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [
-        9540,
-        900
-      ],
+      "position": [9540, 900],
       "id": "is-simple-valid",
       "name": "Is Simple & Valid?"
     },
@@ -127,174 +110,97 @@
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({ ApiCode: $json.apiCode, params: $json.params }) }}",
         "options": {
-          "timeout": 15000
+          "timeout": 15000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json",
+              "fullResponse": false
+            }
+          }
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        9800,
-        760
-      ],
+      "position": [9800, 760],
       "id": "call-k0-execute",
       "name": "Call K0 Execute"
     },
     {
       "parameters": {
-        "jsCode": "const k0 = $input.first().json;\nconst status = k0.status || 'success';\nconst count = k0.count || 0;\nconst data = k0.data || [];\nconst apiCode = $('Parse Intent & Auth').first().json.apiCode || '';\n\nlet message = '';\nif (status === 'error') {\n  message = '❌ ' + (k0.reply || 'Co loi xay ra');\n} else if (count === 0 || data.length === 0) {\n  message = '📭 Khong tim thay du lieu phu hop.';\n} else {\n  message = k0.reply || ('✅ Tim thay ' + count + ' ket qua.');\n}\n\nreturn [{ json: {\n  status: 'success',\n  message: message,\n  data: data,\n  count: count,\n  apiCode: apiCode\n} }];"
+        "jsCode": "const k0 = $input.first()?.json || {};\nconst status = k0.status || 'success';\nconst count = k0.count || 0;\nconst data = k0.data || [];\nconst apiCode = $('Parse Intent & Auth').first().json.apiCode || '';\n\nlet message = '';\nif (status === 'error') {\n  message = k0.reply || k0.message || 'Co loi xay ra';\n  return [{ json: { status: 'error', message: message, data: [], count: 0, apiCode: apiCode } }];\n}\n\nif (count === 0 || data.length === 0) {\n  message = 'Khong tim thay du lieu phu hop.';\n  return [{ json: { status: 'success', message: message, data: [], count: 0, apiCode: apiCode } }];\n}\n\nmessage = k0.reply || ('Tim thay ' + count + ' ket qua.');\nreturn [{ json: {\n  status: 'success',\n  message: message,\n  data: data,\n  count: count,\n  apiCode: apiCode\n} }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        10060,
-        760
-      ],
+      "position": [10060, 760],
       "id": "format-chat-response",
       "name": "Format Chat Response"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: 'success', message: $json.message, data: $json.data, count: $json.count, username: $('Parse Intent & Auth').first().json.username }) }}",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, message: $json.message, data: $json.data, count: $json.count, username: $('Parse Intent & Auth').first().json.username, apiCode: $('Parse Intent & Auth').first().json.apiCode, intentParams: $('Parse Intent & Auth').first().json.params }) }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
             "entries": [
-              {
-                "name": "Access-Control-Allow-Origin",
-                "value": "*"
-              },
-              {
-                "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
-              }
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
             ]
           }
         }
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        10320,
-        760
-      ],
+      "position": [10320, 760],
       "id": "respond-fast",
       "name": "Respond Fast"
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\"status\":\"error\",\"message\":\"Cau hoi phuc tap, hay dung chatbot de hoi chi tiet hon.\"}",
+        "responseBody": "{\"status\":\"info\",\"message\":\"Xin loi, toi chua hieu cau nay. Ban co the hoi ve ton kho, doanh so, cong no, don hang, phan loai khach hang...\"}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {
             "entries": [
-              {
-                "name": "Access-Control-Allow-Origin",
-                "value": "*"
-              },
-              {
-                "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
-              }
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
             ]
           }
         }
       },
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [
-        9800,
-        1040
-      ],
+      "position": [9800, 1040],
       "id": "respond-fallback",
       "name": "Respond Fallback"
     }
   ],
   "connections": {
     "Webhook AI Chat": {
-      "main": [
-        [
-          {
-            "node": "Extract Intent Chain",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Extract Intent Chain", "type": "main", "index": 0 }]]
     },
     "OpenAI Intent Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Extract Intent Chain",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
+      "ai_languageModel": [[{ "node": "Extract Intent Chain", "type": "ai_languageModel", "index": 0 }]]
     },
     "Extract Intent Chain": {
-      "main": [
-        [
-          {
-            "node": "Parse Intent & Auth",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Parse Intent & Auth", "type": "main", "index": 0 }]]
     },
     "Parse Intent & Auth": {
-      "main": [
-        [
-          {
-            "node": "Is Simple & Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Is Simple & Valid?", "type": "main", "index": 0 }]]
     },
     "Is Simple & Valid?": {
       "main": [
-        [
-          {
-            "node": "Call K0 Execute",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Fallback",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Call K0 Execute", "type": "main", "index": 0 }],
+        [{ "node": "Respond Fallback", "type": "main", "index": 0 }]
       ]
     },
     "Call K0 Execute": {
-      "main": [
-        [
-          {
-            "node": "Format Chat Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Format Chat Response", "type": "main", "index": 0 }]]
     },
     "Format Chat Response": {
-      "main": [
-        [
-          {
-            "node": "Respond Fast",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Respond Fast", "type": "main", "index": 0 }]]
     },
     "Respond Fallback": {}
   },

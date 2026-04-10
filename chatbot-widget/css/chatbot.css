@@ -1050,3 +1050,1002 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-primary);
 }
+
+/* ═══════════════════════════════════════════════════════
+   CARD VIEW — Mobile-first data display
+   ═══════════════════════════════════════════════════════ */
+
+/* Result header — dòng tiêu đề kết quả */
+.ai-result-header {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+  padding: 4px 2px 10px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 10px;
+}
+
+/* Card list container */
+.ai-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+/* ── Card ── */
+.ai-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  animation: bubble-in 0.2s ease-out both;
+}
+
+.ai-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  border-color: rgba(var(--color-primary-rgb), 0.3);
+}
+
+.ai-card.expanded {
+  border-color: rgba(var(--color-primary-rgb), 0.5);
+}
+
+/* Card Header */
+.ai-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.06), rgba(var(--color-primary-rgb),0.02));
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+}
+
+.ai-card-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ai-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.ai-card-id {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  background: rgba(0,0,0,0.04);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* Card Body */
+.ai-card-body {
+  padding: 10px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-card-money {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  padding: 6px 10px;
+  background: rgba(var(--color-primary-rgb), 0.06);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-primary);
+}
+
+.ai-card-money strong {
+  color: var(--color-primary);
+  font-size: 0.95em;
+}
+
+.ai-card-trend {
+  font-size: var(--font-size-xs);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-weight: var(--font-weight-medium);
+}
+
+.ai-trend-up {
+  color: #16a34a;
+  background: rgba(22,163,74,0.08);
+  border-left: 3px solid #16a34a;
+}
+
+.ai-trend-down {
+  color: #dc2626;
+  background: rgba(220,38,38,0.08);
+  border-left: 3px solid #dc2626;
+}
+
+/* Card rows (label + value pairs) */
+.ai-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--font-size-xs);
+  min-height: 22px;
+}
+
+.ai-card-label {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-card-value {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+  text-align: right;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* ── Badges ── */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.ai-badge-green  { background: rgba(22,163,74,0.12);  color: #15803d; }
+.ai-badge-blue   { background: rgba(59,130,246,0.12); color: #1d4ed8; }
+.ai-badge-red    { background: rgba(220,38,38,0.12);  color: #b91c1c; }
+.ai-badge-gray   { background: rgba(0,0,0,0.06);      color: var(--color-text-muted); }
+
+/* ── Compact / Accordion Card ── */
+.ai-card-compact {
+  border-radius: 10px;
+}
+
+.ai-card-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: default;
+}
+
+.ai-card-sum-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-card-sum-value {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-card-expand-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, transform 0.2s;
+}
+
+.ai-card-expand-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+  color: var(--color-primary);
+}
+
+.ai-card.expanded .ai-card-expand-btn {
+  color: var(--color-primary);
+  transform: rotate(180deg);
+}
+
+.ai-card-detail {
+  padding: 0 12px 10px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  animation: detail-in 0.18s ease-out;
+}
+
+.ai-card-detail[hidden] {
+  display: none;
+}
+
+@keyframes detail-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Summary Box (>20 rows) ── */
+.ai-summary-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px;
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.06), rgba(var(--color-primary-rgb),0.02));
+  border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.ai-summary-icon {
+  font-size: 2rem;
+}
+
+.ai-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.ai-summary-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.ai-summary-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* ── Table button ── */
+.ai-table-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 9px 18px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), 0.08);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  width: 100%;
+  justify-content: center;
+}
+
+.ai-table-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.15);
+  transform: translateY(-1px);
+}
+
+.ai-table-btn:active {
+  transform: translateY(0);
+}
+
+.ai-table-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.ai-table-btn-primary:hover {
+  background: var(--color-primary-hover, #1a56db);
+}
+
+/* ── Modal ── */
+.ai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0);
+}
+
+.ai-modal-overlay.active {
+  opacity: 1;
+}
+
+.ai-modal {
+  background: var(--color-surface);
+  border-radius: 18px 18px 0 0;
+  width: 100%;
+  max-width: 960px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.ai-modal-overlay.active .ai-modal {
+  transform: translateY(0);
+}
+
+.ai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  flex-shrink: 0;
+}
+
+.ai-modal-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: rgba(0,0,0,0.06);
+  color: var(--color-text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.ai-modal-close:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.ai-modal-body {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding: 12px;
+}
+
+/* Modal table — dùng lại .ai-table styles nhưng trong context modal */
+.ai-modal-body .ai-table-wrap {
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+}
+
+.ai-modal-body .ai-table th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+/* ── Desktop: modal as centered dialog ── */
+@media (min-width: 768px) {
+  .ai-modal-overlay {
+    align-items: center;
+  }
+
+  .ai-modal {
+    border-radius: 16px;
+    max-height: 85vh;
+    margin: 16px;
+    transform: scale(0.95) translateY(20px);
+  }
+
+  .ai-modal-overlay.active .ai-modal {
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SALES FEATURES — prefix: ai-sales-
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────
+   Feature 1: Quick Action Buttons
+   ───────────────────────────────────────────────────────────── */
+
+.ai-sales-action-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  flex-wrap: wrap;
+}
+
+.ai-sales-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s, transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+  font-family: inherit;
+  outline: none;
+}
+
+.ai-sales-action-btn:active {
+  opacity: 0.75;
+  transform: scale(0.96);
+}
+
+/* Gọi điện — xanh lá nhẹ */
+.ai-sales-btn-call {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #a5d6a7;
+}
+
+/* Zalo — xanh dương */
+.ai-sales-btn-zalo {
+  background: #e3f2fd;
+  color: #1565c0;
+  border-color: #90caf9;
+}
+
+/* Lên đơn — cam nhẹ */
+.ai-sales-btn-order {
+  background: #fff8e1;
+  color: #e65100;
+  border-color: #ffcc80;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .ai-sales-btn-call  { background: rgba(46, 125, 50, 0.18);  color: #81c784; border-color: rgba(46, 125, 50, 0.4); }
+  .ai-sales-btn-zalo  { background: rgba(21, 101, 192, 0.18); color: #64b5f6; border-color: rgba(21, 101, 192, 0.4); }
+  .ai-sales-btn-order { background: rgba(230, 81, 0, 0.18);   color: #ffb74d; border-color: rgba(230, 81, 0, 0.4); }
+  .ai-sales-action-bar { border-top-color: rgba(255,255,255,0.08); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Feature 2: Modal Inline Filter Bar
+   ───────────────────────────────────────────────────────────── */
+
+.ai-sales-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-surface, #fff);
+}
+
+.ai-sales-filter-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--color-bg, #f8f9fa);
+  color: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.ai-sales-filter-input:focus {
+  border-color: var(--color-primary, #1565c0);
+}
+
+.ai-sales-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-sales-filter-chip {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.ai-sales-filter-chip.active {
+  background: var(--color-primary, #1565c0);
+  color: #fff;
+  border-color: var(--color-primary, #1565c0);
+}
+
+.ai-sales-filter-chip:not(.active):hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.ai-sales-filter-count {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ai-sales-filter-bar  { background: var(--color-surface, #1e1e2e); border-bottom-color: rgba(255,255,255,0.08); }
+  .ai-sales-filter-input { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15); }
+  .ai-sales-filter-chip { border-color: rgba(255,255,255,0.15); }
+  .ai-sales-filter-chip:not(.active):hover { background: rgba(255,255,255,0.08); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Feature 3: Suggestion Chips Bar (trên ô input)
+   ───────────────────────────────────────────────────────────── */
+
+.ai-sales-chips-bar {
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+  background: var(--color-surface, #fff);
+  padding: 6px 0 4px;
+  flex-shrink: 0;
+}
+
+.ai-sales-chips-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 12px 4px;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+
+.ai-sales-chips-scroll::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari */
+}
+
+.ai-sales-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  background: var(--color-bg, #f0f2f5);
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  font-size: 13px;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  color: inherit;
+  transition: background 0.15s, transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ai-sales-chip:active {
+  transform: scale(0.95);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.ai-sales-chip:hover {
+  background: rgba(var(--color-primary-rgb, 21,101,192), 0.1);
+  border-color: rgba(var(--color-primary-rgb, 21,101,192), 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  .ai-sales-chips-bar   { background: var(--color-surface, #1e1e2e); border-top-color: rgba(255,255,255,0.08); }
+  .ai-sales-chip        { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); }
+  .ai-sales-chip:active { background: rgba(255,255,255,0.15); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Inline Toggle: Card ↔ Table in chat bubble
+   ───────────────────────────────────────────────────────────── */
+
+/* Wrapper container */
+.ai-inline-container {
+  width: 100%;
+}
+
+/* Bảng hiển thị ngay trong bubble, cuộn ngang trên mobile */
+.ai-view-table {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 8px;
+}
+
+/* Table wrap đảm bảo không tràn bubble */
+.ai-inline-table-wrap {
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Filter bar trong inline (không sticky vì nằm trong scroll area bubble) */
+.ai-inline-filter {
+  position: static !important;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+/* Nút toggle — full width, đổi màu khi đang ở dạng bảng */
+.ai-inline-toggle-btn {
+  width: 100%;
+  text-align: center;
+  margin-top: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Hiệu ứng fade-in khi bảng hiện ra */
+@keyframes ai-inline-fadein {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   SALES DEBT CARD (CUSTOM UI CÔNG NỢ CHI TIẾT)
+   ══════════════════════════════════════════════════════════ */
+.ai-sales-debt-card {
+  background: var(--ai-bg-main);
+  border: 1px solid var(--ai-border);
+  border-radius: var(--ai-radius-lg);
+  overflow: hidden;
+  margin-top: 8px;
+  box-shadow: var(--ai-shadow-sm);
+  font-family: inherit;
+}
+.ai-sales-debt-header {
+  background: var(--ai-bg-sub);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ai-border);
+}
+.ai-sales-debt-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ai-text-main);
+  margin-bottom: 4px;
+}
+.ai-sales-debt-subtitle, .ai-sales-debt-date {
+  font-size: 13px;
+  color: var(--ai-text-sub);
+}
+.ai-sales-debt-date { margin-top: 2px; }
+
+/* ─ Timeline danh sách hóa đơn ─ */
+.ai-sales-debt-list {
+  padding: 0;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.ai-sales-debt-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ai-border);
+}
+.ai-sales-debt-item:last-child {
+  border-bottom: none;
+}
+.ai-sales-debt-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.ai-sales-item-id {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--ai-text-main);
+}
+.ai-sales-item-date {
+  font-size: 12px;
+  color: var(--ai-text-sub);
+}
+.ai-sales-debt-item-middle {
+  font-size: 13px;
+  color: var(--ai-text-sub);
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+.ai-sales-debt-item-bottom {
+  text-align: left;
+}
+.ai-sales-item-amount {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* ─ Footer & Summary ─ */
+.ai-sales-debt-footer {
+  background: var(--ai-bg-sub);
+  border-top: 1px solid var(--ai-border);
+}
+.ai-sales-debt-summary {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ai-text-main);
+  line-height: 1.5;
+  border-bottom: 1px solid var(--ai-border);
+}
+.ai-sales-debt-summary b {
+  font-weight: 600;
+}
+.ai-sales-action-bar {
+  display: flex;
+  padding: 10px;
+  gap: 8px;
+}
+
+/* ─ Colors & Action Buttons ─ */
+.ai-sales-positive { color: #10B981 !important; }
+.ai-sales-negative { color: #EF4444 !important; }
+
+.ai-sales-action-btn {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  border-radius: var(--ai-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.2s;
+  min-height: 44px; /* Touch target >= 44px (iOS standard) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-sales-action-btn:active {
+  opacity: 0.7;
+}
+.ai-sales-btn-call {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10B981;
+}
+.ai-sales-btn-zalo {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+.ai-sales-btn-pdf {
+  min-height: unset;
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+.ai-sales-btn-disabled {
+  background: var(--ai-bg-hover);
+  color: var(--ai-text-sub);
+  cursor: not-allowed;
+}
+
+/* ─ Bổ sung Giao diện Báo Cáo Tài Chính ─ */
+.ai-sales-debt-inforow {
+  font-size: 13px;
+  color: var(--ai-text-main);
+  margin-top: 4px;
+}
+.ai-sales-debt-inforow b {
+  font-weight: 600;
+}
+.ai-sales-debt-conclusion {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ai-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ai-text-main);
+}
+.ai-sales-toggle-btn {
+  width: 100%;
+  background: rgba(59, 130, 246, 0.05);
+  color: #3b82f6;
+  border: none;
+  border-bottom: 1px solid var(--ai-border);
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s;
+}
+.ai-sales-toggle-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+.ai-sales-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ai-border);
+}
+.ai-sales-mini-btn {
+  flex: 1;
+  background: var(--ai-bg-sub);
+  border: 1px solid var(--ai-border);
+  border-radius: 4px;
+  padding: 6px 4px;
+  font-size: 11px;
+  color: var(--ai-text-main);
+  cursor: pointer;
+  text-align: center;
+}
+.ai-sales-mini-btn:hover {
+  background: var(--ai-bg-hover);
+}
+.ai-sales-debt-ai-recommend {
+  background: rgba(245, 158, 11, 0.05); /* Amber light bg */
+  border-top: 1px solid var(--ai-border);
+  padding: 12px 14px;
+}
+.ai-recommend-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #d97706; /* Amber dark */
+  margin-bottom: 4px;
+}
+.ai-recommend-text {
+  font-size: 13px;
+  color: var(--ai-text-main);
+  line-height: 1.5;
+}
+
+/* --- Tich Luy / Milestone Card --- */
+.ai-sales-milestone-card {
+  background: var(--ai-bg-card);
+  border: 1px solid var(--ai-border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 10px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.ai-sales-milestone-header {
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(30, 64, 175, 0.05));
+  border-bottom: 1px solid var(--ai-border);
+}
+
+.ai-sales-milestone-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ai-primary);
+  margin-bottom: 4px;
+}
+
+.ai-sales-milestone-subtitle {
+  font-size: 12px;
+  color: var(--ai-text-sub);
+}
+
+.ai-sales-progress-container {
+  padding: 20px 16px;
+  background: #fff;
+}
+
+.ai-sales-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.ai-sales-progress-current {
+  font-weight: 800;
+  color: var(--ai-text-main);
+}
+
+.ai-sales-progress-target {
+  color: var(--ai-text-sub);
+}
+
+.ai-sales-progress-bar-bg {
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ai-sales-progress-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ai-sales-progress-bar-fill.success { background: #10b981; }
+.ai-sales-progress-bar-fill.warning { background: #f59e0b; }
+.ai-sales-progress-bar-fill.danger { background: #ef4444; }
+
+.ai-sales-progress-pct {
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ai-primary);
+}
+
+.ai-sales-milestone-stats {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.ai-sales-stat-box {
+  flex: 1;
+  background: var(--ai-bg-sub);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid var(--ai-border);
+}
+
+.ai-stat-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ai-text-main);
+  margin-bottom: 2px;
+}
+
+.ai-stat-label {
+  font-size: 10px;
+  color: var(--ai-text-sub);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ai-sales-milestone-reminder {
+  background: rgba(37, 99, 235, 0.03);
+  padding: 14px 16px;
+  border-top: 1px dashed var(--ai-border);
+}
+
+.ai-reminder-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ai-primary);
+  margin-bottom: 4px;
+}
+
+.ai-reminder-text {
+  font-size: 13px;
+  color: var(--ai-text-main);
+  line-height: 1.4;
+}
