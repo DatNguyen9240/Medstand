@@ -69,7 +69,8 @@
     var _dbt = null, _hideTimer = null, _registerCleanupQueue = [];
     var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide, _cbGetToken;
     var _suppressMenuUntil = 0, _suppressNextAt = false;
-    var _catalogDsMap = {}; // mapping type -> datasource string
+    var _catalogDsMap = {};      // mapping type -> datasource string
+    var _catalogRowsCache = {};  // cache rows per datasource để filter nhanh theo keystroke
     var _prevPlaceholder = '';
 
     // ── Networking Helpers ────────────────────────────────────────────
@@ -160,6 +161,53 @@
         });
     }
 
+    // ── Shared Row Field Resolver (100% logic, KHÔNG hardcode tên field) ──────
+    // Dùng chung cho mọi nơi cần lấy id/name/type/datasource từ 1 row API
+    function _resolveRowFields(r) {
+        var raw = r.json || r.raw || r.data || r || {};
+        var entries = Object.entries(raw).filter(function (e) {
+            return e[1] !== null && e[1] !== undefined && String(e[1]).trim() !== '';
+        });
+
+        // Pattern detect: chỉ dùng regex trên TÊN KEY, không cần biết tên cụ thể
+        var ID_PAT   = /id$|code$|^id$|^code$|^ma$|ma$|^ma[_\s]|^madanhmuc$/i;
+        var NAME_PAT = /name|ten|label|title|mo_ta|mo ta|description|display/i;
+        var DS_PAT   = /datasourcevalue/i;
+        var TYPE_PAT = /type|phanloai|group|category|loai/i;
+
+        function firstMatch(pat, excludePat) {
+            for (var i = 0; i < entries.length; i++) {
+                var k = entries[i][0], v = String(entries[i][1]);
+                if (pat.test(k) && !(excludePat && excludePat.test(k))) return v;
+            }
+            return null;
+        }
+
+        var idVal   = firstMatch(ID_PAT)   || r.value || '';
+        var nameVal = firstMatch(NAME_PAT, ID_PAT) || r.label || '';
+        var phVal   = firstMatch(TYPE_PAT) || '';
+        var dsVal   = firstMatch(DS_PAT)   || '';
+
+        // Length-sort last-resort: mọi schema lạ (kể cả tiếng Việt có dấu)
+        // Dài nhất = mô tả/tên, ngắn nhất = mã định danh
+        if (!idVal || !nameVal) {
+            var nonNums = entries.filter(function (e) {
+                var sv = String(e[1]).trim();
+                return sv.length > 1 && isNaN(Number(sv));
+            });
+            nonNums.sort(function (a, b) { return String(b[1]).length - String(a[1]).length; });
+            if (!nameVal && nonNums.length > 0) nameVal = String(nonNums[0][1]);
+            if (!idVal) {
+                var nonName = nonNums.filter(function (e) { return String(e[1]) !== nameVal; });
+                idVal = nonName.length > 0 ? String(nonName[nonName.length - 1][1]) : nameVal;
+            }
+        }
+        if (!nameVal) nameVal = idVal;
+
+        return { id: idVal, name: nameVal, ph: phVal, ds: dsVal };
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     function _isCatalogToken(token) {
         if (!token) return false;
         var t = String(token).replace(/^@/, '').toLowerCase();
@@ -215,7 +263,31 @@
     }
 
     function _user() {
-        return localStorage.getItem('fullname') || 'Guest';
+        try {
+            var authRaw = localStorage.getItem('auth_user');
+            if (authRaw) {
+                var p = JSON.parse(authRaw);
+                var uname = p.Username || p.username || p.UserName || p.sub || p.Name;
+                if (uname) return uname;
+            }
+        } catch (e) {}
+        
+        if (typeof _cbGetToken === 'function') {
+            var tk = _cbGetToken();
+            if (tk) {
+                try {
+                    var base64Url = tk.split('.')[1];
+                    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    var jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    var p2 = JSON.parse(jsonPayload);
+                    var uname2 = p2.Username || p2.username || p2.UserName || p2.sub;
+                    if (uname2) return uname2;
+                } catch (e) {}
+            }
+        }
+        return ''; // Trả về rỗng nếu chưa xác thực (Strict mode - No Hardcode)
     }
 
     function _resolveDefault(v) {
@@ -308,10 +380,13 @@
 
     function _menuShow(query) {
         _menuCreate();
-        var q = (query || '').toLowerCase().replace(/^@/, '');
+        function _strip(s) {
+            return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
+        }
+        var q = _strip((query || '').replace(/^@/, ''));
         var filtered = _apiList.filter(function (a) {
-            var code = (a.ApiCode || '').toLowerCase().replace(/^@/, '');
-            var name = (a.DisplayName || '').toLowerCase();
+            var code = _strip(a.ApiCode || '');
+            var name = _strip(a.DisplayName || '');
             return code.indexOf(q) !== -1 || name.indexOf(q) !== -1;
         });
 
@@ -470,7 +545,30 @@
                 var valType = (el.getAttribute('data-val') || '').replace(/^@/, '').toLowerCase();
                 var val = _inputEl.value;
                 var prefix = val.slice(0, atPos);
-                // Dán lại text dưới dạng tag text thông thường — if possible insert canonical type and '='
+
+                // ── Smart Type→API Redirect ─────────────────────────────────
+                // Nếu valType khớp tên API nào trong danh sách → chuyển hẳn sang API đó
+                function _stripApi(s) {
+                    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
+                }
+                var matchedApi = _apiList.find(function (a) {
+                    var code = _stripApi((a.ApiCode || '').replace(/^@/, ''));
+                    var name = _stripApi(a.DisplayName || '');
+                    var t = _stripApi(valType);
+                    return code.indexOf(t) !== -1 || name.indexOf(t) !== -1;
+                });
+                // Nếu có API trùng tên và khác danh_muc → redirect luôn
+                if (matchedApi && !/danh.?muc/i.test(matchedApi.ApiCode)) {
+                    console.log('[ApiEngine] Type→API redirect:', valType, '→', matchedApi.ApiCode);
+                    _menuHide();
+                    // Reset input về rỗng, sau đó kích API mới
+                    _inputEl.value = '';
+                    _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    _onApiSelected(matchedApi.ApiCode);
+                    return;
+                }
+                // ── End Smart Redirect ──────────────────────────────────────
+
                 if (valType) {
                     var dsFromRow = el.getAttribute('data-ds') || '';
                     if (dsFromRow) _catalogDsMap[valType] = dsFromRow;
@@ -500,8 +598,8 @@
         });
     }
 
-    function _menuShowCatalogValues(type, keyword) {
-        console.log('[ApiEngine] _menuShowCatalogValues called type=', type, 'keyword=', keyword);
+    function _menuShowCatalogValues(type, keyword, forceShowAll) {
+        console.log('[ApiEngine] _menuShowCatalogValues called type=', type, 'keyword=', keyword, 'forceShowAll=', forceShowAll);
         if (!type) return;
         // normalize type (strip leading @ and lowercase)
         type = String(type).replace(/^@/, '').toLowerCase();
@@ -513,7 +611,10 @@
             try { console.log('[ApiEngine] RAW ROWS SAMPLE:', (rows.slice ? rows.slice(0, 5) : rows)); } catch (e) { }
             _menuCreate();
             var html = '';
-            rows.forEach(function (r, idx) {
+            var MAX_ITEMS = 50;
+            var displayRows = forceShowAll ? rows : rows.slice(0, MAX_ITEMS);
+
+            displayRows.forEach(function (r, idx) {
                 var raw = r.json || r.raw || r.data || r;
                 function pickRaw(keys) {
                     var rawKeys = Object.keys(raw || {});
@@ -541,11 +642,26 @@
                     + (mAD ? '<span class="ae-tag">' + _esc(mAD) + '</span>' : '')
                     + '</div>';
             });
+            
+            if (!forceShowAll && rows.length > MAX_ITEMS) {
+                html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
+                    + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                    + '</div>';
+            }
+            
             _menuEl.innerHTML = html;
 
             _positionMenu();
 
             _bindMenuItems(function (el) {
+                if (el.getAttribute('data-code') === '__SHOW_ALL') {
+                    _menuHide();
+                    _dbt = setTimeout(function () {
+                        _menuShowCatalogValues(type, keyword, true);
+                    }, 50);
+                    return;
+                }
+
                 // read meta
                 var ph = el.getAttribute('data-phanloai') || '';
                 var nm = el.getAttribute('data-name') || el.getAttribute('data-code') || '';
@@ -597,7 +713,7 @@
         });
     }
 
-    function _showInlineValues(fieldCode, keyword) {
+    function _showInlineValues(fieldCode, keyword, forceShowAll) {
         if (!_activeApi || !_activeApi.config) return;
         var cfg = _activeApi.config;
         var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
@@ -673,52 +789,248 @@
         var dsType = field.DataSourceType || (field.OptionsJson ? 'STATIC' : null);
         var dsVal = field.DataSourceValue || field.OptionsJson;
 
+        // ── Inject đã-chọn params vào DataSource pipeline ─────────────────
+        // Ví dụ: @Type=sanpham đã chọn → dsVal "@danh_muc" → "@danh_muc|@Type=sanpham"
+        // Support 2 cách:
+        // 1. Token substitution: nếu dsVal có "{@Type}" → thay bằng _pillParams['@Type']
+        // 2. Fallback: append tất cả _pillParams còn lại vào pipeline (|@key=val)
+        if (dsType === 'APICODE' && dsVal && _pillParams && Object.keys(_pillParams).length > 0) {
+            var sysUser = (CFG.SYS_PARAMS && CFG.SYS_PARAMS.USERNAME) || '@Username';
+            // Bước 1: token substitution {@@FieldCode}
+            dsVal = dsVal.replace(/\{(@[\w]+)\}/gi, function (match, pk) {
+                return _pillParams[pk] || _pillParams[pk.toLowerCase()] || '';
+            });
+            // Bước 2: append các pillParam chưa có mặt trong dsVal vào pipeline
+            Object.keys(_pillParams).forEach(function (pk) {
+                var pv = _pillParams[pk];
+                // Skip username và trường hiện tại đang điền, và param trống
+                if (!pv || pk.toLowerCase() === sysUser.toLowerCase()) return;
+                if (pk.toLowerCase() === (fieldCode || '').toLowerCase()) return;
+                // Chỉ append nếu key chưa có trong dsVal
+                if (dsVal.toLowerCase().indexOf(pk.toLowerCase()) === -1) {
+                    dsVal = dsVal + '|' + pk + '=' + pv;
+                }
+            });
+        }
+        // ──────────────────────────────────────────────────────────────────
+
+        // ── Fallback: dùng catalogDsMap theo @Type đã chọn ────────────────
+        // Áp dụng cả khi keyword rỗng (hiện toàn bộ) hoặc khi có keyword (lọc)
+        // Trigger khi field không có dsVal riêng HOẶC keyword rỗng (SP cần keyword)
+        if (dsType === 'APICODE' && _pillParams && _catalogDsMap) {
+            var sysUserKey = (CFG.SYS_PARAMS && CFG.SYS_PARAMS.USERNAME) || '@Username';
+            var catalogFallbackDs = null;
+            Object.keys(_pillParams).forEach(function (pk) {
+                if (catalogFallbackDs) return;
+                if (pk.toLowerCase() === sysUserKey.toLowerCase()) return;
+                if (pk.toLowerCase() === (fieldCode || '').toLowerCase()) return;
+                var pv = _pillParams[pk];
+                var typeKey = (pv || '').replace(/^@/, '').toLowerCase();
+                if (typeKey && _catalogDsMap[typeKey]) {
+                    catalogFallbackDs = _catalogDsMap[typeKey];
+                }
+            });
+            // Dùng fallback nếu: field không có dsVal (bất kể keyword nào)
+            if (catalogFallbackDs && !dsVal) {
+                console.log('[ApiEngine] _showInlineValues fallback to catalogDsMap:', catalogFallbackDs, 'kw:', keyword);
+
+                // Hàm render sau khi có rows (dùng lại cho cả cache và API)
+                function renderFallbackRows(allRows) {
+                    var rows = allRows;
+                    // Client-side filter theo keyword
+                    if (keyword) {
+                        var kw = keyword.toLowerCase();
+                        rows = allRows.filter(function (r) {
+                            var raw = r.json || r.raw || r.data || r;
+                            return Object.values(raw || {}).some(function (v) {
+                                return v !== null && v !== undefined && String(v).toLowerCase().indexOf(kw) !== -1;
+                            });
+                        });
+                    }
+                    _menuCreate();
+                    var html = '';
+                    
+                    if (!rows.length) { 
+                        // Nếu RAM cache không có, hiện nút Gợi ý tìm trên máy chủ
+                        html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; font-style:italic;" '
+                              + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
+                              + '<span class="ae-val-name">🔍 Bấm Enter để tìm "' + _esc(keyword) + '" trên máy chủ...</span>'
+                              + '</div>';
+                    } else {
+                        var MAX_ITEMS = 50;
+                        var displayRows = forceShowAll ? rows : rows.slice(0, MAX_ITEMS);
+
+                        displayRows.forEach(function (r) {
+                            if (!r) return;
+                            var f = _resolveRowFields(r);
+                            if (!f.id && !f.name) return;
+                            html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(f.id) + '" data-name="' + _esc(f.name) + '" data-id="' + _esc(f.id) + '">'
+                                + '<span class="ae-val-name">' + _esc(f.name) + '</span>'
+                                + (f.id && f.id !== f.name ? '<span class="ae-tag">' + _esc(f.id) + '</span>' : '')
+                                + '</div>';
+                        });
+
+                        if (!forceShowAll && rows.length > MAX_ITEMS) {
+                            html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
+                                + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                                + '</div>';
+                        }
+                        
+                        // Luôn hiển thị thêm tùy chọn tìm kiếm toàn server ở cuối danh sách (nếu có gõ chữ)
+                        if (keyword) {
+                            html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; border-top:1px solid #efefef; margin-top:4px; padding-top:8px;" '
+                                  + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
+                                  + '<span class="ae-val-name">🔍 Tìm tất cả sản phẩm chứa "' + _esc(keyword) + '"...</span>'
+                                  + '</div>';
+                        }
+                    }
+                    _menuEl.innerHTML = html;
+                    _positionMenu();
+                    _bindMenuItems(function (el) {
+                        if (el.getAttribute('data-code') === '__SHOW_ALL') {
+                            _menuHide();
+                            _dbt = setTimeout(function () {
+                                _showInlineValues(fieldCode, keyword, true);
+                            }, 50);
+                            return;
+                        }
+
+                        _menuHide();
+                        var selCode = el.getAttribute('data-code') || '';
+                        var selName = el.getAttribute('data-name') || '';
+
+                        // ── Tự động execute API nền thay vì chỉ fill field ──
+                        // catalogFallbackDs = "@tra_cuu_san_pham|@TopN=50"
+                        // → Extract API code phần trước pipe đầu tiên
+                        var underlyingApi = catalogFallbackDs.split('|')[0].trim(); // "@tra_cuu_san_pham"
+                        var curApiCode = _activeApi && _activeApi.apiCode;
+
+                        if (underlyingApi && underlyingApi !== curApiCode) {
+                            var execP = {};
+                            execP[fieldCode] = selCode; // e.g. @timkiem = "băng cá nhân"
+                            
+                            // Parse thêm các tham số từ catalogFallbackDs (ví dụ: |@TopN=50)
+                            var dsParts = catalogFallbackDs.split('|');
+                            for (var i = 1; i < dsParts.length; i++) {
+                                var pPair = dsParts[i].split('=');
+                                if (pPair.length >= 2) {
+                                    execP[pPair[0].trim()] = pPair.slice(1).join('=').trim();
+                                }
+                            }
+
+                            var uMeta = (_apiList || []).find(function (a) { return a.ApiCode === underlyingApi; }) || {};
+                            var execType = uMeta.ExecutionType || 'QUERY';
+                            var label = (selName || selCode);
+                            // Load config của API nền rồi execute
+                            _loadConfig(underlyingApi, function (config) {
+                                _closeFull(true); // Xóa sạch thanh input và reset state để tránh user lỡ bấm Enter lần nữa
+                                _executeApi(underlyingApi, execP, label, execType, config);
+                            });
+                            return;
+                        }
+                        // ────────────────────────────────────────────────────
+
+                        _onValueSelected(fieldCode, selCode, {
+                            name: selName,
+                            id: el.getAttribute('data-id') || selCode
+                        });
+                    });
+                } // end renderFallbackRows
+
+                // Dùng cache nếu đã load trước đó (filter ngay trong RAM = nhanh như Google)
+                // Dùng cache nếu đã load trước đó (filter ngay trong RAM = nhanh như Google)
+                if (_catalogRowsCache[catalogFallbackDs]) {
+                    if (_catalogRowsCache[catalogFallbackDs] === 'loading') {
+                        // Đang tải từ lần gõ trước, không gọi API thêm để tránh spam server
+                        return;
+                    }
+                    renderFallbackRows(_catalogRowsCache[catalogFallbackDs]);
+                } else {
+                    _catalogRowsCache[catalogFallbackDs] = 'loading'; // Khóa để tránh gọi đúp
+                    _loadDataSource('APICODE', catalogFallbackDs, '', function (loadedRows) {
+                        if (!loadedRows || !loadedRows.length) { 
+                            delete _catalogRowsCache[catalogFallbackDs];
+                            _menuHide(); 
+                            return; 
+                        }
+                        _catalogRowsCache[catalogFallbackDs] = loadedRows; // Lưu kết quả
+
+                        // Tự động trigger lại input để render theo keyword MỚI NHẤT mà user vừa gõ (trong lúc chờ)
+                        if (_inputEl) _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    });
+                }
+                return; // Dừng lại, không chạy tiếp xuống phần query Datasource chính
+            }
+        }
+        // ──────────────────────────────────────────────────────────────────
+
         _loadDataSource(dsType, dsVal, keyword, function (rows) {
-            if (!rows || !rows.length) {
+            var rList = rows || [];
+            if (!rList.length && !keyword) {
                 _menuHide();
                 return;
             }
             _menuCreate();
             var html = '';
 
-            rows.forEach(function (r) {
-                var raw = r.json || r.raw || r.data || r;
-                // Hàm pick không phân biệt hoa thường
-                function pick(keys) {
-                    var rawKeys = Object.keys(raw || {});
-                    for (var i = 0; i < keys.length; i++) {
-                        var target = keys[i].toLowerCase();
-                        for (var j = 0; j < rawKeys.length; j++) {
-                            if (rawKeys[j].toLowerCase() === target) {
-                                var val = raw[rawKeys[j]];
-                                if (val !== undefined && val !== null && String(val).trim() !== '') return val;
-                            }
-                        }
-                    }
-                    return null;
-                }
+            var MAX_ITEMS = 50;
+            var displayRows = forceShowAll ? rList : rList.slice(0, MAX_ITEMS);
 
-                var idVal = pick(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'MA_KH', 'CUSTOMER_ID', 'CustomerCode', 'CustomerID', 'Ma', 'Code', 'ID', 'ExternalCode', 'PartnerID']) || r.value || '';
-                var nameVal = pick(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TEN_KH', 'TenKhachHang', 'Ten', 'label']) || r.label || r.Name || '';
-                var phVal = pick(['PhanLoai', 'Type', 'type', 'Group']) || '';
+            displayRows.forEach(function (r) {
+                var f = _resolveRowFields(r);
+                var idVal = f.id, nameVal = f.name, phVal = f.ph, rowDsVal = f.ds;
+
+                // Lưu DataSourceValue vào _catalogDsMap để field sau dùng
+                if (idVal && rowDsVal) _catalogDsMap[String(idVal).toLowerCase()] = rowDsVal;
+                if (nameVal && rowDsVal) _catalogDsMap[String(nameVal).toLowerCase()] = rowDsVal;
 
                 var isObjectLike = (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.OBJECT_ID || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.DOC_ID;
                 var rightText = isObjectLike ? idVal : (r.sub || r.value || '');
 
-                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(idVal) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '">'
+                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(idVal) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '" data-ds="' + _esc(rowDsVal) + '">'
                     + '<span class="ae-val-name">' + _esc(nameVal) + '</span>'
                     + (idVal ? '<span class="ae-tag">' + _esc(idVal) + '</span>' : '')
                     + '</div>';
             });
+            
+            if (!forceShowAll && rList.length > MAX_ITEMS) {
+                html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
+                    + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rList.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                    + '</div>';
+            }
+            
+            // UX Đồng nhất: Hiện lựa chọn sử dụng cứng giá trị user gõ vào (giúp UI giống hệt menu Catalog)
+            if (keyword) {
+                html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; border-top:1px solid #efefef; margin-top:4px; padding-top:8px;" '
+                      + 'data-code="' + _esc(keyword) + '" data-name="' + _esc(keyword) + '">'
+                      + '<span class="ae-val-name">✔️ Ghi nhận nhập: "' + _esc(keyword) + '"</span>'
+                      + '</div>';
+            }
+            
             _menuEl.innerHTML = html;
 
             _positionMenu();
 
             _bindMenuItems(function (el) {
+                if (el.getAttribute('data-code') === '__SHOW_ALL') {
+                    _menuHide();
+                    _dbt = setTimeout(function () {
+                        _showInlineValues(fieldCode, keyword, true);
+                    }, 50);
+                    return;
+                }
+                
                 _menuHide();
-                _onValueSelected(fieldCode, el.getAttribute('data-code'), {
-                    name: el.getAttribute('data-name') || '',
-                    id: el.getAttribute('data-id') || el.getAttribute('data-code') || '',
+                // Lưu DataSourceValue từ data-ds của item được chọn vào catalogDsMap
+                var pickedCode = el.getAttribute('data-code') || '';
+                var pickedName = el.getAttribute('data-name') || '';
+                var pickedDs = el.getAttribute('data-ds') || '';
+                if (pickedCode && pickedDs) _catalogDsMap[pickedCode.toLowerCase()] = pickedDs;
+                if (pickedName && pickedDs) _catalogDsMap[pickedName.toLowerCase()] = pickedDs;
+                
+                _onValueSelected(fieldCode, pickedCode, {
+                    name: pickedName,
+                    id: el.getAttribute('data-id') || pickedCode,
                     ph: el.getAttribute('data-phanloai') || ''
                 });
             });
@@ -810,7 +1122,28 @@
         if (!_menuEl || !_menuVis) return false;
         var items = _menuEl.querySelectorAll('.ae-menu-item');
         if (!items.length) return false;
-        var idx = _menuIdx < 0 ? 0 : _menuIdx; // Tự động chọn dòng đầu tiên nếu chưa cuộn phím mũi tên
+        var idx = _menuIdx;
+        if (idx < 0) {
+            idx = 0;
+            // Scan for best match based on input keyword
+            var qs = '';
+            var lastItem = items[items.length - 1];
+            if (lastItem && String(lastItem.getAttribute('data-name')).indexOf('Tìm:') === -1) {
+                var rawCode = lastItem.getAttribute('data-code');
+                if (rawCode && rawCode !== '__SHOW_ALL') {
+                    qs = String(rawCode).toLowerCase().trim();
+                }
+            }
+            if (qs) {
+                for (var i = 0; i < items.length - 1; i++) {
+                    var c = String(items[i].getAttribute('data-code') || '').toLowerCase();
+                    if (c === qs || c.indexOf(qs) !== -1) {
+                        idx = i;
+                        break;
+                    }
+                }
+            }
+        }
         if (items[idx]) { items[idx].click(); return true; }
         return false;
     }
@@ -1216,7 +1549,8 @@
                         hasErr = true;
                     } else {
                         if (txtEl) txtEl.classList.remove('ae-error');
-                        params[code] = id || txt || "";
+                        var finalVal = id || txt || "";
+                        if (finalVal !== "") params[code] = finalVal;
                     }
                 } else {
                     var el = _panelEl.querySelector('#' + fid);
@@ -1236,7 +1570,7 @@
                             el.focus(); el.classList.add('ae-error'); hasErr = true;
                         } else {
                             el.classList.remove('ae-error');
-                            params[code] = v || "";
+                            if (v !== "") params[code] = v;
                         }
                     }
                 }
@@ -1254,6 +1588,20 @@
             var apiTagPattern = new RegExp('^#' + _activeApi.apiCode.replace(/^@/, '') + '(?:\\s+|$)', 'i');
             var plainInput = val.replace(apiTagPattern, '').trim();
 
+            // 1. Regex tìm @Key=Value truyền thống (lấy param và xóa nó khỏi chuỗi thô!)
+            var regexKV = /@([\w]+)=([^@]*)/g;
+            var matchKV;
+            while ((matchKV = regexKV.exec(plainInput)) !== null) {
+                var key = matchKV[1];
+                var v = matchKV[2].trim();
+                if (!key.startsWith('@')) key = '@' + key;
+                if (v !== "") params[key] = v;
+            }
+            
+            // Xóa sạch các khai báo @Key=Value khỏi chuỗi để đoạn phía sau không vô tình bị bắt nhầm
+            plainInput = plainInput.replace(/@([\w]+)=([^@]*)/g, '').trim();
+
+            // 2. Kỹ thuật Positional matching cho những tham số CÒN LẠI (không có @)
             if (plainInput) {
                 var regexTokens = /"([^"\\]*(?:\\.[^"\\]*)*)"|'([^'\\]*(?:\\.[^'\\]*)*)'|([^\s]+)/g;
                 var tokens = [];
@@ -1263,27 +1611,24 @@
                     tokens.push(tkVal);
                 }
 
-                // Map thứ tự token từ mảng vào visibleFields
-                for (var i = 0; i < tokens.length && i < visibleFields.length; i++) {
+                // Map thứ tự token từ mảng vào visibleFields theo vị trí chưa điền
+                var pIdx = 0;
+                for (var i = 0; i < visibleFields.length && pIdx < tokens.length; i++) {
                     var vField = visibleFields[i];
                     var fCode = vField.FieldCode || vField.field || vField.name || '';
-                    if (fCode) {
-                        if (!fCode.startsWith('@')) fCode = '@' + fCode;
-                        if (tokens[i].indexOf('=') === -1) {
-                            params[fCode] = tokens[i];
+                    if (!fCode) continue;
+                    if (!fCode.startsWith('@')) fCode = '@' + fCode;
+                    
+                    if (!params[fCode]) {
+                        if (tokens[pIdx].indexOf('=') === -1) {
+                            params[fCode] = tokens[pIdx];
+                            pIdx++;
+                        } else {
+                            pIdx++;
+                            i--; // Lùi field hiện tại lại để nhận token tiếp theo
                         }
                     }
                 }
-            }
-
-            // Regex tìm @Key=Value truyền thống (ghi đè nếu có)
-            var regex = /@([\w]+)=([^@]*)/g;
-            var match;
-            while ((match = regex.exec(val)) !== null) {
-                var key = match[1];
-                var v = match[2].trim();
-                if (!key.startsWith('@')) key = '@' + key;
-                params[key] = v;
             }
 
             // Merge any pillParams (selected entities) — do not overwrite existing explicit params
@@ -1404,7 +1749,27 @@
                         _cbMsg && _cbMsg('system', '⚠️ ' + msgRow.Msg);
                         return;
                     }
-                    var dataRows = arrData.filter(function(row) { return row.Msg === undefined && !row.Metadata_UITemplate; });
+                    var dataRows = arrData.filter(function(row) { 
+                        if (row.Msg !== undefined || row.Metadata_UITemplate) return false;
+                        
+                        // Lọc các bản ghi CHỈ CHỨA giá trị null, undefined hoặc rỗng (do hàm SUM của SQL tạo ra)
+                        var valKeys = Object.keys(row).filter(function(k) {
+                            var l = k.toLowerCase();
+                            return l !== 'rowindex' && l !== 'totalrows' && l !== 'isdeleted' && String(k).indexOf('Metadata_') === -1;
+                        });
+                        if (valKeys.length === 0) return false;
+                        var hasData = valKeys.some(function(k) {
+                            var v = row[k];
+                            return v !== null && v !== undefined && String(v).trim() !== '';
+                        });
+                        return hasData;
+                    });
+                    
+                    if (dataRows.length === 0) {
+                        _cbMsg && _cbMsg('ai', '❌ Không tìm thấy dữ liệu phù hợp với bộ lọc.');
+                        return;
+                    }
+
                     if (_cbRender && _cbHtml) {
                         var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
                         var dtToRender = dataRows.length ? dataRows : arrData;
@@ -1533,13 +1898,8 @@
                         var pCode = '@' + query.slice(0, eqPos).trim();
                         var pVal = query.slice(eqPos + 1).trim();
 
-                        // Chặn load value dropdown nếu param kết thúc bằng khoảng trắng (tức là đã điền xong)
-                        if (val.endsWith(' ')) {
-                            _dbt = setTimeout(function () {
-                                _menuShowParams(''); // Hiện lại danh sách chọn param tiếp theo
-                            }, 40); // Đẩy nhanh tốc độ
-                            return;
-                        }
+                        // Cho phép người dùng gõ chuỗi dài có dấu cách (ví dụ: "băng cá nhân"), 
+                        // KHÔNG ngắt list gợi ý giữa chừng chỉ vì 1 dấu cách.
 
                         // Nếu là catalog token (@khachhang, @sanpham...) thì dùng catalog value dropdown
                         if (_isCatalogToken(pCode.replace(/^@/, '').toLowerCase())) {
@@ -1570,6 +1930,13 @@
 
             var pos = val.lastIndexOf('@');
             var querySearch = val;
+
+            // NẾU KHÔNG CÓ LỆNH API ACTIVE VÀ @ ĐANG Ở GIỮA CÂU -> LÀ CHAT TỰ DO, BỎ QUA GỢI Ý DROP DOWNS
+            if (!_activeApi && pos > 0 && val.slice(0, pos).trim().length > 0) {
+                // Return clear
+                clearTimeout(_dbt);
+                return;
+            }
 
             // Nếu đang có token dạng @type=... (ví dụ @khachhang=), tự động mở menu thực thể
             if (pos !== -1) {
@@ -1735,6 +2102,41 @@
             var params = _collectParams();
             if (params === null) return true; // Validation fail, không gửi
             var api = _activeApi;
+
+            // ── Catalog Type Redirect khi Send ────────────────────────────
+            // Nếu _pillParams có type mà _catalogDsMap trỏ sang API khác
+            // → Redirect execute sang API đó thay vì API hiện tại (tránh lỗi too many args)
+            if (_catalogDsMap && _pillParams) {
+                var sysUserK = (CFG.SYS_PARAMS && CFG.SYS_PARAMS.USERNAME) || '@Username';
+                var redirectDone = false;
+                Object.keys(_pillParams).forEach(function (pk) {
+                    if (redirectDone) return;
+                    if (pk.toLowerCase() === sysUserK.toLowerCase()) return;
+                    var pv = (_pillParams[pk] || '').toLowerCase();
+                    var catalogDs = _catalogDsMap[pv] || _catalogDsMap[pv.replace(/^@/, '')];
+                    if (!catalogDs) return;
+                    var underApi = catalogDs.split('|')[0].trim();
+                    if (!underApi || underApi === api.apiCode) return;
+                    // Redirect: build params chỉ gồm các key KHÔNG phải type-selector
+                    var redirectP = {};
+                    Object.keys(params).forEach(function (rk) {
+                        if (rk.toLowerCase() === pk.toLowerCase()) return; // bỏ @Type
+                        redirectP[rk] = params[rk];
+                    });
+                    var uMeta = (_apiList || []).find(function (a) { return a.ApiCode === underApi; }) || {};
+                    var rExecType = uMeta.ExecutionType || api.execType || 'QUERY';
+                    var rLabel = (uMeta.DisplayName || underApi);
+                    console.log('[ApiEngine] handleSend catalog redirect:', api.apiCode, '→', underApi, 'params:', redirectP);
+                    _loadConfig(underApi, function (cfg) {
+                        _closePanel(false);
+                        _executeApi(underApi, redirectP, rLabel, rExecType, cfg);
+                        _closeFull(true);
+                    });
+                    redirectDone = true;
+                });
+                if (redirectDone) return true;
+            }
+            // ──────────────────────────────────────────────────────────────
 
             // Kiểm tra IsConfirm từ metadata
             var isConfirm = api.config && api.config.info && (api.config.info.IsConfirm == 1 || api.config.info.IsConfirm === true);

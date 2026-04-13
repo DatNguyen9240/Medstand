@@ -52,7 +52,7 @@ Trong mọi Workflow n8n, bạn phải đảm bảo trích xuất được:
 ## 4. Ánh xạ Webhook n8n (Current)
 
 Dựa trên cấu hình trong `chatbot.js`:
-*   **Production URL**: `https://seasonal-homes-portraits-fired.trycloudflare.com/webhook/hook-ai-dainao`
+*   **Production URL**: `https://gem-mason-qui-representation.trycloudflare.com/webhook/hook-ai-dainao`
 *   **Action Code**: Chatbot sẽ gửi kèm `ApiCode` trong body JSON. AI Agent (K1) tự điều hướng sang K3/K4 dựa theo `ExecutionType`.
 
 ---

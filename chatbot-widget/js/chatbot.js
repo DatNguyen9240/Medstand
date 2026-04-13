@@ -458,10 +458,20 @@
 
         // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
         if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-            // 1. Lọc data (ẩn các field hidden)
+            // 1. Lọc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả về)
             var cleanData = res.data.filter(function(r) { 
-                return Object.keys(r).length > 0 && Object.keys(r).some(function(k) { return _getHiddenFields().indexOf(k) === -1; }); 
+                var visibleKeys = Object.keys(r).filter(function(k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
+                if (visibleKeys.length === 0) return false;
+                return visibleKeys.some(function(k) { 
+                    var v = r[k]; 
+                    return v !== null && v !== undefined && String(v).trim() !== ''; 
+                });
             });
+
+            if (cleanData.length === 0) {
+                _addMessage('ai', 'Không tìm thấy dữ liệu.');
+                return;
+            }
             
             // 2. Tìm Mã Đối Tượng (Customer Code) từ metadata
             var idF = ApiEngine.getFieldByRole(res.intentParams || {}, 'ID');
@@ -570,7 +580,30 @@
     }
 
     function _pickField(row, role) {
-        return ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
+        var f = ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
+        if (f) return f;
+        
+        // --- Dự phòng nhận diện AI tự động khi thiếu Metadata từ Backend ---
+        if (!row) return null;
+        var keys = Object.keys(row);
+        var lowerKeys = keys.map(function(k) { return k.toLowerCase(); });
+        
+        function findKey(targets) {
+            for (var i = 0; i < targets.length; i++) {
+                var idx = lowerKeys.indexOf(targets[i]);
+                if (idx !== -1) return { key: keys[idx], val: row[keys[idx]] };
+            }
+            return null;
+        }
+
+        if (role === 'TITLE') {
+            return findKey(['itemname', 'objectname', 'employeename', 'name', 'fullname', 'hoten', 'ten', 'title', 'tieu_de']);
+        }
+        if (role === 'ID') {
+            return findKey(['itemid', 'objectid', 'employeeid', 'code', 'ma', 'id', 'docno', 'documentid', 'macode']);
+        }
+        
+        return null;
     }
 
     function _fmtCellVal(v) {
@@ -608,17 +641,23 @@
      * @param {string} apiCode   - mã API (được dùng bởi sub-renderer khác)
      * @param {Object} meta      - { uiTemplate, fieldRoles, khCode } từ ApiEngine
      */
-    function _renderCardView(rows, headerMsg, apiCode, meta) {
+    function _renderSingleGroup(rows, apiCode, meta) {
         var keys = _getKeys(rows);
         var html = '';
-        if (headerMsg) html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
         
         var viewId = 'view-' + (++_modalIdCounter);
         html += '<div class="ai-inline-container" id="' + viewId + '">';
         html += '<div class="ai-view-cards">';
         html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
         
+        var MAX_CARDS = 30;
         rows.forEach(function(row, idx) {
+            if (idx === MAX_CARDS) {
+                html += '</div>'; 
+                html += '<details style="margin-top:10px;">';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
+                html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
+            }
             var titleF = _pickField(row, 'TITLE');
             var idF = _pickField(row, 'ID');
             var badgeF = _pickField(row, 'BADGE');
@@ -671,6 +710,7 @@
         });
 
         html += '</div>'; // card-list
+        if (rows.length > MAX_CARDS) html += '</details>';
         html += '</div>'; // ai-view-cards
 
         // Nút toggle bảng
@@ -681,6 +721,77 @@
         html += '</div>';
         html += '</div>'; // ai-inline-container
 
+        return html;
+    }
+
+    /**
+     * Renderer ĐỘNG 100%: Tự động nhận dạng Tabs và Render danh sách
+     */
+    function _renderCardView(rows, headerMsg, apiCode, meta) {
+        if (!rows || rows.length === 0) return '';
+        
+        // Phân loại rows 100% ĐỘNG dựa theo cấu trúc cột (Data Signature)
+        var groupsMap = {};
+        rows.forEach(function(r) {
+            // Lấy danh sách keys hợp lệ làm chữ ký cấu trúc
+            var keys = Object.keys(r).filter(function(k) { 
+                return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; 
+            }).sort();
+            var sig = keys.join('|');
+            
+            if (!groupsMap[sig]) {
+                groupsMap[sig] = { rows: [], sig: sig };
+            }
+            groupsMap[sig].rows.push(r);
+        });
+
+        // Chuyển object sang array và tạo tự động nhãn (Label) cho Tab
+        var activeGroups = Object.keys(groupsMap).map(function(k) { return groupsMap[k]; });
+        activeGroups.forEach(function(g, idx) {
+            var sampleRow = g.rows[0];
+            var titleF = _pickField(sampleRow, 'TITLE');
+            if (titleF && titleF.key) {
+                // Tự động nhận diện trường chính, ví dụ: 'Theo EmployeeName'
+                g.label = 'Theo ' + titleF.key;
+            } else {
+                var lk = Object.keys(sampleRow).map(function(k) { return k.toLowerCase(); });
+                if (lk.indexOf('employeename') !== -1) g.label = 'Theo NV';
+                else if (lk.indexOf('objectname') !== -1) g.label = 'Theo Khách';
+                else if (lk.indexOf('itemname') !== -1) g.label = 'Theo SP';
+                else if (lk.indexOf('tongtien') !== -1 || lk.indexOf('tongtien2') !== -1 || lk.indexOf('tongtien3') !== -1) g.label = 'Tổng kết';
+                else if (lk.indexOf('soluong') !== -1 || lk.indexOf('tongsoluong') !== -1) g.label = 'Số lượng';
+                else if (lk.indexOf('docno') !== -1) g.label = 'Chứng từ';
+                else g.label = 'Nhóm ' + (idx + 1);
+            }
+        });
+
+        var html = '';
+        if (headerMsg) html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
+
+        if (activeGroups.length > 1) {
+            // Render Tabs
+            html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">';
+            var tabsId = 'tabs-' + (++_modalIdCounter);
+            activeGroups.forEach(function(g, idx) {
+                var bg = (idx === 0) ? '#0056b3' : '#f0f4f8';
+                var cl = (idx === 0) ? '#fff' : '#333';
+                var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='#f0f4f8'; b.style.color='#333';}); this.style.background='#0056b3'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
+                var icon = (idx === 0) ? '📌 ' : '📋 ';
+                html += '<button class="ai-tab-btn-' + tabsId + '" onclick="' + clickJs + '" style="padding:6px 14px; border:none; border-radius:20px; font-weight:600; font-size:13px; background:' + bg + '; color:' + cl + '; cursor:pointer; outline:none; transition: background 0.2s;">' + icon + _esc(g.label) + ' (' + g.rows.length + ')</button>';
+            });
+            html += '</div>';
+
+            html += '<div class="ai-tabs-content" style="position:relative;">';
+            activeGroups.forEach(function(g, idx) {
+                var disp = (idx === 0) ? 'block' : 'none';
+                html += '<div class="ai-tab-pane-' + tabsId + '" id="' + tabsId + '-pane-' + idx + '" style="display:' + disp + '">';
+                html += _renderSingleGroup(g.rows, apiCode, meta);
+                html += '</div>';
+            });
+            html += '</div>';
+        } else {
+            html += _renderSingleGroup(rows, apiCode, meta);
+        }
         return html;
     }
 
@@ -702,7 +813,15 @@
         html += '<div class="ai-inline-container" id="' + viewId + '">';
         html += '<div class="ai-catalog-grid">';
 
+        var MAX_CARDS = 30;
         rows.forEach(function(row, idx) {
+            if (idx === MAX_CARDS) {
+                html += '</div>'; 
+                html += '<details style="margin-top:10px;">';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
+                html += '<div class="ai-catalog-grid">';
+            }
+
             var titleF  = _pickField(row, 'TITLE');
             var idF     = _pickField(row, 'ID');
             var badgeF  = _pickField(row, 'BADGE');
@@ -757,6 +876,7 @@
         });
 
         html += '</div>'; // catalog-grid
+        if (rows.length > MAX_CARDS) html += '</details>';
 
         // Toggle sang bảng
         var toggleText = '📊 Xem dạng bảng';
@@ -842,7 +962,7 @@
     /** Render chỉ phần <tbody> (tách riêng để re-render khi filter) */
 
     function _renderTableBody(filteredRows, keys) {
-        var MAX = 500;
+        var MAX = 50;
         var shown = Math.min(filteredRows.length, MAX);
         var html = '';
         for (var i = 0; i < shown; i++) {
@@ -1514,7 +1634,7 @@
         }
         if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
-            var selIdx = mentionState.selectedIndex >= 0 ? mentionState.selectedIndex : 0;
+            var selIdx = mentionState.selectedIndex; if (selIdx < 0) { selIdx = 0; var qs = (mentionState.searchText || '').toLowerCase().trim(); if (qs) { for (var i = 0; i < mentionState.items.length; i++) { var c = (mentionState.items[i].MaDanhMuc || mentionState.items[i].Code || mentionState.items[i].ObjectID || mentionState.items[i].ItemID || mentionState.items[i].DocumentID || '').toLowerCase(); if (c === qs || c.indexOf(qs) !== -1) { selIdx = i; break; } } } }
             if (mentionState.items.length > 0) {
                 // Kiểm tra phase: nếu items là string (category key) thì chọn category
                 if (typeof mentionState.items[0] === 'string') {
@@ -1838,9 +1958,14 @@
             inputEl: $input,
             addMessage: _addMessage,
             addHtmlMessage: _addHtmlMessage,
-            renderCardView: _renderCardView,
+            renderCardView: function(rows, headerMsg, apiCode, meta) {
+                var uiTpl = (meta && meta.uiTemplate) ? meta.uiTemplate.toUpperCase() : 'DEFAULT';
+                var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
+                return renderFn(rows, headerMsg, apiCode, meta);
+            },
             showTyping: _showTyping,
-            hideTyping: _hideTyping
+            hideTyping: _hideTyping,
+            getToken: _getToken
         });
     }
 
@@ -1915,3 +2040,4 @@
         }
     };
 })();
+
