@@ -1,7 +1,8 @@
 CREATE OR ALTER PROCEDURE dbo.API_DanhsachTonKho_AI
     @Username VARCHAR(50),
     @ItemID VARCHAR(50) = '',
-    @ItemName VARCHAR(200) = ''
+    @ItemName VARCHAR(200) = '',
+    @timkiem NVARCHAR(200) = ''
 AS
 BEGIN
     SET NOCOUNT ON
@@ -24,6 +25,7 @@ BEGIN
     WHERE (@ItemID = '' OR A.ItemID = @ItemID)
       AND (@ItemName = '' OR I.ItemName LIKE '%' + @ItemName + '%')
       AND (@SYSBranchID = '' OR A.BranchID = @SYSBranchID)
+      AND (@timkiem = '' OR I.ItemName LIKE '%' + @timkiem + '%' OR A.ItemID LIKE '%' + @timkiem + '%')
     GROUP BY A.ItemID, I.ItemName, A.StoreHouseID, A.BranchID,
              A.Lot, A.ExpireDate
 END

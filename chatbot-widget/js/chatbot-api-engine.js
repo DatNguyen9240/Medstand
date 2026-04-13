@@ -140,6 +140,9 @@
             SearchKey: keyword || ''
         }).then(function (res) {
             var rows = [];
+            // N8N có thể trả về array 2 chiều [ [ ... ] ] từ SQL Execute
+            if (Array.isArray(res) && res.length === 1 && Array.isArray(res[0])) { res = res[0]; }
+            
             if (Array.isArray(res)) {
                 rows = res;
             } else if (res && res.data && Array.isArray(res.data.records)) {
@@ -183,10 +186,10 @@
             return null;
         }
 
-        var idVal   = firstMatch(ID_PAT)   || r.value || '';
-        var nameVal = firstMatch(NAME_PAT, ID_PAT) || r.label || '';
+        var idVal   = firstMatch(ID_PAT)   || r.type || r.Type || r.value || r.ApiCode || '';
+        var nameVal = firstMatch(NAME_PAT, ID_PAT) || r.label || r.Title || r.title || r.Name || r.name || '';
         var phVal   = firstMatch(TYPE_PAT) || '';
-        var dsVal   = firstMatch(DS_PAT)   || '';
+        var dsVal   = firstMatch(DS_PAT)   || r.DataSourceValue || r.datasourcevalue || '';
 
         // Length-sort last-resort: mọi schema lạ (kể cả tiếng Việt có dấu)
         // Dài nhất = mô tả/tên, ngắn nhất = mã định danh
@@ -546,28 +549,6 @@
                 var val = _inputEl.value;
                 var prefix = val.slice(0, atPos);
 
-                // ── Smart Type→API Redirect ─────────────────────────────────
-                // Nếu valType khớp tên API nào trong danh sách → chuyển hẳn sang API đó
-                function _stripApi(s) {
-                    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
-                }
-                var matchedApi = _apiList.find(function (a) {
-                    var code = _stripApi((a.ApiCode || '').replace(/^@/, ''));
-                    var name = _stripApi(a.DisplayName || '');
-                    var t = _stripApi(valType);
-                    return code.indexOf(t) !== -1 || name.indexOf(t) !== -1;
-                });
-                // Nếu có API trùng tên và khác danh_muc → redirect luôn
-                if (matchedApi && !/danh.?muc/i.test(matchedApi.ApiCode)) {
-                    console.log('[ApiEngine] Type→API redirect:', valType, '→', matchedApi.ApiCode);
-                    _menuHide();
-                    // Reset input về rỗng, sau đó kích API mới
-                    _inputEl.value = '';
-                    _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                    _onApiSelected(matchedApi.ApiCode);
-                    return;
-                }
-                // ── End Smart Redirect ──────────────────────────────────────
 
                 if (valType) {
                     var dsFromRow = el.getAttribute('data-ds') || '';
@@ -746,7 +727,7 @@
             var html = '<div style="padding:12px; cursor:default; background:var(--ae-bg); border-radius:12px;">'
                 + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
                 + '<label style="font-size:13px;font-weight:600;color:var(--ae-text);margin:0;">Chọn ngày <span style="font-weight:normal;color:var(--ae-text-muted);">(' + _esc(field.FieldName) + ')</span>:</label>'
-                + '<button type="button" id="ae-inline-date-confirm" style="background:var(--ae-primary);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;transition:all 0.2s;">Chèn</button>'
+                + '<button type="button" id="ae-inline-date-confirm" style="background:var(--ae-accent);color:#fff;border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:600;font-size:12px;transition:all 0.2s;">Chèn</button>'
                 + '</div>'
                 + '<input type="date" id="ae-inline-date" class="ae-ctrl" value="' + _esc(dValParam) + '" style="width:100%;font-size:15px;padding:10px;box-sizing:border-box;">'
                 + '</div>';
@@ -757,7 +738,7 @@
             var di = document.getElementById('ae-inline-date');
             if (di) {
                 di.addEventListener('mousedown', function (e) { e.stopPropagation(); });
-                di.addEventListener('click', function (e) { e.stopPropagation(); });
+                di.addEventListener('click', function (e) { e.stopPropagation(); try { di.showPicker(); } catch(err){} });
                 // Tự động chèn biến xuống khung nhập liệu khi Lịch được User thay đổi ngày
                 di.addEventListener('change', function (e) {
                     var finalDate = di.value;
@@ -770,19 +751,27 @@
                 try { di.showPicker(); } catch (e) { }
             }
 
-            _bindMenuItems(function (el) {
-                if (el.id === 'ae-inline-date-confirm') {
+            var confirmBtn = document.getElementById('ae-inline-date-confirm');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
                     var finalDate = document.getElementById('ae-inline-date').value;
                     _menuHide();
                     _onValueSelected(fieldCode, finalDate, { name: finalDate });
-                }
-            });
+                });
+            }
             return;
         }
 
-        // Nếu không có DataSource, không hiển thị menu gợi ý (Tuân thủ No-Hardcode)
+        // Nếu không có DataSource, thông báo cho người dùng biết để nhập tay và Enter
         if (!field || (!field.DataSourceType && !field.OptionsJson)) {
-            _menuHide();
+            _menuCreate();
+            var html = '<div class="ae-menu-item ae-val-item" style="color:#0056b3; font-style:italic;" '
+                 + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
+                 + '<span class="ae-val-name">✍️ Vui lòng tự nhập nội dung vào đây rồi bấm phím Enter...</span>'
+                 + '</div>';
+            _menuEl.innerHTML = html;
+            _positionMenu();
             return;
         }
 
@@ -930,9 +919,10 @@
                         }
                         // ────────────────────────────────────────────────────
 
-                        _onValueSelected(fieldCode, selCode, {
+                        _onValueSelected(fCode, selCode, {
                             name: selName,
-                            id: el.getAttribute('data-id') || selCode
+                            id: el.getAttribute('data-id') || selCode,
+                            ph: el.getAttribute('data-phanloai')
                         });
                     });
                 } // end renderFallbackRows
@@ -1068,13 +1058,15 @@
             // Trường hợp tham số API hoặc có PhanLoai từ Catalog: Hiện định dạng "PhanLoai Tên(Mã)"
             try { _pillParams[fieldCode] = pickedVal; } catch (e) { }
 
-            var ph = (selectedMeta && selectedMeta.ph) ? selectedMeta.ph + ' ' : '';
-            var dispName = (selectedMeta && selectedMeta.name) ? selectedMeta.name : (fieldCode || '').replace(/^@/, '');
+            var paramName = (fieldCode || '').replace(/^@/, '');
+            var dispName = (selectedMeta && selectedMeta.name) ? selectedMeta.name : paramName;
             var dispId = (selectedMeta && selectedMeta.id) ? selectedMeta.id : pickedVal;
 
-            var fullDisplay = ph + dispName;
+            var fullDisplay = paramName + ' ' + dispName;
             // Chỉ thêm mã ID vào ngoặc nếu mã ID khác với tên
-            if (dispId && dispId !== dispName) fullDisplay += '(' + dispId + ')';
+            if (dispId && String(dispId).toLowerCase() !== String(dispName).toLowerCase()) {
+                fullDisplay += '(' + dispId + ')';
+            }
 
             // XÓA TRẠNG THÁI tra cứu cũ TRƯỚC khi dispatch event để watcher không bị nhầm
             _lastCatalogType = null;
@@ -1362,7 +1354,7 @@
     }
 
     // ── Field Builder ─────────────────────────────────────────────────
-    function _buildField(f) {
+    function _buildField(f, _idx, allFields) {
         var code = f.FieldCode || '';
         var name = f.FieldName || code;
         var ctrl = f.ControlType || 'text';
@@ -1399,6 +1391,24 @@
             input += '</select>';
         }
         else if (ctrl === 'date') {
+            if (!defVal) {
+                var dateFields = (allFields || []).filter(function (x) { return x.ControlType === 'date'; });
+                var codeLow = (f.FieldCode || '').toLowerCase();
+                var isFrom = codeLow.indexOf('tu') > -1 || codeLow.indexOf('start') > -1 || codeLow.indexOf('from') > -1;
+                var isTo = codeLow.indexOf('den') > -1 || codeLow.indexOf('end') > -1 || codeLow.indexOf('to') > -1;
+                
+                if (dateFields.length === 1) isTo = true; // Chỉ có 1 ngày -> Mặc định là Đến ngày (Hôm nay)
+                else if (dateFields.length >= 2 && !isFrom && !isTo) {
+                    if (dateFields[0].FieldCode === f.FieldCode) isFrom = true;
+                    else if (dateFields[1].FieldCode === f.FieldCode) isTo = true;
+                }
+
+                var dVal = new Date();
+                if (isFrom) { dVal.setMonth(dVal.getMonth() - 1); }
+                var mm = (dVal.getMonth() + 1).toString().padStart(2, '0');
+                var dd = dVal.getDate().toString().padStart(2, '0');
+                defVal = dVal.getFullYear() + '-' + mm + '-' + dd;
+            }
             input = '<input type="date" id="' + id + '" name="' + _esc(code) + '" class="ae-ctrl" value="' + _esc(defVal) + '"' + (reqd ? ' required' : '') + ' data-field="' + id + '">';
         }
         else if (ctrl === 'number') {
@@ -1708,16 +1718,6 @@
                             else if (reqd) { el.classList.add('ae-error'); hasErr = true; }
                         } else {
                             var v = el.value.trim();
-                            // Tự động gán mặc định cho các tham số ngày (nếu trống)
-                            if (!v && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
-                                var d = new Date();
-                                if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
-                                var mm = (d.getMonth() + 1).toString().padStart(2, '0');
-                                var dd = d.getDate().toString().padStart(2, '0');
-                                v = d.getFullYear() + '-' + mm + '-' + dd;
-                                el.value = v; // Hiện lên UI luôn
-                            }
-
                             if (reqd && !v) {
                                 el.focus(); el.classList.add('ae-error'); hasErr = true;
                             } else {
@@ -1802,10 +1802,17 @@
                     if (isUserField) return;
 
                     // Tự động tính tham số thời gian cho TH2 (nhập qua Chat)
-                    var isStartD = (fcLow === CFG.SYS_PARAMS.START_DATE || fcLow.indexOf('tu_ngay') > -1);
-                    var isEndD = (fcLow === CFG.SYS_PARAMS.END_DATE || fcLow.indexOf('den_ngay') > -1);
+                    var isStartD = (fcLow.indexOf('tu') > -1 || fcLow.indexOf('start') > -1 || fcLow.indexOf('from') > -1);
+                    var isEndD = (fcLow.indexOf('den') > -1 || fcLow.indexOf('end') > -1 || fcLow.indexOf('to') > -1);
+                    // Dự đoán nếu chỉ có 1 trường date và nó không rõ ràng thì nó là Đến Ngày
+                    var dCount = cfgParams.filter(function(x){ return x.ControlType==='date'; }).length;
+                    if (f.ControlType === 'date' && !isStartD && !isEndD) {
+                        if (dCount === 1) isEndD = true;
+                        else if (cfgParams.indexOf(f) === 0) isStartD = true;
+                        else isEndD = true;
+                    }
 
-                    if (!params[f.FieldCode] && (isStartD || isEndD)) {
+                    if (!params[f.FieldCode] && (isStartD || isEndD || f.ControlType === 'date')) {
                         var d = new Date();
                         if (isStartD) d.setMonth(d.getMonth() - 1);
                         var mm = (d.getMonth() + 1).toString().padStart(2, '0');
@@ -1834,6 +1841,41 @@
             params[iKey] = JSON.stringify(_cartItems.map(function (it) {
                 return { ItemID: it.ItemID, Quantity: it.Quantity };
             }));
+        }
+
+        // Cứu cánh: Đảm bảo tham số Ngày luôn được gán tự động nếu người dùng chỉ nhập keyword hoặc thiếu config
+        var cfgContext = _activeApi.config || (_activeApi.apiConfig ? _activeApi.apiConfig : null);
+        if (!cfgContext && window.ApiEngine && window.ApiEngine.CatalogConfig) {
+            var tKey = (_activeApi.ApiCode || _activeApi.apiCode || _chatApiCode || '').replace(/^@/, '');
+            var matchingConf = window.ApiEngine.CatalogConfig.filter(function(x) { return x.ApiCode.replace(/^@/, '') === tKey; })[0];
+            if (matchingConf) cfgContext = matchingConf;
+        }
+
+        if (cfgContext) {
+             var allFlds = (cfgContext.filters || []).concat(cfgContext.fields || []);
+             var dateFields = allFlds.filter(function(x) { return x.ControlType === 'date'; });
+             
+             allFlds.forEach(function(f) {
+                 var fKey = (f.FieldCode || '').startsWith('@') ? f.FieldCode : '@' + (f.FieldCode||'');
+                 
+                 // Nếu field là date nhưng lỡ nhận rác văn bản (do positional Regex dài ngoằng) -> Reset
+                 if (f.ControlType === 'date' && params[fKey] && typeof params[fKey] === 'string' && params[fKey].length > 15) {
+                     delete params[fKey]; 
+                 }
+                 
+                 if (f.ControlType === 'date' && !params[fKey]) {
+                     var d = new Date();
+                     var isStart = fKey.toLowerCase().indexOf('tu') > -1 || fKey.toLowerCase().indexOf('start') > -1;
+                     if (f.ControlType === 'date' && !isStart && fKey.toLowerCase().indexOf('den') === -1) {
+                         if (dateFields.length === 1) isStart = false; 
+                         else if (allFlds.indexOf(f) === 0) isStart = true;
+                     }
+                     if (isStart) d.setMonth(d.getMonth() - 1);
+                     var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                     var dd = d.getDate().toString().padStart(2, '0');
+                     params[fKey] = d.getFullYear() + '-' + mm + '-' + dd;
+                 }
+             });
         }
 
         return params;
@@ -1895,6 +1937,10 @@
                 var r = typeof res === 'string' ? res : (res.reply || res.message || '');
 
                 // --- Tự động render mảng Data ---
+                // N8N có thể trả về array 2 chiều [ [ ... ] ]
+                if (Array.isArray(res) && res.length === 1 && Array.isArray(res[0])) { res = res[0]; }
+                if (res && res.data && Array.isArray(res.data) && res.data.length === 1 && Array.isArray(res.data[0])) { res.data = res.data[0]; }
+                
                 var arrData = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : null);
                 if (arrData && arrData.length > 0) {
                     var msgRow = arrData.find(function(row) { return row.Msg !== undefined; });
@@ -1957,6 +2003,9 @@
                 } else {
                     if (!r && typeof res === 'object') {
                         r = JSON.stringify(res, null, 2);
+                        if (r === '{}' || r === '{\n}' || r === '{\n  \n}') {
+                            r = '❌ Máy chủ không trả về dữ liệu (hoặc kết nối bị ngắt).';
+                        }
                     }
                     _cbMsg && _cbMsg('ai', r);
                 }
@@ -2084,12 +2133,6 @@
             var pos = val.lastIndexOf('@');
             var querySearch = val;
 
-            // NẾU KHÔNG CÓ LỆNH API ACTIVE VÀ @ ĐANG Ở GIỮA CÂU -> LÀ CHAT TỰ DO, BỎ QUA GỢI Ý DROP DOWNS
-            if (!_activeApi && pos > 0 && val.slice(0, pos).trim().length > 0) {
-                // Return clear
-                clearTimeout(_dbt);
-                return;
-            }
 
             // Nếu đang có token dạng @type=... (ví dụ @khachhang=), tự động mở menu thực thể
             if (pos !== -1) {

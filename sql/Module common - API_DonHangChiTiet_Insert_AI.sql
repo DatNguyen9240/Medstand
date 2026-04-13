@@ -5,10 +5,10 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 CREATE OR ALTER PROCEDURE [dbo].[API_DonHangChiTiet_Insert_AI]
-    @Username    VARCHAR(50),
+    @Username    VARCHAR(50)   = '',
     @DocumentID  VARCHAR(50)   = '',
     @ObjectID    VARCHAR(50)   = '',
-    @ItemList    NVARCHAR(MAX)
+    @ItemList    NVARCHAR(MAX) = ''
 AS
 SET NOCOUNT ON
 SET XACT_ABORT ON

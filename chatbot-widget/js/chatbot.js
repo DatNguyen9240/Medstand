@@ -2,10 +2,10 @@
 // Cấu hình: đọc từ API_CONFIG (api.config.js) — KHÔNG hardcode URL/key ở đây
 (function () {
     var _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
-    var CHAT_API     = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
+    var CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
     var CHAT_API_KEY = _cfg.CHAT_API_KEY || '';
     var CACHE_KEY = 'ai_chat_history';
-    var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 giờ
+    var CACHE_TTL = 0 //24 * 60 * 60 * 1000; // 24 giờ
     var USER_PHRASES_KEY = 'ai_user_phrases';
     var MAX_USER_PHRASES = 50;
     var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -259,14 +259,14 @@
         if (!s) return '';
         var map = {
             'àáảãạăắặằẵẫâầấậẫẵ': 'a', 'ÀÁẢÃẠĂẮẶẰẴẪÂẦẤẬẪẴ': 'A',
-            'èéẻẽẹêềếểễệ': 'e',       'ÈÉẺẼẸÊỀẾỂỄỆ': 'E',
-            'ìíỉĩị': 'i',              'ÌÍỈĨỊ': 'I',
+            'èéẻẽẹêềếểễệ': 'e', 'ÈÉẺẼẸÊỀẾỂỄỆ': 'E',
+            'ìíỉĩị': 'i', 'ÌÍỈĨỊ': 'I',
             'òóỏõọôồốổỗộơờớởỡợ': 'o', 'ÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢ': 'O',
-            'ùúủũụưừứửữự': 'u',       'ÙÚỦŨỤƯỪỨỬỮỰ': 'U',
-            'ỳýỷỹỵ': 'y',             'ỲÝỶỸỴ': 'Y',
-            'đ': 'd',                  'Đ': 'D'
+            'ùúủũụưừứửữự': 'u', 'ÙÚỦŨỤƯỪỨỬỮỰ': 'U',
+            'ỳýỷỹỵ': 'y', 'ỲÝỶỸỴ': 'Y',
+            'đ': 'd', 'Đ': 'D'
         };
-        return s.split('').map(function(c) {
+        return s.split('').map(function (c) {
             for (var group in map) {
                 if (group.indexOf(c) !== -1) return map[group];
             }
@@ -427,7 +427,7 @@
         var filesToSend = selectedFiles.slice();
         _clearFiles();
 
-        Promise.all(filesToSend.map(function(file) {
+        Promise.all(filesToSend.map(function (file) {
             return new Promise(function (resolve) {
                 var reader = new FileReader();
                 reader.onload = function () { resolve({ name: file.name, data: reader.result }); };
@@ -441,16 +441,16 @@
                 body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-            .then(function (res) { 
-                return res.text().then(function(text) {
-                    if (!res.ok) throw new Error("Lỗi Server N8N (" + res.status + "): Có thể Workflow bị lỗi ngầm, hãy kiểm tra Excecutions tab trong N8N.");
-                    if (!text) throw new Error("Lỗi Server N8N: Trả về dữ liệu trống.");
-                    try { return JSON.parse(text); } 
-                    catch(e) { throw new Error("N8N không trả về JSON: " + text.substring(0, 50)); }
-                });
-            })
-            .then(function(data) { _handleReply(data); })
-            .catch(function(err) { _handleError(err); });
+                .then(function (res) {
+                    return res.text().then(function (text) {
+                        if (!res.ok) throw new Error("Lỗi Server N8N (" + res.status + "): Có thể Workflow bị lỗi ngầm, hãy kiểm tra Excecutions tab trong N8N.");
+                        if (!text) throw new Error("Lỗi Server N8N: Trả về dữ liệu trống.");
+                        try { return JSON.parse(text); }
+                        catch (e) { throw new Error("N8N không trả về JSON: " + text.substring(0, 50)); }
+                    });
+                })
+                .then(function (data) { _handleReply(data); })
+                .catch(function (err) { _handleError(err); });
         });
     }
 
@@ -470,12 +470,12 @@
 
         if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
             // 1. Lọc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả về)
-            var cleanData = res.data.filter(function(r) { 
-                var visibleKeys = Object.keys(r).filter(function(k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
+            var cleanData = res.data.filter(function (r) {
+                var visibleKeys = Object.keys(r).filter(function (k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
                 if (visibleKeys.length === 0) return false;
-                return visibleKeys.some(function(k) { 
-                    var v = r[k]; 
-                    return v !== null && v !== undefined && String(v).trim() !== ''; 
+                return visibleKeys.some(function (k) {
+                    var v = r[k];
+                    return v !== null && v !== undefined && String(v).trim() !== '';
                 });
             });
 
@@ -483,11 +483,11 @@
                 _addMessage('ai', 'Không tìm thấy dữ liệu.');
                 return;
             }
-            
+
             // 2. Tìm Mã Đối Tượng (Customer Code) từ metadata
-            var idF = ApiEngine.getFieldByRole(res.intentParams || {}, 'ID');
+            var idF = _pickField(res.intentParams || {}, 'ID');
             var khCode = idF ? idF.val : '';
-            
+
             // 3. Xác định UI Template & Renderer
             var apiCode = (res.apiCode || '').toLowerCase();
             var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
@@ -512,13 +512,16 @@
         } else if (res && res.response) {
             reply = res.response;
         } else if (res && res.reply) {
-            reply = res.reply;
+            reply = (typeof res.reply === 'object') ? (res.reply.message || res.reply.msg || JSON.stringify(res.reply)) : res.reply;
         } else if (res && res.message) {
             reply = res.message;
         } else if (res && res.output) {
             reply = res.output;
         } else if (res && res.data) {
             reply = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+        } else if (typeof res === 'object') {
+            if (Object.keys(res).length === 0) reply = "Không có thông báo lỗi từ máy chủ. (Lỗi 500)";
+            else reply = res.message || res.msg || JSON.stringify(res);
         } else {
             reply = JSON.stringify(res);
         }
@@ -547,7 +550,7 @@
         var phone = null, name = null;
         var phoneFields = ApiEngine.getFieldsByRole ? ApiEngine.getFieldsByRole('PHONE') : [];
         var nameFields = ApiEngine.getFieldsByRole ? ApiEngine.getFieldsByRole('NAME') : [];
-        
+
         for (var i = 0; i < phoneFields.length; i++) {
             var v = row[phoneFields[i]];
             if (v && _isValidPhone(String(v))) { phone = _normalizePhone(String(v)); break; }
@@ -583,22 +586,22 @@
         _updateSendBtn();
     }
 
-    
 
-        function _pickValue(row, role) {
-        var f = ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
+
+    function _pickValue(row, role) {
+        var f = _pickField(row, role);
         return f ? f.val : null;
     }
 
     function _pickField(row, role) {
         var f = ApiEngine.getFieldByRole ? ApiEngine.getFieldByRole(row, role) : null;
         if (f) return f;
-        
+
         // --- Dự phòng nhận diện AI tự động khi thiếu Metadata từ Backend ---
         if (!row) return null;
         var keys = Object.keys(row);
-        var lowerKeys = keys.map(function(k) { return k.toLowerCase(); });
-        
+        var lowerKeys = keys.map(function (k) { return k.toLowerCase(); });
+
         function findKey(targets) {
             for (var i = 0; i < targets.length; i++) {
                 var idx = lowerKeys.indexOf(targets[i]);
@@ -608,12 +611,30 @@
         }
 
         if (role === 'TITLE') {
-            return findKey(['itemname', 'objectname', 'employeename', 'name', 'fullname', 'hoten', 'ten', 'title', 'tieu_de']);
+            return findKey(['itemname', 'objectname', 'tendoitac', 'tenkhachhang', 'tencuahang', 'employeename', 'name', 'fullname', 'hoten', 'ten', 'title', 'tieu_de', 'diengiai', 'noidung', 'ghichu']);
         }
         if (role === 'ID') {
-            return findKey(['itemid', 'objectid', 'employeeid', 'code', 'ma', 'id', 'docno', 'documentid', 'macode']);
+            return findKey(['itemid', 'objectid', 'employeeid', 'makhachhang', 'code', 'ma', 'id', 'docno', 'documentid', 'macode', 'mahd', 'khachhang', 'sanpham', 'nhanvien', 'khohang']);
         }
-        
+        if (role === 'BADGE') {
+            return findKey(['phanloai', 'nhom', 'trangthai', 'status', 'loai', 'badge']);
+        }
+        if (role === 'MONEY') {
+            return findKey(['doanhso', 'tongtien', 'tongno', 'doanhthu', 'tonkho', 'dongia', 'sotien', 'tien']);
+        }
+        if (role === 'TREND') {
+            return findKey(['ngay', 'date', 'thoigian', 'trend', 'loinhacai', 'loinhac']);
+        }
+        if (role === 'COUNT') {
+            return findKey(['tongsohoadon', 'sohd', 'soluong', 'count']);
+        }
+        if (role === 'PERCENT') {
+            return findKey(['hoanthanh', 'tyle', 'percent', 'percentage']);
+        }
+        if (role === 'TARGET') {
+            return findKey(['muctieu', 'target']);
+        }
+
         return null;
     }
 
@@ -637,8 +658,8 @@
 
     function _getKeys(rows) {
         var keys = [];
-        rows.forEach(function(r) {
-            Object.keys(r).forEach(function(k) {
+        rows.forEach(function (r) {
+            Object.keys(r).forEach(function (k) {
                 if (keys.indexOf(k) === -1 && _getHiddenFields().indexOf(k) === -1) keys.push(k);
             });
         });
@@ -655,16 +676,16 @@
     function _renderSingleGroup(rows, apiCode, meta) {
         var keys = _getKeys(rows);
         var html = '';
-        
+
         var viewId = 'view-' + (++_modalIdCounter);
         html += '<div class="ai-inline-container" id="' + viewId + '">';
         html += '<div class="ai-view-cards">';
         html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
-        
+
         var MAX_CARDS = 30;
-        rows.forEach(function(row, idx) {
+        rows.forEach(function (row, idx) {
             if (idx === MAX_CARDS) {
-                html += '</div>'; 
+                html += '</div>';
                 html += '<details style="margin-top:10px;">';
                 html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
                 html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
@@ -706,7 +727,7 @@
             }
 
             // Hiện các field còn lại
-            keys.forEach(function(k) {
+            keys.forEach(function (k) {
                 if (usedKeys.indexOf(k) !== -1) return;
                 var val = row[k];
                 if (val === null || val === undefined || String(val).trim() === '') return;
@@ -740,39 +761,76 @@
      */
     function _renderCardView(rows, headerMsg, apiCode, meta) {
         if (!rows || rows.length === 0) return '';
-        
-        // Phân loại rows 100% ĐỘNG dựa theo cấu trúc cột (Data Signature)
+
+        // 1. Find if we should group by BADGE (PhanLoai, Nhom...) or dynamically by data signature
+        var badgeKey = null;
+        var distinctBadges = 0;
+        if (rows.length > 0) {
+            var sampleBadge = _pickField(rows[0], 'BADGE');
+            if (sampleBadge) {
+                badgeKey = sampleBadge.key;
+                var badgeValues = {};
+                rows.forEach(function (r) {
+                    var v = String(r[badgeKey] || '').trim();
+                    badgeValues[v] = true;
+                });
+                distinctBadges = Object.keys(badgeValues).length;
+            }
+        }
+
+        var useBadgeGrouping = badgeKey && distinctBadges >= 1 && distinctBadges <= 15;
         var groupsMap = {};
-        rows.forEach(function(r) {
-            // Lấy danh sách keys hợp lệ làm chữ ký cấu trúc
-            var keys = Object.keys(r).filter(function(k) { 
-                return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; 
-            }).sort();
-            var sig = keys.join('|');
-            
+
+        // Phân loại rows 100% ĐỘNG
+        rows.forEach(function (r) {
+            var sig = '';
+            var groupVal = '';
+
+            if (useBadgeGrouping) {
+                groupVal = String(r[badgeKey] || 'Khác').trim();
+                sig = 'GROUP|' + groupVal;
+            } else {
+                // Lấy danh sách keys hợp lệ làm chữ ký cấu trúc
+                var keys = Object.keys(r).filter(function (k) {
+                    return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1;
+                }).sort();
+                sig = keys.join('|');
+            }
+
             if (!groupsMap[sig]) {
-                groupsMap[sig] = { rows: [], sig: sig };
+                groupsMap[sig] = { rows: [], sig: sig, groupVal: groupVal };
             }
             groupsMap[sig].rows.push(r);
         });
 
         // Chuyển object sang array và tạo tự động nhãn (Label) cho Tab
-        var activeGroups = Object.keys(groupsMap).map(function(k) { return groupsMap[k]; });
-        activeGroups.forEach(function(g, idx) {
-            var sampleRow = g.rows[0];
-            var titleF = _pickField(sampleRow, 'TITLE');
-            if (titleF && titleF.key) {
-                // Tự động nhận diện trường chính, ví dụ: 'Theo EmployeeName'
-                g.label = 'Theo ' + titleF.key;
+        var activeGroups = Object.keys(groupsMap).map(function (k) { return groupsMap[k]; });
+
+        // Sort activegroups if badge grouping is used
+        if (useBadgeGrouping) {
+            activeGroups.sort(function (a, b) {
+                return String(a.groupVal).localeCompare(String(b.groupVal));
+            });
+        }
+
+        activeGroups.forEach(function (g, idx) {
+            if (useBadgeGrouping) {
+                g.label = g.groupVal || 'Chưa phân loại';
             } else {
-                var lk = Object.keys(sampleRow).map(function(k) { return k.toLowerCase(); });
-                if (lk.indexOf('employeename') !== -1) g.label = 'Theo NV';
-                else if (lk.indexOf('objectname') !== -1) g.label = 'Theo Khách';
-                else if (lk.indexOf('itemname') !== -1) g.label = 'Theo SP';
-                else if (lk.indexOf('tongtien') !== -1 || lk.indexOf('tongtien2') !== -1 || lk.indexOf('tongtien3') !== -1) g.label = 'Tổng kết';
-                else if (lk.indexOf('soluong') !== -1 || lk.indexOf('tongsoluong') !== -1) g.label = 'Số lượng';
-                else if (lk.indexOf('docno') !== -1) g.label = 'Chứng từ';
-                else g.label = 'Nhóm ' + (idx + 1);
+                var sampleRow = g.rows[0];
+                var titleF = _pickField(sampleRow, 'TITLE');
+                if (titleF && titleF.key) {
+                    g.label = 'Theo ' + titleF.key;
+                } else {
+                    var lk = Object.keys(sampleRow).map(function (k) { return k.toLowerCase(); });
+                    if (lk.indexOf('employeename') !== -1 || lk.indexOf('tennhanvien') !== -1) g.label = 'Theo NV';
+                    else if (lk.indexOf('objectname') !== -1 || lk.indexOf('tenkhachhang') !== -1 || lk.indexOf('tencuahang') !== -1) g.label = 'Theo Khách';
+                    else if (lk.indexOf('itemname') !== -1 || lk.indexOf('tensanpham') !== -1) g.label = 'Theo SP';
+                    else if (lk.indexOf('tongtien') !== -1) g.label = 'Tổng kết';
+                    else if (lk.indexOf('soluong') !== -1) g.label = 'Số lượng';
+                    else if (lk.indexOf('docno') !== -1) g.label = 'Chứng từ';
+                    else g.label = 'Nhóm ' + (idx + 1);
+                }
             }
         });
 
@@ -783,7 +841,7 @@
             // Render Tabs
             html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">';
             var tabsId = 'tabs-' + (++_modalIdCounter);
-            activeGroups.forEach(function(g, idx) {
+            activeGroups.forEach(function (g, idx) {
                 var bg = (idx === 0) ? '#0056b3' : '#f0f4f8';
                 var cl = (idx === 0) ? '#fff' : '#333';
                 var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='#f0f4f8'; b.style.color='#333';}); this.style.background='#0056b3'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
@@ -793,7 +851,7 @@
             html += '</div>';
 
             html += '<div class="ai-tabs-content" style="position:relative;">';
-            activeGroups.forEach(function(g, idx) {
+            activeGroups.forEach(function (g, idx) {
                 var disp = (idx === 0) ? 'block' : 'none';
                 html += '<div class="ai-tab-pane-' + tabsId + '" id="' + tabsId + '-pane-' + idx + '" style="display:' + disp + '">';
                 html += _renderSingleGroup(g.rows, apiCode, meta);
@@ -825,26 +883,67 @@
         html += '<div class="ai-catalog-grid">';
 
         var MAX_CARDS = 30;
-        rows.forEach(function(row, idx) {
+
+        // --- BƯỚC 1: GROUPING ---
+        var groups = [];
+        var groupMap = {};
+        
+        rows.forEach(function (row, idx) {
+            var titleF = _pickField(row, 'TITLE');
+            var idF = _pickField(row, 'ID');
+            var tVal = titleF && titleF.val ? String(titleF.val).trim() : '';
+            var idVal = idF && idF.val ? String(idF.val).trim() : '';
+            var gKey = tVal + '::' + idVal;
+            // Nếu không có cả title và id, fallback không gom nhóm
+            if (!tVal && !idVal) gKey = 'ROW::' + idx;
+            
+            if (!groupMap[gKey]) {
+                groupMap[gKey] = {
+                    titleF: titleF,
+                    idF: idF,
+                    badgeF: _pickField(row, 'BADGE'),
+                    moneyF: _pickField(row, 'MONEY'),
+                    phoneF: _pickField(row, 'PHONE'),
+                    rows: []
+                };
+                groups.push(groupMap[gKey]);
+            }
+            groupMap[gKey].rows.push(row);
+        });
+
+        // Tìm các key chung và key biến đổi cho từng nhóm
+        groups.forEach(function(g) {
+            g.commonKeys = [];
+            g.varyingKeys = [];
+            keys.forEach(function(k) {
+                var firstVal = g.rows[0][k];
+                var isVarying = g.rows.some(function(r) { return r[k] !== firstVal; });
+                if (isVarying) g.varyingKeys.push(k);
+                else g.commonKeys.push(k);
+            });
+        });
+
+        // --- BƯỚC 2: RENDER CÁC NHÓM ---
+        groups.forEach(function (grp, idx) {
             if (idx === MAX_CARDS) {
-                html += '</div>'; 
+                html += '</div>';
                 html += '<details style="margin-top:10px;">';
-                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (groups.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + groups.length + ')</summary>';
                 html += '<div class="ai-catalog-grid">';
             }
 
-            var titleF  = _pickField(row, 'TITLE');
-            var idF     = _pickField(row, 'ID');
-            var badgeF  = _pickField(row, 'BADGE');
-            var moneyF  = _pickField(row, 'MONEY');
-            var phoneF  = _pickField(row, 'PHONE');
+            var titleF = grp.titleF;
+            var idF = grp.idF;
+            var badgeF = grp.badgeF;
+            var moneyF = grp.moneyF;
+            var phoneF = grp.phoneF;
 
             var usedKeys = [];
-            if (titleF)  usedKeys.push(titleF.key);
-            if (idF)     usedKeys.push(idF.key);
-            if (badgeF)  usedKeys.push(badgeF.key);
-            if (moneyF)  usedKeys.push(moneyF.key);
-            if (phoneF)  usedKeys.push(phoneF.key);
+            if (titleF) usedKeys.push(titleF.key);
+            if (idF) usedKeys.push(idF.key);
+            if (badgeF) usedKeys.push(badgeF.key);
+            if (moneyF) usedKeys.push(moneyF.key);
+            if (phoneF) usedKeys.push(phoneF.key);
 
             html += '<div class="ai-catalog-card">';
 
@@ -865,14 +964,14 @@
             }
             html += '</div>'; // top
 
-            // Body — fields còn lại
+            // Body — Các fields CÓ CÙNG GIÁ TRỊ (commonKeys)
             html += '<div class="ai-catalog-card-body">';
-            if (moneyF) {
+            if (moneyF && grp.commonKeys.indexOf(moneyF.key) !== -1) {
                 html += '<div class="ai-catalog-money">💰 ' + _esc(_fmtCellVal(moneyF.val)) + '</div>';
             }
-            keys.forEach(function(k) {
+            grp.commonKeys.forEach(function (k) {
                 if (usedKeys.indexOf(k) !== -1) return;
-                var val = row[k];
+                var val = grp.rows[0][k];
                 if (val === null || val === undefined || String(val).trim() === '') return;
                 html += '<div class="ai-catalog-row">';
                 html += '<span class="ai-catalog-label">' + _esc(k) + '</span>';
@@ -881,13 +980,65 @@
             });
             html += '</div>'; // body
 
-            // Action bar (gọi / zalo)
-            html += _buildActionBar(row);
+            // THE EXPANDABLE DETAIL PART (Varying fields)
+            if (grp.rows.length > 1) {
+                html += '<details class="ai-catalog-details">';
+                html += '<summary class="ai-catalog-summary">⏬ Hiển thị ' + grp.rows.length + ' phân loại (Kho/Lô...)</summary>';
+                html += '<div class="ai-catalog-details-content">';
+                
+                var storehouseKeys = grp.varyingKeys.filter(function(k) { return /storehouse|kho$|makho/i.test(k); });
+                
+                if (storehouseKeys.length > 0) {
+                     var shKey = storehouseKeys[0];
+                     var shGroups = {};
+                     grp.rows.forEach(function(r) {
+                         var shVal = String(r[shKey] || 'Khác');
+                         if (!shGroups[shVal]) shGroups[shVal] = [];
+                         shGroups[shVal].push(r);
+                     });
+                     
+                     Object.keys(shGroups).forEach(function(shVal) {
+                         html += '<div class="ai-catalog-subgroup-title">📍 Kho: <strong>' + _esc(shVal) + '</strong> (' + shGroups[shVal].length + ' mục)</div>';
+                         shGroups[shVal].forEach(function(r, sIdx) {
+                              html += '<div class="ai-catalog-subgroup-item">';
+                              grp.varyingKeys.forEach(function(k) {
+                                  if (k === shKey || usedKeys.indexOf(k) !== -1) return;
+                                  var val = r[k];
+                                  if (val === null || val === undefined || String(val).trim() === '') return;
+                                  html += '<div class="ai-catalog-row-small">';
+                                  html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                                  html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                                  html += '</div>';
+                              });
+                              html += '</div>';
+                         });
+                     });
+                } else {
+                     grp.rows.forEach(function(r, sIdx) {
+                          html += '<div class="ai-catalog-subgroup-item">';
+                          html += '<div class="ai-catalog-subgroup-title">Mục ' + (sIdx+1) + '</div>';
+                          grp.varyingKeys.forEach(function(k) {
+                              if (usedKeys.indexOf(k) !== -1) return;
+                              var val = r[k];
+                              if (val === null || val === undefined || String(val).trim() === '') return;
+                              html += '<div class="ai-catalog-row-small">';
+                              html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                              html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                              html += '</div>';
+                          });
+                          html += '</div>';
+                     });
+                }
+                html += '</div></details>';
+            }
+
+            // Action bar (gọi / zalo) - use first row for triggers
+            html += _buildActionBar(grp.rows[0]);
             html += '</div>'; // catalog-card
         });
 
         html += '</div>'; // catalog-grid
-        if (rows.length > MAX_CARDS) html += '</details>';
+        if (groups.length > MAX_CARDS) html += '</details>';
 
         // Toggle sang bảng
         var toggleText = '📊 Xem dạng bảng';
@@ -923,7 +1074,7 @@
             var bk = 'BADGE'[bi];
             if (keys.indexOf(bk) !== -1) {
                 // Đếm distinct values
-                rows.forEach(function(r) {
+                rows.forEach(function (r) {
                     var v = String(r[bk] || '').trim();
                     if (v) badgeValues[v] = (badgeValues[v] || 0) + 1;
                 });
@@ -941,10 +1092,10 @@
         var chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">Tất cả</button>';
         if (badgeKeyFound) {
             // Render chip cho từng giá trị phân loại thực tế trong data
-            Object.keys(badgeValues).sort().forEach(function(v) {
+            Object.keys(badgeValues).sort().forEach(function (v) {
                 var icon = (v === 'A' || v.toUpperCase() === 'VIP') ? '⭐ ' :
-                           (v === 'B') ? '🔵 ' :
-                           (v === 'C') ? '🔴 ' : '';
+                    (v === 'B') ? '🔵 ' :
+                        (v === 'C') ? '🔴 ' : '';
                 chipsHtml += '<button class="ai-sales-filter-chip" data-filter="badge:' + _esc(v) + '" data-badge-key="' + _esc(badgeKeyFound) + '" type="button">' + icon + _esc(v) + ' (' + badgeValues[v] + ')</button>';
             });
         }
@@ -958,7 +1109,7 @@
         // ── Table ──
         html += '<div class="ai-inline-table-wrap">';
         html += '<table class="ai-table"><thead><tr>';
-        keys.forEach(function(k) { html += '<th>' + _esc(k) + '</th>'; });
+        keys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
         html += '</tr></thead>';
         html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys) + '</tbody>';
         html += '</table></div>';
@@ -978,7 +1129,7 @@
         var html = '';
         for (var i = 0; i < shown; i++) {
             html += '<tr>';
-            keys.forEach(function(k) { html += '<td>' + _esc(_fmtCellVal(filteredRows[i][k])) + '</td>'; });
+            keys.forEach(function (k) { html += '<td>' + _esc(_fmtCellVal(filteredRows[i][k])) + '</td>'; });
             html += '</tr>';
         }
         if (filteredRows.length > MAX) {
@@ -993,13 +1144,13 @@
         // Filter chip: badge:VALUE (ví dụ badge:A, badge:VIP)
         if (filterKey && filterKey.indexOf('badge:') === 0) {
             var targetVal = filterKey.substring(6); // lấy phần sau "badge:"
-            filtered = filtered.filter(function(r) {
+            filtered = filtered.filter(function (r) {
                 // Nếu biết cụ thể field nào (badgeKey) → chỉ lọc field đó
                 if (badgeKey) {
                     return String(r[badgeKey] || '').trim() === targetVal;
                 }
                 // Fallback: tìm trong tất cả keys
-                return keys.some(function(k) {
+                return keys.some(function (k) {
                     return String(r[k] || '').trim() === targetVal;
                 });
             });
@@ -1008,8 +1159,8 @@
 
         if (searchText) {
             var kw = _clearVn(searchText.toLowerCase());
-            filtered = filtered.filter(function(r) {
-                return keys.some(function(k) {
+            filtered = filtered.filter(function (r) {
+                return keys.some(function (k) {
                     return _clearVn(String(r[k] || '')).indexOf(kw) !== -1;
                 });
             });
@@ -1018,7 +1169,7 @@
     }
 
     // ── Click delegation cho accordion + modal + action bar ────────
-    $messages.addEventListener('click', function(e) {
+    $messages.addEventListener('click', function (e) {
         // Accordion expand
         var expandBtn = e.target.closest('.ai-card-expand-btn');
         if (expandBtn) {
@@ -1076,22 +1227,22 @@
                                 var curFilter = 'all';
                                 var curSearch = '';
                                 var curBadgeKey = badgeKeyF;
-                                var doFilter2 = function() {
+                                var doFilter2 = function () {
                                     var filtered = _applyModalFilter(allRows, keysF, curSearch, curFilter, curBadgeKey);
                                     if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF);
                                     if (countEl2) countEl2.textContent = filtered.length + ' dòng';
                                 };
                                 if (searchEl2) {
                                     var _t2 = null;
-                                    searchEl2.addEventListener('input', function() {
+                                    searchEl2.addEventListener('input', function () {
                                         clearTimeout(_t2);
                                         var sv = searchEl2.value;
-                                        _t2 = setTimeout(function() { curSearch = sv; doFilter2(); }, 200);
+                                        _t2 = setTimeout(function () { curSearch = sv; doFilter2(); }, 200);
                                     });
                                 }
-                                tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function(chip) {
-                                    chip.addEventListener('click', function() {
-                                        tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function(c) { c.classList.remove('active'); });
+                                tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function (chip) {
+                                    chip.addEventListener('click', function () {
+                                        tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function (c) { c.classList.remove('active'); });
                                         chip.classList.add('active');
                                         curFilter = chip.getAttribute('data-filter');
                                         var chipBk = chip.getAttribute('data-badge-key');
@@ -1100,7 +1251,7 @@
                                     });
                                 });
                             }
-                        } catch(filterErr) {
+                        } catch (filterErr) {
                             // Filter binding failed nhưng table vẫn hiện được — không sao
                             console.warn('[Chatbot] Filter binding error:', filterErr);
                         }
@@ -1140,14 +1291,14 @@
             },
             body: JSON.stringify(body)
         })
-            .then(function (r) { 
+            .then(function (r) {
                 console.log('Config API Raw Response Status:', r.status);
                 return r.text();
             })
             .then(function (textRes) {
                 var res = null;
-                try { res = JSON.parse(textRes); } catch(e) { res = textRes; }
-                
+                try { res = JSON.parse(textRes); } catch (e) { res = textRes; }
+
                 var fields = null;
                 if (res && res.data && !Array.isArray(res.data) && (res.data.FieldCode || res.data.field || res.data.name)) {
                     fields = [res.data];
@@ -1858,12 +2009,12 @@
 
         // Xây dựng cấu trúc danh mục
         var categories = {};
-        suggestions.forEach(function(s) {
+        suggestions.forEach(function (s) {
             var cat = s.category || 'Khác';
             if (!categories[cat]) categories[cat] = [];
             categories[cat].push(s);
         });
-        
+
         var catNames = Object.keys(categories);
         // Đẩy tab "Hướng dẫn" xuống cuối cùng
         var idxHd = catNames.indexOf('Hướng dẫn');
@@ -1896,7 +2047,7 @@
         function renderChips(catName) {
             scroll.innerHTML = ''; // reset
             var items = categories[catName] || [];
-            
+
             // Map màu sắc Vibrant cho từng Tab
             var colorClass = '';
             if (catName === 'Phân tích') colorClass = 'chip-vibrant-analytics';
@@ -1904,14 +2055,14 @@
             else if (catName === 'Kho hàng') colorClass = 'chip-vibrant-inventory';
             else if (catName === 'Đơn hàng') colorClass = 'chip-vibrant-orders';
             else if (catName === 'Tra cứu') colorClass = 'chip-vibrant-search';
-            
-            items.forEach(function(s) {
+
+            items.forEach(function (s) {
                 var btn = document.createElement('button');
                 btn.type = 'button';
                 btn.className = 'ai-sales-chip ' + colorClass;
                 // Hiển thị nội dung cực ngắn đã được tối ưu
                 btn.textContent = (s.icon ? s.icon + ' ' : '') + (s.label || s.text);
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     $input.value = s.text; // Text đầy đủ để AI hiểu
                     _autoResize();
                     _updateSendBtn();
@@ -1924,12 +2075,12 @@
         // Hàm render UI Tabs
         function renderTabs() {
             tabBar.innerHTML = '';
-            catNames.forEach(function(c) {
+            catNames.forEach(function (c) {
                 var tBtn = document.createElement('button');
                 tBtn.type = 'button';
                 tBtn.className = 'ai-sales-tab-btn' + (c === lastCat ? ' active' : '');
                 tBtn.textContent = c;
-                tBtn.addEventListener('click', function() {
+                tBtn.addEventListener('click', function () {
                     lastCat = c;
                     localStorage.setItem('ai_sales_last_tab', c);
                     renderTabs(); // Cập nhật class active
@@ -1969,7 +2120,7 @@
             inputEl: $input,
             addMessage: _addMessage,
             addHtmlMessage: _addHtmlMessage,
-            renderCardView: function(rows, headerMsg, apiCode, meta) {
+            renderCardView: function (rows, headerMsg, apiCode, meta) {
                 var uiTpl = (meta && meta.uiTemplate) ? meta.uiTemplate.toUpperCase() : 'DEFAULT';
                 var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
                 return renderFn(rows, headerMsg, apiCode, meta);
@@ -2029,20 +2180,20 @@
         },
         // Helpers dùng cho renderer bên ngoài
         helpers: {
-            pickField:      function (row, role) { return _pickField(row, role); },
-            pickValue:      function (row, role) { return _pickValue(row, role); },
-            fmtCellVal:     function (v)         { return _fmtCellVal(v); },
-            esc:            function (s)          { return _esc(s); },
-            badgeClass:     function (val)        { return _badgeClass(val); },
-            buildActionBar: function (row)        { return _buildActionBar(row); },
+            pickField: function (row, role) { return _pickField(row, role); },
+            pickValue: function (row, role) { return _pickValue(row, role); },
+            fmtCellVal: function (v) { return _fmtCellVal(v); },
+            esc: function (s) { return _esc(s); },
+            badgeClass: function (val) { return _badgeClass(val); },
+            buildActionBar: function (row) { return _buildActionBar(row); },
             buildInlineTable: function (rows, keys) { return _buildInlineTable(rows, keys); },
-            getKeys:        function (rows)       { return _getKeys(rows); },
-            isValidPhone:   function (v)          { return _isValidPhone(v); },
-            formatTime:     function (ts)         { return _formatTime(ts); },
-            clearVn:        function (s)          { return _clearVn(s); },
-            nextId:         function ()           { return ++_modalIdCounter; },
-            addHtmlMessage: function (html, sum)  { return _addHtmlMessage(html, sum); },
-            getToken:       function ()           { return _getToken(); }
+            getKeys: function (rows) { return _getKeys(rows); },
+            isValidPhone: function (v) { return _isValidPhone(v); },
+            formatTime: function (ts) { return _formatTime(ts); },
+            clearVn: function (s) { return _clearVn(s); },
+            nextId: function () { return ++_modalIdCounter; },
+            addHtmlMessage: function (html, sum) { return _addHtmlMessage(html, sum); },
+            getToken: function () { return _getToken(); }
         },
         // Debug only
         __internal: {

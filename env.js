@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ============================================================
  *  MEDSTAND — CẤU HÌNH HỆ THỐNG (UNIFIED CONFIG)
  *  File này là file DUY NHẤT cần sửa khi deploy sang server mới
@@ -7,7 +7,7 @@
 
 // 1. Tham số môi trường (Environment Variables)
 const ENV_VARS = {
-    N8N_BASE: 'https://workflow-mpeg-quantity-joe.trycloudflare.com',
+    N8N_BASE: 'https://humanitarian-assessment-donald-hoping.trycloudflare.com',
     API_BASE: 'https://medtest.bms79.com',
     CHAT_API_KEY: 'test123456'
 };
