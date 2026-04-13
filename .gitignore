@@ -1,6 +1,6 @@
 # ── Node.js portable (không cần track) ──
 HoangDang/nodejs/
-n8n-system/node-v*/
+n8n-system/node-v*
 
 # ── n8n runtime data (credentials, cache, logs) ──
 n8n-system/n8n_data/
