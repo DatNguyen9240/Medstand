@@ -11,6 +11,7 @@ Quy trinh:
 2) Tao proc sync metadata tu sys.procedures + sys.parameters
 3) Preview
 4) Apply
+*/
 
 /*
 QUAN TRONG: De luu thay doi vao DB, anh can chay:
