@@ -204,14 +204,18 @@ input[readonly].field-input {
 }
 
 .filter-select-item .filter-value-text {
-  color: var(--color-text);
+  color: var(--color-text-muted); /* Mặc định là màu nhạt (placeholder) */
   font-weight: var(--font-weight-normal);
   font-size: var(--font-size-sm);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* Chống tràn chữ khi nhãn quá dài */
+}
+
+.filter-select-item.has-value .filter-value-text {
+  color: var(--color-text); /* Khi có giá trị thì sáng lên */
+  font-weight: var(--font-weight-medium);
 }
 
 .filter-select-item .filter-select-value {

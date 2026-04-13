@@ -13,6 +13,8 @@ function todayStr() {
 var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
 var rowCounter = 0;
 var _productsCache = null;
+var _customersCache = [];    // Cache danh sách khách hàng đầy đủ
+var _selectedLocationID = ''; // Lưu tỉnh thành của khách hàng đang chọn
 
 // -- Build form using FormSelect component -----------------------------------
 var orderForm = new FormSelect({ container: '#orderFormContainer' });
@@ -47,6 +49,7 @@ orderForm
         })
       }).then(function (res) {
         var records = (res.data || res).records || res.data || res || [];
+        _customersCache = records; // Lưu vào cache để auto-fill sau này
         done(records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; }));
       }).catch(function () { done([]); });
     }
@@ -55,7 +58,7 @@ orderForm
     id: 'ward', label: 'Phường/Xã', required: true, placeholder: 'Chọn phường/xã',
     loadFn: function (done) {
       Http.get(API_CONFIG.ENDPOINTS.FILTER.WARDS, {
-        q: JSON.stringify({ User: user.UserName || '', LocationID: '', QuanHuyen: '', XaPhuong: '', SearchText: '' })
+        q: JSON.stringify({ User: user.UserName || '', LocationID: _selectedLocationID, SearchText: '' })
       }).then(function (res) {
         var records = (res.data || res).records || res.data || res || [];
         done(records.map(function (r) { return { value: r.XaPhuong || '', label: r.XaPhuong || '' }; }));
@@ -76,6 +79,26 @@ orderForm
   .addInput({ id: 'phone', label: 'Số điện thoại', type: 'tel', required: true, placeholder: 'Nhập số điện thoại' })
   .addInput({ id: 'memo', label: 'Ghi chú', placeholder: 'Ghi chú thêm', full: true })
   .addInput({ id: 'notes', label: 'Diễn giải', type: 'textarea', placeholder: 'Nhập diễn giải đơn hàng', full: true });
+
+// -- Sự kiện khi chọn khách hàng -> Auto-fill ---------------------------------
+orderForm.onListChange('customer', function(val) {
+  var cust = _customersCache.find(function(r) { return r.ObjectID === val; });
+  if (cust) {
+    _selectedLocationID = cust.LocationID || '';
+    orderForm.setValue('phone', cust.Phone || '');
+    orderForm.setValue('address', cust.Address || '');
+    
+    // Set Phường/Xã nếu có
+    if (cust.XaPhuong) {
+      orderForm.setListValue('ward', cust.XaPhuong, cust.XaPhuong);
+    } else {
+      orderForm.setListValue('ward', '', '');
+    }
+    
+    // Xóa cache trường Phường/Xã để khi nhấn chọn nó sẽ tải lại theo Tỉnh mới
+    orderForm.clearCache('ward');
+  }
+});
 
 // Auto-fill và lock Chi nhánh nếu có trong localStorage
 if (user.BranchID) {
