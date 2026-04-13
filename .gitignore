@@ -1,9 +1,9 @@
 # ── Node.js portable (không cần track) ──
-HoangDang/node-v*/
 HoangDang/nodejs/
+n8n-system/node-v*/
 
 # ── n8n runtime data (credentials, cache, logs) ──
-HoangDang/n8n_data/
+n8n-system/n8n_data/
 
 # ── n8n-system runtime (DB, credentials, encryption keys, logs) ──
 n8n-system/n8n/
@@ -13,10 +13,10 @@ n8n-system/*.sqlite
 n8n-system/logs/
 
 # ── Cloudflared binary ──
-HoangDang/cloudflared.exe
+n8n-system/cloudflared.exe
 
 # ── File test tạm ──
-HoangDang/test_n8n.ps1
+n8n-system/test_n8n.ps1
 
 # ── Node modules ──
 node_modules/

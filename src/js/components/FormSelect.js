@@ -124,7 +124,11 @@ var FormSelect = (function () {
         options.map(function (opt) {
           var val = (typeof opt === 'object') ? (opt.value || opt.ID || '') : opt;
           var lbl = (typeof opt === 'object') ? (opt.label || opt.Name || '') : opt;
-          var selected = (field.value === val) ? ' class="selected"' : '';
+          
+          // So sánh không phân biệt chữ hoa thường và bỏ khoảng trắng thừa
+          var isSelected = String(field.value).trim().toLowerCase() === String(val).trim().toLowerCase();
+          var selected = isSelected ? ' class="selected"' : '';
+          
           return '<li data-value="' + val + '"' + selected + '>' + lbl + '</li>';
         }).join('') +
         '</ul>';
