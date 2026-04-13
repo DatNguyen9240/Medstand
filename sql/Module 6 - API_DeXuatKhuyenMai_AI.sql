@@ -1,4 +1,4 @@
-ALTER PROCEDURE [dbo].[API_DeXuatKhuyenMai_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_DeXuatKhuyenMai_AI]
     @Username VARCHAR(50) = ''
 AS
 BEGIN

@@ -6,11 +6,12 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
+-- Xóa SP cũ nếu còn tồn tại (cleanup từ tên cũ)
 IF OBJECT_ID('API_ThemKhachHang_AI', 'P') IS NOT NULL
     DROP PROCEDURE API_ThemKhachHang_AI;
 GO
 
-CREATE PROCEDURE [dbo].[API_ThemKhachHang_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_KhachHang_Insert_AI]
     @Username       VARCHAR(50),
     @TenKhachHang   NVARCHAR(300),
     @SoDienThoai    VARCHAR(100),

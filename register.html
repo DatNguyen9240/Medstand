@@ -217,7 +217,7 @@
     function showGlobalSpinner() { _spinnerCount++; $spinner.removeAttribute('hidden'); }
     function hideGlobalSpinner() { _spinnerCount = Math.max(0, _spinnerCount - 1); if (_spinnerCount === 0) $spinner.setAttribute('hidden', ''); }
   </script>
-  <script src="src/js/config/api.config.js"></script>
+  <script src="env.js"></script>
   <script src="src/js/services/http.js"></script>
   <script src="src/js/services/auth.service.js"></script>
   <script src="src/js/components/Alert.js"></script>

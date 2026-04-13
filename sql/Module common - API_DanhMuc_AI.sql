@@ -1,4 +1,4 @@
-ALTER PROC [dbo].[API_DanhMuc_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_DanhMuc_AI]
     @Type NVARCHAR(50) = NULL,
     @timkiem NVARCHAR(255) = ''
 AS

@@ -7,8 +7,17 @@
 </header>
 
 <div class="chat-container" id="chat-container">
-    <!-- Welcome message (Hidden) -->
-    <div class="chat-welcome" id="chat-welcome" style="display: none;"></div>
+    <div class="chat-welcome" id="chat-welcome" style="display: none;">
+        <div class="chat-welcome-icon">🤖</div>
+        <h2 class="chat-welcome-title">Xin chào!</h2>
+        <p class="chat-welcome-text">Tôi là trợ lý AI của bạn. Hãy hỏi tôi bất cứ điều gì!</p>
+        <div class="chat-suggestions">
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Doanh số tháng này'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">📊 Doanh số tháng này</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Top khách hàng'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">👥 Top khách hàng</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Đơn chờ duyệt'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">📦 Đơn chờ duyệt</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='SP bán chạy'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">🔥 SP bán chạy</button>
+        </div>
+    </div>
 
     <!-- Messages area -->
     <div class="chat-messages" id="chat-messages"></div>

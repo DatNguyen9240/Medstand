@@ -407,6 +407,9 @@
         var text = $input.value.trim();
         if (!text && selectedFiles.length === 0) return;
 
+        // Tắt dropdown nếu gửi bằng free chat
+        if (window.ApiEngine && window.ApiEngine.hideMenu) window.ApiEngine.hideMenu();
+
         var fileNames = selectedFiles.map(function (f) { return f.name; });
         var attachedFileName = fileNames.length > 0 ? fileNames.join(', ') : null;
         var displayText = text || ('📎 ' + attachedFileName);
@@ -457,6 +460,14 @@
         _setStopMode(false);
 
         // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
+        if (res && res.action_code === 'OPEN_API_PANEL') {
+            if (res.message) { _addMessage('ai', res.message); }
+            if (window.ApiEngine && window.ApiEngine.openPanelWithData) {
+                window.ApiEngine.openPanelWithData(res.api_name, res.prefill_data);
+            }
+            return;
+        }
+
         if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
             // 1. Lọc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả về)
             var cleanData = res.data.filter(function(r) { 

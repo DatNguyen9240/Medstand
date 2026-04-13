@@ -1,215 +1,181 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-:: Lấy đường dẫn thư mục hiện tại của file .bat (đã bỏ dấu \ ở cuối)
+:: 1. Xác định đường dẫn gốc tuyệt đối an toàn cho Portable, bỏ dấu \ ở cuối
 set "BASE_DIR=%~dp0"
 if "%BASE_DIR:~-1%"=="\" set "BASE_DIR=%BASE_DIR:~0,-1%"
 
+echo =======================================================
+echo          MEDSTAND N8N PORTABLE BOOTSTRAPPER            
+echo =======================================================
+
 :: ============================================================
-::              CẤU HÌNH NODE.JS PORTABLE
+:: 2. CẤU HÌNH NODE.JS PORTABLE (TẢI + GIẢI NÉN BẰNG TAR CHỐNG PATH DÀI)
 :: ============================================================
 set "NODE_VERSION=22.14.0"
 set "NODE_DIR=%BASE_DIR%\node-v%NODE_VERSION%-win-x64"
 set "NODE_EXE=%NODE_DIR%\node.exe"
-set "NPX_CMD=%NODE_DIR%\npx.cmd"
+set "npm_cmd=%NODE_DIR%\npm.cmd"
+set "npx_cmd=%NODE_DIR%\npx.cmd"
 set "NODE_ZIP=%BASE_DIR%\node-v%NODE_VERSION%-win-x64.zip"
 set "NODE_URL=https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-win-x64.zip"
 
-:: Kiểm tra nếu node chưa có thì tự tải về
-if not exist "%NODE_EXE%" (
-    echo.
-    echo =======================================================
-    echo   [SETUP] Node.js chua duoc cai. Dang tai xuong...
-    echo   Phien ban : %NODE_VERSION%
-    echo   URL       : %NODE_URL%
-    echo =======================================================
-    echo.
+if exist "%NODE_EXE%" goto SKIP_NODE_SETUP
+echo.
+echo [SETUP] Phat hien thieu Node.js hoac bi an mon.
+echo [SETUP] Tai han ban Portable moi de tiep tuc setup...
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "Write-Host 'Dang tai Node.js...'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%NODE_ZIP%' -UseBasicParsing"
+if exist "%NODE_ZIP%" goto SKIP_NODE_DOWNLOAD
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%NODE_ZIP%' -UseBasicParsing"
 
-    if not exist "%NODE_ZIP%" (
-        echo [ERROR] Tai Node.js that bai! Kiem tra ket noi mang.
-        pause
-        exit /b 1
-    )
-
-    echo Dang giai nen Node.js...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "Expand-Archive -Path '%NODE_ZIP%' -DestinationPath '%BASE_DIR%' -Force"
-
-    del /f /q "%NODE_ZIP%" 2>nul
-
-    if not exist "%NODE_EXE%" (
-        echo [ERROR] Giai nen that bai! Khong tim thay node.exe.
-        pause
-        exit /b 1
-    )
-
-    echo [OK] Node.js da duoc cai dat thanh cong tai: %NODE_DIR%
+:SKIP_NODE_DOWNLOAD
+if not exist "%NODE_ZIP%" (
+    echo [ERROR] Tai Node.js that bai! Vui long kiem tra lai ket noi mang.
+    pause
+    exit /b 1
 )
 
-:: Thêm Node.js vào PATH của session này
+echo [SETUP] Giai nen sieu toc (tar.exe)...
+tar -xf "%NODE_ZIP%" -C "%BASE_DIR%"
+del /f /q "%NODE_ZIP%" 2>nul
+
+:SKIP_NODE_SETUP
+:: Ep Node.js vao duong dan chay cua Terminal hien tai
 set "PATH=%NODE_DIR%;%PATH%"
 
-:: Xác nhận node đang hoạt động
-echo.
-for /f "tokens=*" %%v in ('"%NODE_EXE%" --version 2^>^&1') do echo [INFO] Node.js version: %%v
-
 :: ============================================================
-::              CẤU HÌNH BIẾN MÔI TRƯỜNG N8N
+:: 3. ÉP CHẾ ĐỘ PORTABLE 100% CHO NPM + N8N 
 :: ============================================================
-
-:: ── Đường dẫn lưu trữ dữ liệu n8n ──
 set "N8N_USER_FOLDER=%BASE_DIR%\n8n_data"
+set "NPM_GLOBAL_DIR=%N8N_USER_FOLDER%\npm_global"
+set "NPM_CACHE_DIR=%N8N_USER_FOLDER%\npm_cache"
 
-:: ── Cổng và host ──
+if not exist "%NPM_GLOBAL_DIR%" mkdir "%NPM_GLOBAL_DIR%"
+if not exist "%NPM_CACHE_DIR%" mkdir "%NPM_CACHE_DIR%"
+
+set "npm_config_prefix=%NPM_GLOBAL_DIR%"
+set "npm_config_cache=%NPM_CACHE_DIR%"
+set "PATH=%NPM_GLOBAL_DIR%;%PATH%"
+
+:: Sua loi registry cho thu vien SheetJS
+call "%npm_cmd%" config set @sheetjs:registry https://cdn.sheetjs.com/ > nul 2>&1
+
+:: CAI N8N GLOBAL MOT LAN VA MAI MAI (THU MUC PORTABLE)
+if exist "%NPM_GLOBAL_DIR%\n8n.cmd" goto SKIP_N8N_INSTALL
+echo.
+echo [SETUP] Chua co base n8n. Dang khoi tao cai dat (30s - 1 Phut)...
+call "%npm_cmd%" install -g n8n
+
+:SKIP_N8N_INSTALL
+:: ============================================================
+:: 4. CẤU HÌNH BIẾN MÔI TRƯỜNG N8N 
+:: ============================================================
 set "N8N_PORT=5678"
 set "N8N_HOST=0.0.0.0"
 set "N8N_LISTEN_ADDRESS=0.0.0.0"
 set "N8N_PROTOCOL=http"
-
-:: ── URL công khai (webhook base URL) ──
-:: Nếu dùng Cloudflare Tunnel thì điền domain của tunnel vào đây
-:: Ví dụ: set "WEBHOOK_URL=https://your-tunnel.trycloudflare.com/"
-set "WEBHOOK_URL=https://gem-mason-qui-representation.trycloudflare.com/"
-set "N8N_WEBHOOK_TUNNEL_URL=https://gem-mason-qui-representation.trycloudflare.com"
-
-:: ── CORS ──
 set "N8N_CORS_ALLOWED_ORIGINS=*"
 set "N8N_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS,HEAD"
-
-:: ── Execution ──
 set "EXECUTIONS_DATA_MAX_AGE=168"
 set "EXECUTIONS_DATA_PRUNE=true"
-
-:: ── Timezone ──
 set "GENERIC_TIMEZONE=Asia/Ho_Chi_Minh"
-
-:: ── Log ──
 set "N8N_LOG_LEVEL=info"
 set "N8N_LOG_OUTPUT=console"
-
-:: ── Tắt thông báo không cần thiết ──
 set "N8N_VERSION_NOTIFICATIONS_ENABLED=false"
 set "N8N_DIAGNOSTICS_ENABLED=false"
 set "N8N_HIRING_BANNER_ENABLED=false"
 set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true"
+set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 
-:: ============================================================
-::                  KHỞI ĐỘNG CÁC DỊCH VỤ PHỤ
-:: ============================================================
-
-:: Đảm bảo tắt các tiến trình n8n cũ
+:: Don sach tien trinh cu neu mang hoac port bi ket
 taskkill /f /im node.exe /t > nul 2>&1
+taskkill /f /im cloudflared.exe /t > nul 2>&1
 
+:: ============================================================
+:: 5. KIỂM TRA && KHỞI ĐỘNG DỊCH VỤ PHỤ Trợ 
+:: ============================================================
 echo.
-echo =======================================================
-echo          KIEM TRA DIEU KIEN MOI TRUONG
-echo =======================================================
-
-:: 1. Redis
-echo Starting Redis...
+echo [INFO] Quet dich vu phu...
 if exist "%BASE_DIR%\redis\redis-server.exe" (
-    echo [OK] Dang chay Redis...
     start /min "" "%BASE_DIR%\redis\redis-server.exe" "%BASE_DIR%\redis\medstand.conf"
-    timeout /t 2 /nobreak > nul
-) else (
-    echo [WARN] Redis not found — skipping.
+    echo   - Redis Engine: OK
 )
-
-:: 2. Redis Proxy
-echo Starting Redis HTTP Proxy...
-if exist "%NODE_EXE%" if exist "%BASE_DIR%\redis\redis-proxy.js" (
-    echo [OK] Dang chay Redis HTTP Proxy...
+if exist "%BASE_DIR%\redis\redis-proxy.js" (
     start /min "" "%NODE_EXE%" "%BASE_DIR%\redis\redis-proxy.js"
-    timeout /t 2 /nobreak > nul
-) else (
-    echo [WARN] Redis proxy not found — skipping.
+    echo   - Redis Proxy: OK
 )
-
-:: 3. Qdrant
-echo Starting Qdrant Vector DB...
 if exist "%BASE_DIR%\qdrant\qdrant.exe" (
-    echo [OK] Dang chay Qdrant Vector DB...
     start /min "" "%BASE_DIR%\qdrant\qdrant.exe"
-    timeout /t 3 /nobreak > nul
-) else (
-    echo [WARN] Qdrant not found — skipping.
+    echo   - Qdrant Vector: OK
 )
 
-:: 4. Cloudflare Tunnel
-echo Starting Cloudflare Tunnel...
+:: ============================================================
+:: 6. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
+:: ============================================================
+echo.
 set "CF_EXE=%BASE_DIR%\cloudflared.exe"
 set "CF_LOG=%BASE_DIR%\cf_tunnel.log"
+set "CF_URL=https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 
+if exist "%CF_EXE%" goto SKIP_CF_DOWNLOAD
+echo [SETUP] Dang tai module Tunnel Cloudflare tu dong...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%CF_URL%' -OutFile '%CF_EXE%' -UseBasicParsing"
+
+:SKIP_CF_DOWNLOAD
 if not exist "%CF_EXE%" (
-    echo [WARN] cloudflared.exe not found — n8n se chi chay localhost.
-    goto SKIP_CF
+    echo [WARN] Thieu file cloudflared.exe, web se khong chay duoc ngoai internet nhe!
+    goto SKIP_CF_TUNNEL
 )
 
-echo [OK] Dang ping Cloudflare de lay URL (se mat 5-10 giay)...
 if exist "%CF_LOG%" del /f /q "%CF_LOG%"
-
+echo [INFO] Dang xin cho ten mien dong Public (Cho 5s)...
 start "Cloudflare Tunnel" /B cmd /c ^"^"%CF_EXE%^" tunnel --url http://localhost:%N8N_PORT% ^> ^"%CF_LOG%^" 2^>^&1^"
 
-set "CF_URL="
-for /L %%i in (1,1,15) do (
-    if "!CF_URL!"=="" (
+set "NGROK_URL="
+for /L %%i in (1,1,25) do (
+    if "!NGROK_URL!"=="" (
         if exist "%CF_LOG%" (
             for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "Get-Content '%CF_LOG%' | Select-String -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | ForEach-Object { $_.Matches.Value } | Select-Object -First 1" 2^>nul`) do (
-                set "CF_URL=%%a"
+                set "NGROK_URL=%%a"
             )
         )
-        if "!CF_URL!"=="" timeout /t 2 /nobreak > nul
+        if "!NGROK_URL!"=="" timeout /t 1 /nobreak > nul
     )
 )
 
-if "!CF_URL!"=="" (
-    echo [ERROR] Khong the lay duoc link trycloudflare. Kiem tra lai file cf_tunnel.log hoac ket noi mang.
-    goto SKIP_CF
+if "!NGROK_URL!"=="" (
+    echo [WARN] Time out mang yeu, khong the xin link Cloudflare moi duoc nha.
+    goto SKIP_CF_TUNNEL
 )
 
-echo [OK] Da lay duoc link Cloudflare moi: !CF_URL!
-set "WEBHOOK_URL=!CF_URL!/"
-set "N8N_WEBHOOK_TUNNEL_URL=!CF_URL!"
+echo [OK] Internet Link: !NGROK_URL!
+set "WEBHOOK_URL=!NGROK_URL!/"
+set "N8N_WEBHOOK_TUNNEL_URL=!NGROK_URL!"
 
-echo Dang cap nhat tu dong vao file env.js...
-powershell -NoProfile -Command "$f='%BASE_DIR%\..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace 'https://[a-zA-Z0-9-]+\.trycloudflare\.com', '!CF_URL!' | Set-Content -Path $f -Encoding UTF8"
-echo [OK] Cap nhat env.js hoan tat!
+:: Chi replace file neu tim thay de tranh bao loi bat thinh linh
+if not exist "%BASE_DIR%\..\env.js" goto SKIP_CF_TUNNEL
+powershell -NoProfile -Command "$f='%BASE_DIR%\..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace 'https://[a-zA-Z0-9-]+\.trycloudflare\.com', '!NGROK_URL!' | Set-Content -Path $f -Encoding UTF8"
+echo [OK] Da cap nhat tu dong link vao env.js.
 
-:SKIP_CF
+:SKIP_CF_TUNNEL
 
-:: 5. CORS Proxy
+:: Mo proxy phia ngoai
 set "PROXY_JS=%BASE_DIR%\..\proxy.js"
 if exist "%PROXY_JS%" (
-    echo [OK] Dang chay CORS Proxy tai cong 8080...
     start "CORS Proxy" cmd /k ^"^"%NODE_EXE%^" ^"%PROXY_JS%^"^"
 )
 
-
-:: Sửa lỗi dependency SheetJS
-echo [FIX] Dang cau hinh registry cho SheetJS...
-call "%NODE_DIR%\npm.cmd" config set @sheetjs:registry https://cdn.sheetjs.com/ > nul 2>&1
-
 :: ============================================================
-::                      KHỞI ĐỘNG N8N
+:: 7. EXECUTOR: GỌI N8N 
 :: ============================================================
-
 echo.
 echo =======================================================
-echo          KHOI DONG HE THONG N8N (LOCAL HOST)
+echo          [ HOAN TAT ] N8N DANG KHOI DONG...
 echo =======================================================
-echo.
-echo   N8N_PORT        : %N8N_PORT%
-echo   N8N_HOST        : %N8N_HOST%
-echo   WEBHOOK_URL     : %WEBHOOK_URL%
-echo   N8N_USER_FOLDER : %N8N_USER_FOLDER%
-echo   TIMEZONE        : %GENERIC_TIMEZONE%
-echo   NODE_DIR        : %NODE_DIR%
-echo.
-echo Dang khoi dong n8n (lan dau co the mat vai giay)...
-call "%NPX_CMD%" -y n8n start
+echo   - WEBHOOK_URL : %WEBHOOK_URL%
+echo   - HOST PORT   : Localhost:%N8N_PORT%
+echo =======================================================
+call "%NPM_GLOBAL_DIR%\n8n.cmd" start
 
 pause

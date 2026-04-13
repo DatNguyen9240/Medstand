@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v10';
+const CACHE_VERSION = 'medstand-v11';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -51,7 +51,7 @@ const PRECACHE_URLS = [
 
   // Core JS
   '/src/js/core/router.js',
-  '/src/js/config/api.config.js',
+  '/env.js',
   '/src/js/services/http.js',
   '/src/js/services/auth.service.js',
   '/src/js/components/NavBar.js',
@@ -65,8 +65,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => {
       console.log('[SW] Pre-caching app shell');
-      // Dùng Promise.allSettled thay vì cache.addAll:
-      // → Nếu 1 file bị 404, SW vẫn install thành công (không bị hủy toàn bộ)
       return Promise.allSettled(
         PRECACHE_URLS.map((url) =>
           cache.add(url).catch((err) => {
@@ -76,7 +74,6 @@ self.addEventListener('install', (event) => {
       );
     })
   );
-  // Kích hoạt SW mới ngay lập tức (không chờ tab cũ đóng)
   self.skipWaiting();
 });
 
@@ -94,21 +91,15 @@ self.addEventListener('activate', (event) => {
       )
     )
   );
-  // Chiếm quyền điều khiển tất cả client ngay lập tức
   self.clients.claim();
 });
 
 // ── Fetch: cache-first cho static, network-first cho API ──────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-
-  // Bỏ qua các request không phải GET
   if (request.method !== 'GET') return;
-
-  // Bỏ qua các request gọi sang n8n (localhost:5678) — để trình duyệt tự xử lý CORS
   if (request.url.includes(':5678')) return;
 
-  // API call, Navigation (trang HTML), hoặc các tệp chatbot-widget → luôn lấy từ network trước (Network-first)
   if (request.url.includes('/api/') ||
     request.url.includes('/chatbot-widget/') ||
     request.mode === 'navigate' ||
@@ -116,7 +107,6 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Lưu bản mới nhất vào cache nếu thành công
           if (response && response.status === 200 && response.type === 'basic') {
             const clone = response.clone();
             caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
@@ -128,26 +118,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets → cache-first, offline fallback
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      // Nếu chưa có trong cache → fetch rồi lưu vào cache
+      if (cachedResponse) return cachedResponse;
       return fetch(request).then((networkResponse) => {
-        // Chỉ cache response hợp lệ
-        if (
-          networkResponse &&
-          networkResponse.status === 200 &&
-          networkResponse.type === 'basic'
-        ) {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const clone = networkResponse.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
         }
         return networkResponse;
       }).catch(() => {
-        // Mất mạng + không có cache → trả về offline page cho navigation requests
         if (request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
           return caches.match('/offline.html');
         }

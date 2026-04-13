@@ -11,6 +11,10 @@ Quy trinh:
 2) Tao proc sync metadata tu sys.procedures + sys.parameters
 3) Preview
 4) Apply
+
+/*
+QUAN TRONG: De luu thay doi vao DB, anh can chay:
+EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1
 */
 
 SET NOCOUNT ON;
@@ -258,20 +262,22 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SELECT 
-        ApiCode, 
-        ApiName AS DisplayName, 
-        Category, 
-        UiTemplate,
-        'QUERY' AS ExecutionType 
-    FROM dbo.API_Definition
-    WHERE IsActive = 1
-      AND ApiCode NOT LIKE '@metadata_%' 
+        d.ApiCode, 
+        d.ApiName AS DisplayName, 
+        d.Category, 
+        d.UiTemplate,
+        -- Lấy ExecutionType thực từ bảng API_Action (không hardcode)
+        ISNULL(a.ExecutionType, 'QUERY') AS ExecutionType
+    FROM dbo.API_Definition d
+    LEFT JOIN dbo.API_Action a ON a.ApiID = d.ApiID AND a.IsDefault = 1
+    WHERE d.IsActive = 1
+      AND d.ApiCode NOT LIKE '@metadata_%' 
       AND (
           @SearchKey = '' 
-          OR ApiCode LIKE '%' + @SearchKey + '%'
-          OR ApiName LIKE '%' + @SearchKey + '%'
+          OR d.ApiCode LIKE '%' + @SearchKey + '%'
+          OR d.ApiName LIKE '%' + @SearchKey + '%'
       )
-    ORDER BY OrderIndex, ApiName;
+    ORDER BY d.OrderIndex, d.ApiName;
 END
 GO
 
@@ -351,24 +357,69 @@ BEGIN
             parameter_id,
             FieldCode,
             CASE
-                WHEN FieldCode = '@Username'   THEN N'Nguoi dung'
+                -- API Name Dictionary (Mapping SP to Vietnamese)
+                WHEN StoredProcedure LIKE '%DonHangChiTiet%Insert%' THEN N'Nhập đơn hàng'
+                WHEN StoredProcedure LIKE '%KhachHang%Insert%'     THEN N'Thêm khách hàng'
+                WHEN StoredProcedure LIKE '%CongNoChiTiet%'       THEN N'Công nợ chi tiết'
+                WHEN StoredProcedure LIKE '%CongNoKhachHang%'     THEN N'Công nợ khách hàng'
+                WHEN StoredProcedure LIKE '%DanhMuc%'             THEN N'Danh mục'
+                WHEN StoredProcedure LIKE '%DanhsachTonKho%'      THEN N'Danh sách tồn kho'
+                WHEN StoredProcedure LIKE '%DoanhSo%'             THEN N'Doanh số'
+                WHEN StoredProcedure LIKE '%DonHang%'             THEN N'Đơn hàng'
+                WHEN StoredProcedure LIKE '%HoaDon%'              THEN N'Hóa đơn'
+                WHEN StoredProcedure LIKE '%GoiYDonHang%'         THEN N'Gợi ý đơn hàng'
+                WHEN StoredProcedure LIKE '%SanPhamTrongTam%'     THEN N'Sản phẩm trọng tâm'
+                WHEN StoredProcedure LIKE '%TraCuuSanPham%'       THEN N'Tra cứu sản phẩm'
+                WHEN StoredProcedure LIKE '%TichLuy%'             THEN N'Tích lũy điểm'
+                WHEN StoredProcedure LIKE '%ChamDiemKH%'          THEN N'Chấm điểm khách hàng'
+                WHEN StoredProcedure LIKE '%TuyenBanHang%'        THEN N'Tuyến bán hàng'
+                ELSE REPLACE(REPLACE(ApiNameRaw, 'API_', ''), '_', ' ')
+            END AS ApiName,
+            CASE
+                WHEN FieldCode = '@Username'   THEN N'Người dùng'
                 WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
-                WHEN FieldCode = '@khachhang'  THEN N'Khach hang'
-                WHEN FieldCode = '@ObjectID'   THEN N'Ma khach hang'
-                WHEN FieldCode = '@ItemID'     THEN N'Ma san pham'
+                WHEN FieldCode = '@khachhang'  THEN N'Khách hàng'
+                WHEN FieldCode = '@ObjectID'   THEN N'Mã khách hàng'
+                WHEN FieldCode = '@ItemID'     THEN N'Mã sản phẩm'
+                WHEN FieldCode = '@DocumentID' THEN N'Mã đơn hàng'
+                WHEN FieldCode = '@TenKhachHang' THEN N'Tên khách hàng'
+                WHEN FieldCode = '@SoDienThoai' OR FieldCode = '@DienThoai' THEN N'Số điện thoại'
+                WHEN FieldCode = '@DiaChi'     THEN N'Địa chỉ'
+                WHEN FieldCode = '@GhiChu' OR FieldCode = '@Notes' OR FieldCode = '@Memo' THEN N'Ghi chú'
+                WHEN FieldCode = '@DienGiai'   THEN N'Diễn giải'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN N'Ngày'
-                WHEN FieldCode LIKE '%Date' THEN N'Ngay'
-                WHEN FieldCode LIKE '@Top%' THEN N'So luong'
+                WHEN FieldCode = '@NgayGiao'   THEN N'Ngày giao hàng'
+                WHEN FieldCode LIKE '%Date'    THEN N'Ngày'
+                WHEN FieldCode LIKE '@Top%'    THEN N'Số lượng'
+                WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN N'Danh sách sản phẩm'
                 ELSE REPLACE(REPLACE(FieldCode, '@', ''), '_', ' ')
             END AS FieldName,
             DataType,
             CASE
                 WHEN FieldCode = '@Username'  THEN 'hidden'
+                -- Datagrid: list JSON (NVARCHAR + tên dạng *List, *Items, *Rules)
+                WHEN DataType = 'NVARCHAR' AND (
+                    FieldCode LIKE '%ItemList'    OR FieldCode LIKE '%itemlist'
+                    OR FieldCode LIKE '%JsonItems'  OR FieldCode LIKE '%jsonitems'
+                    OR FieldCode LIKE '%JsonRules'  OR FieldCode LIKE '%jsonrules'
+                    OR FieldCode LIKE '%ChiTietList' OR FieldCode LIKE '%DetailList'
+                ) THEN 'datagrid'
+                -- Textarea: các trường văn bản dài
+                WHEN FieldCode IN ('@GhiChu', '@Notes', '@Memo', '@DienGiai', '@DiaChi',
+                                   '@TenKhachHang', '@TenSanPham', '@TenNhaCungCap')
+                    OR FieldCode LIKE '%GhiChu' OR FieldCode LIKE '%Notes'
+                    OR FieldCode LIKE '%Memo'   OR FieldCode LIKE '%DienGiai'
+                    OR FieldCode LIKE '%DiaChi'
+                THEN 'textarea'
+                -- Tel: số điện thoại
+                WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone')
+                    OR FieldCode LIKE '%SoDienThoai' OR FieldCode LIKE '%DienThoai'
+                THEN 'tel'
                 WHEN FieldCode = '@khachhang' THEN 'combobox'
                 WHEN FieldCode = '@ObjectID'  THEN 'combobox'
                 WHEN FieldCode = '@Type'      THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
-                WHEN FieldCode LIKE '%Date'   THEN 'date'
+                WHEN FieldCode LIKE '%Date'   OR FieldCode LIKE '%Ngay' THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
                 ELSE 'text'
             END AS ControlType,
@@ -393,11 +444,33 @@ BEGIN
                 WHEN StoredProcedure LIKE '%CongNoChiTiet%' THEN 'CONG_NO'
                 WHEN StoredProcedure LIKE '%TichLuy%'       THEN 'TICH_LUY'
                 WHEN StoredProcedure LIKE '%DanhMuc%'       THEN 'CATALOG'
+                -- SP chứa param datagrid (Insert/Update có list sản phẩm) → dùng SMART_FORM
+                WHEN DataType = 'NVARCHAR' AND (
+                    FieldCode LIKE '%ItemList%'    OR FieldCode LIKE '%itemlist%'
+                    OR FieldCode LIKE '%JsonItems%'  OR FieldCode LIKE '%jsonitems'
+                ) THEN 'SMART_FORM'
+                WHEN StoredProcedure LIKE '%Insert%' OR StoredProcedure LIKE '%Import%'
+                    OR StoredProcedure LIKE '%Update%' OR StoredProcedure LIKE '%Save%'
+                    THEN 'SMART_FORM'
                 ELSE 'DEFAULT'
             END AS UiTemplate
         FROM P
+    ),
+    FINAL_M AS (
+        SELECT M.*,
+        CASE
+            WHEN StoredProcedure LIKE '%CongNo%'   THEN N'CÔNG NỢ'
+            WHEN StoredProcedure LIKE '%DanhMuc%'  THEN N'DANH MỤC'
+            WHEN StoredProcedure LIKE '%TichLuy%'  THEN N'TÍCH LŨY'
+            WHEN StoredProcedure LIKE '%DoanhSo%'  THEN N'DOANH SỐ'
+            WHEN StoredProcedure LIKE '%DonHang%'  THEN N'ĐƠN HÀNG'
+            WHEN StoredProcedure LIKE '%HoaDon%'   THEN N'HÓA ĐƠN'
+            WHEN StoredProcedure LIKE '%SanPham%'  THEN N'SẢN PHẨM'
+            ELSE N'CHỨC NĂNG CHUNG'
+        END AS ApiCategory
+        FROM M
     )
-    SELECT * INTO #AI_META FROM M;
+    SELECT * INTO #AI_META FROM FINAL_M;
 
     IF @Apply = 0
     BEGIN
@@ -429,10 +502,10 @@ BEGIN
     INSERT INTO dbo.API_Definition (ApiCode, ApiName, ApiDescription, StoredProcedure, Category, UiTemplate, IconEmoji, IsActive, OrderIndex)
     SELECT DISTINCT
         a.ApiCode,
-        a.ApiNameRaw,
+        a.ApiName,
         N'Auto metadata from SP: ' + a.StoredProcedure,
         a.StoredProcedure,
-        N'AutoSync',
+        a.ApiCategory,
         a.UiTemplate,
         N'AI',
         1,
@@ -444,17 +517,75 @@ BEGIN
     BEGIN
         UPDATE d
         SET d.StoredProcedure = a.StoredProcedure,
+            d.ApiName = a.ApiName,
+            d.Category = a.ApiCategory,
             d.UiTemplate = a.UiTemplate
         FROM dbo.API_Definition d
-        JOIN (SELECT DISTINCT ApiCode, StoredProcedure, UiTemplate FROM #AI_META) a ON a.ApiCode = d.ApiCode;
+        JOIN (SELECT DISTINCT ApiCode, StoredProcedure, ApiName, ApiCategory, UiTemplate FROM #AI_META) a ON a.ApiCode = d.ApiCode;
     END
 
-    -- Ensure default action
+    -- Ensure default action với ExecutionType tự động theo tên SP
     INSERT INTO dbo.API_Action (ApiID, ActionCode, ActionName, ExecutionType, HttpMethod, IsConfirm, IsDefault, IsActive, OrderIndex)
-    SELECT d.ApiID, 'VIEW', N'Xem du lieu', 'QUERY', 'POST', 0, 1, 1, 1
+    SELECT 
+        d.ApiID,
+        CASE
+            WHEN m.StoredProcedure LIKE '%Insert%' OR m.StoredProcedure LIKE '%Import%'
+              OR m.StoredProcedure LIKE '%Save%' THEN 'INSERT'
+            WHEN m.StoredProcedure LIKE '%Update%' THEN 'UPDATE'
+            WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN 'DELETE'
+            ELSE 'VIEW'
+        END AS ActionCode,
+        CASE
+            WHEN m.StoredProcedure LIKE '%Insert%' OR m.StoredProcedure LIKE '%Import%'
+              OR m.StoredProcedure LIKE '%Save%' THEN N'Tạo mới'
+            WHEN m.StoredProcedure LIKE '%Update%' THEN N'Cập nhật'
+            WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN N'Xóa'
+            ELSE N'Xem dữ liệu'
+        END AS ActionName,
+        CASE
+            WHEN m.StoredProcedure LIKE '%Insert%' OR m.StoredProcedure LIKE '%Import%'
+              OR m.StoredProcedure LIKE '%Save%' THEN 'INSERT'
+            WHEN m.StoredProcedure LIKE '%Update%' THEN 'UPDATE'  -- Frontend sẽ pre-fill form
+            WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN 'DELETE'
+            ELSE 'QUERY'
+        END AS ExecutionType,
+        'POST',
+        -- IsConfirm: yêu cầu xác nhận trước khi Update/Delete
+        CASE
+            WHEN m.StoredProcedure LIKE '%Update%' THEN 1
+            WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN 1
+            ELSE 0
+        END AS IsConfirm,
+        1, 1, 1
     FROM dbo.API_Definition d
+    JOIN (SELECT DISTINCT ApiCode, StoredProcedure FROM #AI_META) m ON m.ApiCode = d.ApiCode
     WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META)
       AND NOT EXISTS (SELECT 1 FROM dbo.API_Action a WHERE a.ApiID = d.ApiID AND a.IsDefault = 1);
+
+    -- Cập nhật ExecutionType và IsConfirm cho các action cũ bị sai
+    IF @UpdateExisting = 1
+    BEGIN
+        UPDATE act
+        SET
+            act.ExecutionType =
+                CASE
+                    WHEN m.StoredProcedure LIKE '%Insert%' OR m.StoredProcedure LIKE '%Import%'
+                      OR m.StoredProcedure LIKE '%Save%' THEN 'INSERT'
+                    WHEN m.StoredProcedure LIKE '%Update%' THEN 'UPDATE'
+                    WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN 'DELETE'
+                    ELSE 'QUERY'
+                END,
+            act.IsConfirm =
+                CASE
+                    WHEN m.StoredProcedure LIKE '%Update%' THEN 1
+                    WHEN m.StoredProcedure LIKE '%Delete%' OR m.StoredProcedure LIKE '%Remove%' THEN 1
+                    ELSE 0
+                END
+        FROM dbo.API_Action act
+        JOIN dbo.API_Definition d ON d.ApiID = act.ApiID
+        JOIN (SELECT DISTINCT ApiCode, StoredProcedure FROM #AI_META) m ON m.ApiCode = d.ApiCode
+        WHERE act.IsDefault = 1;
+    END
     -- Xoá các tham số rác (Orphaned fields) nếu tham số bị xóa khỏi Stored Procedure
     IF @UpdateExisting = 1
     BEGIN

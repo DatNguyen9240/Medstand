@@ -4,7 +4,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-ALTER PROCEDURE [dbo].[API_DonHangChiTiet_Insert_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_DonHangChiTiet_Insert_AI]
     @Username    VARCHAR(50),
     @DocumentID  VARCHAR(50)   = '',
     @ObjectID    VARCHAR(50)   = '',

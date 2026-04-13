@@ -1,4 +1,4 @@
-CREATE PROCEDURE dbo.API_DanhSachTonKho_AI
+CREATE OR ALTER PROCEDURE dbo.API_DanhsachTonKho_AI
     @Username VARCHAR(50),
     @ItemID VARCHAR(50) = '',
     @ItemName VARCHAR(200) = ''

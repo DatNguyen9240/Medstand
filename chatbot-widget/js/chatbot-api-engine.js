@@ -1270,7 +1270,11 @@
         // Init DataSource fields
         _initDataSourceFields(_panelEl);
 
-        if (execType === 'CART') _initCartEvents();
+        // Init DataGrid events cho bất kỳ panel nào có .ae-datagrid-field
+        _initDataGrid(_panelEl);
+
+        // PRE-FILL cho UPDATE form: load data cũ và điền sẵn vào form
+        if (execType === 'UPDATE') { _preFillUpdateForm(_panelEl, config); }
 
         requestAnimationFrame(function () { _panelEl.classList.add('active'); });
         setTimeout(function () {
@@ -1280,6 +1284,46 @@
                 first.focus({ preventScroll: true });
             }
         }, 200);
+    }
+
+    /**
+     * _preFillUpdateForm
+     * Gọi API hiện tại với key param (đã lưu trong _pillParams)
+     * để lấy data hiện tại và điền sẵn vào tất cả fields trong panel.
+     */
+    function _preFillUpdateForm(panelEl, config) {
+        if (!_activeApi) return;
+        var keyParams = {};
+        (config.filters || []).forEach(function (f) {
+            var code = (f.FieldCode || '').replace('@', '');
+            if (_pillParams[code] && _pillParams[code] !== '') {
+                keyParams[f.FieldCode] = _pillParams[code];
+            }
+        });
+        if (Object.keys(keyParams).length === 0) return;
+        var bodyEl = panelEl.querySelector('.ae-panel-body');
+        if (bodyEl) bodyEl.style.opacity = '0.4';
+        _post(CFG.EXEC_URL, {
+            ApiCode: _activeApi.apiCode, StoredProcedure: _activeApi.sp,
+            params: keyParams, execType: 'QUERY'
+        }).then(function (res) {
+            if (bodyEl) bodyEl.style.opacity = '';
+            var rows = Array.isArray(res) ? res : (res && res.data ? res.data : null);
+            if (!rows || rows.length === 0) return;
+            var row = rows[0];
+            Object.keys(row).forEach(function (col) {
+                var val = row[col]; if (val === null || val === undefined) return;
+                var inp = panelEl.querySelector('[name="@' + col + '"]')
+                       || panelEl.querySelector('[name="' + col + '"]');
+                if (!inp) return;
+                inp.value = val;
+                if (inp.type === 'hidden') {
+                    var txt = panelEl.querySelector('#' + inp.id + '_txt');
+                    if (txt) txt.value = val;
+                }
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }).catch(function () { if (bodyEl) bodyEl.style.opacity = ''; });
     }
 
     function _closeFull(clearAll) {
@@ -1365,6 +1409,20 @@
         else if (ctrl === 'textarea') {
             input = '<textarea id="' + id + '" name="' + _esc(code) + '" class="ae-ctrl ae-ctrl-ta" placeholder="' + _esc(ph) + '"' + (reqd ? ' required' : '') + '>' + _esc(defVal) + '</textarea>';
         }
+        else if (ctrl === 'datagrid') {
+            // Render khung bảng sản phẩm (DataGrid)
+            input = '<div class="ae-datagrid-field" id="' + id + '" data-field="' + id + '" name="' + _esc(code) + '">'
+                + '<div class="ae-dg-header">'
+                + '<span>Chi tiết sản phẩm</span>'
+                + '<button type="button" class="ae-dg-add-btn" data-tgt="' + id + '">＋</button>'
+                + '</div>'
+                + '<div class="ae-dg-body" id="' + id + '_body"></div>'
+                + '<div class="ae-dg-footer">'
+                + '<span class="ae-dg-total-lbl">Tổng cộng</span>'
+                + '<span class="ae-dg-total-val" id="' + id + '_total">0</span>'
+                + '</div>'
+                + '</div>';
+        }
         else {
             input = '<input type="text" id="' + id + '" name="' + _esc(code) + '" class="ae-ctrl" value="' + _esc(defVal) + '" placeholder="' + _esc(ph) + '"' + (reqd ? ' required' : '') + ' data-field="' + id + '">';
         }
@@ -1425,6 +1483,80 @@
             document.addEventListener('click', onDocClick);
             _registerCleanup(function () { document.removeEventListener('click', onDocClick); });
         });
+    }
+
+    // ── DataGrid Logic ────────────────────────────────────────────────
+    function _initDataGrid(container) {
+        var grids = container.querySelectorAll('.ae-datagrid-field');
+        grids.forEach(function (grid) {
+            var gridId = grid.id;
+            var addBtn = grid.querySelector('.ae-dg-add-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', function () {
+                    _addDataGridRow(gridId);
+                });
+                // Tự tạo 1 dòng trống ban đầu
+                _addDataGridRow(gridId);
+            }
+        });
+    }
+
+    function _addDataGridRow(gridId) {
+        var body = document.getElementById(gridId + '_body');
+        if (!body) return;
+        var rowId = 'r' + Date.now() + Math.random().toString(36).substr(2, 5);
+
+        var html = '<div class="ae-dg-row" id="' + rowId + '">'
+            + '<div class="ae-dg-col col-name">'
+            + '<label>Sản phẩm</label>'
+            + '<div class="ae-combo ae-combo-grid" data-ds-type="APICODE" data-ds-val="@tra_cuu_san_pham|@TopN=30|@timkiem={q}">'
+            + '<input type="text" class="ae-ctrl ae-combo-txt" placeholder="Tìm hàng..." autocomplete="off">'
+            + '<input type="hidden" class="ae-dg-val" data-col="ItemID">'
+            + '<div class="ae-combo-sug" style="display:none"></div>'
+            + '</div>'
+            + '</div>'
+            + '<div class="ae-dg-col col-sl"><label>SL</label><input type="number" class="ae-dg-val ae-dg-qty" data-col="Quantity" value="1"></div>'
+            + '<div class="ae-dg-col col-price"><label>Giá</label><input type="number" class="ae-dg-val ae-dg-price" data-col="Price" value="0"></div>'
+            + '<div class="ae-dg-col col-total"><label>Tổng</label><input type="text" class="ae-dg-total-row" readonly value="0"></div>'
+            + '<button type="button" class="ae-dg-del-btn">✕</button>'
+            + '</div>';
+
+        var div = document.createElement('div');
+        div.innerHTML = html;
+        var rowEl = div.firstChild;
+        body.appendChild(rowEl);
+
+        // Init DataSource cho riêng dòng này
+        _initDataSourceFields(rowEl);
+
+        // Bind events cho tính toán
+        var qtyIns = rowEl.querySelectorAll('.ae-dg-qty, .ae-dg-price');
+        qtyIns.forEach(function (inp) {
+            inp.addEventListener('input', function () { _calcDataGrid(gridId); });
+        });
+
+        // Xóa dòng
+        rowEl.querySelector('.ae-dg-del-btn').onclick = function () {
+            rowEl.remove();
+            _calcDataGrid(gridId);
+        };
+    }
+
+    function _calcDataGrid(gridId) {
+        var body = document.getElementById(gridId + '_body');
+        if (!body) return;
+        var rows = body.querySelectorAll('.ae-dg-row');
+        var grandTotal = 0;
+        rows.forEach(function (row) {
+            var qty = parseFloat(row.querySelector('.ae-dg-qty').value) || 0;
+            var price = parseFloat(row.querySelector('.ae-dg-price').value) || 0;
+            var total = qty * price;
+            var totalInp = row.querySelector('.ae-dg-total-row');
+            if (totalInp) totalInp.value = total.toLocaleString();
+            grandTotal += total;
+        });
+        var totalEl = document.getElementById(gridId + '_total');
+        if (totalEl) totalEl.textContent = grandTotal.toLocaleString();
     }
 
     function _renderComboSug(sug, txt, hid, rows, showAll) {
@@ -1555,22 +1687,43 @@
                 } else {
                     var el = _panelEl.querySelector('#' + fid);
                     if (el) {
-                        var v = el.value.trim();
-                        // Tự động gán mặc định cho các tham số ngày (nếu trống)
-                        if (!v && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
-                            var d = new Date();
-                            if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
-                            var mm = (d.getMonth() + 1).toString().padStart(2, '0');
-                            var dd = d.getDate().toString().padStart(2, '0');
-                            v = d.getFullYear() + '-' + mm + '-' + dd;
-                            el.value = v; // Hiện lên UI luôn
-                        }
-
-                        if (f.IsRequired == 1 && !v) {
-                            el.focus(); el.classList.add('ae-error'); hasErr = true;
+                        if (f.ControlType === 'datagrid') {
+                            // Serialize bảng thành JSON mảng
+                            var rows = [];
+                            var body = _panelEl.querySelector('#' + fid + '_body');
+                            if (body) {
+                                body.querySelectorAll('.ae-dg-row').forEach(function (row) {
+                                    var item = {};
+                                    row.querySelectorAll('.ae-dg-val').forEach(function (inp) {
+                                        var col = inp.getAttribute('data-col');
+                                        var val = inp.value;
+                                        if (col === 'Quantity' || col === 'Price') val = parseFloat(val) || 0;
+                                        item[col] = val;
+                                    });
+                                    // Chỉ lấy dòng có ItemID
+                                    if (item.ItemID) rows.push(item);
+                                });
+                            }
+                            if (rows.length > 0) params[code] = JSON.stringify(rows);
+                            else if (reqd) { el.classList.add('ae-error'); hasErr = true; }
                         } else {
-                            el.classList.remove('ae-error');
-                            if (v !== "") params[code] = v;
+                            var v = el.value.trim();
+                            // Tự động gán mặc định cho các tham số ngày (nếu trống)
+                            if (!v && (fcLow.indexOf('tu_ngay') > -1 || fcLow.indexOf('tungay') > -1 || fcLow.indexOf('den_ngay') > -1 || fcLow.indexOf('denngay') > -1)) {
+                                var d = new Date();
+                                if (fcLow.indexOf('tu') > -1) d.setMonth(d.getMonth() - 1);
+                                var mm = (d.getMonth() + 1).toString().padStart(2, '0');
+                                var dd = d.getDate().toString().padStart(2, '0');
+                                v = d.getFullYear() + '-' + mm + '-' + dd;
+                                el.value = v; // Hiện lên UI luôn
+                            }
+
+                            if (reqd && !v) {
+                                el.focus(); el.classList.add('ae-error'); hasErr = true;
+                            } else {
+                                el.classList.remove('ae-error');
+                                if (v !== "") params[code] = v;
+                            }
                         }
                     }
                 }
