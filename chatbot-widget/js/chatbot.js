@@ -97,6 +97,15 @@
     var $fileInput = document.getElementById('chat-file-input');
     var $filePreview = document.getElementById('chat-file-preview');
     var $fileList = document.getElementById('chat-file-list');
+    var $btnApi = document.getElementById('btn-api');
+
+    // Khởi tạo Chatbot API Engine UI (Nút "Chọn API")
+    if (window.ApiEngine) {
+        window.ApiEngine.init({
+            container: $container,
+            apiBtn: $btnApi
+        });
+    }
 
     var chatHistory = _loadCache();
     var selectedFiles = [];
@@ -429,7 +438,14 @@
                 body: JSON.stringify(payload),
                 signal: abortController.signal
             })
-            .then(function (res) { return res.json(); })
+            .then(function (res) { 
+                return res.text().then(function(text) {
+                    if (!res.ok) throw new Error("Lỗi Server N8N (" + res.status + "): Có thể Workflow bị lỗi ngầm, hãy kiểm tra Excecutions tab trong N8N.");
+                    if (!text) throw new Error("Lỗi Server N8N: Trả về dữ liệu trống.");
+                    try { return JSON.parse(text); } 
+                    catch(e) { throw new Error("N8N không trả về JSON: " + text.substring(0, 50)); }
+                });
+            })
             .then(function(data) { _handleReply(data); })
             .catch(function(err) { _handleError(err); });
         });
@@ -1814,7 +1830,7 @@
     // ── Init ──
     _ghostCreate();
     _renderHistory();
-    _initSuggestionBar();
+    // _initSuggestionBar(); // Đã ẩn thanh gợi ý the user
 
     // ── API Engine (@api_code menu + DataSource fields) ──
     if (window.ApiEngine) {

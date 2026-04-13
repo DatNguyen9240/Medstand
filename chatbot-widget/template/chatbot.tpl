@@ -1,37 +1,14 @@
 <!-- AI Chatbot Page -->
-<header class="app-header">
-    <button type="button" class="header-icon" id="btn-back" aria-label="Quay lại" onclick="history.back()">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 12H5"></path>
-            <path d="M12 19l-7-7 7-7"></path>
-        </svg>
-    </button>
-    <div class="header-info">
-        <p class="header-username" style="font-size:var(--font-size-md)">AI Trợ lý</p>
-    </div>
-    <button type="button" class="header-icon" id="btn-clear-chat" aria-label="Xóa lịch sử">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-        </svg>
-    </button>
+<!-- Header đã bị ẩn theo yêu cầu -->
+<header class="app-header" style="display: none;">
+    <button type="button" class="header-icon" id="btn-back" aria-label="Quay lại" onclick="history.back()"></button>
+    <div class="header-info"></div>
+    <button type="button" class="header-icon" id="btn-clear-chat" aria-label="Xóa lịch sử"></button>
 </header>
 
 <div class="chat-container" id="chat-container">
-    <!-- Welcome message -->
-    <div class="chat-welcome" id="chat-welcome">
-        <div class="chat-welcome-icon">🤖</div>
-        <h3 class="chat-welcome-title">Xin chào!</h3>
-        <p class="chat-welcome-text">Tôi là trợ lý AI của bạn. Hãy hỏi tôi bất cứ điều gì!</p>
-        <div class="chat-suggestions" id="chat-suggestions">
-            <button type="button" class="chat-chip" data-msg="Doanh số tháng này">📊 Doanh số tháng này</button>
-            <button type="button" class="chat-chip" data-msg="Top khách hàng mua nhiều nhất">👥 Top khách hàng</button>
-            <button type="button" class="chat-chip" data-msg="Đơn hàng chờ duyệt hôm nay">📦 Đơn chờ duyệt</button>
-            <button type="button" class="chat-chip" data-msg="Sản phẩm bán chạy nhất tuần này">🔥 SP bán chạy</button>
-        </div>
-    </div>
+    <!-- Welcome message (Hidden) -->
+    <div class="chat-welcome" id="chat-welcome" style="display: none;"></div>
 
     <!-- Messages area -->
     <div class="chat-messages" id="chat-messages"></div>

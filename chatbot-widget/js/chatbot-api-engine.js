@@ -56,7 +56,7 @@
 
         // --- Tham số hệ thống mặc định ---
         SYS_PARAMS: {
-            USERNAME: (typeof API_CONFIG !== 'undefined' && API_CONFIG.SYS_PARAM_USERNAME) || 'username'
+            USERNAME: (typeof API_CONFIG !== 'undefined' && API_CONFIG.SYS_PARAM_USERNAME) || '@Username'
         }
     };
 
@@ -67,7 +67,7 @@
     var _pillParams = {}, _cartItems = [];
     var _menuVis = false, _menuIdx = -1;
     var _dbt = null, _hideTimer = null, _registerCleanupQueue = [];
-    var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide;
+    var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide, _cbGetToken;
     var _suppressMenuUntil = 0, _suppressNextAt = false;
     var _catalogDsMap = {}; // mapping type -> datasource string
     var _prevPlaceholder = '';
@@ -75,26 +75,40 @@
     // ── Networking Helpers ────────────────────────────────────────────
     function _post(url, data) {
         var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
+        var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
         return fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': key
+                'x-api-key': key,
+                'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify(data || {})
         }).then(function (res) {
-            if (!res.ok) throw new Error('Network error: ' + res.status);
-            return res.json();
+            return res.text().then(function(text) {
+                if (!res.ok) throw new Error('Network error: ' + res.status + ' | ' + text.substring(0, 50));
+                if (!text) return {}; // Xử lý êm lỗi rỗng trả về {} để hệ thống không sập
+                try { return JSON.parse(text); } 
+                catch(e) { throw new Error('Invalid JSON: ' + text.substring(0, 50)); }
+            });
         });
     }
 
     function _get(url) {
         var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
+        var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
         return fetch(url, {
-            headers: { 'x-api-key': key }
+            headers: { 
+                'x-api-key': key,
+                'Authorization': 'Bearer ' + token
+            }
         }).then(function (res) {
-            if (!res.ok) throw new Error('Network error: ' + res.status);
-            return res.json();
+            return res.text().then(function(text) {
+                if (!res.ok) throw new Error('Network error: ' + res.status + ' | ' + text.substring(0, 50));
+                if (!text) return {}; 
+                try { return JSON.parse(text); } 
+                catch(e) { throw new Error('Invalid JSON: ' + text.substring(0, 50)); }
+            });
         });
     }
 
@@ -127,6 +141,10 @@
             var rows = [];
             if (Array.isArray(res)) {
                 rows = res;
+            } else if (res && res.data && Array.isArray(res.data.records)) {
+                rows = res.data.records;
+            } else if (res && Array.isArray(res.records)) {
+                rows = res.records;
             } else if (res && res.data && Array.isArray(res.data)) {
                 rows = res.data;
             } else if (res && typeof res === 'object') {
@@ -197,7 +215,7 @@
     }
 
     function _user() {
-        return (typeof API_CONFIG !== 'undefined' && API_CONFIG.SYS_PARAM_USERNAME) || 'Guest';
+        return localStorage.getItem('fullname') || 'Guest';
     }
 
     function _resolveDefault(v) {
@@ -299,12 +317,38 @@
 
         if (!filtered.length) { _menuHide(); return; }
 
-        var html = '';
+        var groups = {
+            '🔹 Chức năng chung (Common)': [],
+            '🚀 Module nâng cao (Advanced)': []
+        };
+
+        // Các từ khóa thuộc file 'Module common'
+        var commonKeys = ['congno', 'danhmuc', 'tonkho', 'doanhso', 'donhang', 'hoadon', 'themkhachhang'];
+
         filtered.forEach(function (a) {
-            html += '<div class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
-                + '<span class="ae-val-name">' + _esc(a.DisplayName || a.ApiCode) + '</span>'
-                + '<span class="ae-tag">' + _esc(a.ApiCode) + '</span>'
-                + '</div>';
+            // Nối cả ApiCode và DisplayName, bỏ hết dấu gạch dưới, khoảng trắng, ký tự đặc biệt để so sánh
+            var n = ((a.ApiCode || '') + (a.DisplayName || '')).toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            var isCommon = commonKeys.some(function(k) { return n.indexOf(k) !== -1; });
+            
+            if (isCommon) {
+                groups['🔹 Chức năng chung (Common)'].push(a);
+            } else {
+                groups['🚀 Module nâng cao (Advanced)'].push(a);
+            }
+        });
+
+        var html = '';
+        Object.keys(groups).forEach(function(gName) {
+            if (groups[gName].length > 0) {
+                html += '<div class="ae-menu-group">' + gName + '</div>';
+                groups[gName].forEach(function (a) {
+                    html += '<div class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
+                        + '<span class="ae-val-name">' + _esc(a.DisplayName || a.ApiCode) + '</span>'
+                        + '<span class="ae-tag">' + _esc(a.ApiCode) + '</span>'
+                        + '</div>';
+                });
+            }
         });
         _menuEl.innerHTML = html;
         _positionMenu();
@@ -492,7 +536,7 @@
                 if (!mName) mName = (r.label || r.value || '');
                 if (!mAD) mAD = r.value || '';
                 
-                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-phanloai="' + _esc(mPL) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
+                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(mAD) + '" data-phanloai="' + _esc(mPL) + '" data-name="' + _esc(mName) + '" data-madanhmuc="' + _esc(mAD) + '">'
                     + '<span class="ae-val-name">' + _esc(mName) + '</span>'
                     + (mAD ? '<span class="ae-tag">' + _esc(mAD) + '</span>' : '')
                     + '</div>';
@@ -661,7 +705,7 @@
                 var isObjectLike = (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.OBJECT_ID || (fieldCode || '').toLowerCase() === CFG.SYS_PARAMS.DOC_ID;
                 var rightText = isObjectLike ? idVal : (r.sub || r.value || '');
 
-                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(r.value) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '">'
+                html += '<div class="ae-menu-item ae-val-item" data-code="' + _esc(idVal) + '" data-name="' + _esc(nameVal) + '" data-id="' + _esc(idVal) + '" data-phanloai="' + _esc(phVal) + '">'
                     + '<span class="ae-val-name">' + _esc(nameVal) + '</span>'
                     + (idVal ? '<span class="ae-tag">' + _esc(idVal) + '</span>' : '')
                     + '</div>';
@@ -1151,8 +1195,9 @@
             fields.forEach(function (f) {
                 var code = f.FieldCode || '';
                 var ctrl = f.ControlType || 'text';
+                var fcLow = code.toLowerCase();
                 // System params (như @Username) luôn auto-fill từ hệ thống
-                var isUserParam = (fcLow === CFG.SYS_PARAMS.USERNAME || fcLow === 'username');
+                var isUserParam = (fcLow === CFG.SYS_PARAMS.USERNAME.toLowerCase() || fcLow === 'username' || fcLow === '@username');
 
                 if (f.IsSystemParam || isUserParam) {
                     if (isUserParam) params[code] = _user();
@@ -1220,11 +1265,13 @@
 
                 // Map thứ tự token từ mảng vào visibleFields
                 for (var i = 0; i < tokens.length && i < visibleFields.length; i++) {
-                    var fCode = visibleFields[i].FieldCode;
-                    if (!fCode.startsWith('@')) fCode = '@' + fCode;
-                    // Nếu nó không phải dạng param hiển thị cũ @Key=value, map qua vị trí index
-                    if (tokens[i].indexOf('=') === -1) {
-                        params[fCode] = tokens[i];
+                    var vField = visibleFields[i];
+                    var fCode = vField.FieldCode || vField.field || vField.name || '';
+                    if (fCode) {
+                        if (!fCode.startsWith('@')) fCode = '@' + fCode;
+                        if (tokens[i].indexOf('=') === -1) {
+                            params[fCode] = tokens[i];
+                        }
                     }
                 }
             }
@@ -1253,7 +1300,7 @@
                 cfgParams.forEach(function (f) {
                     var fcLow = (f.FieldCode || '').toLowerCase();
                     // Bypass validate cho các system param
-                    var isUserField = (fcLow === CFG.SYS_PARAMS.USERNAME || fcLow === 'username');
+                    var isUserField = (fcLow === CFG.SYS_PARAMS.USERNAME.toLowerCase() || fcLow === 'username' || fcLow === '@username');
                     if (isUserField) return;
 
                     // Tự động tính tham số thời gian cho TH2 (nhập qua Chat)
@@ -1350,10 +1397,18 @@
                 var r = typeof res === 'string' ? res : (res.reply || res.message || '');
 
                 // --- Tự động render mảng Data ---
-                if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+                var arrData = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : null);
+                if (arrData && arrData.length > 0) {
+                    var msgRow = arrData.find(function(row) { return row.Msg !== undefined; });
+                    if (msgRow && msgRow.MsgType !== undefined) {
+                        _cbMsg && _cbMsg('system', '⚠️ ' + msgRow.Msg);
+                        return;
+                    }
+                    var dataRows = arrData.filter(function(row) { return row.Msg === undefined && !row.Metadata_UITemplate; });
                     if (_cbRender && _cbHtml) {
                         var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
-                        var html = _cbRender(res.data, r || ('🔍 Tìm thấy ' + res.data.length + ' kết quả'), apiCode, {
+                        var dtToRender = dataRows.length ? dataRows : arrData;
+                        var html = _cbRender(dtToRender, r || ('🔍 Tìm thấy ' + dtToRender.length + ' kết quả'), apiCode, {
                             uiTemplate: uiTpl,
                             fieldRoles: ApiEngine.getRoleMapping(),
                             khCode: ''  // engine không có context khCode, chatbot.js sẽ tự resolve
@@ -1660,6 +1715,7 @@
             _cbRender = opts.renderCardView || null;
             _cbShow = opts.showTyping || null;
             _cbHide = opts.hideTyping || null;
+            _cbGetToken = opts.getToken || null;
             _loadList(function () { console.log('[ApiEngine v3] ' + _apiList.length + ' APIs'); });
             _watchInput(_inputEl);
 
@@ -1768,3 +1824,4 @@
         loadDataSource: _loadDataSource
     };
 })();
+

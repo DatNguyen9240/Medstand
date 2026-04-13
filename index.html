@@ -10,6 +10,22 @@
   <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
   <title>Medstand</title>
 
+  <!-- FORCE CLEAR CACHES - KHẮC PHỤC LỖI SERVICE WORKER -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (let name of names) caches.delete(name);
+      });
+    }
+  </script>
+
   <!-- ── Core CSS ─────────────────────────────────── -->
   <link rel="stylesheet" href="src/css/design-tokens.css">
   <link rel="stylesheet" href="src/css/global.css">
@@ -59,6 +75,9 @@
   <script src="src/js/components/Alert.js"></script>
   <script src="src/js/components/AuthThemeToggle.js"></script>
   <script src="src/js/components/PasswordToggle.js"></script>
+
+  <!-- Môi trường — SỬA FILE NÀY KHI DEPLOY SANG SERVER MỚI -->
+  <script src="env.js"></script>
 
   <!-- API layer -->
   <script src="src/js/config/api.config.js"></script>

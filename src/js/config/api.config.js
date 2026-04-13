@@ -126,8 +126,9 @@ const API_CONFIG = {
   },
 
   // ─── N8N Workflow Base URL ────────────────────────────────────────────────
-  // Dev: http://127.0.0.1:8080 (Proxy) | Prod: URL tunnel / domain n8n thực tế
-  N8N_BASE: 'http://127.0.0.1:8080',
+  // Đọc từ env.js (window.APP_ENV) — chỉ cần sửa env.js khi đổi server
+  // Dev fallback: http://127.0.0.1:8080 (CORS Proxy local)
+  N8N_BASE: (window.APP_ENV && window.APP_ENV.N8N_BASE) || 'http://127.0.0.1:8080',
 
   // ─── AI Chatbot Widget Config ─────────────────────────────────────────────
   CHAT_WEBHOOK: '/webhook/hook-ai-dainao', // append vào N8N_BASE
