@@ -1,0 +1,313 @@
+{
+    "name": "K · SieuLuong V2 (Smart Intent)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "hook-ai-dainao",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                9856,
+                912
+            ],
+            "id": "36d98c20-76f6-480c-b2e1-b2f64bcd2e59",
+            "name": "Webhook AI Chat",
+            "webhookId": "822b0b0a-99d3-455e-9347-fa0cbbb380e8"
+        },
+        {
+            "parameters": {
+                "model": "openai/gpt-4o-mini",
+                "options": {
+                    "temperature": 0
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.2,
+            "position": [
+                9020,
+                1060
+            ],
+            "id": "openai-intent-model",
+            "name": "OpenAI Intent Model",
+            "credentials": {
+                "openAiApi": {
+                    "id": "mxZCAAqEX3fE4Amb",
+                    "name": "OpenAi account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $('Webhook AI Chat').first().json.body.message || $('Webhook AI Chat').first().json.body.text || $('Webhook AI Chat').first().json.body.content || $('Webhook AI Chat').first().json.body.query || '' }}",
+                "messages": {
+                    "messageValues": [
+                        {
+                            "type": "SystemMessagePromptTemplate",
+                            "message": "=Bạn là trợ lý AI điều phối (Intent/Action extractor) cho Medstand. CHỈ OUTPUT JSON hợp lệ.\n\nHôm nay là ngày: {{$now.format('yyyy-MM-dd')}}.\n\n--- TÍNH NĂNG ĐẶC BIỆT: FORM XỬ LÝ DỮ LIỆU ---\nNếu user nói tạo mới, thêm mới (lên đơn, tạo khách):\n{\"action_code\": \"OPEN_API_PANEL\", \"api_name\": \"@don_hang_chi_tiet_insert\", \"prefill_data\": {}}\n\n--- TÍNH NĂNG BÁO CÁO & DATA ---\nOutput JSON data retrieval:\n{\"apiCode\": \"@ten_api\", \"params\": {}}\n\nLƯU Ý: Không tự suy diễn tham số nếu user không nhắc đến. Nếu triệu chứng là chuỗi rác vô nghĩa (vd: xkhkhas), TUYỆT ĐỐI KHÔNG gọi API mà trả về {\"action_code\": \"ASK_CLARIFICATION\"}. Cố gắng\n trích xuất KHÔNG THIẾU tên nhân viên, khách hàng/hàng hóa nếu có.\n\nDANH SÁCH @apiCode CHUẨN MỰC:\n@goi_ydon_hang | gợi ý bán hàng, bán gì hôm nay | params: @khachhang\n@upsell_goi_y | tìm thuốc trị bệnh, triệu chứng (giữ đúng chữ user nhập) | params: @timkiem, @khachhang\n@goi_ydon_thuoc | bán kèm, bán chéo đơn thuốc, thuốc thay thế, kê đơn thay thế | params: @timkiem\n@tuyen_ban_hang | khách lâu chưa mua, rớt tuyến | params: @khachhang\n@cham_diem_kh | khách VIP, xếp hạng khách hàng | params: @khachhang, @NhomFilter (Truyền chữ 'VIP' hoặc 'Ổn định' mà user nói vào đây) \n@tich_luy | tích luỹ điểm, doanh số của khách | params: @khachhang\n@de_xuat_khuyen_mai | hàng sắp hết date, xả gấp, KM\n@danh_sach_tonkho | tồn kho hiện tại, kiểm kho | params: @timkiem\n@tra_cuu_san_pham | thông tin thuốc, tra cứu sản phẩm, hỏi về thuốc | params: @timkiem\n@doanh_so | báo cáo doanh số, doanh thu (hôm nay -> gán [TODAY] vào datetime) | params: @TuNgay, @DenNgay, @khachhang, @ObjectName, @EmployeeName, @ItemName, @LoaiBaoCao (Truyền 1 trong 3 giá trị: NhanVien, KhachHang, SanPham)\n@cong_no_khach_hang | tổng công nợ, tổng hợp nợ KH | params: @khachhang\n@cong_no_chi_tiet | xem chi tiết công nợ 1 khách hàng | params: @khachhang\n@don_hang | tra cứu đơn đặt hàng cũ, xem đơn cũ | params: @TuNgay, @DenNgay, @khachhang\n@khach_hang_insert | tạo khách hàng mới\n@don_hang_chi_tiet_insert | thêm đơn hàng mới\n"
+                        }
+                    ]
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.4,
+            "position": [
+                9020,
+                900
+            ],
+            "id": "extract-intent-chain",
+            "name": "Extract Intent Chain"
+        },
+        {
+            "parameters": {
+                "jsCode": "const inp = $input.first().json;\nconst llmRaw = inp.output || inp.text || inp.response || inp.content || '';\n\nlet intent = { apiCode: null, params: {}, isComplex: false };\ntry {\n  const m = llmRaw.match(/{[\\s\\S]*}/);\n  if (m) intent = JSON.parse(m[0]);\n} catch(e) {\n  intent = { apiCode: null, params: {}, isComplex: true };\n}\n\nlet username = 'demo';\ntry {\n  const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || '';\n  const token = authHeader.replace(/^Bearer\\s+/i, '').trim();\n  if (token && token.split('.').length === 3) {\n    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));\n    username = payload.Username || payload.username || payload.sub || 'demo';\n  }\n} catch(e) {}\n\n// Bắt luồng TẠO ĐƠN & ASK CLARIFICATION -> Né SQL Execute, đẩy qua nhánh Fallback/Bypass\nif (intent.action_code) {\n   // Nhánh này fallbackBody sẽ chứa kết quả JSON cho frontend ({action_code...})\n   return [{ json: { isValid: false, fallbackBody: intent } }];\n}\n\n// Luồng truy vấn SQL (Như cũ)\nif (intent.apiCode) intent.params = Object.assign({}, intent.params, { '@Username': username });\n\nfunction toLocalISO(d) {\n    const mm = (d.getMonth() + 1).toString().padStart(2, '0');\n    return d.getFullYear() + '-' + mm + '-' + d.getDate().toString().padStart(2, '0');\n}\nconst now = new Date();\nconst placeholders = { '[TODAY]': toLocalISO(now) }; // Giản lược cho ngắn gọn\n\nconst cleanParams = {};\nfor (const k of Object.keys(intent.params || {})) {\n  let v = intent.params[k];\n  if (v === '' || v === null || v === undefined || v === 'null') continue;\n  let newK = k.startsWith('@') ? k : ('@' + k);\n  if (typeof v === 'string' && placeholders[v]) v = placeholders[v];\n  cleanParams[newK] = v;\n}\nintent.params = cleanParams;\n\nconst isValid = !!intent.apiCode && !intent.isComplex;\nreturn [{ json: { apiCode: intent.apiCode, params: intent.params || {}, isComplex: !!intent.isComplex, username: username, isValid: isValid, _debug_llm: llmRaw.substring(0, 50) } }];\n"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                9280,
+                900
+            ],
+            "id": "parse-intent-auth",
+            "name": "Parse Intent & Auth"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": false,
+                        "leftValue": "",
+                        "typeValidation": "loose"
+                    },
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.isValid }}",
+                            "rightValue": "true",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.2,
+            "position": [
+                9540,
+                900
+            ],
+            "id": "is-simple-valid",
+            "name": "Is Simple & Valid?"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "={{ $env.WEBHOOK_URL + 'webhook/api-execute' }}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        },
+                        {
+                            "name": "Authorization",
+                            "value": "={{ $('Webhook AI Chat').first().json.headers.authorization || 'Bearer empty' }}"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify({ ApiCode: $json.apiCode, params: $json.params }) }}",
+                "options": {
+                    "timeout": 15000,
+                    "response": {
+                        "response": {
+                            "neverError": true,
+                            "responseFormat": "json",
+                            "fullResponse": false
+                        }
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                9800,
+                760
+            ],
+            "id": "call-k0-execute",
+            "name": "Call K0 Execute"
+        },
+        {
+            "parameters": {
+                "jsCode": "const k0 = $input.first()?.json || {};\nconst status = k0.status || 'success';\nconst count = k0.count || 0;\nconst data = k0.data || [];\nconst apiCode = $('Parse Intent & Auth').first().json.apiCode || '';\n\nlet message = '';\nif (status === 'error') {\n  message = k0.reply || k0.message || 'Co loi xay ra';\n  return [{ json: { status: 'error', message: message, data: [], count: 0, apiCode: apiCode } }];\n}\n\nif (count === 0 || data.length === 0) {\n  message = 'Khong tim thay du lieu phu hop.';\n  return [{ json: { status: 'success', message: message, data: [], count: 0, apiCode: apiCode } }];\n}\n\nmessage = k0.reply || ('Tim thay ' + count + ' ket qua.');\nreturn [{ json: {\n  status: 'success',\n  message: message,\n  data: data,\n  count: count,\n  apiCode: apiCode\n} }];"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                10060,
+                760
+            ],
+            "id": "format-chat-response",
+            "name": "Format Chat Response"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: $json.status, message: $json.message, data: $json.data, count: $json.count, username: $('Parse Intent & Auth').first().json.username, apiCode: $('Parse Intent & Auth').first().json.apiCode, intentParams: $('Parse Intent & Auth').first().json.params }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                10320,
+                760
+            ],
+            "id": "respond-fast",
+            "name": "Respond Fast"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ $json.fallbackBody ? JSON.stringify($json.fallbackBody) : JSON.stringify({status:'info',message:'Xin lỗi, tôi chưa hiểu nội dung này.'}) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type, Authorization"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [
+                9800,
+                1040
+            ],
+            "id": "respond-fallback",
+            "name": "Respond Fallback"
+        }
+    ],
+    "connections": {
+        "Webhook AI Chat": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Intent Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Intent Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Extract Intent Chain",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Intent Chain": {
+            "main": [
+                [
+                    {
+                        "node": "Parse Intent & Auth",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Parse Intent & Auth": {
+            "main": [
+                [
+                    {
+                        "node": "Is Simple & Valid?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Simple & Valid?": {
+            "main": [
+                [
+                    {
+                        "node": "Call K0 Execute",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Respond Fallback",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call K0 Execute": {
+            "main": [
+                [
+                    {
+                        "node": "Format Chat Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Chat Response": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Fast",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond Fallback": {}
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+    }
+}

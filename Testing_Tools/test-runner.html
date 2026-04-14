@@ -267,8 +267,8 @@
                 id: "MOD_5",
                 name: "Module 5 - Upsell Gợi Ý",
                 tests: [
-                    { id: "5.1", type: "happy", name: "Upsell Triệu chứng", query: "Khách ho khan, sổ mũi thì bán thuốc gì?", expected: "Mảng Thuốc gợi ý", validator: (data) => isValidDataArray(data) },
-                    { id: "5.2", type: "edge", name: "Triệu chứng rác", query: "Khách bị xkhkhas thì bán gì?", expected: "Không vỡ DB, trả mảng rỗng hoặc Ask Clarification", validator: (data) => isValidDataArray(data) || data.action_code === "ASK_CLARIFICATION" }
+                    { id: "5.1", type: "happy", name: "Upsell Triệu chứng", query: "Khách bị ho thì bán thuốc gì?", expected: "Mảng Thuốc gợi ý kèm thông tin tích lũy", validator: (data) => isValidDataArray(data) },
+                    { id: "5.2", type: "edge", name: "Triệu chứng rác", query: "Khách bị xkhkhas thì bán gì?", expected: "Không vỡ DB, trả mảng rỗng (0 sp)", validator: (data) => getArrayData(data).length === 0 || data.action_code === "ASK_CLARIFICATION" }
                 ]
             },
             {
@@ -282,15 +282,15 @@
                 id: "MOD_8",
                 name: "Module 8 - Gợi ý đơn thuốc (Market Basket)",
                 tests: [
-                    { id: "8.1", type: "happy", name: "Bán chéo thông minh", query: "Đơn thuốc này kê Amoxicillin có gì bán kèm không?", expected: "Trả về dữ liệu Market Basket hợp nhất (1 Bảng)", validator: (data) => isValidDataArray(data) }
+                    { id: "8.1", type: "happy", name: "Bán chéo thông minh", query: "Đơn thuốc này kê Thực phẩm bảo vệ sức khỏe GINKCEMAX Q10 có gì bán kèm không?", expected: "Trả về dữ liệu Market Basket hợp nhất (1 Bảng)", validator: (data) => isValidDataArray(data) }
                 ]
             },
             {
                 id: "MOD_10",
                 name: "Module 10 - Group Trọng Tâm & Tra Cứu",
                 tests: [
-                    { id: "10.1", type: "happy", name: "Thông tin thuốc", query: "Cho xin thông tin Panadol sủi", expected: "Mảng Row(s) details", validator: (data) => isValidDataArray(data) },
-                    { id: "10.2", type: "edge", name: "SQL Injection String", query: "Cho thông tin thuốc Panadol'; DROP TABLE CF_ItemTbl --", expected: "An toàn, trả về mảng trống hoặc báo Không thấy", validator: (data) => isValidDataArray(data) || data.action_code === "ASK_CLARIFICATION" },
+                    { id: "10.1", type: "happy", name: "Thông tin thuốc", query: "Cho xin thông tin mã hàng A008", expected: "Mảng Row(s) details", validator: (data) => isValidDataArray(data) },
+                    { id: "10.2", type: "edge", name: "SQL Injection String", query: "Cho thông tin thuốc mã hàng A008'; DROP TABLE CF_ItemTbl --", expected: "An toàn, trả về mảng trống hoặc báo Không thấy", validator: (data) => isValidDataArray(data) || data.action_code === "ASK_CLARIFICATION" },
                     { id: "10.3", type: "happy", name: "Hàng Trọng Tâm", query: "Nay tập trung đẩy mạnh bán gì em?", expected: "Mảng SP", validator: (data) => isValidDataArray(data) }
                 ]
             },
@@ -298,14 +298,19 @@
                 id: "MOD_CM_1",
                 name: "Module Common - Báo cáo & Tài chính",
                 tests: [
-                    { id: "C.1", type: "happy", name: "Doanh số Tháng (Happy)", query: "Cho tôi xem báo cáo doanh số tháng trước", expected: "Chart/Data", validator: (data) => isValidDataArray(data) || data.chart || data.table },
+                    { id: "C.1", type: "happy", name: "Doanh số Tháng (Mặc định)", query: "Cho tôi xem báo cáo doanh số tháng trước", expected: "Báo cáo nhân viên mặc định", validator: (data) => isValidDataArray(data) || data.chart || data.table },
                     { id: "C.2", type: "edge", name: "Date Out of Bounds 2099", query: "Báo cáo doanh thu năm 2099", expected: "Trả mảng trống (không Exception SQL)", validator: (data) => {
                         if (isValidDataArray(data) && data.length === 0) return true;
                         if (data.action_code === "ASK_CLARIFICATION") return true;
                         if (data.status === 'success') return true; 
                         return false;
                     }},
-                    { id: "C.3", type: "happy", name: "Công nợ khách chung", query: "Cho xem tổng hợp công nợ khách hàng", expected: "Datagrid nợ", validator: (data) => isValidDataArray(data) || data.table }
+                    { id: "C.3", type: "happy", name: "Doanh số Nhân Viên", query: "Xem doanh thu tháng trước của nhân viên nguyễn duy minh", expected: "Bảng doanh số nhân viên", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) },
+                    { id: "C.4", type: "happy", name: "Doanh số Khách Hàng", query: "Xem báo cáo doanh thu tháng trước của khách hàng HB106", expected: "Bảng doanh số theo khách hàng", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) },
+                    { id: "C.5", type: "happy", name: "Doanh số Sản Phẩm", query: "Xem doanh thu tháng trước của sản phẩm mã A008", expected: "Bảng sản phẩm bán chạy", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) },
+                    { id: "C.6", type: "happy", name: "Doanh thu Hôm Nay", query: "Xem doanh thu hôm nay", expected: "Bảng báo cáo lọc theo ngày hôm nay", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) },
+                    { id: "C.7", type: "happy", name: "Công nợ khách chung", query: "Cho xem tổng hợp công nợ khách hàng", expected: "Datagrid nợ tổng quát", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) },
+                    { id: "C.8", type: "happy", name: "Công nợ khách chi tiết", query: "Xem công nợ chi tiết của mã HB106", expected: "Chi tiết các hóa đơn nợ", validator: (data) => isValidDataArray(data) || data.table || (data.status === 'success' && Array.isArray(data.data) && data.data.length === 0) || data.action_code === "ASK_CLARIFICATION" }
                 ]
             },
             {

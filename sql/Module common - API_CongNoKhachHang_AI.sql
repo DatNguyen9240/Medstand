@@ -1,4 +1,4 @@
-CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
+﻿CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
    @DenNgay     DATETIME     = NULL,
    @khachhang  VARCHAR(50)  = '',
    @Username   VARCHAR(50)
@@ -11,8 +11,8 @@ BEGIN
    IF @khachhang = '' OR @khachhang IS NULL
    BEGIN
        -- Dùng bảng tạm để tổng hợp trước, tránh query view nhiều lần
-       CREATE TABLE #CongNo (ObjectID VARCHAR(50), TongNo MONEY)
-       INSERT INTO #CongNo
+       DECLARE @CongNo TABLE (ObjectID VARCHAR(50), TongNo MONEY)
+       INSERT INTO @CongNo
        SELECT ObjectID, SUM(Amount) AS TongNo
        FROM vCongNoBanHang
        WHERE DocumentDate <= @DenNgay
@@ -22,14 +22,14 @@ BEGIN
            O.ObjectName AS TenKH,
            C.TongNo,
            C.ObjectID AS MaKH
-       FROM #CongNo C
+       FROM @CongNo C
        LEFT JOIN CF_ObjectTbl O ON C.ObjectID = O.ObjectID
        WHERE (
            @BanLanhDao = 1
            OR C.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
        )
        ORDER BY C.TongNo DESC
-       DROP TABLE #CongNo
+       
        RETURN
    END
    SELECT

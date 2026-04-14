@@ -1,4 +1,4 @@
-﻿IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
+IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
     @Username    VARCHAR(50)  = '',
@@ -57,19 +57,7 @@ BEGIN
 
     SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END
 
-    -- ════════════════════════════════════════════════════
-    -- BẢNG 1: THÔNG BÁO DOANH SỐ
-    -- ════════════════════════════════════════════════════
-    SELECT
-        CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
-        CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
-        CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
-        CASE 
-            WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
-            WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
-            ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
-        END AS LoiNhacAI
-
+    -- (ĐÃ LOẠI BỎ BẢNG 1 RỜI RẠC. DỮ LIỆU TÍCH LŨY SẼ ĐƯỢC NHÚNG VÀO TỪNG CỘT CỦA BẢNG 2 BÊN DƯỚI)
     -- ═══ 4. Giá mới nhất từ Bảng giá ═══
     SELECT
         D.ItemID,
@@ -122,64 +110,95 @@ BEGIN
     WHERE DocumentID = @ProgramID
 
     -- ════════════════════════════════════════════════════
-    -- BẢNG 2: GỢI Ý SẢN PHẨM
+    -- BẢNG 2: GỢI Ý SẢN PHẨM (KỊCH BẢN CHIA NHÁNH BẰNG IF ELSE)
     -- ════════════════════════════════════════════════════
-    SELECT TOP (@TopN)
-        I.ItemID, 
-        I.ItemName, 
-        I.Unit,
-        CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
-        ISNULL(S.QuantityinStock, 0)               AS TonKho,
-        (
-            (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
-            (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
-            (CASE WHEN @timkiem != '' AND (
-                CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
-                CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
-            ) THEN 100000 ELSE 0 END) +
-            (CASE WHEN @timkiem != '' AND (
-                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
-                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
-            ) THEN 50000 ELSE 0 END) +
-            (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
-            (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
-        ) AS PriorityScore,
-        CASE
-            WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
-            WHEN @timkiem != '' AND (
-                I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
-                I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%')
-                THEN N'🔍 Triệu chứng: ' + @timkiem + 
-                     CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 
-                           THEN N' | ⚠️ Hết hàng' 
-                           ELSE N' | ✅ Còn hàng' END
-            WHEN KQ.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng khách quen'
-            WHEN BC.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng bán chạy'
-            ELSE N'✨ Gợi ý sẵn có'
-        END AS LyDoGoiY
-    FROM CF_ItemTbl I
-    LEFT JOIN #TonKho        S  ON I.ItemID = S.ItemID  
-    LEFT JOIN #GiaThiTruong  G  ON I.ItemID = G.ItemID
-    LEFT JOIN #KhachQuen     KQ ON I.ItemID = KQ.ItemID
-    LEFT JOIN #BanChay       BC ON I.ItemID = BC.ItemID
-    LEFT JOIN #TrongTam      TT ON I.ItemID = TT.ItemID
-    WHERE ISNULL(I.isDisable, 0) = 0
-      AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
-      AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' 
-      AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
-      AND (
-          (TT.ItemID IS NOT NULL AND ISNULL(S.QuantityinStock, 0) > 0)
-          OR
-          (@timkiem != '' AND (
-              I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
-              I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
-          ))
-          OR (@timkiem = '' AND ISNULL(S.QuantityinStock, 0) > 0
-              AND (KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL))
-          OR (@timkiem = '' AND ISNULL(S.QuantityinStock, 0) > 0
-              AND KQ.ItemID IS NULL AND BC.ItemID IS NULL)
-      )
-    ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
+
+    IF @timkiem != ''
+    BEGIN
+        -- ====================================================================
+        -- KỊCH BẢN 1: TÌM SẢN PHẨM THEO TRIỆU CHỨNG (SEARCH KEY)
+        -- Yêu cầu: Trả về chính xác hàng khớp từ khóa. Tuyệt đối không nhét Trọng Tâm vào.
+        -- ====================================================================
+        SELECT TOP (@TopN)
+            CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
+            CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
+            CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
+            CASE 
+                WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
+                WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+                ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+            END AS LoiNhacAI,
+
+            I.ItemID, 
+            I.ItemName, 
+            I.Unit,
+            CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
+            ISNULL(S.QuantityinStock, 0)               AS TonKho,
+            (
+                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
+                (CASE WHEN CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
+                           CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
+                 THEN 100000 ELSE 0 END) +
+                (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
+                           I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
+                 THEN 50000 ELSE 0 END)
+            ) AS PriorityScore,
+            N'🔍 Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | ⚠️ Hết hàng' ELSE N' | ✅ Còn hàng' END AS LyDoGoiY
+        FROM CF_ItemTbl I
+        LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
+        LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
+        WHERE ISNULL(I.isDisable, 0) = 0
+          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+          AND (I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%')
+        ORDER BY PriorityScore DESC
+    END
+    ELSE
+    BEGIN
+        -- ====================================================================
+        -- KỊCH BẢN 2: GỢI Ý UPSELL TỰ ĐỘNG (KHÔNG CÓ TRIỆU CHỨNG)
+        -- Yêu cầu: Gợi ý Hàng Trọng Tâm, Hàng Bán Chạy, Khách Quen
+        -- ====================================================================
+        SELECT TOP (@TopN)
+            CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
+            CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
+            CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
+            CASE 
+                WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
+                WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+                ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+            END AS LoiNhacAI,
+
+            I.ItemID, 
+            I.ItemName, 
+            I.Unit,
+            CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
+            ISNULL(S.QuantityinStock, 0)               AS TonKho,
+            (
+                (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
+                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
+                (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
+                (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
+            ) AS PriorityScore,
+            CASE
+                WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
+                WHEN KQ.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng khách quen'
+                WHEN BC.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng bán chạy'
+                ELSE N'✨ Gợi ý sẵn có'
+            END AS LyDoGoiY
+        FROM CF_ItemTbl I
+        LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
+        LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
+        LEFT JOIN #KhachQuen KQ ON I.ItemID = KQ.ItemID
+        LEFT JOIN #BanChay BC ON I.ItemID = BC.ItemID
+        LEFT JOIN #TrongTam TT ON I.ItemID = TT.ItemID
+        WHERE ISNULL(I.isDisable, 0) = 0
+          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+          AND ISNULL(S.QuantityinStock, 0) > 0
+          AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL)
+        ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
+    END
 
     DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
 END
