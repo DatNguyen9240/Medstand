@@ -3,7 +3,7 @@ GO
 CREATE PROCEDURE API_ChamDiemKH_AI
     @Username    VARCHAR(50) = '',
     @khachhang   VARCHAR(50) = '',
-    @NhomFilter  VARCHAR(5)  = ''
+    @NhomFilter  VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON
@@ -12,8 +12,11 @@ BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
     END
 
-
-
+    -- Chặn bắt Natural Language parameter: Lỡ AI truyền "VIP" hoặc rác từ Natural Language
+    IF UPPER(@NhomFilter) LIKE '%VIP%' OR @NhomFilter = 'A' SET @NhomFilter = 'A'
+    ELSE IF UPPER(@NhomFilter) LIKE '%ỔN ĐỊNH%' OR UPPER(@NhomFilter) LIKE '%ON DINH%' OR @NhomFilter = 'B' SET @NhomFilter = 'B'
+    ELSE IF UPPER(@NhomFilter) LIKE '%NGUY CƠ%' OR UPPER(@NhomFilter) LIKE '%RỜI BỎ%' OR @NhomFilter = 'C' SET @NhomFilter = 'C'
+    ELSE IF @NhomFilter != '' SET @NhomFilter = '' -- Hủy lọc nếu rác
 
     DECLARE @SYSBranchID VARCHAR(50) = ''
     SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username

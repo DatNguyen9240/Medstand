@@ -448,6 +448,7 @@ BEGIN
                 WHEN FieldCode = '@DiaChi'     THEN N'Địa chỉ'
                 WHEN FieldCode = '@GhiChu' OR FieldCode = '@Notes' OR FieldCode = '@Memo' THEN N'Ghi chú'
                 WHEN FieldCode = '@DienGiai'   THEN N'Diễn giải'
+                WHEN FieldCode = '@NhomFilter' THEN N'Phân Loại Khách (VIP=A)'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN N'Ngày'
                 WHEN FieldCode = '@NgayGiao'   THEN N'Ngày giao hàng'
                 WHEN FieldCode LIKE '%Date'    THEN N'Ngày'

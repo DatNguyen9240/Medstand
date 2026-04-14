@@ -251,7 +251,9 @@
                 id: "MOD_3",
                 name: "Module 3 - Chấm điểm KH",
                 tests: [
-                    { id: "3.1", type: "happy", name: "Tra Khách VIP", query: "Danh sách khách VIP của tôi", expected: "Danh Sách KH", validator: (data) => isValidDataArray(data) }
+                    { id: "3.1", type: "happy", name: "Tra Toàn Bộ Nhóm", query: "Cho tôi xem danh sách chấm điểm khách hàng", expected: "Danh sách đầy đủ nhóm A, B, C", validator: (data) => isValidDataArray(data) },
+                    { id: "3.2", type: "happy", name: "Lọc Đúng Khách VIP", query: "Danh sách khách VIP của tôi", expected: "Chỉ lôi ra khách nhóm A", validator: (data) => isValidDataArray(data) && getArrayData(data).every(row => row.Nhom === 'A' || (row.PhanLoai && row.PhanLoai.includes('VIP'))) },
+                    { id: "3.3", type: "edge", name: "Lọc Rác Dữ Liệu", query: "Cho tôi xem danh sách khách hàng béo phì lười vận động", expected: "Tự động hủy lọc, trả về toàn bộ Khách hàng thay vì báo lỗi SQL", validator: (data) => isValidDataArray(data) }
                 ]
             },
             {
