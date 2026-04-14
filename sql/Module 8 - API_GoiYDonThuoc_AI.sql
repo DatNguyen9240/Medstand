@@ -1,4 +1,4 @@
-﻿IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
+IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
 GO
 CREATE PROCEDURE API_GoiYDonThuoc_AI
     @timkiem NVARCHAR(500) = ''
@@ -23,7 +23,7 @@ BEGIN
       AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
     ORDER BY CF.ItemName ASC;
 
-    SELECT * FROM #Table1;
+    -- SELECT * FROM #Table1; -- COMMENT ĐỂ TRÁNH CRASH N8N KHI TRẢ 2 BẢNG
 
 
     -- BẢNG 2: Bán chéo thông minh & Sản phẩm tương tự
@@ -46,34 +46,32 @@ BEGIN
           AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT');
     END
 
-    -- 2.2. Logic bán chéo Kháng sinh / Tăng đề kháng cũ
-    IF EXISTS (SELECT 1 FROM #Keys WHERE TuKhoa LIKE N'%Amox%' OR TuKhoa LIKE N'%Cefu%' OR TuKhoa LIKE N'%Kháng sinh%')
-    BEGIN
-        INSERT INTO #FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
-        SELECT TOP 3 ItemID, ItemName, Unit, N'⚠️ AI CẢNH BÁO: Đơn có Kháng sinh → Tư vấn thêm Men vi sinh tránh loạn khuẩn!', 2
-        FROM CF_ItemTbl
-        WHERE (ItemName LIKE N'%Men vi sinh%' OR ItemName LIKE N'%Men sống%' OR ItemName LIKE N'%Bio%')
-          AND ItemName NOT LIKE N'%Bộ vỏ%' AND ItemName NOT LIKE N'%Vỏ hộp%'
-          AND ISNULL(isDisable, 0) = 0 AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT');
-    END
-    ELSE
-    BEGIN
-        INSERT INTO #FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
-        SELECT TOP 3 ItemID, ItemName, Unit, N'💡 GỢI Ý BÁN THÊM: Sản phẩm tăng đề kháng hỗ trợ phục hồi nhanh', 2
-        FROM CF_ItemTbl
-        WHERE (ItemName LIKE N'%Đề kháng%' OR ItemName LIKE N'%Vitamin%' OR ItemName LIKE N'%Canxi%' OR ItemName LIKE N'%Sâm%')
-          AND ISNULL(isDisable, 0) = 0 AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT');
-    END
+    -- 2.2. Logic bán chéo thông minh dựa trên lịch sử hóa đơn thực tế (Market Basket Analysis)
+    INSERT INTO #FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
+    SELECT TOP 3 
+        CF.ItemID, CF.ItemName, CF.Unit, 
+        N'💡 GỢI Ý BÁN KÈM: Sản phẩm thường xuyên "cặp bài trùng" trong cùng hóa đơn', 2
+    FROM AR_InvoiceDetailTbl D
+    JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
+    JOIN AR_InvoiceDetailTbl D_Other ON I.DocumentID = D_Other.DocumentID
+    JOIN CF_ItemTbl CF ON D_Other.ItemID = CF.ItemID
+    WHERE D.ItemID IN (SELECT ItemID FROM #Table1)
+      AND D_Other.ItemID NOT IN (SELECT ItemID FROM #Table1)
+      AND D_Other.ItemID NOT IN (SELECT ItemID FROM #FinalGoiY)
+      AND I.DocumentDate >= DATEADD(month, -6, GETDATE())
+      AND ISNULL(CF.isDisable, 0) = 0
+      AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
+    GROUP BY CF.ItemID, CF.ItemName, CF.Unit
+    ORDER BY COUNT(DISTINCT I.DocumentID) DESC;
 
-    -- Xuất kết quả Bảng 2 sắp xếp theo thứ tự ưu tiên
+    -- Xóa cờ 2 bảng, dồn hết về bảng cuối
+    INSERT INTO #FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
+    SELECT ItemID, ItemName, Unit, LyDoGoiY, 0 FROM #Table1;
+
+    -- Xuất kết quả Bảng dồn sắp xếp theo thứ tự ưu tiên
     SELECT ItemID, ItemName, Unit, CanhBaoAI FROM #FinalGoiY ORDER BY Priority ASC, ItemName ASC;
 
 
     DROP TABLE #Keys; DROP TABLE #Table1; DROP TABLE #FinalGoiY;
 END
 GO
-
-
-
-
-

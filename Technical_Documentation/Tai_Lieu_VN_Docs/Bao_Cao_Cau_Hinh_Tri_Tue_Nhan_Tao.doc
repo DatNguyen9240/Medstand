@@ -1,0 +1,74 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 40px; }
+    h1 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 5px; font-size: 24pt; text-align: center; }
+    h2 { color: #1d4ed8; margin-top: 30px; font-size: 16pt; }
+    h3 { color: #1e40af; font-size: 14pt; }
+    table { width: 100%; border-collapse: collapse; margin-block: 15px; }
+    td, th { border: 1px solid #94a3b8; padding: 10px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: bold; }
+    .quote { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 10px 15px; margin: 15px 0; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>BÁO CÁO CHI TIẾT CẤU HÌNH ORCHESTRATION TRÍ TUỆ NHÂN TẠO N8N</h1>
+
+<div class="quote">
+    <strong>Tóm tắt chức năng:</strong> Báo cáo đánh giá phương hướng kỹ thuật chuẩn hóa N8N nhằm gắn kết và phân bổ các tác vụ theo phân tích dữ liệu <code>@ApiCode</code> để đảm bảo độ tin cậy và không sai sót trên mảng khai thác ứng dụng đa dụng nội bộ.
+</div>
+
+<h2>1. PHÂN BỔ NHÓM MODULE LÕI (AI SPECIALIZED PIPELINES)</h2>
+<p>Toàn bộ cơ chế xử lý được kiểm soát chặt trong phân hệ Stored Procedures tự động nạp. Thiết kế N8N tập trung xử lý linh hoạt của 10 đơn vị mũi nhọn:</p>
+
+<table>
+    <tr>
+        <th>Thẻ Chỉ Định (@ApiCode)</th>
+        <th>Phân Loại Chức Năng</th>
+        <th>Dữ liệu Tham số Phái Sinh</th>
+    </tr>
+    <tr>
+        <td><code>@goi_y_don_hang</code></td>
+        <td>Gợi Ý Trí Tuệ (Order Intel)</td>
+        <td>Bắt buộc: <code>@ObjectID</code> (Giám sát chỉ tiêu tương sinh)</td>
+    </tr>
+    <tr>
+        <td><code>@upsell_goi_y</code></td>
+        <td>Kiểm Ngôn Tăng Trưởng Upsell</td>
+        <td>Bắt buộc: Mã Tình trạng hoặc Triệu chứng thông qua NLP Engine</td>
+    </tr>
+    <tr>
+        <td><code>@tuyen_ban_hang</code></td>
+        <td>Giám Đốc Thông Tuyến Data</td>
+        <td>Phân tích tham số Vắng mặt, giảm rủi ro chênh lệch chu kỳ mua bù trừ.</td>
+    </tr>
+    <tr>
+        <td><code>@tich_luy</code></td>
+        <td>Chiến Dịch KPI Điểm Tích Lũy</td>
+        <td>Phát giác <code>@ProgramID</code> thông minh truy nguyên.</td>
+    </tr>
+    <tr>
+        <td><code>@de_xuat_khuyen_mai</code></td>
+        <td>Giảm Tải Logistics Hàng Tồn</td>
+        <td>Truy đuổi hạn sử dụng sâu (Date Expired) hoặc vòng quay tài sản tồn (Turnover Rate chậm).</td>
+    </tr>
+</table>
+
+<h2>2. PHỤC HỢP CÁC MODULE VẬN HÀNH COMMON HUB</h2>
+<p>Mô hình rẽ nhánh của <em>ai_sale Router</em> xử lý độc quyền đối với các quy trình mang tính chất tạo mới tài sản (Form Injection), báo cáo giao dịch truyền thống (Ledger Viewing) theo tiêu chuẩn ISO dữ liệu, kết xuất bảng dữ liệu tài chính Kế Toán công bằng:</p>
+<ul>
+    <li>Nhóm Cấp Đơn: (<code>@tao_don_hang</code> và <code>@them_khach_hang</code>) buộc phải thông qua trạng thái <strong>CART/QUERY</strong> chờ Nhân sự chủ chốt duyệt lệnh vật lý.</li>
+    <li>Nhóm Chuyển Hoạch Tiền Tệ: Cấp báo cáo Công Nợ và Tổng Hợp Hóa Đơn hoàn toàn minh bạch.</li>
+</ul>
+
+<h2>3. AN NINH XÁC NHẬN (CONFIRMATION PROTOCOLS)</h2>
+<p>Xuyên suốt mọi lệnh thao tác, AI được nhúng mã <code>@Username</code> ngầm định để ghi nhận lịch sử xử lý (Audit Logs). Bất kỳ lệnh làm thay đổi chỉ số hệ thống (Mảng POST Logic) sẽ kích hoạt tham số mã cứng <code>isConfirm = 1</code> bắt buộc quản trị viên ký tên nhằm ngăn cấm quá trình AI can thiệp vào thay đổi tự do Dữ liệu Gốc Doanh Nghiệp mà không lường trước hậu quả hệ thống.</p>
+
+<div class="quote">
+    Báo cáo này trực tiếp minh chứng sự kiểm soát tối cao của doanh nghiệp đối với luồng tự động hóa bằng AI, qua đó đảm bảo ứng dụng chuyển giao hoàn toàn không tồn tại khả năng vượt quyền độc lập nằm ngoài thiết kế của kỹ sư gốc.
+</div>
+
+</body>
+</html>

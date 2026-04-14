@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medstand AI - Auto Test Runner 2.0</title>
+    <!-- Core CSS Base for UI -->
+    <script src="../env.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-hover: #334155;
+            --text-color: #f8fafc;
+            --primary: #3b82f6;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border-color: #475569;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            background: -webkit-linear-gradient(45deg, #3b82f6, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0 0 10px 0;
+        }
+
+        .btn-run-all {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            transition: all 0.2s;
+            margin-top: 10px;
+        }
+
+        .btn-run-all:hover { transform: scale(1.05); }
+        .btn-run-all:disabled { background: #475569; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .summary {
+            display: flex;
+            justify-content: space-between;
+            background: var(--card-bg);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .counter { font-size: 18px; font-weight: 600; }
+        .counter.success { color: var(--success); }
+        .counter.fail { color: var(--danger); }
+
+        /* Accordion Structure */
+        .module-group {
+            background: var(--card-bg);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: #1e293b;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .module-header:hover { background: var(--card-hover); }
+        .module-title { font-size: 18px; font-weight: bold; }
+        
+        .btn-run-module {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-run-module:hover { background: #2563eb; }
+        .btn-run-module:disabled { background: #475569; cursor: not-allowed; }
+
+        .module-content {
+            padding: 0 20px 20px 20px;
+            display: block; /* Expand by default for now */
+        }
+
+        .test-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .test-item {
+            background: #0f172a;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            border-left: 4px solid #475569;
+            transition: all 0.3s;
+        }
+
+        .test-item.running { border-left-color: var(--warning); box-shadow: 0 0 10px rgba(245, 158, 11, 0.2); }
+        .test-item.pass { border-left-color: var(--success); }
+        .test-item.fail { border-left-color: var(--danger); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2); }
+
+        .test-info { flex: 1; }
+        .test-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .test-name { font-weight: bold; font-size: 15px; }
+        .badge-edge { background: var(--warning); color: #000; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .badge-happy { background: var(--primary); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+
+        .test-desc { font-size: 13px; color: #cbd5e1; margin-bottom: 4px; }
+        .test-expected { font-size: 12px; color: #94a3b8; font-style: italic; }
+        
+        .test-status {
+            font-weight: bold;
+            min-width: 80px;
+            text-align: right;
+            padding-top: 5px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: var(--warning);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .json-log {
+            margin-top: 10px;
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            color: var(--success);
+            display: none;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+        }
+        .json-log.error { color: #f87171; border-color: #7f1d1d; background: #450a0a; }
+
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Medstand AI Auto Test Runner 2.0</h1>
+            <p>Trình giả lập Kiểm thử AI Mở rộng với 19 Modules SQL & Edge Cases</p>
+            <button class="btn-run-all" id="btnRunAll" onclick="runAllModules()">▶ BẮT ĐẦU CHẠY TẤT CẢ MODULES</button>
+        </div>
+
+        <div class="summary">
+            <div class="counter">Tổng số Tests: <span id="lblTotal">0</span></div>
+            <div class="counter success">Thành công (PASS): <span id="lblPass">0</span></div>
+            <div class="counter fail">Thất bại (FAIL): <span id="lblFail">0</span></div>
+        </div>
+
+        <div id="moduleContainer">
+            <!-- Modules will be dynamically injected here -->
+        </div>
+    </div>
+
+    <script>
+        /**
+         * GLOBAL VARIABLES & HELPERS
+         */
+        let passCount = 0;
+        let failCount = 0;
+        let totalTests = 0;
+
+        const N8N_URL = window.API_CONFIG?.N8N_BASE || "http://localhost:5678";
+        const WEBHOOK_URL = N8N_URL + (window.API_CONFIG?.CHAT_WEBHOOK || "/webhook/hook-ai-dainao");
+
+        // Helper check valid array data in various response structures
+        const getArrayData = (res) => {
+            if (Array.isArray(res)) return res;
+            if (res && Array.isArray(res.data)) return res.data;
+            if (res && res.table && Array.isArray(res.table)) return res.table;
+            return [];
+        };
+        const isValidDataArray = (data) => getArrayData(data).length > 0;
+        
+        // Helper check panel open
+        const isOpenPanel = (data) => data.action_code === "OPEN_API_PANEL" || (data.smartform && data.smartform.formType);
+
+        const MODULES = [
+            {
+                id: "MOD_1",
+                name: "Module 1 - Gợi ý đơn hàng",
+                tests: [
+                    { id: "1.1", type: "happy", name: "Gợi ý Happy Path", query: "Hôm nay bán gì cho khách mã HB106?", expected: "Mảng danh sách sản phẩm", validator: (data) => isValidDataArray(data) },
+                    { id: "1.2", type: "edge", name: "Thiếu Tham Số Khách Hàng", query: "Hôm nay tôi bán gì được nhỉ?", expected: "AI hỏi lại tên KH hoặc chạy Default an toàn", validator: (data) => data.action_code === "ASK_CLARIFICATION" || isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_2",
+                name: "Module 2 - Tuyến bán hàng",
+                tests: [
+                    { id: "2.1", type: "happy", name: "Khách rớt tuyến", query: "Hôm nay có khách nào lâu chưa mua không?", expected: "Mảng Khách Hàng", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_3",
+                name: "Module 3 - Chấm điểm KH",
+                tests: [
+                    { id: "3.1", type: "happy", name: "Tra Khách VIP", query: "Danh sách khách VIP của tôi", expected: "Danh Sách KH", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_4",
+                name: "Module 4 - Tích Lũy",
+                tests: [
+                    { id: "4.1", type: "happy", name: "Check Tích Lũy", query: "Cho xem tình hình tích lũy của khách mã HB106", expected: "Datagrid tích lũy", validator: (data) => isValidDataArray(data) || data.smartform }
+                ]
+            },
+            {
+                id: "MOD_5",
+                name: "Module 5 - Upsell Gợi Ý",
+                tests: [
+                    { id: "5.1", type: "happy", name: "Upsell Triệu chứng", query: "Khách ho khan, sổ mũi thì bán thuốc gì?", expected: "Mảng Thuốc gợi ý", validator: (data) => isValidDataArray(data) },
+                    { id: "5.2", type: "edge", name: "Triệu chứng rác", query: "Khách bị xkhkhas thì bán gì?", expected: "Không vỡ DB, trả mảng rỗng hoặc Ask Clarification", validator: (data) => isValidDataArray(data) || data.action_code === "ASK_CLARIFICATION" }
+                ]
+            },
+            {
+                id: "MOD_6",
+                name: "Module 6 - Đề Xuất Khuyến Mãi",
+                tests: [
+                    { id: "6.1", type: "happy", name: "Hàng sắp hết Date", query: "Hàng nào sắp hết date cần xả gấp?", expected: "DS hàng Date cận", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_8",
+                name: "Module 8 - Gợi ý đơn thuốc (Market Basket)",
+                tests: [
+                    { id: "8.1", type: "happy", name: "Bán chéo thông minh", query: "Đơn thuốc này kê Amoxicillin có gì bán kèm không?", expected: "Trả về dữ liệu Market Basket hợp nhất (1 Bảng)", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_10",
+                name: "Module 10 - Group Trọng Tâm & Tra Cứu",
+                tests: [
+                    { id: "10.1", type: "happy", name: "Thông tin thuốc", query: "Cho xin thông tin Panadol sủi", expected: "Mảng Row(s) details", validator: (data) => isValidDataArray(data) },
+                    { id: "10.2", type: "edge", name: "SQL Injection String", query: "Cho thông tin thuốc Panadol'; DROP TABLE CF_ItemTbl --", expected: "An toàn, trả về mảng trống hoặc báo Không thấy", validator: (data) => isValidDataArray(data) || data.action_code === "ASK_CLARIFICATION" },
+                    { id: "10.3", type: "happy", name: "Hàng Trọng Tâm", query: "Nay tập trung đẩy mạnh bán gì em?", expected: "Mảng SP", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_CM_1",
+                name: "Module Common - Báo cáo & Tài chính",
+                tests: [
+                    { id: "C.1", type: "happy", name: "Doanh số Tháng (Happy)", query: "Cho tôi xem báo cáo doanh số tháng trước", expected: "Chart/Data", validator: (data) => isValidDataArray(data) || data.chart || data.table },
+                    { id: "C.2", type: "edge", name: "Date Out of Bounds 2099", query: "Báo cáo doanh thu năm 2099", expected: "Trả mảng trống (không Exception SQL)", validator: (data) => {
+                        if (isValidDataArray(data) && data.length === 0) return true;
+                        if (data.action_code === "ASK_CLARIFICATION") return true;
+                        if (data.status === 'success') return true; 
+                        return false;
+                    }},
+                    { id: "C.3", type: "happy", name: "Công nợ khách chung", query: "Cho xem tổng hợp công nợ khách hàng", expected: "Datagrid nợ", validator: (data) => isValidDataArray(data) || data.table }
+                ]
+            },
+            {
+                id: "MOD_CM_2",
+                name: "Module Common - Lịch sử & Lưu trữ",
+                tests: [
+                    { id: "C.5", type: "happy", name: "Tồn kho thực tế", query: "Xem danh sách tồn kho hiện tại", expected: "DataGrid tồn kho", validator: (data) => isValidDataArray(data) },
+                    { id: "C.6", type: "happy", name: "Tra cứu Đơn cũ", query: "Tra cứu các đơn đặt hàng", expected: "Mảng đơn hàng theo mã KH", validator: (data) => isValidDataArray(data) }
+                ]
+            },
+            {
+                id: "MOD_CM_3",
+                name: "Module Common - FORM / INSERT (Mocking)",
+                tests: [
+                    { id: "C.7", type: "happy", name: "Mở Form Tạo Khách Hàng", query: "Tạo khách hàng mới", expected: "Chỉ Mở Form Panel, KHÔNG Insert DB thật!", validator: (data) => isOpenPanel(data) },
+                    { id: "C.8", type: "happy", name: "Mở Form Lên Đơn", query: "Thêm đơn hàng mới", expected: "Chỉ Mở Form Lên Đơn, KHÔNG xổ rác xuống DB!", validator: (data) => isOpenPanel(data) }
+                ]
+            },
+            {
+                id: "MOD_EDGE",
+                name: "Module Đặc Biệt - Tấn Công AI",
+                tests: [
+                    { id: "E.1", type: "edge", name: "Garbage Prompt Handling", query: "adsjfhlakj dshfjkas", expected: "AI Ném Ask Clarification hoặc Fallback Reply", validator: (data) => data.action_code === "ASK_CLARIFICATION" || (data.reply && data.reply.length > 5) }
+                ]
+            }
+        ];
+
+        // ---------------------------------------------------------
+        // INITIALIZE UI
+        // ---------------------------------------------------------
+        const moduleContainer = document.getElementById('moduleContainer');
+
+        function initUI() {
+            totalTests = 0;
+            MODULES.forEach((mod, mIndex) => {
+                totalTests += mod.tests.length;
+
+                const modGroup = document.createElement('div');
+                modGroup.className = 'module-group';
+                
+                // Group Header
+                const modHeader = document.createElement('div');
+                modHeader.className = 'module-header';
+                modHeader.onclick = (e) => {
+                    // Tránh trigger fold nếu bấm vào nút Run Module
+                    if(e.target.tagName !== 'BUTTON') {
+                        const content = document.getElementById(`mod-content-${mIndex}`);
+                        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                    }
+                };
+                
+                modHeader.innerHTML = `
+                    <div class="module-title">${mod.name} <span style="font-size:14px;color:#cbd5e1;font-weight:normal">(${mod.tests.length} tests)</span></div>
+                    <button class="btn-run-module" id="btn-mod-${mIndex}" onclick="runSingleModule(${mIndex})">Run Module ⚡</button>
+                `;
+
+                // Group Content
+                const modContent = document.createElement('div');
+                modContent.className = 'module-content';
+                modContent.id = `mod-content-${mIndex}`;
+                // Mod content start expanded by default
+
+                const ul = document.createElement('div');
+                ul.className = 'test-list';
+
+                mod.tests.forEach((test, tIndex) => {
+                    const tId = `test-${mIndex}-${tIndex}`;
+                    const badgeClass = test.type === 'edge' ? 'badge-edge' : 'badge-happy';
+                    const badgeText = test.type === 'edge' ? 'EDGE' : 'HAPPY';
+
+                    const li = document.createElement('div');
+                    li.className = 'test-item';
+                    li.id = tId;
+                    li.innerHTML = `
+                        <div class="test-info">
+                            <div class="test-header">
+                                <span class="${badgeClass}">${badgeText}</span>
+                                <span class="test-name">[${test.id}] ${test.name}</span>
+                            </div>
+                            <div class="test-desc">📌 Prompt: <b>"${test.query}"</b></div>
+                            <div class="test-expected">↳ Kỳ vọng (Validator): ${test.expected}</div>
+                            <div class="json-log" id="log-${tId}"></div>
+                        </div>
+                        <div class="test-status" id="status-${tId}">WAITING</div>
+                    `;
+                    ul.appendChild(li);
+                });
+
+                modContent.appendChild(ul);
+                modGroup.appendChild(modHeader);
+                modGroup.appendChild(modContent);
+                moduleContainer.appendChild(modGroup);
+            });
+
+            document.getElementById('lblTotal').innerText = totalTests;
+        }
+
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        function getAuthToken() {
+            return localStorage.getItem('auth_user') 
+                ? JSON.parse(localStorage.getItem('auth_user')).Token || 'TEST_ROUTER_TOKEN' 
+                : 'TEST_ROUTER_TOKEN';
+        }
+
+        // ---------------------------------------------------------
+        // EXECUTION ENGINE
+        // ---------------------------------------------------------
+
+        async function executeTest(mIndex, tIndex, test, token) {
+            const tId = `test-${mIndex}-${tIndex}`;
+            const itemBox = document.getElementById(tId);
+            const statusBox = document.getElementById(`status-${tId}`);
+            const logBox = document.getElementById(`log-${tId}`);
+            
+            itemBox.className = "test-item running";
+            statusBox.innerHTML = '<div class="spinner"></div>';
+            logBox.style.display = "none";
+            logBox.innerText = "";
+            logBox.className = "json-log";
+            
+            try {
+                const payload = {
+                    action: 'chat',
+                    text: test.query,
+                    session_id: 'AUTOTEST_' + Date.now(),
+                    files: []
+                };
+
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': 'Bearer ' + token,
+                        'x-api-key': window.API_CONFIG?.CHAT_API_KEY || ''
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("Thất bại HTTP " + response.status);
+                
+                const responseText = await response.text();
+                if (!responseText) throw new Error("API Webhook trả text rỗng trắng (Empty Text / Crash Node)");
+                
+                let data = null;
+                try { data = JSON.parse(responseText); } catch(e) { throw new Error("Phản hồi không phải định dạng JSON hợp lệ:\n" + responseText); }
+
+                // Check SQL API Error (Missing Params, Stored Proc Crash)
+                if (data && data.status === 'error') {
+                    throw new Error(`DB/Logic Lỗi\nMsg: ${data.message || 'Unknown'}\nAPI: ${data.apiCode || 'Unknown'}`);
+                }
+
+                // Chạy hàm Strict Validator của Test Case!
+                const isPassed = test.validator(data);
+
+                if (isPassed) {
+                    itemBox.className = "test-item pass";
+                    statusBox.innerHTML = '<span style="color:var(--success)">✔️ PASS</span>';
+                    logBox.style.display = "block";
+                    const shortResponse = isValidDataArray(data) && data.length > 3 
+                        ? [...data.slice(0,2), `... (+${data.length - 2} items more)` ] 
+                        : data;
+                    logBox.innerText = "Dữ liệu Hợp lệ (Validator OK):\n" + JSON.stringify(shortResponse, null, 2);
+                    passCount++;
+                } else {
+                    throw new Error("Dữ liệu TRƯỢT Validator (Cấu trúc không đạt Schema/Yêu cầu).\n" + JSON.stringify(data, null, 2));
+                }
+            } catch (error) {
+                itemBox.className = "test-item fail";
+                statusBox.innerHTML = '<span style="color:var(--danger)">❌ FAIL</span>';
+                logBox.style.display = "block";
+                logBox.className = "json-log error";
+                logBox.innerText = `CẢNH BÁO LỖI:\n${error.message}`;
+                failCount++;
+            }
+            
+            // Xóa code đếm tổng ở đây để không làm loạn hiển thị trên summary bar
+            return { pass: itemBox.classList.contains('pass') ? 1 : 0, fail: itemBox.classList.contains('fail') ? 1 : 0 };
+        }
+
+        function updateSummaryDisplay(pass, fail) {
+            document.getElementById('lblPass').innerText = pass;
+            document.getElementById('lblFail').innerText = fail;
+        }
+
+        // Chạy Tất Cả Modules
+        async function runAllModules() {
+            const btn = document.getElementById('btnRunAll');
+            btn.disabled = true;
+            btn.innerText = "⏳ ĐANG CHẠY TOÀN BỘ...";
+            
+            passCount = 0; failCount = 0;
+            updateSummaryDisplay(passCount, failCount);
+
+            // Vô hiệu hóa nút Mod
+            document.querySelectorAll('.btn-run-module').forEach(b => b.disabled = true);
+
+            const token = getAuthToken();
+
+            for (let mIndex = 0; mIndex < MODULES.length; mIndex++) {
+                const mod = MODULES[mIndex];
+                // Kích chuột nhấp nháy cho chạy
+                const content = document.getElementById(`mod-content-${mIndex}`);
+                content.style.display = 'block';
+                
+                for (let tIndex = 0; tIndex < mod.tests.length; tIndex++) {
+                    const res = await executeTest(mIndex, tIndex, mod.tests[tIndex], token);
+                    updateSummaryDisplay(passCount, failCount);
+                    await sleep(700); // 700ms throttle
+                }
+            }
+
+            btn.innerText = "▶ CHẠY LẠI TẤT CẢ (RE-RUN)";
+            btn.disabled = false;
+            document.querySelectorAll('.btn-run-module').forEach(b => b.disabled = false);
+            alert(`HOÀN TẤT CHẠY ALL TESTS!\nThành công: ${passCount}\nThất bại: ${failCount}`);
+        }
+
+        // Chạy Một Module Cụ Thể (Block)
+        async function runSingleModule(mIndex) {
+            const btn = document.getElementById(`btn-mod-${mIndex}`);
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "⏳ Running...";
+
+            document.getElementById('btnRunAll').disabled = true;
+            document.getElementById(`mod-content-${mIndex}`).style.display = 'block';
+
+            const token = getAuthToken();
+            const mod = MODULES[mIndex];
+
+            // Local counters
+            let locPass = 0;
+            let locFail = 0;
+
+            // Loop reset trạng thái cục bộ
+            for (let tIndex = 0; tIndex < mod.tests.length; tIndex++) {
+                const tId = `test-${mIndex}-${tIndex}`;
+                const item = document.getElementById(tId);
+                if (item.classList.contains('pass')) passCount = Math.max(0, passCount - 1);
+                if (item.classList.contains('fail')) failCount = Math.max(0, failCount - 1);
+
+                item.className = "test-item";
+                document.getElementById(`status-${tId}`).innerText = "WAITING";
+                document.getElementById(`log-${tId}`).style.display = "none";
+                document.getElementById(`log-${tId}`).innerText = "";
+            }
+            updateSummaryDisplay(passCount, failCount);
+
+            for (let tIndex = 0; tIndex < mod.tests.length; tIndex++) {
+                await executeTest(mIndex, tIndex, mod.tests[tIndex], token);
+                updateSummaryDisplay(passCount, failCount);
+                await sleep(700);
+            }
+
+            btn.innerText = originalText;
+            btn.disabled = false;
+            document.getElementById('btnRunAll').disabled = false;
+        }
+
+        window.onload = initUI;
+    </script>
+</body>
+</html>

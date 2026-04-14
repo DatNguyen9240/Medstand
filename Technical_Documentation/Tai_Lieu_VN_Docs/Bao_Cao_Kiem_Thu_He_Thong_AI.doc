@@ -1,0 +1,99 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 40px; }
+    h1 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 5px; font-size: 24pt; text-align: center; }
+    h2 { color: #1d4ed8; margin-top: 30px; font-size: 16pt; }
+    h3 { color: #1e40af; font-size: 14pt; }
+    table { width: 100%; border-collapse: collapse; margin-block: 15px; }
+    td, th { border: 1px solid #94a3b8; padding: 10px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: bold; }
+    .quote { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 10px 15px; margin: 15px 0; font-style: italic; }
+    ul { margin-top: 5px; }
+    li { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>BÁO CÁO KIỂM THỬ HỆ THỐNG TRÍ TUỆ NHÂN TẠO MEDSTAND AI</h1>
+
+<div class="quote">
+    <strong>Tóm tắt:</strong> Tài liệu này liệt kê toàn bộ các kịch bản kiểm thử (Use Cases) nhằm chứng minh khả năng đọc hiểu, định tuyến và xử lý dữ liệu động của hệ thống AI Medstand. Áp dụng dùng trong nghiệm thu chức năng nội bộ (UAT) và tích hợp vào quy trình vận hành chuỗi phân phối.
+</div>
+
+<h2>1. PHÂN HỆ XỬ LÝ NGÔN NGỮ TỰ NHIÊN (NLP) & BÁN HÀNG TỰ ĐỘNG</h2>
+<p><em>Kiểm thử khả năng đọc hiểu ngữ cảnh của NLP Engine và luồng dữ liệu K_SieuLuong_V2.</em></p>
+
+<h3>1.1. Phân tích & Gợi ý lên đơn đại lý</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Hôm nay bán gì cho nhà thuốc Phúc Khang?"</em> hoặc <em>"Nên đẩy hàng gì cho khách HB106?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> AI tự động nhận diện và gọi thủ tục <code>API_GoiYDonHang_AI</code> kèm Mã Khách Hàng. Trả về bảng danh sách các mặt hàng phù hợp với lịch sử mua của riêng đại lý đó.</li>
+    <li><strong>Kiểm thử chuỗi mở:</strong> <em>"Nay tập trung đẩy mạnh bán gì em?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> AI gọi <code>API_GoiYDonHang_AI</code> không truyền tham số Khách Hàng -&gt; Trả về danh sách Top hàng bán chạy nhất toàn chi nhánh.</li>
+</ul>
+
+<h3>1.2. Kịch bản Upsell & Trích xuất triệu chứng y khoa</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Khách ho khan, sổ mũi thì bán thuốc gì?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> AI bóc tách chính xác hệ từ khóa <code>ho khan, sổ mũi</code> -&gt; Chuyển hướng xử lý tới <code>API_UpsellGoiY_AI</code> -&gt; Trả về mảng sản phẩm tương ứng với bệnh lý.</li>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Đơn thuốc này kê Amoxicillin, Paracetamol có sản phẩm nào thay thế không?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Chuyển hướng lệnh <code>API_GoiYDonThuoc_AI</code> -&gt; Cung cấp thuốc thay thế nội bộ và gợi ý Cảnh Báo Bán Chéo (Cross-sell men vi sinh hỗ trợ).</li>
+</ul>
+
+<h3>1.3. Cảnh báo Lịch Trình Tuyến Bán Hàng</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Hôm nay có khách nào lâu chưa mua không?"</em> hoặc <em>"Tuyến của tôi hôm nay phải đi rảo đâu?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Thông qua <code>API_TuyenBanHang_AI</code>, hệ thống kích hoạt cảnh báo Rời Bỏ và ưu tiên lập biểu đồ ghé thăm cho Trình dược viên.</li>
+</ul>
+
+<h3>1.4. Xếp hạng Khách hàng & Chính sách Tích Lũy</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Danh sách khách VIP của tôi"</em> hoặc <em>"Khách nào sắp nghỉ mua?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> AI tự khởi tạo tệp lọc Nhóm A/B/C để thực thi <code>API_ChamDiemKH_AI</code>.</li>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Cho xem tình hình tích lũy của nhà thuốc Minh Châu"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Mapping tiến độ tích lũy thông qua <code>API_TichLuy_AI</code> để vạch biểu đồ doanh số.</li>
+</ul>
+
+<h2>2. PHÂN HỆ QUẢN TRỊ BẢNG BIỂU DÀNH CHO BAN GIÁM ĐỐC (DASHBOARD)</h2>
+
+<h3>2.1. Doanh số & Tăng trưởng</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Cho tôi xem báo cáo doanh số tháng này"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Render biểu đồ Doanh Thu trực quan kết hợp cung cấp thẻ thông tin định lượng (KPI Cards) qua hàm <code>API_DoanhSo_AI</code>.</li>
+</ul>
+
+<h3>2.2. Kiểm soát Tồn Kho & Hàng Cận Date</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Xem danh sách tồn kho hiện tại"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Nạp dữ liệu toàn tuyến lên DataGrid thông qua <code>API_DanhsachTonKho_AI</code>.</li>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Hàng nào sắp hết date cần xả gấp?"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Gọi <code>API_DeXuatKhuyenMai_AI</code> -&gt; Hiển thị danh mục cần cắt lỗ (Đỏ) hoặc khuyến mãi chạy số (Cam).</li>
+</ul>
+
+<h2>3. TỰ ĐỘNG HÓA NHẬP LIỆU (SMART FORM ENGINE)</h2>
+
+<h3>3.1. Hợp đồng Khách Hàng Mới</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Tạo khách hàng mới"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Hệ thống mở Giao diện Form thông minh bám theo chuẩn <code>API_KhachHang_Insert_AI</code>. Nhập liệu xác nhận thành công lưu vào Database.</li>
+</ul>
+
+<h3>3.2. Quản Trị Đơn Đặt Hàng</h3>
+<ul>
+    <li><strong>Câu lệnh kiểm thử:</strong> <em>"Thêm đơn hàng mới"</em></li>
+    <li><strong>Kết quả kỳ vọng:</strong> Khởi tạo giỏ hàng theo phân luồng dữ liệu mảng (Datagrid JSON) bám sát <code>API_DonHangChiTiet_Insert_AI</code>.</li>
+</ul>
+
+<h2>4. PHÂN HỆ KẾ TOÁN & TÀI CHÍNH CƠ SỞ</h2>
+<ul>
+    <li><strong>Công nợ đại lý:</strong> Câu lệnh <em>"Cho xem tổng hợp công nợ khách hàng"</em> -&gt; Trả bảng báo cáo số dư, cho phép nhấp vào để Drill-down xuống <code>API_CongNoChiTiet_AI</code>.</li>
+    <li><strong>Tra cứu chứng từ:</strong> Câu lệnh <em>"Tra cứu các đơn đặt hàng"</em> -&gt; Trả bảng thông tin thông qua <code>API_DonHang_AI</code> hoàn thiện với hệ thống bộ lọc Ngày linh hoạt.</li>
+</ul>
+
+<div class="quote">
+    <strong>Kết luận:</strong> Nếu toàn bộ các quy trình trên thao tác trơn tru bằng các cấu trúc câu văn tự nhiên, hệ thống kỹ thuật Backend đã đạt được mức độ trưởng thành cần thiết để có thể bàn giao đưa vào vận hành thương mại.
+</div>
+
+</body>
+</html>

@@ -13,11 +13,11 @@ echo =======================================================
 :: 2. CẤU HÌNH NODE.JS PORTABLE (TẢI + GIẢI NÉN BẰNG TAR CHỐNG PATH DÀI)
 :: ============================================================
 set "NODE_VERSION=22.14.0"
-set "NODE_DIR=%BASE_DIR%\node-v%NODE_VERSION%-win-x64"
+set "NODE_DIR=%BASE_DIR%\.bin\node-v%NODE_VERSION%-win-x64"
 set "NODE_EXE=%NODE_DIR%\node.exe"
 set "npm_cmd=%NODE_DIR%\npm.cmd"
 set "npx_cmd=%NODE_DIR%\npx.cmd"
-set "NODE_ZIP=%BASE_DIR%\node-v%NODE_VERSION%-win-x64.zip"
+set "NODE_ZIP=%BASE_DIR%\.bin\node-v%NODE_VERSION%-win-x64.zip"
 set "NODE_URL=https://nodejs.org/dist/v%NODE_VERSION%/node-v%NODE_VERSION%-win-x64.zip"
 
 if exist "%NODE_EXE%" goto SKIP_NODE_SETUP
@@ -36,7 +36,8 @@ if not exist "%NODE_ZIP%" (
 )
 
 echo [SETUP] Giai nen sieu toc (tar.exe)...
-tar -xf "%NODE_ZIP%" -C "%BASE_DIR%"
+if not exist "%BASE_DIR%\.bin" mkdir "%BASE_DIR%\.bin"
+tar -xf "%NODE_ZIP%" -C "%BASE_DIR%\.bin"
 del /f /q "%NODE_ZIP%" 2>nul
 
 :SKIP_NODE_SETUP
@@ -76,16 +77,15 @@ set "N8N_LISTEN_ADDRESS=0.0.0.0"
 set "N8N_PROTOCOL=http"
 set "N8N_CORS_ALLOWED_ORIGINS=*"
 set "N8N_CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS,HEAD"
-set "EXECUTIONS_DATA_MAX_AGE=168"
+set "EXECUTIONS_DATA_MAX_AGE=72"
 set "EXECUTIONS_DATA_PRUNE=true"
 set "GENERIC_TIMEZONE=Asia/Ho_Chi_Minh"
-set "N8N_LOG_LEVEL=info"
+set "N8N_LOG_LEVEL=warn"
 set "N8N_LOG_OUTPUT=console"
 set "N8N_VERSION_NOTIFICATIONS_ENABLED=false"
 set "N8N_DIAGNOSTICS_ENABLED=false"
 set "N8N_HIRING_BANNER_ENABLED=false"
 set "N8N_BASIC_AUTH_ACTIVE=false"
-set "N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN=true"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 
 :: Don sach tien trinh cu neu mang hoac port bi ket
@@ -114,8 +114,9 @@ if exist "%BASE_DIR%\qdrant\qdrant.exe" (
 :: 6. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
 :: ============================================================
 echo.
-set "CF_EXE=%BASE_DIR%\cloudflared.exe"
-set "CF_LOG=%BASE_DIR%\cf_tunnel.log"
+set "CF_EXE=%BASE_DIR%\.bin\cloudflared.exe"
+set "CF_LOG=%BASE_DIR%\.logs\cf_tunnel.log"
+if not exist "%BASE_DIR%\.logs" mkdir "%BASE_DIR%\.logs"
 set "CF_URL=https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 
 if exist "%CF_EXE%" goto SKIP_CF_DOWNLOAD
@@ -167,7 +168,16 @@ if exist "%PROXY_JS%" (
 )
 
 :: ============================================================
-:: 7. EXECUTOR: GỌI N8N 
+:: 7. DỌN DẸP RÁC TỰ ĐỘNG MỖI LẦN KHỞI ĐỘNG
+:: ============================================================
+echo.
+echo [INFO] Dang tu dong don dep log va cache rac...
+if exist "%N8N_USER_FOLDER%\npm_cache" rmdir /s /q "%N8N_USER_FOLDER%\npm_cache" > nul 2>&1
+if exist "%N8N_USER_FOLDER%\.n8n\n8nEventLog*.log" del /q /f "%N8N_USER_FOLDER%\.n8n\n8nEventLog*.log" > nul 2>&1
+if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul 2>&1
+
+:: ============================================================
+:: 8. EXECUTOR: GỌI N8N 
 :: ============================================================
 echo.
 echo =======================================================

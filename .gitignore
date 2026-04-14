@@ -24,3 +24,6 @@ node_modules/
 # ── Scratch / temp files (tạo bởi AI tools) ──
 scratch*
 *.scratch.*
+
+# ?? n8n-system binaries (node, cloudflared) ??
+n8n-system/bin/

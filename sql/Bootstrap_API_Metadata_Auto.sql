@@ -365,10 +365,8 @@ BEGIN
         SELECT
             p.object_id,
             p.name AS StoredProcedure,
-            CASE 
-                WHEN p.name = 'API_DanhsachTonKho_AI' THEN '@danh_sach_ton_kho'
-                ELSE '@' + LOWER(
-                    (
+            '@' + LOWER(
+                (
                         SELECT
                             CASE
                                 WHEN n.Num > 1
@@ -387,8 +385,7 @@ BEGIN
                         ORDER BY n.Num
                         FOR XML PATH(''), TYPE
                     ).value('.', 'NVARCHAR(300)')
-                )
-            END AS ApiCode,
+            ) AS ApiCode,
             base.ApiNameRaw
         FROM sys.procedures p
         CROSS APPLY (

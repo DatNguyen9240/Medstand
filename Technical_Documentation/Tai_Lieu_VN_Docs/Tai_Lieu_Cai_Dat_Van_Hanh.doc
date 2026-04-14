@@ -1,0 +1,52 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+<meta charset="utf-8">
+<style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 40px; }
+    h1 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 5px; font-size: 24pt; text-align: center; }
+    h2 { color: #1d4ed8; margin-top: 30px; font-size: 16pt; }
+    h3 { color: #1e40af; font-size: 14pt; }
+    table { width: 100%; border-collapse: collapse; margin-block: 15px; }
+    td, th { border: 1px solid #94a3b8; padding: 10px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: bold; }
+    .quote { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 10px 15px; margin: 15px 0; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>TÀI LIỆU CÀI ĐẶT VÀ VẬN HÀNH HỆ THỐNG</h1>
+
+<div class="quote">
+    Báo cáo này chuẩn hóa các quy trình bắt buộc liên quan đến kiến thiết môi trường Máy Chủ, nạp cơ sở hạ tầng Dữ Liệu và tiến hành vận hành các Module Hệ sinh thái Thông Minh Medstand AI.
+</div>
+
+<h2>1. ĐIỀU KIỆN KỸ THUẬT NỀN TẢNG</h2>
+<p>Ban IT hoặc Kỹ sư quản trị mạng khu vực cần nghiệm thu các tiêu chuẩn tối thiểu trước khi thực thi quá trình chuyển đổi:</p>
+<ol>
+    <li>Hệ điều hành Windows Core/Server ổn định.</li>
+    <li>Khối Tích hợp CSDL vận hành tốt qua MS SQL Server và có MS Management Studio.</li>
+    <li>Ổ đĩa không sử dụng cú pháp dấu cách / UNICODE / Tiếng việt để lưu Sourcecode (VD: <code>C:\Medstand</code>).</li>
+    <li>Kết nối mạng TCP Outbound thông suốt đáp ứng tạo đường kết nối bảo mật tới hệ sinh thái Cloudflare Tunnel.</li>
+</ol>
+
+<h2>2. BÀN GIAO TIẾN TRÌNH THIẾT LẬP KÍCH HOẠT (AUTOMATION PIPELINE)</h2>
+
+<h3>Giai đoạn 2.1: Đồng bộ Hệ Cơ Sở Dữ Liệu</h3>
+<p>Admin vận hành lần lượt chạy các truy vấn <code>Module ...</code> trong bộ giải pháp Database gốc được chuyển giao để khởi tạo Logic. Quan trọng nhất, lệnh <code>Bootstrap_API_Metadata_Auto.sql</code> phải được chạy bắt buộc tạo Master Dictionary.</p>
+
+<h3>Giai đoạn 2.2: Quy Trình Vận Hành Một Chạm (Bat Automation)</h3>
+<p>Kể từ Core Versión 2.1, quy trình Boot Hệ điều hành Trí Tuệ Nhân Tạo chuyển giao hoàn toàn bằng lệnh tự phục hồi <code>start_n8n.bat</code>. Khi chạy ở chế độ Quản Trị Viên (Admin), script có khả năng:</p>
+<ul>
+    <li>Cưỡng ép quét các rác hệ thống phát sinh từ các log tin nhắn cũ, làm sạch cache Node Modules bị chiếm dụng bất hợp lý.</li>
+    <li>Châm ngòi Redis Cache và hạ tầng máy quét hình thái ngữ nghĩa (Vectors) Qdrant theo cách Im Lặng (Silent Background Processes).</li>
+    <li>Truyền phát URL Tự cấu hình ghi thẳng vào nhân lõi hệ sinh thái Frontend tự động mà không can thiệp thủ công.</li>
+</ul>
+
+<h2>3. THAO TÁC CẤU HÌNH Workflow Trí Tuệ N8N</h2>
+<p>Khai mở quyền kiểm soát Webserver <code>http://localhost:5678</code>, nhập khẩu toàn bộ quy trình thiết kế (K0_MetaAPI & K_SieuLuong) để xác lập bản quyền hệ thống và thiết lập Thông Tin Đăng Nhập CSDL để N8N kết nối chặt chẽ tới mỏ Dữ liệu Doanh Nghiệp độc lập an toàn. Kéo Trigger để hệ thống chuyển biến lên mức <em>Active Status</em> hoàn mỹ.</p>
+
+<h2>4. QUY TRÌNH BẢO QUẢN THƯỜNG NHẬT</h2>
+<p>Vận hành nền tảng hàng ngày cực kỳ tiết kiệm với các lệnh chạy tắt tự sửa lỗi dọn rác có chủ đích tự động mà không đòi hỏi Kỹ sư có mặt để giám sát CSDL thường xuyên.</p>
+
+</body>
+</html>

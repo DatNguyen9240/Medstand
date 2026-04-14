@@ -7,7 +7,7 @@
 
 // 1. Tham số môi trường (Environment Variables)
 const ENV_VARS = {
-    N8N_BASE: 'https://humanitarian-assessment-donald-hoping.trycloudflare.com',
+    N8N_BASE: 'https://abraham-school-blackjack-season.trycloudflare.com',
     API_BASE: 'https://medtest.bms79.com',
     CHAT_API_KEY: 'test123456'
 };
