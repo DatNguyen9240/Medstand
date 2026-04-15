@@ -409,7 +409,8 @@
         // ---------------------------------------------------------
         // LOGIC & DATA
         // ---------------------------------------------------------
-        const N8N_URL = window.API_CONFIG?.N8N_BASE || "http://localhost:5678";
+        const N8N_URL = window.API_CONFIG?.N8N_BASE;
+        if(!N8N_URL) throw new Error("CRITICAL: Không tìm thấy N8N_BASE trong env.js. Vui lòng cấu hình môi trường!");
         const WEBHOOK_URL = N8N_URL + (window.API_CONFIG?.CHAT_WEBHOOK || "/webhook/hook-ai-dainao");
 
         const getArrayData = (res) => {

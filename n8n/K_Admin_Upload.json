@@ -1,0 +1,131 @@
+{
+  "name": "K_Admin_Upload",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admin-upload",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-admin-upload",
+      "name": "Webhook Admin Upload",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [ 200, 300 ],
+      "webhookId": "admin-upload-webhook-1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = $('Webhook Admin Upload').first().json.headers;\nconst token = headers['authorization'] || '';\nlet isAdmin = false;\n\n// Trong thực tế, decode JWT ở đây để lấy Role.\n// Giả lập bảo mật: Bắt buộc role=admin truyền qua Header hoặc JSON\nconst body = $('Webhook Admin Upload').first().json.body || {};\nif (body.role === 'admin' || body.Manager === 1 || token.includes('adminToken')) {\n    isAdmin = true;\n}\n\n// Chặn file > 10MB\nconst reqBody = $('Webhook Admin Upload').first().json.body;\nif (reqBody && reqBody.fileSize > 10000000) {\n    return [{ json: { passes: false, reason: 'File quá lớn (> 10MB)', code: 413 } }];\n}\n\nreturn [{ json: { passes: isAdmin, reason: isAdmin ? 'OK' : '403 Forbidden - Only Admin allowed', code: isAdmin ? 200 : 403 } }];"
+      },
+      "id": "gatekeeper-jwt",
+      "name": "Gatekeeper JWT & Limit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 420, 300 ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.passes }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-admin",
+      "name": "Check If Admin",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [ 620, 300 ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"error\": \"{{ $json.reason }}\"\n}",
+        "options": {
+          "responseCode": "={{ $json.code }}"
+        }
+      },
+      "id": "respond-403",
+      "name": "Respond 403/413",
+      "type": "n8n-nodes-base.respond",
+      "typeVersion": 1,
+      "position": [ 820, 500 ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": "medstand-policies",
+        "options": {}
+      },
+      "id": "qdrant-vector-store",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [ 1060, 200 ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "openai-embeddings",
+      "name": "OpenAI Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [ 1040, 420 ]
+    },
+    {
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 100
+      },
+      "id": "text-splitter",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [ 1160, 420 ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Tài liệu đã được đẩy thành công vào Qdrant để học tập!\"\n}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respond",
+      "typeVersion": 1,
+      "position": [ 1300, 200 ]
+    }
+  ],
+  "connections": {
+    "Webhook Admin Upload": {
+      "main": [ [ { "node": "Gatekeeper JWT & Limit", "type": "main", "index": 0 } ] ]
+    },
+    "Gatekeeper JWT & Limit": {
+      "main": [ [ { "node": "Check If Admin", "type": "main", "index": 0 } ] ]
+    },
+    "Check If Admin": {
+      "main": [
+        [ { "node": "Qdrant Vector Store", "type": "main", "index": 0 } ],
+        [ { "node": "Respond 403/413", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [ [ { "node": "Respond Success", "type": "main", "index": 0 } ] ]
+    },
+    "OpenAI Embeddings": {
+      "ai_embedding": [ [ { "node": "Qdrant Vector Store", "type": "ai_embedding", "index": 0 } ] ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [ [ { "node": "Qdrant Vector Store", "type": "ai_textSplitter", "index": 0 } ] ]
+    }
+  },
+  "settings": {},
+  "pinData": {}
+}

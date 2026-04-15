@@ -1,0 +1,76 @@
+{
+  "name": "K6 · System Cleanup (Auto-Expiring Vectors)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "id": "cron-trigger-midnight",
+      "name": "Midnight Trigger (00:00)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const todayStr = new Date().toISOString().split('T')[0];\n// Sẽ lọc trên VectorDB những node có `ExpDate` < today.\nreturn [{ json: { runCleanup: true, currentDate: todayStr } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0],
+      "id": "prepare-cleanup-vars",
+      "name": "Prepare Cleanup Variables"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:6333/collections/medstand-policies/points/delete",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "={ \"must\": [ { \"key\": \"ExpDate\", \"range\": { \"lt\": \"{{ $json.currentDate }}\" } } ] }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [400, 0],
+      "id": "qdrant-delete-expired",
+      "name": "Qdrant HTTP Request (Drop Expired)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst logDir = path.join(process.cwd(), '.logs');\nif (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });\n\nconst qdrantRes = $input.item.json;\nconst logMsg = `[${new Date().toISOString()}] Deleted Expired Vectors: ${JSON.stringify(qdrantRes)}\\n`;\nfs.appendFileSync(path.join(logDir, 'vector_cleanup_log.txt'), logMsg);\n\nreturn [{ json: { success: true, logged: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 0],
+      "id": "save-deletion-logs",
+      "name": "Blackbox Logging (Save logs)"
+    }
+  ],
+  "connections": {
+    "Midnight Trigger (00:00)": {
+      "main": [ [ { "node": "Prepare Cleanup Variables", "type": "main", "index": 0 } ] ]
+    },
+    "Prepare Cleanup Variables": {
+      "main": [ [ { "node": "Qdrant HTTP Request (Drop Expired)", "type": "main", "index": 0 } ] ]
+    },
+    "Qdrant HTTP Request (Drop Expired)": {
+      "main": [ [ { "node": "Blackbox Logging (Save logs)", "type": "main", "index": 0 } ] ]
+    }
+  },
+  "settings": {},
+  "pinData": {}
+}
