@@ -182,6 +182,44 @@ EXEC API_GoiYDonThuoc_AI
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
+-- MODULE 8 — AI QUẢN LÝ KHẢO SÁT (SURVEY)
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- [8A] Lấy danh sách câu hỏi khảo sát đang hoạt động
+EXEC API_DanhSachCauHoiKhaoSat_AI
+    @Username   = '{username}',
+    @NhomCauHoi = '';               -- Để trống = lấy tất cả nhóm
+
+-- [8B] Cập nhật đáp án khảo sát cho một bản ghi cụ thể
+EXEC API_CapNhatKetQuaKhaoSat_AI
+    @Username   = '{username}',
+    @UserAutoID = '{UserAutoID}',   -- ID của bản ghi khảo sát (từ AR_DotKhaoSatDetailTbl)
+    @DapAn      = 1;                -- Giá trị đáp án (INT)
+
+-- [8C] Kiểm tra xem hôm nay một người dùng đã khảo sát chưa
+EXEC API_KiemTraKhaoSat_AI
+    @Username   = '{username}',
+    @Ngay       = NULL;             -- NULL = kiểm tra ngày hiện tại
+
+-- [8D] Kiểm tra trạng thái khảo sát (Biến thể Ngay)
+EXEC API_KiemTraKhaoSatNgay_AI
+    @Username   = '{username}',
+    @Ngay       = NULL;
+
+-- [8E] Xem lịch sử khảo sát toàn hệ thống/chi nhánh (Báo cáo)
+EXEC API_LichSuKhaoSat_AI
+    @Username   = '{username}',
+    @FromDate   = NULL,             -- NULL = Đầu tháng hiện tại
+    @ToDate     = NULL,             -- NULL = Hôm nay
+    @BranchID   = '';               -- Để trống = Tất cả chi nhánh
+
+
+
+
+
+
+
+-- ═══════════════════════════════════════════════════════════════════════════
 -- BẢNG TRA CỨU NHANH
 -- ═══════════════════════════════════════════════════════════════════════════
 /*
@@ -202,5 +240,15 @@ EXEC API_GoiYDonThuoc_AI
 │ Bán thêm gì cho khách X?              │ 5        │ API_UpsellGoiY_AI [5B]         │
 │ Hàng nào cần xả? Combo gì?            │ 6        │ API_DeXuatKhuyenMai_AI [6A]    │
 │ Đơn thuốc này thay thế gì?            │ 7        │ API_GoiYDonThuoc_AI [7A]       │
+│ Lấy danh sách câu hỏi khảo sát        │ 8        │ API_DanhSachCauHoiKhaoSat_AI   │
+│ Cập nhật kết quả khảo sát cho X       │ 8        │ API_CapNhatKetQuaKhaoSat_AI    │
+│ Kiểm tra trạng thái khảo sát          │ 8        │ API_KiemTraKhaoSat_AI          │
+│ Kiểm tra trạng thái khảo sát (Ngay)   │ 8        │ API_KiemTraKhaoSatNgay_AI     │
+│ Xem lịch sử khảo sát (Báo cáo)       │ 8        │ API_LichSuKhaoSat_AI          │
 └─────────────────────────────────────────┴──────────┴────────────────────────────────┘
+
+
+
+
+
 */
