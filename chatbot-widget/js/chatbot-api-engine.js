@@ -137,7 +137,8 @@
         _post(CFG.DS_URL, {
             DataSourceType: dsType,
             DataSourceValue: dsVal,
-            SearchKey: keyword || ''
+            SearchKey: keyword || '',
+            username: _user()   // Bắt buộc để SQL SP không báo "User không tồn tại"
         }).then(function (res) {
             var rows = [];
             // N8N có thể trả về array 2 chiều [ [ ... ] ] từ SQL Execute
@@ -267,10 +268,10 @@
 
     function _user() {
         try {
-            var authRaw = localStorage.getItem('auth_user');
+            var authRaw = localStorage.getItem('auth_user') || localStorage.getItem('currentUser');
             if (authRaw) {
                 var p = JSON.parse(authRaw);
-                var uname = p.Username || p.username || p.UserName || p.sub || p.Name;
+                var uname = p.Username || p.username || p.UserName || p.sub || p.Name || p.id; // Added p.id in case username is stored as ID
                 if (uname) return uname;
             }
         } catch (e) {}
@@ -1297,7 +1298,7 @@
         if (bodyEl) bodyEl.style.opacity = '0.4';
         _post(CFG.EXEC_URL, {
             ApiCode: _activeApi.apiCode, StoredProcedure: _activeApi.sp,
-            params: keyParams, execType: 'QUERY'
+            params: keyParams, execType: 'QUERY', username: _user()
         }).then(function (res) {
             if (bodyEl) bodyEl.style.opacity = '';
             var rows = Array.isArray(res) ? res : (res && res.data ? res.data : null);
@@ -1931,8 +1932,12 @@
 
         _cbMsg && _cbMsg('user', '📡 ' + dispName + (ps ? '\n' + ps : ''));
         _cbShow && _cbShow();
-        _post(CFG.EXEC_URL, { ApiCode: apiCode, StoredProcedure: sp, params: params })
-            .then(function (res) {
+        _post(CFG.EXEC_URL, { 
+            ApiCode: apiCode, 
+            StoredProcedure: sp, 
+            params: params,
+            username: _user() 
+        }).then(function (res) {
                 _cbHide && _cbHide();
                 var r = typeof res === 'string' ? res : (res.reply || res.message || '');
 

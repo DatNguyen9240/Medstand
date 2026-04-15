@@ -1,4 +1,4 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
    @DenNgay     DATETIME     = NULL,
    @khachhang  VARCHAR(50)  = '',
    @Username   VARCHAR(50)

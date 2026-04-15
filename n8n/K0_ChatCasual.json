@@ -1,0 +1,130 @@
+{
+  "name": "K0_ChatCasual (Fallback)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hook-ai-casual",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "67b93892-9118-47bc-ad7f-94ad7c1aab7c",
+      "name": "Webhook Casual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "hook-ai-casual"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.history ? 'Lịch sử:\\n' + $json.body.history + '\\n\\nCâu hiện tại:\\n' : '' }}{{ $json.body.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "Bạn là AI Y tế của hệ thống Medstand. Tên bạn là Trợ lý M.\nHãy trả lời một cách thân thiện, tư vấn nhẹ nhàng các câu hỏi vu vơ hoặc sức khoẻ cơ bản của khách hàng. Hãy hỏi thêm thông tin (Mã khách hàng, Mã sản phẩm...) nếu cần thiết để truy xuất hệ thống.\nKHÔNG TRẢ LỜI DÀI DÒNG QUÁ."
+            }
+          ]
+        }
+      },
+      "id": "c1a011ee-325b-449e-b928-8b9a22db34ac",
+      "name": "OpenAI Chat",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {
+          "temperature": 0.5
+        }
+      },
+      "id": "92f75d58-cfdb-49da-bf72-885dc192e21b",
+      "name": "OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        380,
+        500
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "mxZCAAqEX3fE4Amb",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', isCasual: true, message: $json.text }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "id": "4b68e925-5eab-47f6-b186-068e61234988",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Casual": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

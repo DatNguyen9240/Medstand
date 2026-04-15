@@ -43,12 +43,14 @@ BEGIN
    DECLARE @SYSCeoID       VARCHAR(50) = ''
    DECLARE @SYSManagerID   VARCHAR(50) = ''
    DECLARE @SYSEmployeeID  VARCHAR(50) = ''
+   DECLARE @IsManager      BIT         = 0
 
    SELECT
        @SYSBranchID   = ISNULL(BranchID, ''),
        @SYSCeoID      = ISNULL(CeoID, ''),
        @SYSManagerID  = ISNULL(ManagerID, ''),
-       @SYSEmployeeID = ISNULL(EmployeeID, '')
+       @SYSEmployeeID = ISNULL(EmployeeID, ''),
+       @IsManager     = ISNULL(Manager, 0)
    FROM SY_User WHERE UserName = @Username
 
    -------------------------------------------------
@@ -78,11 +80,11 @@ BEGIN
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
        AND (@khachhang = '' OR A.ObjectID = @khachhang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-       -- Phân quyền mượt: Cho phép AI (demo/admin) xem toàn bộ
-       AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID   OR @Username IN ('demo', 'admin'))
-       AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID      OR @Username IN ('demo', 'admin'))
-       AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID OR @Username IN ('demo', 'admin'))
-       AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID           OR @Username IN ('demo', 'admin'))
+       -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ
+       AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID   OR @IsManager = 1)
+       AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID      OR @IsManager = 1)
+       AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID OR @IsManager = 1)
+       AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID           OR @IsManager = 1)
        AND (@timkiem = ''
             OR A.DocumentID LIKE '%' + @timkiem + '%'
             OR O.ObjectName LIKE N'%' + @timkiem + '%'

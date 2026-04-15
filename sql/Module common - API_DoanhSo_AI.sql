@@ -40,12 +40,14 @@ BEGIN
     DECLARE @SYSCeoID      VARCHAR(50) = ''
     DECLARE @SYSManagerID  VARCHAR(50) = ''
     DECLARE @SYSEmployeeID VARCHAR(50) = ''
+    DECLARE @IsManager     BIT         = 0
 
     SELECT
         @SYSBranchID   = COALESCE(BranchID, ''),
         @SYSCeoID      = COALESCE(CeoID, ''),
         @SYSManagerID  = COALESCE(ManagerID, ''),
-        @SYSEmployeeID = COALESCE(EmployeeID, '')
+        @SYSEmployeeID = COALESCE(EmployeeID, ''),
+        @IsManager     = COALESCE(Manager, 0)
     FROM SY_User WHERE UserName = @Username
 
     -------------------------------------------------
@@ -62,10 +64,10 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @Username IN ('demo', 'admin'))
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
         GROUP BY A.EmployeeID, A.EmployeeName
 
         IF @LoaiBaoCao = 'NhanVien' 
@@ -92,10 +94,10 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @Username IN ('demo', 'admin'))
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
         GROUP BY A.ObjectID, A.ObjectName
 
         IF @LoaiBaoCao = 'KhachHang'
@@ -125,10 +127,10 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
             AND (@ItemName = '' OR B.ItemName LIKE N'%' + @ItemName + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @Username IN ('demo', 'admin'))
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
             AND ISNULL(D.isKM, 0) = 0
         GROUP BY B.ItemID, B.ItemName
 

@@ -3,6 +3,7 @@
 (function () {
     var _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
     var CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
+    var CHAT_CASUAL_API = (_cfg.N8N_BASE || '') + '/webhook/hook-ai-casual';
     var CHAT_API_KEY = _cfg.CHAT_API_KEY || '';
     var CACHE_KEY = 'ai_chat_history';
     var CACHE_TTL = 0 //24 * 60 * 60 * 1000; // 24 giờ
@@ -434,7 +435,11 @@
                 reader.readAsDataURL(file);
             });
         })).then(function (fileList) {
-            var payload = { action: 'chat', text: text || displayText, session_id: sessionId, files: fileList };
+            // -- Rút trích Lịch sử 10 câu gần nhất dồn vào payload --
+            var pastMsgs = chatHistory.slice(-11, -1); // Lấy 10 câu trước (chừa câu hiện tại)
+            var historyStr = pastMsgs.map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
+
+            var payload = { action: 'chat', text: text || displayText, session_id: sessionId, files: fileList, history: historyStr };
             fetch(CHAT_API, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken(), 'x-api-key': CHAT_API_KEY },
@@ -454,30 +459,65 @@
         });
     }
 
+    function _callCasualChatFallback(lastText) {
+        var text = $input.value.trim() || lastText || "Xin chào";
+        var pastMsgs = chatHistory.slice(-11, -1);
+        var historyStr = pastMsgs.map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
+
+        _showTyping();
+        var payload = { action: 'chat', text: text, session_id: _getSessionId(), history: historyStr };
+        fetch(CHAT_CASUAL_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken(), 'x-api-key': CHAT_API_KEY },
+            body: JSON.stringify(payload)
+        }).then(function(res) {
+            return res.json();
+        }).then(function(data) {
+            _hideTyping();
+            if (data && data.message) _addMessage('ai', data.message);
+            else _addMessage('ai', "Xin lỗi, tôi chưa thể trả lời câu hỏi này.");
+        }).catch(function(err) {
+            _hideTyping();
+            _addMessage('ai', "Lỗi kết nối luồng đàm thoại NLP: " + err.message);
+        });
+    }
+
     function _handleReply(res) {
         console.log('API Response:', res);
         _hideTyping();
         _setStopMode(false);
 
-        // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
-        if (res && res.action_code === 'OPEN_API_PANEL') {
-            if (res.message) { _addMessage('ai', res.message); }
-            if (window.ApiEngine && window.ApiEngine.openPanelWithData) {
-                window.ApiEngine.openPanelWithData(res.api_name, res.prefill_data);
+        try {
+            // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
+            if (res && res.action_code === 'OPEN_API_PANEL') {
+                if (res.message) { _addMessage('ai', res.message); }
+                if (window.ApiEngine && window.ApiEngine.open) {
+                    // Fallback to open since openPanelWithData doesn't exist
+                    window.ApiEngine.open(res.api_name);
+                } else {
+                    _addMessage('ai', 'Thiếu hàm mở Panel: ' + res.api_name);
+                }
+                return;
             }
-            return;
-        }
 
-        if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
-            // 1. Lọc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả về)
-            var cleanData = res.data.filter(function (r) {
-                var visibleKeys = Object.keys(r).filter(function (k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
-                if (visibleKeys.length === 0) return false;
-                return visibleKeys.some(function (k) {
-                    var v = r[k];
-                    return v !== null && v !== undefined && String(v).trim() !== '';
+            if (res && res.action_code === 'ASK_CLARIFICATION') {
+                // Nhận dạng được câu chat vu vơ ngoài ngữ cảnh SQL (ví dụ: Hello, khoẻ không)
+                var lastUsrMsg = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
+                _callCasualChatFallback(lastUsrMsg ? lastUsrMsg.content : '');
+                return;
+            }
+
+            if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+                // 1. Lọc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả về)
+                var cleanData = res.data.filter(function (r) {
+                    if (!r) return false;
+                    var visibleKeys = Object.keys(r).filter(function (k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
+                    if (visibleKeys.length === 0) return false;
+                    return visibleKeys.some(function (k) {
+                        var v = r[k];
+                        return v !== null && v !== undefined && String(v).trim() !== '';
+                    });
                 });
-            });
 
             if (cleanData.length === 0) {
                 _addMessage('ai', 'Không tìm thấy dữ liệu.');
@@ -505,27 +545,34 @@
             return;
         }
 
-        // -- Các trường hợp trả về Text (Fallbacks) --
-        var reply = '';
-        if (typeof res === 'string') {
-            reply = res;
-        } else if (res && res.response) {
-            reply = res.response;
-        } else if (res && res.reply) {
-            reply = (typeof res.reply === 'object') ? (res.reply.message || res.reply.msg || JSON.stringify(res.reply)) : res.reply;
-        } else if (res && res.message) {
-            reply = res.message;
-        } else if (res && res.output) {
-            reply = res.output;
-        } else if (res && res.data) {
-            reply = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-        } else if (typeof res === 'object') {
-            if (Object.keys(res).length === 0) reply = "Không có thông báo lỗi từ máy chủ. (Lỗi 500)";
-            else reply = res.message || res.msg || JSON.stringify(res);
-        } else {
-            reply = JSON.stringify(res);
+            // -- Các trường hợp trả về Text (Fallbacks) --
+            var reply = '';
+            if (typeof res === 'string') {
+                reply = res;
+            } else if (res && res.response) {
+                reply = res.response;
+            } else if (res && res.reply) {
+                reply = (typeof res.reply === 'object') ? (res.reply.message || res.reply.msg || JSON.stringify(res.reply)) : res.reply;
+            } else if (res && res.message) {
+                reply = res.message;
+            } else if (res && res.output) {
+                reply = res.output;
+            } else if (res && res.data) {
+                reply = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+            } else if (typeof res === 'object') {
+                if (Object.keys(res).length === 0) reply = "Không có thông báo lỗi từ máy chủ. (Lỗi 500)";
+                else reply = res.message || res.msg || JSON.stringify(res);
+            } else {
+                reply = JSON.stringify(res);
+            }
+            
+            if (reply === '[]' || reply === '{}') reply = 'Không tìm thấy dữ liệu hoặc danh mục trống.';
+
+            _addMessage('ai', reply);
+        } catch (err) {
+            console.error(err);
+            _addMessage('ai', '❌ Lỗi hiển thị dữ liệu: ' + err.message);
         }
-        _addMessage('ai', reply);
     }
 
     function _getHiddenFields() {
@@ -563,15 +610,22 @@
     }
 
     /** Render action bar HTML cho 1 card */
-    function _buildActionBar(row) {
+    function _buildActionBar(row, apiCode) {
         var c = _detectContactFields(row);
         if (!c.phone && !c.name) return '';
+
+        var isFinanceContext = false;
+        var safeApiCode = String(apiCode || '');
+        if (safeApiCode.indexOf('@doanh_so') !== -1 || safeApiCode.indexOf('@cong_no') !== -1 || safeApiCode.indexOf('FIN-') !== -1 || safeApiCode.indexOf('HR-') !== -1) {
+            isFinanceContext = true;
+        }
+
         var html = '<div class="ai-sales-action-bar">';
         if (c.phone) {
             html += '<a class="ai-sales-action-btn ai-sales-btn-call" href="tel:' + _esc(c.phone) + '" aria-label="Gọi điện">📞 Gọi</a>';
             html += '<a class="ai-sales-action-btn ai-sales-btn-zalo" href="https://zalo.me/' + _esc(c.phone) + '" target="_blank" rel="noopener noreferrer" aria-label="Nhắn Zalo">💬 Zalo</a>';
         }
-        if (c.name) {
+        if (c.name && !isFinanceContext) {
             html += '<button class="ai-sales-action-btn ai-sales-btn-order" data-action="len-don" data-name="' + _esc(c.name) + '" type="button" aria-label="Lên đơn hàng">🛒 Lên đơn</button>';
         }
         html += '</div>';
@@ -737,7 +791,7 @@
                 html += '</div>';
             });
             html += '</div>'; // body
-            html += _buildActionBar(row);
+            html += _buildActionBar(row, apiCode);
             html += '</div>'; // card
         });
 
@@ -1033,7 +1087,7 @@
             }
 
             // Action bar (gọi / zalo) - use first row for triggers
-            html += _buildActionBar(grp.rows[0]);
+            html += _buildActionBar(grp.rows[0], apiCode);
             html += '</div>'; // catalog-card
         });
 

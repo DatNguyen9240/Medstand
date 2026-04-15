@@ -6,8 +6,9 @@
 
 const http = require('http');
 
-const LISTEN_PORT = 8080;
-const N8N_TARGET = 'http://127.0.0.1:5678';
+const LISTEN_PORT = process.env.PORT || 8080;
+const N8N_TARGET = process.env.N8N_TARGET || 'http://127.0.0.1:5678';
+const parsedTarget = new URL(N8N_TARGET);
 
 console.log('=======================================================');
 console.log('         N8N CORS PROXY - MEDSTAND                     ');
@@ -31,8 +32,8 @@ const server = http.createServer((req, res) => {
 
     // 3. Prepare target request
     const options = {
-        hostname: '127.0.0.1',
-        port: 5678,
+        hostname: parsedTarget.hostname,
+        port: parsedTarget.port || (parsedTarget.protocol === 'https:' ? 443 : 80),
         path: req.url,
         method: req.method,
         headers: { ...req.headers }

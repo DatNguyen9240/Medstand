@@ -187,6 +187,29 @@ BEGIN
 END
 GO
 
+/* Self-healing: đảm bảo các cột mới tồn tại kể cả khi bảng đã được tạo từ version cũ */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'UiTemplate'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD UiTemplate  VARCHAR(50)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IconEmoji'     AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IconEmoji   NVARCHAR(20)   NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IsActive'      AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IsActive    BIT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OrderIndex'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD OrderIndex  INT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ActionCode'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ActionCode  VARCHAR(50)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ActionName'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ActionName  NVARCHAR(200)  NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ExecutionType' AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ExecutionType VARCHAR(20)  NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'HttpMethod'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD HttpMethod  VARCHAR(10)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IsConfirm'     AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IsConfirm   BIT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'Category'      AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD Category    NVARCHAR(100)  NULL;
+GO
+
 IF OBJECT_ID('dbo.API_Metadata_Field_Override', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.API_Metadata_Field_Override (
@@ -980,13 +1003,57 @@ END
 GO
 
 /* =========================================================
-   4) HOW TO RUN
+   4) PROJECT-SPECIFIC APICODE OVERRIDES
+   ---------------------------------------------------------
+   ✅ ĐÂY LÀ NƠI DUY NHẤT CẦN SỬA KHI CHUYỂN SANG PROJECT KHÁC.
+
+   Mục đích: Fix các ApiCode bị auto-gen sai tên do CamelCase ambiguity.
+   Ví dụ: "DanhsachTonKho" → auto gen ra "@danh_sach_ton_kho"
+           nhưng N8N intent đang map sang "@danh_sach_tonkho" → cần override.
+
+   Các SP khác (UiTemplate, Category...) đã được xử lý đúng bởi auto-gen.
+   CHỈ thêm dòng vào đây nếu ApiCode bị gen sai.
+
+   Cách dùng:
+   - Thêm dòng: ('API_TenSP_AI', '@api_code_muon_dung')
+   - Chạy lại : EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply=1, @UpdateExisting=1
    ========================================================= */
--- Preview:
--- EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 0, @UpdateExisting = 1;
+MERGE dbo.API_Metadata_Override AS t
+USING (VALUES
+    -- FORMAT: (StoredProcedure, ApiCode)
+    -- Chỉ liệt kê những SP có ApiCode bị gen sai
 
--- Apply:
--- EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
+    -- DanhsachTonKho → auto-gen: @danh_sach_ton_kho | cần: @danh_sach_tonkho
+    ('API_DanhsachTonKho_AI', '@danh_sach_tonkho')
 
--- Trigger log:
--- SELECT TOP 100 * FROM dbo.API_Metadata_DDL_Log ORDER BY LogID DESC;
+    /* ── THÊM PROJECT MỚI TẠI ĐÂY ─────────────────────────────────────
+       ,('API_TenSPKhac_AI', '@ten_api_dung')
+       ────────────────────────────────────────────────────────────────── */
+) AS s (StoredProcedure, ApiCode)
+ON  t.StoredProcedure = s.StoredProcedure
+WHEN MATCHED THEN
+    UPDATE SET t.ApiCode = s.ApiCode
+WHEN NOT MATCHED THEN
+    INSERT (StoredProcedure, ApiCode)
+    VALUES (s.StoredProcedure, s.ApiCode);
+GO
+
+/* =========================================================
+   5) HOW TO RUN
+   =========================================================
+   -- Preview (xem ApiCode sẽ được gen ra):
+   EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 0, @UpdateExisting = 1;
+
+   -- Apply (chạy 1 lần khi deploy hoặc sau khi sửa SP):
+   EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
+
+   -- Kiểm tra kết quả:
+   SELECT ApiCode, StoredProcedure, UiTemplate, Category
+   FROM dbo.API_Definition
+   ORDER BY OrderIndex, ApiCode;
+
+   -- DDL trigger log (auto-sync khi CREATE/ALTER SP):
+   SELECT TOP 50 * FROM dbo.API_Metadata_DDL_Log ORDER BY LogID DESC;
+   ========================================================= */
+
+

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Memory Emulator • Multi-Turn State</title>
+    <script src="../env.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(20, 25, 40, 0.6);
+            --card-bg: rgba(30, 40, 60, 0.4);
+            --border-color: rgba(60, 100, 200, 0.2);
+            --text-color: #e0e6ed;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --user-bubble: #1f2937;
+            --ai-bubble: rgba(59, 130, 246, 0.15);
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.05), transparent 25%),
+                              radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05), transparent 25%);
+            color: var(--text-color);
+            margin: 0; padding: 20px;
+        }
+
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin: 0 0 10px 0; font-weight: 300; letter-spacing: 1px; color: #fff; }
+        .header p { color: #8ba3b8; font-size: 14px; margin: 0; }
+
+        .dashboard {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .controls button {
+            background: var(--accent); color: #fff;
+            border: none; padding: 10px 20px; border-radius: 6px;
+            cursor: pointer; font-weight: bold; font-size: 13px;
+            transition: all 0.2s; box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .controls button:hover { transform: translateY(-2px); box-shadow: 0 0 15px var(--accent-glow); }
+
+        .session-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .session-header {
+            padding: 12px 15px; background: rgba(0,0,0,0.2);
+            font-weight: 600; display: flex; justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chat-turn {
+            padding: 15px;
+            border-bottom: 1px dashed rgba(255,255,255,0.05);
+        }
+        .chat-turn:last-child { border-bottom: none; }
+
+        .meta-info { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+        .token-history { background: #111; color: #a5b4fc; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; margin-bottom: 8px; white-space: pre-wrap;}
+
+        .bubble { padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; max-width: 80%; font-size: 13px; line-height: 1.5; }
+        .bubble.user { background: var(--user-bubble); margin-left: auto; border-bottom-right-radius: 0; color: #fff; }
+        .bubble.ai { background: var(--ai-bubble); border-bottom-left-radius: 0; border: 1px solid rgba(59,130,246,0.3); color: #e2e8f0; }
+
+        .expectation {
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 3px solid var(--success);
+            padding: 8px 12px; font-size: 12px;
+            margin-top: 10px; border-radius: 0 4px 4px 0;
+        }
+
+        .status-badge {
+            padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold;
+        }
+        .pass { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+        .fail { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+        .wait { background: rgba(156,163,175,0.2); color: #9ca3af; }
+
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Multi-Turn Memory Emulator 🧠</h1>
+    <p>Simulating Context-Aware AI Stateless Interactions across Sequential Contexts</p>
+</div>
+
+<div class="dashboard">
+    <div class="controls">
+        <h3 style="margin:0; font-weight: 500;">Test Suite: Conversational Memory Context</h3>
+        <div>
+            <button id="btnRun" onclick="runAllSessions()">▶ RUN EMULATOR</button>
+            <button id="btnExport" onclick="exportReport()" style="background:#10b981; margin-left:10px; display:none;">📥 XUẤT BÁO CÁO JSON</button>
+        </div>
+    </div>
+    <div id="results"></div>
+</div>
+
+<script>
+    const N8N_URL = window.API_CONFIG?.N8N_BASE || "http://localhost:5678";
+    const WEBHOOK_URL = N8N_URL + (window.API_CONFIG?.CHAT_WEBHOOK || "/webhook/hook-ai-dainao");
+
+    const SESSIONS = [
+        {
+            id: "S1",
+            name: "Session 1: Bổ sung Context Thuần Tuý",
+            turns: [
+                { role: "user", text: "Xem công nợ chi tiết đi", expectIntent: "ASK_CLARIFICATION" },
+                { role: "ai", text: "Bạn muốn xem chi tiết công nợ của khách hàng hay đại lý nào ạ?" },
+                { role: "user", text: "Khách Mã HB106", expectIntent: "@cong_no_chi_tiet", paramCheck: { "@khachhang": "HB106" } }
+            ]
+        },
+        {
+            id: "S2",
+            name: "Session 2: Thay đổi Ý định (Pivoting)",
+            turns: [
+                { role: "user", text: "khách vip HKDPD mua hàng trễ quá", expectIntent: "@tuyen_ban_hang" },
+                { role: "ai", text: "Khách HKDPD thuộc tuyến đang bị rớt..." },
+                { role: "user", text: "vậy năm nay nó công nợ bao nhiêu", expectIntent: "@cong_no_khach_hang", paramCheck: { "@khachhang": "HKDPD" } }
+            ]
+        },
+        {
+            id: "S3",
+            name: "Session 3: Hỏi gộp chủ ngữ",
+            turns: [
+                { role: "user", text: "Dạo này Nguyễn Duy Minh đi làm siêng ghê", expectIntent: "ASK_CLARIFICATION" },
+                { role: "ai", text: "Vâng, bạn cần kiểm tra doanh số hay thông tin gì của nhân viên này?" },
+                { role: "user", text: "xem doanh thu tháng 3 của nó", expectIntent: "@doanh_so", paramCheck: { "@EmployeeName": "MINH" } }
+            ]
+        },
+        {
+            id: "S4",
+            name: "Session 4: Bẻ lái khét lẹt (Drift Inception)",
+            turns: [
+                { role: "user", text: "xem lịch sử đặt hàng của khách HB106", expectIntent: "@don_hang", paramCheck: { "@khachhang": "HB106" } },
+                { role: "ai", text: "Đây là danh sách đơn hàng của khách hàng này..." },
+                { role: "user", text: "hôm nay gợi ý bán gì cho người này được", expectIntent: "@goi_ydon_hang", paramCheck: { "@khachhang": "HB106" } },
+                { role: "ai", text: "Gợi ý các mặt hàng nên bán hôm nay..." },
+                { role: "user", text: "mua nhiều vậy thì đã lên hạng chưa", expectIntent: "@cham_diem_kh", paramCheck: { "@khachhang": "HB106" } }
+            ]
+        }
+    ];
+
+    const $results = document.getElementById("results");
+    
+    let globalReport = { metadata: { type: "Memory_State_Emulator", timestamp: "" }, summary: { total: 0, pass: 0, fail: 0 }, details: [] };
+
+    function exportReport() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(globalReport, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = "memory_state_report_" + Date.now() + ".json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    }
+
+    function renderUI() {
+        let html = '';
+        SESSIONS.forEach(sess => {
+            html += `<div class="session-card" id="card-${sess.id}">
+                <div class="session-header">
+                    <span>${sess.name}</span>
+                    <span class="status-badge wait" id="status-${sess.id}">WAITING</span>
+                </div>
+                <div class="session-body">`;
+            
+            sess.turns.forEach((turn, idx) => {
+                let badge = turn.role === 'user' ? `<span style="float:right; font-size:10px; opacity:0.5" id="t-status-${sess.id}-${idx}">⏳</span>` : '';
+                html += `<div class="chat-turn">
+                    <div class="bubble ${turn.role}"><b>${turn.role.toUpperCase()}</b>: ${turn.text} ${badge}</div>
+                    <div id="meta-${sess.id}-${idx}"></div>
+                </div>`;
+            });
+
+            html += `</div></div>`;
+        });
+        $results.innerHTML = html;
+    }
+
+    async function evaluateTurn(sess, turnIdx, simulatedHistory) {
+        let turn = sess.turns[turnIdx];
+        
+        let histStr = simulatedHistory.map(m => `${m.role === 'user' ? 'User:' : 'AI:'} ${m.text}`).join('\n');
+        
+        let payload = {
+            action: 'chat',
+            text: turn.text,
+            session_id: 'test_memory_' + sess.id,
+            history: histStr
+        };
+
+        const t0 = performance.now();
+        try {
+            let res = await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            let data = await res.json();
+            let timeMs = Math.round(performance.now() - t0);
+
+            // Xác định Intent / ApiCode
+            let actualIntent = data.action_code || data.apiCode || "UNKNOWN";
+            let actualParams = data.intentParams || {};
+
+            let isPass = (actualIntent === turn.expectIntent);
+            
+            // Check cross-role params if required
+            if (isPass && turn.paramCheck) {
+                for (let k in turn.paramCheck) {
+                    let expectedVal = turn.paramCheck[k].toUpperCase();
+                    let actualVal = String(actualParams[k] || '').toUpperCase();
+                    if (!actualVal.includes(expectedVal)) {
+                        isPass = false;
+                        actualIntent += ` (Lỗi Param: Thiếu ${expectedVal})`;
+                    }
+                }
+            }
+
+            globalReport.details.push({
+                session: sess.name,
+                turnText: turn.text,
+                payloadHistory: histStr,
+                expectedIntent: turn.expectIntent,
+                actualIntent: actualIntent,
+                isPass: isPass,
+                timeMs: timeMs
+            });
+
+            let div = document.getElementById(`meta-${sess.id}-${turnIdx}`);
+            let icon = document.getElementById(`t-status-${sess.id}-${turnIdx}`);
+            
+            icon.innerHTML = isPass ? "✅" : "❌";
+            
+            div.innerHTML = `
+                <div class="token-history"><b>📦 Payload History:</b>\n${histStr || '(Empty Box)'}</div>
+                <div class="expectation">
+                    <b>Trích xuất:</b> ${actualIntent} <br>
+                    <b>Kỳ vọng:</b> ${turn.expectIntent} <br>
+                    <b>Thời gian truy xuất:</b> ${timeMs}ms (Siêu Tốc)
+                </div>
+            `;
+
+            return isPass;
+
+        } catch (err) {
+            document.getElementById(`t-status-${sess.id}-${turnIdx}`).innerHTML = "💥";
+            return false;
+        }
+    }
+
+    async function runAllSessions() {
+        renderUI();
+        document.getElementById('btnRun').disabled = true;
+
+        document.getElementById('btnExport').style.display = 'none';
+        globalReport.summary.total = 0;
+        globalReport.summary.pass = 0;
+        globalReport.summary.fail = 0;
+        globalReport.details = [];
+        globalReport.metadata.timestamp = new Date().toISOString();
+
+        for (let sess of SESSIONS) {
+            document.getElementById(`status-${sess.id}`).className = "status-badge wait";
+            document.getElementById(`status-${sess.id}`).innerText = "RUNNING...";
+
+            let sessPass = true;
+            let histBlock = [];
+
+            for (let i = 0; i < sess.turns.length; i++) {
+                let turn = sess.turns[i];
+                if (turn.role === 'user') {
+                    globalReport.summary.total++;
+                    // LLM Call for USER TURN
+                    let pass = await evaluateTurn(sess, i, histBlock);
+                    if(!pass) {
+                        sessPass = false;
+                        globalReport.summary.fail++;
+                    } else {
+                        globalReport.summary.pass++;
+                    }
+                }
+                
+                // Add current turn to history for the NEXT loop
+                histBlock.push(turn);
+            }
+
+            let badge = document.getElementById(`status-${sess.id}`);
+            badge.className = sessPass ? "status-badge pass" : "status-badge fail";
+            badge.innerText = sessPass ? "PASSED" : "FAILED";
+        }
+        
+        document.getElementById('btnRun').disabled = false;
+        document.getElementById('btnExport').style.display = 'inline-block';
+    }
+
+    // Init UI
+    renderUI();
+
+</script>
+</body>
+</html>
