@@ -2,7 +2,7 @@ IF OBJECT_ID('API_TuyenBanHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_TuyenBan
 GO
 CREATE PROCEDURE API_TuyenBanHang_AI
     @Username      VARCHAR(50) = '',
-    @khachhang     VARCHAR(50) = '',
+    @MaKhachHang     VARCHAR(50) = '',
     @SoNgayVangMat INT        = 45,
     @TopN          INT        = 8
 AS
@@ -10,7 +10,7 @@ BEGIN
     SET NOCOUNT ON
    
    -- 0. KIỂM TRA khachhang HỢP LỆ (Nếu có truyền vào)
-   IF @khachhang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @khachhang)
+   IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
    BEGIN
        SELECT 'N/A' AS ObjectID, N'❌ Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
        RETURN;
@@ -46,7 +46,7 @@ BEGIN
     INTO #LanMuaCuoi
     FROM AR_InvoiceTbl I
     WHERE ISNULL(I.StatusID, 0) != 10
-      AND (@khachhang   = '' OR I.ObjectID  = @khachhang)
+      AND (@MaKhachHang   = '' OR I.ObjectID  = @MaKhachHang)
       AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
       AND (@SYSCeoID     = '' OR I.CeoID     = @SYSCeoID)
       AND (@SYSManagerID = '' OR I.ManagerID = @SYSManagerID)
@@ -66,7 +66,7 @@ BEGIN
     FROM AR_InvoiceTbl I
     WHERE I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
       AND ISNULL(I.StatusID, 0) != 10
-      AND (@khachhang   = '' OR I.ObjectID  = @khachhang)
+      AND (@MaKhachHang   = '' OR I.ObjectID  = @MaKhachHang)
       AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
       AND (@SYSCeoID     = '' OR I.CeoID     = @SYSCeoID)
       AND (@SYSManagerID = '' OR I.ManagerID = @SYSManagerID)
@@ -118,7 +118,7 @@ BEGIN
         ) AS LyDoGhe
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
-    WHERE (@khachhang = '' OR KH.ObjectID = @khachhang)
+    WHERE (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)
       AND L.SoNgayKhongMua >= @SoNgayVangMat
     ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC;
 

@@ -10,13 +10,34 @@
   /**
    * Applies the theme to the document and optionally persists it.
    */
-  function apply(theme, persist) {
+  
+  function syncMetaThemeColor() {
+    setTimeout(function() {
+      try {
+        var primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim();
+        var isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+        var surfaceColor = getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim();
+        
+        var metaTag = document.querySelector('meta[name="theme-color"]');
+        if (metaTag && primaryColor) {
+           // For PWA tab colors, usually surface or primary is good. 
+           // We will map it to surface color for a clean look, or primary if you prefer branded bars.
+           // Medstand original was branded blue #3c50e0 (Primary)
+           metaTag.setAttribute('content', primaryColor);
+        }
+      } catch(e) {}
+    }, 50);
+  }
+
+  // Also sync on init and apply
+function apply(theme, persist) {
     document.documentElement.setAttribute('data-theme', theme);
     if (persist) {
       localStorage.setItem(STORAGE_KEY, theme);
     }
     // Dispatch event for components that might need to sync icons/states
     window.dispatchEvent(new CustomEvent('themechanged', { detail: { theme: theme } }));
+    syncMetaThemeColor();
   }
 
   /**

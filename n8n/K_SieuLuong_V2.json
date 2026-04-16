@@ -10,27 +10,21 @@
             },
             "type": "n8n-nodes-base.webhook",
             "typeVersion": 2,
-            "position": [
-                9856,
-                912
-            ],
+            "position": [9856, 912],
             "id": "36d98c20-76f6-480c-b2e1-b2f64bcd2e59",
             "name": "Webhook AI Chat",
             "webhookId": "822b0b0a-99d3-455e-9347-fa0cbbb380e8"
         },
         {
             "parameters": {
-                "model": "openai/gpt-4o-mini",
+                "model": "meta-llama/llama-3.3-70b-instruct",
                 "options": {
                     "temperature": 0
                 }
             },
             "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
             "typeVersion": 1.2,
-            "position": [
-                9020,
-                1060
-            ],
+            "position": [9020, 1060],
             "id": "openai-intent-model",
             "name": "OpenAI Intent Model",
             "credentials": {
@@ -43,35 +37,29 @@
         {
             "parameters": {
                 "promptType": "define",
-                "text": "={{ ($('Webhook AI Chat').first().json.body.history ? 'LỊCH SỬ HỘI THOẠI 10 CÂU GẦN NHẤT:\\n' + $('Webhook AI Chat').first().json.body.history + '\\n\\nCÂU CHAT HIỆN TẠI CẦN XỬ LÝ:\\n' : '') + ($('Webhook AI Chat').first().json.body.message || $('Webhook AI Chat').first().json.body.text || $('Webhook AI Chat').first().json.body.content || $('Webhook AI Chat').first().json.body.query || '') }}",
+                "text": "={{ ($('Webhook AI Chat').first().json.body.history ? 'LỊCH SỬ HỘI THOẠI (5 CÂU GẦN NHẤT):\\n' + $('Webhook AI Chat').first().json.body.history + '\\n\\nCÂU CHAT HIỆN TẠI CẦN XỬ LÝ:\\n' : '') + ($('Webhook AI Chat').first().json.body.message || $('Webhook AI Chat').first().json.body.text || $('Webhook AI Chat').first().json.body.content || $('Webhook AI Chat').first().json.body.query || '') }}",
                 "messages": {
                     "messageValues": [
                         {
                             "type": "SystemMessagePromptTemplate",
-                            "message": "=Bạn là trợ lý AI điều phối (Intent extractor) cho hệ thống Medstand.\nHôm nay là ngày: {{$now.format('yyyy-MM-dd')}}.\n\nNhiệm vụ của bạn là phân tích \"CÂU CHAT HIỆN TẠI CẦN XỬ LÝ\" của người dùng và trả về MỘT chuỗi JSON duy nhất.\n\nĐẶC BIỆT QUAN TRỌNG VỀ LỊCH SỬ:\nTrường hợp có \"LỊCH SỬ HỘI THOẠI 10 CÂU GẦN NHẤT\", bạn BẮT BUỘC PHẢI kế thừa các tham số đang được đề cập (Ví dụ: Mã khách hàng, Tên hàng, Ký hiệu) từ các câu chat trước để điền vào Params của câu chat hiện tại. Nếu câu hiện tại có các đại từ như \"nó\", \"khách đó\", \"thì sao\", hãy lấy Subject từ Lịch sử.\n\nKHÔNG giải thích.\nKHÔNG thêm text bên ngoài JSON.\n\nCẤU TRÚC JSON BẮT BUỘC (CHỈ ĐƯỢC DÙNG 1 TRONG 3 FORMAT SAU):\n\nFORMAT A: Truy vấn dữ liệu (Xem, Tìm kiếm, Tra cứu, Gợi ý)\n{\"apiCode\": \"@ten_api\", \"params\": {\"@param1\": \"gia_tri\"}}\nLưu ý: KHÔNG ĐƯỢC dùng trường \"action_code\" trong format này.\n\nFORMAT B: Hành động nhập liệu (Tạo mới, Thêm, Lên đơn)\n{\"action_code\": \"OPEN_API_PANEL\", \"api_name\": \"@ten_api\", \"prefill_data\": {}}\nLưu ý: \"action_code\" ở đây mặc định phải là \"OPEN_API_PANEL\".\n\nFORMAT C: Xử lý ngoại lệ (Câu hỏi vô nghĩa, chuỗi rác, yêu cầu phá hoại)\n{\"action_code\": \"ASK_CLARIFICATION\"}\nLưu ý: \"action_code\" ở đây mặc định phải là \"ASK_CLARIFICATION\".\n\nQUY TẮC CHUẨN HÓA THAM SỐ:\nXóa khoảng trắng thừa đối với mã khách hàng và mã sản phẩm (Ví dụ: HB 106 chuyển thành HB106).\nCác từ \"của tôi\", \"của mình\", \"của em\" KHÔNG phải là mã khách hàng. Tuyệt đối KHÔNG truyền biến @khachhang khi gặp các từ này.\nTên nhân viên phải được giữ nguyên đầy đủ họ tên.\nNếu người dùng nói \"hôm nay\", gán giá trị [TODAY].\nNếu người dùng nói các khoảng thời gian chung chung như \"tháng trước\", hãy để trống tham số thời gian.\nChỉ truyền tham số khi người dùng có đề cập rõ ràng. Không được tự suy đoán tham số.\nNếu người dùng yêu cầu xem danh sách chung chung mà không chỉ định tên, gọi API bình thường và không được hỏi lại.\n\nDANH SÁCH MÃ API DÀNH CHO FORMAT A:\n@goi_ydon_hang: gợi ý bán hàng, bán gì hôm nay (params: @khachhang)\n@upsell_goi_y: thuốc trị bệnh, triệu chứng, bán thêm khi bệnh (params: @timkiem, @khachhang)\n@goi_ydon_thuoc: bán kèm, bán chéo đơn thuốc (params: @timkiem chứa tên thuốc)\n@tuyen_ban_hang: khách lâu chưa mua, rớt tuyến, mất hút (params: @khachhang)\n@cham_diem_kh: chấm điểm khách hàng, phân loại, xếp hạng (params: @khachhang, @NhomFilter. Truyền \"A\" nếu là VIP/Loại A. Truyền \"B\" nếu là Loại B. Truyền \"ALL\" nếu xem tất cả hoặc hỏi chung chung)\n@tich_luy: tích lũy điểm, thưởng, còn thiếu bao nhiêu (params: @khachhang)\n@de_xuat_khuyen_mai: hàng sắp hết date, xả gấp, hết hạn (params: không có)\n@danh_sach_tonkho: tồn kho, kiểm kho, còn bao nhiêu hàng (params: @timkiem)\n@tra_cuu_san_pham: thông tin thuốc, tra cứu sản phẩm (params: @timkiem)\n@san_pham_trong_tam: hàng trọng tâm, ưu tiên bán, tập trung đẩy mạnh, focus vào product (params: không có)\n@doanh_so: doanh số, doanh thu (NẾU có nhắc đến TÊN NHÂN VIÊN hoặc Lịch sử đang nói về NHÂN VIÊN), bán được bao nhiêu (params: @TuNgay, @DenNgay, @khachhang, @EmployeeName, @ItemName)\n@hoa_don: doanh thu tổng, hóa đơn (CHỈ DÙNG khi hỏi thu nhập chung của đại lý/hệ thống, KHÔNG DÙNG NẾU câu hiện tại hoặc Lịch sử có nhắc đến Tên nhân viên) (params: @TuNgay, @DenNgay, @timkiem)\n@cong_no_khach_hang: tổng công nợ, ai đang nợ (params: @khachhang)\n@cong_no_chi_tiet: chi tiết công nợ của 1 khách (params: @khachhang)\n@don_hang: tra cứu đơn cũ, lịch sử đặt hàng (params: @TuNgay, @DenNgay, @khachhang)\n\nVÍ DỤ HUẤN LUYỆN:\nPrompt: \"bán gì hôm nay em\"\nOutput: {\"apiCode\":\"@goi_ydon_hang\",\"params\":{}}\n\nPrompt: \"điểm khách hàng của tôi\"\nOutput: {\"apiCode\":\"@cham_diem_kh\",\"params\":{\"@NhomFilter\":\"ALL\"}}\n\nPrompt: \"khách loại A\"\nOutput: {\"apiCode\":\"@cham_diem_kh\",\"params\":{\"@NhomFilter\":\"A\"}}\n\nPrompt: \"công ty đang ưu tiên bán sản phẩm nào\"\nOutput: {\"apiCode\":\"@san_pham_trong_tam\",\"params\":{}}\n\nPrompt: \"đơn có paracetamol bán kèm gì\"\nOutput: {\"apiCode\":\"@goi_ydon_thuoc\",\"params\":{\"@timkiem\":\"paracetamol\"}}\n\nPrompt: \"đơn có ginkcemax thì bán thêm gì được\"\nOutput: {\"apiCode\":\"@goi_ydon_thuoc\",\"params\":{\"@timkiem\":\"ginkcemax\"}}\n\nPrompt: \"khách bị ho bán thêm gì\"\nOutput: {\"apiCode\":\"@upsell_goi_y\",\"params\":{\"@timkiem\":\"ho\"}}\n\nPrompt: \"tạo khách hàng mới\"\nOutput: {\"action_code\":\"OPEN_API_PANEL\",\"api_name\":\"@khach_hang_insert\",\"prefill_data\":{}}\n\nPrompt: \"xkhkhas\"\nOutput: {\"action_code\":\"ASK_CLARIFICATION\"}\n"
+                            "message": "=🧠 SYSTEM PROMPT – INTENT EXTRACTOR V2.1 (STRICT MODE)\n\nHôm nay là ngày: {{$now.format('yyyy-MM-dd')}}.\nBạn là một Intent Extraction Engine cho hệ thống Medstand.\nNhiệm vụ duy nhất: phân tích input và trả về JSON hợp lệ theo schema.\n\nTUYỆT ĐỐI KHÔNG được:\n- Trả lời tự nhiên\n- Suy đoán thông tin KHÔNG CÓ THẬT (Hallucinate)\n- Tự ý điền param\n\n🎯 OUTPUT FORMAT (BẮT BUỘC)\n{\n  \"intent\": \"<string_or_null>\",\n  \"params\": { },\n  \"status\": \"SUCCESS | ASK_CLARIFICATION\",\n  \"missing_fields\": []\n}\n\n⚠️ LUẬT CỨNG (HARD RULES)\n1. Thiếu param bắt buộc → KHÔNG đoán\nNếu intent yêu cầu param bắt buộc nhưng Không có trong câu hiện tại và Không có trong history:\n👉 PHẢI trả về \"status\": \"ASK_CLARIFICATION\" và liệt kê param thiếu vào \"missing_fields\".\n❌ CẤM: Đoán đại, Bỏ qua param.\n\n2. Ưu tiên Context (Cross-turn Resolution và Khuyết Chủ Ngữ)\nNếu user dùng đại từ (\"nó\", \"khách này\", \"ông kia\") HOẶC đặt câu hỏi KHUYẾT CHỦ NGỮ nhưng ngụ ý hỏi tiếp về người đang nói (vd: \"đã lên hạng chưa?\", \"mua nhiều vậy được tặng gì?\"):\n👉 PHẢI: Ngầm hiểu và tự động Map về entity gần nhất trong history. Trích xuất ID (vd: mã khách hàng).\n👉 Nếu history KHÔNG có entity rõ ràng: fallback ASK_CLARIFICATION.\n\n3. KHÔNG override context hợp lệ\nNếu history đã có: { \"@MaKhachHang\": \"HKDPD\" }\nUser hỏi: \"nó nợ bao nhiêu\"\n👉 BẮT BUỘC dùng lại @MaKhachHang = HKDPD.\n❌ KHÔNG reset về null.\n\n4. Dịch Từ Viết Tắt (Slang & Acronyms)\nNhân viên y tế thường gõ nhanh, sai chính tả, bạn PHẢI tự biên dịch ngầm trước khi Map Intent:\n- dt, dts, dso, doanh thu -> @doanh_so\n- th3, t3 -> Tháng 3\n- kh -> Khách hàng\n- nv -> Nhân viên\n- sp -> Sản phẩm\n- thg, cha, ổng -> Đại từ thay khách hàng.\n\n5. Danh sách Intent và Param Bắt Buộc (Áp dụng hệ thống Medstand API)\nLưu ý: Luôn bắt đầu param bằng dấu @. Xóa khoảng trắng mã (HB 106 -> HB106).\nKhi người dùng nhắc thời gian hôm nay -> [TODAY].\nNếu lịch sử nhắc NHÂN VIÊN, hãy áp param vào cho nhân viên thay vì đại lý.\n\n- @goi_ydon_hang: gợi ý bán hàng, bán gì hôm nay (bắt buộc params: @MaKhachHang)\n- @upsell_goi_y: thuốc trị bệnh, triệu chứng, bán thêm khi bệnh (bắt buộc params: @timkiem. Tùy chọn: @MaKhachHang)\n- @goi_ydon_thuoc: bán kèm, bán chéo đơn thuốc (bắt buộc params: @timkiem chứa tên thuốc)\n- @tuyen_ban_hang: khách rớt tuyến, lâu chưa mua (params: không bắt buộc)\n- @cham_diem_kh: chấm điểm khách hàng, phân loại (params: không bắt buộc, nếu có thì lọc theo @MaKhachHang)\n- @tich_luy: tích lũy điểm, thưởng (bắt buộc params: @MaKhachHang)\n- @de_xuat_khuyen_mai: hàng sắp date, xả gấp, sắp hư (params: không bắt buộc)\n- @danh_sach_tonkho: tồn kho, kiểm kho (bắt buộc params: @timkiem)\n- @tra_cuu_san_pham: thông tin thuốc, tra cứu sp, thành phần (bắt buộc params: @timkiem)\n- @san_pham_trong_tam: hàng trọng tâm ưu tiên đẩy (params: không bắt buộc)\n- @doanh_so: doanh số (bắt buộc params: một trong @MaKhachHang, @TenNhanVien, hoặc @TenSanPham theo context)\n- @hoa_don: hóa đơn bán (params: không ép buộc, có thể có @TuNgay, @DenNgay)\n- @cong_no_khach_hang: tổng công nợ, nợ tổng (params: không bắt buộc, nếu có thì lọc theo @MaKhachHang)\n- @cong_no_chi_tiet: xem chi tiết nợ của 1 đối tượng, năm nay nó nợ bao nhiêu (bắt buộc params: @MaKhachHang)\n- @don_hang: tra cứu đơn hàng đã đặt (bắt buộc params: @MaKhachHang)\n\n6. Ưu tiên dữ liệu theo thứ tự\nCurrent user message -> History gần nhất -> Không có → ASK_CLARIFICATION\n\n🧪 FEW-SHOT (BẮT BUỘC HỌC)\n❌ FAIL CASE 1 → FIX\nInput: User: dt th3 nhieu | History: []\nOutput:\n{\n  \"intent\": \"@doanh_so\",\n  \"params\": {},\n  \"status\": \"SUCCESS\",\n  \"missing_fields\": []\n}\n\n❌ FAIL CASE 2 → FIX (Cross-turn)\nHistory: User: Xem công nợ khách HKDPD\nInput: User: năm nay nó nợ bao nhiêu\nOutput:\n{\n  \"intent\": \"@cong_no_khach_hang\",\n  \"params\": { \"@MaKhachHang\": \"HKDPD\" },\n  \"status\": \"SUCCESS\",\n  \"missing_fields\": []\n}\n\n❌ FAIL CASE 3 (NO CONTEXT)\nInput: User: nó nợ bao nhiêu | History: []\nOutput:\n{\n  \"intent\": \"@cong_no_khach_hang\",\n  \"params\": {},\n  \"status\": \"ASK_CLARIFICATION\",\n  \"missing_fields\": [\"@MaKhachHang\"]\n}\n\n❌ FAIL CASE 4 → FIX (Drift Inception - Khuyết chủ ngữ)\nHistory: User: xem lịch sử đặt hàng của khách HB106 | AI: Đây là danh sách... | User: hôm nay gợi ý bán gì cho người này được\nInput: User: mua nhiều vầy thì đã lên hạng chưa\nOutput:\n{\n  \"intent\": \"@cham_diem_kh\",\n  \"params\": { \"@MaKhachHang\": \"HB106\" },\n  \"status\": \"SUCCESS\",\n  \"missing_fields\": []\n}\n\n🔍 DISAMBIGUATION RULE\nNếu câu user quá mơ hồ (vd: \"xem giúp anh\"): Không xác định được intent rõ ràng.\n👉 Trả về:\n{\n  \"intent\": null,\n  \"params\": {},\n  \"status\": \"ASK_CLARIFICATION\",\n  \"missing_fields\": [\"intent\"]\n}\n\n🚫 ANTI-HALLUCINATION GUARD\n- Không tự suy diễn ID khách hàng.\n- Không suy luận kiểu: \"chắc là khách gần nhất\" nếu chưa đọc ở History.\n- Không tự tạo field ngoài schema.\n\n🧩 CONTEXT WINDOW GUIDELINE\nƯu tiên 5 turns gần nhất. Entity gần nhất có priority cao nhất."
                         }
                     ]
                 }
             },
             "type": "@n8n/n8n-nodes-langchain.chainLlm",
             "typeVersion": 1.4,
-            "position": [
-                9020,
-                900
-            ],
+            "position": [9020, 900],
             "id": "extract-intent-chain",
             "name": "Extract Intent Chain"
         },
         {
             "parameters": {
-                "jsCode": "const inp = $input.first().json;\nconst llmRaw = inp.output || inp.text || inp.response || inp.content || '';\n\nlet intent = { apiCode: null, params: {}, isComplex: false };\ntry {\n  const m = llmRaw.match(/{[\\s\\S]*}/);\n  if (m) intent = JSON.parse(m[0]);\n} catch(e) {\n  intent = { apiCode: null, params: {}, isComplex: true };\n}\n\n// --- SAFETY NET: Fix AI format confusion ---\n// Nếu AI để @api_code vào trường action_code (lỗi phổ biến), tự động sửa lại\nif (intent.action_code && intent.action_code.startsWith('@')) {\n    intent.apiCode = intent.action_code;\n    delete intent.action_code;\n}\n\nlet username = 'demo';\ntry {\n  const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || '';\n  const token = authHeader.replace(/^Bearer\\s+/i, '').trim();\n  if (token && token.split('.').length === 3) {\n    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));\n    username = payload.Username || payload.username || payload.sub || 'demo';\n  }\n} catch(e) {}\n\n// Bắt luồng TẠO ĐƠN & ASK CLARIFICATION -> Né SQL Execute, đẩy qua nhánh Fallback/Bypass\nif (intent.action_code === 'OPEN_API_PANEL' || intent.action_code === 'ASK_CLARIFICATION') {\n   return [{ json: { isValid: false, fallbackBody: intent } }];\n}\n\n// Luồng truy vấn SQL\nif (intent.apiCode) intent.params = Object.assign({}, intent.params, { '@Username': username });\n\nfunction toLocalISO(d) {\n    const mm = (d.getMonth() + 1).toString().padStart(2, '0');\n    const dd = d.getDate().toString().padStart(2, '0');\n    return d.getFullYear() + '-' + mm + '-' + dd;\n}\nconst now = new Date();\nconst placeholders = { '[TODAY]': toLocalISO(now) };\n\n// Tự động thiết lập Mặc định 30 ngày cho các API cần giới hạn thời gian (Doanh số, Đơn Hàng)\nif (intent.apiCode === '@doanh_so' || intent.apiCode === '@don_hang') {\n    if (!intent.params['@DenNgay']) {\n       intent.params['@DenNgay'] = toLocalISO(now);\n    }\n    if (!intent.params['@TuNgay']) {\n       const past30 = new Date(now);\n       past30.setDate(past30.getDate() - 30);\n       intent.params['@TuNgay'] = toLocalISO(past30);\n    }\n}\n\n\n\nconst cleanParams = {};\nfor (const k of Object.keys(intent.params || {})) {\n  let v = intent.params[k];\n  if (v === '' || v === null || v === undefined || v === 'null') continue;\n  \n  // Chuẩn hóa key: luôn có @\n  let newK = k.startsWith('@') ? k : ('@' + k);\n  \n  if (typeof v === 'string') {\n    // Placeholder [TODAY]\n    if (placeholders[v]) v = placeholders[v];\n    \n    // --- HYGIENE: Xử lý chuỗi rác trong tham số ---\n    // 1. Xóa khoảng trắng (HB 106 -> HB106) cho các mã\n    if (newK === '@khachhang' || newK === '@MaSP' || newK === '@MaKH') {\n       v = v.replace(/\\s+/g, '').toUpperCase();\n       // Xóa prefix thừa phổ biến\n       v = v.replace(/NHÀTHUỐC|KHÁCHHÀNG|NHÂNVIÊN|NT/gi, '');\n    }\n    \n    // 2. Chặn từ khóa rác lọt vào tham số\n    if (['CỦA TÔI', 'CỦA MÌNH', 'CỦA EM', 'TÔI'].includes(v.trim().toUpperCase())) continue;\n  }\n  \n  cleanParams[newK] = v;\n}\nintent.params = cleanParams;\n\nconst isValid = !!intent.apiCode && !intent.isComplex;\nreturn [{ json: { apiCode: intent.apiCode, params: intent.params || {}, isComplex: !!intent.isComplex, username: username, isValid: isValid, _debug_llm: llmRaw.substring(0, 50) } }];\n"
+                "jsCode": "const inp = $input.first().json;\nconst llmRaw = inp.output || inp.text || inp.response || inp.content || '';\n\nlet intentObj = { intent: null, params: {}, status: 'ASK_CLARIFICATION', missing_fields: ['intent'] };\ntry {\n  const m = llmRaw.match(/{[\\s\\S]*}/);\n  if (m) intentObj = JSON.parse(m[0]);\n} catch(e) {\n  intentObj = { intent: null, params: {}, status: 'ASK_CLARIFICATION', missing_fields: ['json_parse_error'] };\n}\n\nlet apiCode = intentObj.intent;\nif (apiCode && !apiCode.startsWith('@')) {\n    apiCode = '@' + apiCode;\n}\n\nlet username = 'demo';\ntry {\n  const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || '';\n  const token = authHeader.replace(/^Bearer\\s+/i, '').trim();\n  if (token && token.split('.').length === 3) {\n    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString('utf-8'));\n    username = payload.Username || payload.username || payload.sub || 'demo';\n  }\n} catch(e) {}\n\nif (intentObj.status === 'ASK_CLARIFICATION') {\n    let msg = 'Dạ, em chưa hiểu ý anh/chị. Anh/chị cần tra cứu thông tin gì ạ?';\n    if (intentObj.missing_fields && intentObj.missing_fields.length > 0) {\n        if (intentObj.missing_fields.includes('intent') || intentObj.missing_fields.includes('json_parse_error')) {\n            msg = 'Dạ, anh/chị cần em hỗ trợ tác vụ hay tra cứu dữ liệu gì ạ?';\n        } else {\n            msg = 'Dạ, để xử lý yêu cầu, anh/chị cung cấp thêm giúp em thông tin: ' + intentObj.missing_fields.join(', ') + ' nhé!';\n        }\n    }\n    return [{ json: { isValid: false, fallbackBody: { status: 'info', message: msg, apiCode: 'ASK_CLARIFICATION', intent: 'ASK_CLARIFICATION', missing_fields: intentObj.missing_fields }, _debug_llm: llmRaw.substring(0,50) } }];\n}\n\nlet cleanParams = {};\nif (apiCode) cleanParams = Object.assign({}, intentObj.params, { '@Username': username });\n\nfunction toLocalISO(d) {\n    const mm = (d.getMonth() + 1).toString().padStart(2, '0');\n    const dd = d.getDate().toString().padStart(2, '0');\n    return d.getFullYear() + '-' + mm + '-' + dd;\n}\nconst now = new Date();\nconst placeholders = { '[TODAY]': toLocalISO(now) };\n\nif (apiCode === '@doanh_so' || apiCode === '@don_hang') {\n    if (!cleanParams['@DenNgay']) cleanParams['@DenNgay'] = toLocalISO(now);\n    if (!cleanParams['@TuNgay']) {\n       const past30 = new Date(now);\n       past30.setDate(past30.getDate() - 30);\n       cleanParams['@TuNgay'] = toLocalISO(past30);\n    }\n}\n\nconst finalParams = {};\nfor (const k of Object.keys(cleanParams || {})) {\n  let v = cleanParams[k];\n  if (v === '' || v === null || v === undefined || v === 'null') continue;\n  let newK = k.startsWith('@') ? k : ('@' + k);\n  if (typeof v === 'string') {\n    if (placeholders[v]) v = placeholders[v];\n    if (newK === '@MaKhachHang' || newK === '@MaSP' || newK === '@MaKH') {\n       v = v.replace(/\\s+/g, '').toUpperCase();\n       v = v.replace(/NHÀTHUỐC|KHÁCHHÀNG|NHÂNVIÊN|NT/gi, '');\n    }\n    if (['CỦA TÔI', 'CỦA MÌNH', 'CỦA EM', 'TÔI'].includes(v.trim().toUpperCase())) continue;\n  }\n  finalParams[newK] = v;\n}\n\nconst isValid = !!apiCode;\nreturn [{ json: { apiCode: apiCode, params: finalParams, isComplex: false, username: username, isValid: isValid, _debug_llm: llmRaw.substring(0, 50) } }];"
             },
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
-            "position": [
-                9280,
-                900
-            ],
+            "position": [9280, 900],
             "id": "parse-intent-auth",
             "name": "Parse Intent & Auth"
         },
@@ -99,10 +87,7 @@
             },
             "type": "n8n-nodes-base.if",
             "typeVersion": 2.2,
-            "position": [
-                9540,
-                900
-            ],
+            "position": [9540, 900],
             "id": "is-simple-valid",
             "name": "Is Simple & Valid?"
         },
@@ -139,10 +124,7 @@
             },
             "type": "n8n-nodes-base.httpRequest",
             "typeVersion": 4.2,
-            "position": [
-                9800,
-                760
-            ],
+            "position": [9800, 760],
             "id": "call-k0-execute",
             "name": "Call K0 Execute"
         },
@@ -152,10 +134,7 @@
             },
             "type": "n8n-nodes-base.code",
             "typeVersion": 2,
-            "position": [
-                10060,
-                760
-            ],
+            "position": [10060, 760],
             "id": "format-chat-response",
             "name": "Format Chat Response"
         },
@@ -181,10 +160,7 @@
             },
             "type": "n8n-nodes-base.respondToWebhook",
             "typeVersion": 1.1,
-            "position": [
-                10320,
-                760
-            ],
+            "position": [10320, 760],
             "id": "respond-fast",
             "name": "Respond Fast"
         },
@@ -210,10 +186,7 @@
             },
             "type": "n8n-nodes-base.respondToWebhook",
             "typeVersion": 1.1,
-            "position": [
-                9800,
-                1040
-            ],
+            "position": [9800, 1040],
             "id": "respond-fallback",
             "name": "Respond Fallback"
         }

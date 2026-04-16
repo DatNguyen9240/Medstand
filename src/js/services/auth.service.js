@@ -136,7 +136,7 @@ const AuthService = (() => {
             : `data:image/jpeg;base64,${user.Avatar}`;
           $avatar.attr('src', avatarSrc);
         } else if (user.DisplayName) {
-          $avatar.attr('src', `https://ui-avatars.com/api/?name=${encodeURIComponent(user.DisplayName)}&background=3c50e0&color=fff`);
+          $avatar.attr('src', `https://ui-avatars.com/api/?name=${encodeURIComponent(user.DisplayName)}&background=${getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim().replace('#', '') || '3c50e0'}&color=fff`);
         }
       }
     } catch (e) {

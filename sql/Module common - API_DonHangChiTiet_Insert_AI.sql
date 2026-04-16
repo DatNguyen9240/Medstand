@@ -1,4 +1,4 @@
-USE [medtest]
+
 GO
 SET ANSI_NULLS ON
 GO

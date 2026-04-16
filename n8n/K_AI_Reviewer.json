@@ -1,0 +1,119 @@
+{
+    "name": "K · AI Debug Reviewer",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "hook-ai-reviewer",
+                "responseMode": "lastNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [0, 0],
+            "id": "a910ec76-cda1-443b-8ea9-a8ee8c6628c7",
+            "name": "Webhook Reviewer",
+            "webhookId": "hook-ai-reviewer-uuid"
+        },
+        {
+            "parameters": {
+                "model": "openai/gpt-4o-mini",
+                "options": {
+                    "temperature": 0.2
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+            "typeVersion": 1.2,
+            "position": [200, 200],
+            "id": "openai-debugger-model",
+            "name": "OpenAI Debugger Model",
+            "credentials": {
+                "openAiApi": {
+                    "id": "mxZCAAqEX3fE4Amb",
+                    "name": "OpenAi account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ 'DỮ LIỆU TEST CASE BỊ FAILED:\\n- Input hiện tại: ' + $('Webhook Reviewer').first().json.body.turnText + '\\n- Lịch sử context: \\n' + $('Webhook Reviewer').first().json.body.payloadHistory + '\\n\\n- CHI TIẾT LỖI:\\n+ Ý định mà Hệ thống Yêu cầu (Expected): ' + $('Webhook Reviewer').first().json.body.expectedIntent + '\\n+ Ý định mà AI hiện tại Trả về (Actual): ' + $('Webhook Reviewer').first().json.body.actualIntent + '\\n\\nHãy phân tích RẤT NGẮN GỌN (dưới 4 câu) vì sao AI lại phân loại sai, LLM bị nhầm do đâu (do thiếu rule, do không hiểu từ lóng, do lịch sử gây nhiễu, hay do prompt)? Và đề xuất CÂU LỆNH CẦN BỔ SUNG vào LUẬT CỨNG (HARD RULES) trong file prompt.txt để khắc phục triệt để. LUÔN format dễ nhìn.' }}",
+                "messages": {
+                    "messageValues": [
+                        {
+                            "type": "SystemMessagePromptTemplate",
+                            "message": "Bạn là chuyên gia Debug AI (AI Intent Routing Engineer) của hệ thống phần mềm nhà thuốc Medstand. Nhiệm vụ của bạn là đọc báo cáo Test Case thất bại, phân tích nguyên nhân tại sao con AI Extractor hiện tại lại suy luận sai (hoặc không bám sát context), và đưa ra giải pháp sửa prompt ngắn gọn nhất."
+                        }
+                    ]
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.chainLlm",
+            "typeVersion": 1.4,
+            "position": [200, 0],
+            "id": "debug-intent-chain",
+            "name": "Analyze Error Chain"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify({ status: 'success', insight: $('Analyze Error Chain').first().json.output || $('Analyze Error Chain').first().json.text }) }}",
+                "options": {
+                    "responseCode": 200,
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Access-Control-Allow-Origin",
+                                "value": "*"
+                            },
+                            {
+                                "name": "Access-Control-Allow-Headers",
+                                "value": "Content-Type"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.1,
+            "position": [500, 0],
+            "id": "respond-debug",
+            "name": "Respond Result"
+        }
+    ],
+    "connections": {
+        "Webhook Reviewer": {
+            "main": [
+                [
+                    {
+                        "node": "Analyze Error Chain",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenAI Debugger Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "Analyze Error Chain",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Analyze Error Chain": {
+            "main": [
+                [
+                    {
+                        "node": "Respond Result",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {}
+}

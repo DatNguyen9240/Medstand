@@ -1,7 +1,7 @@
 CREATE OR ALTER PROCEDURE dbo.API_DanhsachTonKho_AI
     @Username VARCHAR(50),
     @ItemID VARCHAR(50) = '',
-    @ItemName VARCHAR(200) = '',
+    @TenSanPham VARCHAR(200) = '',
     @timkiem NVARCHAR(200) = ''
 AS
 BEGIN
@@ -23,7 +23,7 @@ BEGIN
     FROM IV_StockTransactionTbl A
     LEFT JOIN CF_ItemTbl I ON A.ItemID = I.ItemID
     WHERE (@ItemID = '' OR A.ItemID = @ItemID)
-      AND (@ItemName = '' OR I.ItemName LIKE '%' + @ItemName + '%')
+      AND (@TenSanPham = '' OR I.ItemName LIKE '%' + @TenSanPham + '%')
       AND (@SYSBranchID = '' OR A.BranchID = @SYSBranchID)
       AND (@timkiem = '' OR I.ItemName LIKE '%' + @timkiem + '%' OR A.ItemID LIKE '%' + @timkiem + '%')
     GROUP BY A.ItemID, I.ItemName, A.StoreHouseID, A.BranchID,

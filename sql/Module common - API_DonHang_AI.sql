@@ -8,7 +8,7 @@ CREATE PROCEDURE [dbo].[API_DonHang_AI]
    @StatusID    INT           = NULL,
    @StatusName  NVARCHAR(50)  = '',
    @EmployeeID  VARCHAR(50)   = '',
-   @khachhang   VARCHAR(50)   = '',
+   @MaKhachHang   VARCHAR(50)   = '',
    @timkiem  NVARCHAR(50)  = '',
    @TopN        INT           = 10
 AS
@@ -78,7 +78,7 @@ BEGIN
    LEFT JOIN dbo.AR_OrderStatusTbl S ON S.StatusID = A.StatusID
    WHERE CAST(A.DocumentDate AS DATE) BETWEEN @TuNgay AND @DenNgay
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
-       AND (@khachhang = '' OR A.ObjectID = @khachhang)
+       AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
        -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ
        AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID   OR @IsManager = 1)

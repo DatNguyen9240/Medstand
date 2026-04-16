@@ -627,7 +627,7 @@
             
             if (!forceShowAll && rows.length > MAX_ITEMS) {
                 html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
-                    + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                    + '<span class="ae-val-name" style="color:var(--color-primary);font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
                     + '</div>';
             }
             
@@ -767,7 +767,7 @@
         // Nếu không có DataSource, thông báo cho người dùng biết để nhập tay và Enter
         if (!field || (!field.DataSourceType && !field.OptionsJson)) {
             _menuCreate();
-            var html = '<div class="ae-menu-item ae-val-item" style="color:#0056b3; font-style:italic;" '
+            var html = '<div class="ae-menu-item ae-val-item" style="color:var(--color-primary); font-style:italic;" '
                  + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
                  + '<span class="ae-val-name">✍️ Vui lòng tự nhập nội dung vào đây rồi bấm phím Enter...</span>'
                  + '</div>';
@@ -842,7 +842,7 @@
                     
                     if (!rows.length) { 
                         // Nếu RAM cache không có, hiện nút Gợi ý tìm trên máy chủ
-                        html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; font-style:italic;" '
+                        html += '<div class="ae-menu-item ae-val-item" style="color:var(--color-primary); font-style:italic;" '
                               + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
                               + '<span class="ae-val-name">🔍 Bấm Enter để tìm "' + _esc(keyword) + '" trên máy chủ...</span>'
                               + '</div>';
@@ -862,13 +862,13 @@
 
                         if (!forceShowAll && rows.length > MAX_ITEMS) {
                             html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
-                                + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                                + '<span class="ae-val-name" style="color:var(--color-primary);font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rows.length - MAX_ITEMS) + ' kết quả nữa...</span>'
                                 + '</div>';
                         }
                         
                         // Luôn hiển thị thêm tùy chọn tìm kiếm toàn server ở cuối danh sách (nếu có gõ chữ)
                         if (keyword) {
-                            html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; border-top:1px solid #efefef; margin-top:4px; padding-top:8px;" '
+                            html += '<div class="ae-menu-item ae-val-item" style="color:var(--color-primary); border-top:1px solid var(--color-border); margin-top:4px; padding-top:8px;" '
                                   + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
                                   + '<span class="ae-val-name">🔍 Tìm tất cả sản phẩm chứa "' + _esc(keyword) + '"...</span>'
                                   + '</div>';
@@ -986,13 +986,13 @@
             
             if (!forceShowAll && rList.length > MAX_ITEMS) {
                 html += '<div class="ae-menu-item ae-val-item" data-code="__SHOW_ALL" data-name="Xem full">'
-                    + '<span class="ae-val-name" style="color:#0056b3;font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rList.length - MAX_ITEMS) + ' kết quả nữa...</span>'
+                    + '<span class="ae-val-name" style="color:var(--color-primary);font-weight:bold;font-style:italic;display:block;text-align:center;width:100%;">⏬ Bấm để tải thêm ' + (rList.length - MAX_ITEMS) + ' kết quả nữa...</span>'
                     + '</div>';
             }
             
             // UX Đồng nhất: Hiện lựa chọn sử dụng cứng giá trị user gõ vào (giúp UI giống hệt menu Catalog)
             if (keyword) {
-                html += '<div class="ae-menu-item ae-val-item" style="color:#0056b3; border-top:1px solid #efefef; margin-top:4px; padding-top:8px;" '
+                html += '<div class="ae-menu-item ae-val-item" style="color:var(--color-primary); border-top:1px solid var(--color-border); margin-top:4px; padding-top:8px;" '
                       + 'data-code="' + _esc(keyword) + '" data-name="' + _esc(keyword) + '">'
                       + '<span class="ae-val-name">✔️ Ghi nhận nhập: "' + _esc(keyword) + '"</span>'
                       + '</div>';

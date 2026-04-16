@@ -462,7 +462,7 @@ BEGIN
             CASE
                 WHEN FieldCode = '@Username'   THEN N'Người dùng'
                 WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
-                WHEN FieldCode = '@khachhang'  THEN N'Khách hàng'
+                WHEN FieldCode = '@MaKhachHang'  THEN N'Khách hàng'
                 WHEN FieldCode = '@ObjectID'   THEN N'Mã khách hàng'
                 WHEN FieldCode = '@ItemID'     THEN N'Mã sản phẩm'
                 WHEN FieldCode = '@DocumentID' THEN N'Mã đơn hàng'
@@ -500,8 +500,8 @@ BEGIN
                 WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone')
                     OR FieldCode LIKE '%SoDienThoai' OR FieldCode LIKE '%DienThoai'
                 THEN 'tel'
-                 WHEN FieldCode IN ('@khachhang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'
-                 WHEN FieldCode IN ('@ItemID', '@ItemName') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'combobox'
+                 WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'
+                 WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'combobox'
                  WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   OR FieldCode LIKE '%Ngay' THEN 'date'
@@ -516,16 +516,16 @@ BEGIN
             END AS IsSystemParam,
             CASE
                 WHEN FieldCode = '@Type'      THEN 'APICODE'
-                WHEN FieldCode IN ('@khachhang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'APICODE'
-                WHEN FieldCode IN ('@ItemID', '@ItemName') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'APICODE'
-                WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@itemname') THEN 'APICODE'
+                WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'APICODE'
+                WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'APICODE'
+                WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@TenSanPham') THEN 'APICODE'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN 'APICODE'
                 WHEN FieldCode = '@NhomFilter' THEN 'STATIC'
                 ELSE NULL
             END AS DataSourceType,
             CASE
-                WHEN FieldCode = '@khachhang' OR FieldCode = '@ObjectID' OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
-                WHEN FieldCode = '@ItemID' OR FieldCode = '@ItemName' OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
+                WHEN FieldCode = '@MaKhachHang' OR FieldCode = '@ObjectID' OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
+                WHEN FieldCode = '@ItemID' OR FieldCode = '@TenSanPham' OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN FieldCode = '@Type'      THEN '@danh_muc|@timkiem={q}'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN StoredProcedure LIKE '%GoiYDonThuoc%' AND FieldCode = '@timkiem' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'

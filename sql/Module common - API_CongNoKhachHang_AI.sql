@@ -1,6 +1,6 @@
 CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
    @DenNgay     DATETIME     = NULL,
-   @khachhang  VARCHAR(50)  = '',
+   @MaKhachHang  VARCHAR(50)  = '',
    @Username   VARCHAR(50)
 AS
 BEGIN
@@ -8,7 +8,7 @@ BEGIN
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    DECLARE @BanLanhDao BIT
    SELECT @BanLanhDao = COALESCE(Manager, 0) FROM dbo.SY_User WHERE UserName = @Username
-   IF @khachhang = '' OR @khachhang IS NULL
+   IF @MaKhachHang = '' OR @MaKhachHang IS NULL
    BEGIN
        -- Dùng bảng tạm để tổng hợp trước, tránh query view nhiều lần
        DECLARE @CongNo TABLE (ObjectID VARCHAR(50), TongNo MONEY)
@@ -36,9 +36,9 @@ BEGIN
        O.ObjectName,
        SUM(A.DebitAmount - A.CreditAmount) AS TongNo,
        A.ObjectID
-   FROM SY_GetDebitDocFnc(@DenNgay, @khachhang, '131', '') A
+   FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
    LEFT JOIN dbo.CF_ObjectTbl O ON A.ObjectID = O.ObjectID
-   WHERE A.ObjectID = @khachhang
+   WHERE A.ObjectID = @MaKhachHang
      AND (
          @BanLanhDao = 1
          OR A.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))

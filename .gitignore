@@ -26,4 +26,5 @@ scratch*
 *.scratch.*
 
 # ?? n8n-system binaries (node, cloudflared) ??
+n8n-system/.bin/
 n8n-system/bin/

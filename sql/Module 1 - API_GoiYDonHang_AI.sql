@@ -3,7 +3,7 @@ GO
 
 CREATE PROCEDURE API_GoiYDonHang_AI
     @Username   VARCHAR(50) = '',
-    @khachhang  VARCHAR(50) = '',
+    @MaKhachHang  VARCHAR(50) = '',
     @TopN       INT         = 10
 AS
 BEGIN
@@ -16,7 +16,7 @@ BEGIN
         RETURN
     END
 
-    IF @khachhang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @khachhang)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
         SELECT 'N/A' AS [Mã SP], N'❌ Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
         RETURN;
@@ -29,7 +29,7 @@ BEGIN
     -- ═══════════════════════════════════════════════════
     -- KHÔNG TRUYỀN khách hàng (khachhang) → Top sản phẩm bán chạy nhất
     -- ═══════════════════════════════════════════════════
-    IF @khachhang = ''
+    IF @MaKhachHang = ''
     BEGIN
         SELECT TOP (@TopN)
             D.ItemID                                     AS [Mã SP],
@@ -62,7 +62,7 @@ BEGIN
     INTO #LichSu
     FROM AR_InvoiceTbl I
     JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-        WHERE I.ObjectID = @khachhang
+        WHERE I.ObjectID = @MaKhachHang
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
       AND ISNULL(I.StatusID, 0) != 10
     GROUP BY D.ItemID
@@ -77,7 +77,7 @@ BEGIN
                     (SELECT MIN(I2.DocumentDate) 
                      FROM AR_InvoiceTbl I2 
                      JOIN AR_InvoiceDetailTbl D2 ON I2.DocumentID = D2.DocumentID 
-                     WHERE I2.ObjectID = @khachhang AND D2.ItemID = L.ItemID AND I2.DocumentDate >= DATEADD(MONTH,-6,GETDATE())), 
+                     WHERE I2.ObjectID = @MaKhachHang AND D2.ItemID = L.ItemID AND I2.DocumentDate >= DATEADD(MONTH,-6,GETDATE())), 
                     L.LanMuaCuoi) 
                  / (L.SoLanMua - 1)
             ELSE 30 -- Mặc định 30 ngày nếu chỉ mua 1 lần
@@ -88,7 +88,7 @@ BEGIN
     -- TIÊU CHÍ 3: Mùa vụ (Cùng tháng này năm trước)
     SELECT D.ItemID INTO #MuaVu
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @khachhang AND MONTH(I.DocumentDate) = MONTH(GETDATE()) AND YEAR(I.DocumentDate) = YEAR(GETDATE()) - 1
+    WHERE I.ObjectID = @MaKhachHang AND MONTH(I.DocumentDate) = MONTH(GETDATE()) AND YEAR(I.DocumentDate) = YEAR(GETDATE()) - 1
     GROUP BY D.ItemID
 
     -- TIÊU CHÍ 4: Khuyến mãi đang chạy
@@ -145,10 +145,10 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tra cứu gợi ý cho một khách hàng cụ thể
-EXEC API_GoiYDonHang_AI @Username = 'admin', @khachhang = 'KH001', @TopN = 10;
+EXEC API_GoiYDonHang_AI @Username = 'admin', @MaKhachHang = 'KH001', @TopN = 10;
 
 -- Kịch bản 2: Tra cứu danh sách bán chạy chung cho chi nhánh (ObjectID để trống)
-EXEC API_GoiYDonHang_AI @Username = 'admin', @khachhang = '', @TopN = 10;
+EXEC API_GoiYDonHang_AI @Username = 'admin', @MaKhachHang = '', @TopN = 10;
 */
 
 

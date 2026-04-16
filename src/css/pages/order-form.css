@@ -118,8 +118,8 @@ textarea.form-control {
 }
 
 .btn-remove-row {
-  background: #fee2e2;
-  color: #ef4444;
+  background: var(--color-danger-bg);
+  color: var(--color-danger-text);
   border-color: rgba(239, 68, 68, 0.2);
 }
 
@@ -131,7 +131,7 @@ textarea.form-control {
 }
 
 .btn-remove-row:hover {
-  background: #fecaca;
+  background: var(--color-danger-bg);
 }
 
 .btn-save-row:hover,

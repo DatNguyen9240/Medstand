@@ -103,7 +103,7 @@
     }
 
     .form-group label .req {
-      color: #e3342f;
+      color: var(--color-danger-text);
       margin-left: 2px;
     }
 

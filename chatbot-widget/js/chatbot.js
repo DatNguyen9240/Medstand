@@ -741,7 +741,7 @@
             if (idx === MAX_CARDS) {
                 html += '</div>';
                 html += '<details style="margin-top:10px;">';
-                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:var(--color-primary); font-weight:bold; background:rgba(var(--color-primary-rgb), 0.1); border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
                 html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
             }
             var titleF = _pickField(row, 'TITLE');
@@ -893,12 +893,12 @@
 
         if (activeGroups.length > 1) {
             // Render Tabs
-            html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom: 2px solid #edf2f7; padding-bottom: 8px;">';
+            html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom: 2px solid var(--color-border); padding-bottom: 8px;">';
             var tabsId = 'tabs-' + (++_modalIdCounter);
             activeGroups.forEach(function (g, idx) {
-                var bg = (idx === 0) ? '#0056b3' : '#f0f4f8';
-                var cl = (idx === 0) ? '#fff' : '#333';
-                var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='#f0f4f8'; b.style.color='#333';}); this.style.background='#0056b3'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
+                var bg = (idx === 0) ? 'var(--color-primary)' : 'var(--color-surface)';
+                var cl = (idx === 0) ? '#fff' : 'var(--color-text)';
+                var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='var(--color-surface)'; b.style.color='var(--color-text)';}); this.style.background='var(--color-primary)'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
                 var icon = (idx === 0) ? '📌 ' : '📋 ';
                 html += '<button class="ai-tab-btn-' + tabsId + '" onclick="' + clickJs + '" style="padding:6px 14px; border:none; border-radius:20px; font-weight:600; font-size:13px; background:' + bg + '; color:' + cl + '; cursor:pointer; outline:none; transition: background 0.2s;">' + icon + _esc(g.label) + ' (' + g.rows.length + ')</button>';
             });
@@ -982,7 +982,7 @@
             if (idx === MAX_CARDS) {
                 html += '</div>';
                 html += '<details style="margin-top:10px;">';
-                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:#0056b3; font-weight:bold; background:#eaf4ff; border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (groups.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + groups.length + ')</summary>';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:var(--color-primary); font-weight:bold; background:rgba(var(--color-primary-rgb), 0.1); border-radius:8px; margin-bottom:10px; list-style:none;">⏬ Xem thêm ' + (groups.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + groups.length + ')</summary>';
                 html += '<div class="ai-catalog-grid">';
             }
 

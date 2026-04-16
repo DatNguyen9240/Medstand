@@ -3,11 +3,11 @@ GO
 
 CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
     @Username     VARCHAR(50)    = '',
-    @khachhang    VARCHAR(50)    = '',
+    @MaKhachHang    VARCHAR(50)    = '',
     @ObjectName   NVARCHAR(200)  = '',
     @EmployeeID   VARCHAR(50)    = '',
-    @EmployeeName NVARCHAR(200)  = '',
-    @ItemName     NVARCHAR(200)  = '',
+    @TenNhanVien NVARCHAR(200)  = '',
+    @TenSanPham     NVARCHAR(200)  = '',
     @TuNgay       DATETIME       = NULL,
     @DenNgay      DATETIME       = NULL,
     @TopN         INT            = 50,
@@ -60,10 +60,10 @@ BEGIN
         FROM AR_OrderAndReturnView A
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0, 10)
-            AND (@khachhang = '' OR A.ObjectID = @khachhang)
+            AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
@@ -90,10 +90,10 @@ BEGIN
         FROM AR_OrderAndReturnView A
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0, 10)
-            AND (@khachhang = '' OR A.ObjectID = @khachhang)
+            AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
@@ -122,11 +122,11 @@ BEGIN
         INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0, 10)
-            AND (@khachhang = '' OR A.ObjectID = @khachhang)
+            AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@EmployeeName = '' OR A.EmployeeName LIKE N'%' + @EmployeeName + '%')
-            AND (@ItemName = '' OR B.ItemName LIKE N'%' + @ItemName + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
+            AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
             AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)

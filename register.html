@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <link rel="manifest" href="src/pwa/manifest.json">
-  <meta name="theme-color" content="#3c50e0">
+  <meta name="theme-color" content="">
   <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
   <title>Đăng ký - Medstand</title>
 
@@ -250,10 +250,10 @@
 
       var levels = [
         { pct: '0%', color: '', text: '' },
-        { pct: '25%', color: '#ef4444', text: 'Yếu' },
-        { pct: '50%', color: '#f59e0b', text: 'Trung bình' },
-        { pct: '75%', color: '#3b82f6', text: 'Khá mạnh' },
-        { pct: '100%', color: '#10b981', text: 'Mạnh' },
+        { pct: '25%', color: 'var(--color-danger)', text: 'Yếu' },
+        { pct: '50%', color: 'var(--color-warning)', text: 'Trung bình' },
+        { pct: '75%', color: 'var(--color-info)', text: 'Khá mạnh' },
+        { pct: '100%', color: 'var(--color-success)', text: 'Mạnh' },
       ];
       var l = levels[score];
       fill.style.width = v.length ? l.pct : '0%';

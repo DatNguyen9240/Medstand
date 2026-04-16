@@ -13,13 +13,13 @@
 -- [1A] Hôm nay nên bán gì cho 1 khách cụ thể?
 EXEC API_GoiYDonHang_AI
     @Username   = '{username}',
-    @khachhang  = '{khachhang}',    -- Mã khách hàng
+    @MaKhachHang  = '{khachhang}',    -- Mã khách hàng
     @TopN       = 10;
 
 -- [1B] Hàng bán chạy nhất chi nhánh hôm nay (không có khách cụ thể)
 EXEC API_GoiYDonHang_AI
     @Username   = '{username}',
-    @khachhang  = '',               -- Để trống = xem toàn chi nhánh
+    @MaKhachHang  = '',               -- Để trống = xem toàn chi nhánh
     @TopN       = 10;
 
 
@@ -31,20 +31,20 @@ EXEC API_GoiYDonHang_AI
 -- [2A] Top 8 khách nên ghé hôm nay (toàn tuyến)
 EXEC API_TuyenBanHang_AI
     @Username      = '{username}',
-    @khachhang     = '',            -- Để trống = xem toàn tuyến
+    @MaKhachHang     = '',            -- Để trống = xem toàn tuyến
     @SoNgayVangMat = 45,            -- Ngưỡng cảnh báo mất khách (ngày)
     @TopN          = 8;
 
 -- [2B] Kiểm tra tình trạng 1 khách cụ thể
 EXEC API_TuyenBanHang_AI
     @Username      = '{username}',
-    @khachhang     = '{khachhang}', -- Mã khách cần kiểm tra
+    @MaKhachHang     = '{khachhang}', -- Mã khách cần kiểm tra
     @SoNgayVangMat = 45;
 
 -- [2C] Danh sách khách lâu chưa mua (cảnh báo rời bỏ)
 EXEC API_TuyenBanHang_AI
     @Username      = '{username}',
-    @khachhang     = '',
+    @MaKhachHang     = '',
     @SoNgayVangMat = 45,            -- Thay 60 hoặc 90 nếu muốn ngưỡng khác
     @TopN          = 8;
 
@@ -57,7 +57,7 @@ EXEC API_TuyenBanHang_AI
 -- [3A] Xem toàn bộ phân loại khách hàng (A/B/C)
 EXEC API_ChamDiemKH_AI
     @Username   = '{username}',
-    @khachhang  = '',
+    @MaKhachHang  = '',
     @NhomFilter = '';               -- '' = tất cả nhóm
 
 -- [3B] Chỉ xem khách VIP (Nhóm A — DS TB >= 50 triệu/tháng)
@@ -78,7 +78,7 @@ EXEC API_ChamDiemKH_AI
 -- [3E] Chi tiết điểm 1 khách cụ thể
 EXEC API_ChamDiemKH_AI
     @Username   = '{username}',
-    @khachhang  = '{khachhang}';
+    @MaKhachHang  = '{khachhang}';
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -90,17 +90,17 @@ EXEC API_ChamDiemKH_AI
 -- [4A] Xem tích lũy của 1 khách cụ thể (cho Sale)
 EXEC API_TichLuy_AI
     @Username  = '{username}',
-    @khachhang = '{khachhang}';     -- Mã khách cần xem
+    @MaKhachHang = '{khachhang}';     -- Mã khách cần xem
 
 -- [4B] Danh sách khách sắp đạt thưởng tháng này (cho Quản lý/CEO)
 EXEC API_TichLuy_AI
     @Username  = '{username}',
-    @khachhang = '';                -- Để trống = xem tổng danh sách
+    @MaKhachHang = '';                -- Để trống = xem tổng danh sách
 
 -- [4C] Xem theo chương trình cụ thể + lọc sản phẩm tùy chọn
 EXEC API_TichLuy_AI
     @Username  = '{username}',
-    @khachhang = '{khachhang}',
+    @MaKhachHang = '{khachhang}',
     @ProgramID = '{programID}',     -- Mã chương trình (AR_SanPhamTrongTamTbl.DocumentID)
     @ItemIDs   = 'G001,G002,G003';  -- Danh sách SP muốn tính (cách nhau bằng dấu phẩy)
 
@@ -121,13 +121,13 @@ EXEC API_UpsellGoiY_AI
 -- [5B] Gợi ý bán thêm để khách đạt mức chiết khấu/thưởng
 EXEC API_UpsellGoiY_AI
     @Username  = '{username}',
-    @khachhang = '{khachhang}',     -- Mã khách đang mua
+    @MaKhachHang = '{khachhang}',     -- Mã khách đang mua
     @TopN      = 10;
 
 -- [5C] Kết hợp: Khách hỏi triệu chứng + đang cần đạt thưởng
 EXEC API_UpsellGoiY_AI
     @Username  = '{username}',
-    @khachhang = '{khachhang}',
+    @MaKhachHang = '{khachhang}',
     @timkiem   = N'ho',             -- Triệu chứng + Upsell cùng lúc
     @TopN      = 10;
 
@@ -188,7 +188,7 @@ EXEC API_GoiYDonThuoc_AI
 ┌─────────────────────────────────────────┬──────────┬────────────────────────────────┐
 │ CÂU HỎI NGƯỜI DÙNG                     │ MODULE   │ EXEC                           │
 ├─────────────────────────────────────────┼──────────┼────────────────────────────────┤
-│ Hôm nay bán gì cho khách X?            │ 1        │ API_GoiYDonHang_AI @khachhang  │
+│ Hôm nay bán gì cho khách X?            │ 1        │ API_GoiYDonHang_AI @MaKhachHang  │
 │ Hàng bán chạy nhất hôm nay?            │ 1        │ API_GoiYDonHang_AI khachhang=''│
 │ Hôm nay ghé khách nào?                 │ 2        │ API_TuyenBanHang_AI [2A]       │
 │ Khách X có nên ghé không?              │ 2        │ API_TuyenBanHang_AI [2B]       │

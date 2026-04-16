@@ -136,15 +136,18 @@
 /* User bubble */
 .chat-bubble.user {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-inverse, #fff);
   align-self: flex-end;
   border-bottom-right-radius: var(--radius-sm);
 }
 
 /* AI bubble */
 .chat-bubble.ai {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: rgba(26, 32, 44, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   color: var(--color-text);
   align-self: flex-start;
   border-bottom-left-radius: var(--radius-sm);
@@ -192,8 +195,8 @@
 }
 
 .chat-bubble.ai .ai-code-block {
-  background: #1e1e2e;
-  color: #cdd6f4;
+  background: var(--color-surface-inverse, #1e1e2e);
+  color: var(--color-text-inverse, #cdd6f4);
   padding: 12px 14px;
   border-radius: 8px;
   overflow-x: auto;
@@ -452,7 +455,7 @@
   border: none;
   border-radius: var(--radius-full);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-inverse, #fff);
   cursor: pointer;
   transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
 }
@@ -473,12 +476,12 @@
 
 /* Stop mode — khi đang chờ AI */
 .chat-send-btn.stop-mode {
-  background: #ef4444;
+  background: var(--color-danger, #ef4444);
   animation: stop-pulse 1.5s ease-in-out infinite;
 }
 
 .chat-send-btn.stop-mode:hover {
-  background: #dc2626;
+  background: var(--color-danger, #ef4444);
 }
 
 @keyframes stop-pulse {
@@ -590,7 +593,7 @@
 
 .chat-file-remove:hover {
   background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  color: var(--color-danger, #ef4444);
 }
 
 /* ── Mention autocomplete dropdown ── */
@@ -888,7 +891,7 @@
 
 .chat-file-item-remove:hover {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--color-danger, #ef4444);
 }
 
 /* ── Drag & Drop Overlay ── */
@@ -991,7 +994,7 @@
 
 .chat-file-item-remove:hover {
   background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--color-danger, #ef4444);
 }
 
 /* ── Drag & Drop Overlay ── */
@@ -1072,21 +1075,34 @@
 /* ── Card ── */
 .ai-card {
   background: var(--color-surface);
-  border: 1px solid rgba(0,0,0,0.05); /* Mềm hơn */
+  border: 1px solid rgba(255, 255, 255, 0.08); 
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Đổ bóng chuẩn Native */
-  transition: box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  transition: box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s;
   animation: bubble-in 0.2s ease-out both;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: relative;
+}
+
+.ai-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+  opacity: 0.8;
 }
 
 .ai-card:hover {
-  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  border-color: rgba(var(--color-primary-rgb), 0.3);
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.2);
+  border-color: rgba(96, 165, 250, 0.3);
+  transform: translateY(-2px);
 }
 
 .ai-card.expanded {
-  border-color: rgba(var(--color-primary-rgb), 0.5);
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 6px 25px rgba(139, 92, 246, 0.15);
 }
 
 /* Card Header */
@@ -1095,8 +1111,8 @@
   align-items: flex-start;
   justify-content: space-between;
   padding: 12px 14px 8px;
-  background: linear-gradient(135deg, rgba(var(--color-primary-rgb),0.06), rgba(var(--color-primary-rgb),0.02));
-  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.05));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   gap: 8px;
 }
 
@@ -1104,11 +1120,14 @@
   font-size: var(--font-size-sm);
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #111827; /* Đậm nét */
   line-height: 1.4;
   flex: 1;
   min-width: 0;
   word-break: break-word;
+  background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
 }
 
 .ai-card-meta {
@@ -1123,7 +1142,7 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: #374151; /* Tone xám đồng nhất */
+  color: var(--color-text-secondary, #374151); /* Tone xám đồng nhất */
   font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
   background: rgba(0,0,0,0.04);
   padding: 1px 6px;
@@ -1160,15 +1179,15 @@
 }
 
 .ai-trend-up {
-  color: #16a34a;
+  color: var(--color-success, #16a34a);
   background: rgba(22,163,74,0.08);
-  border-left: 3px solid #16a34a;
+  border-left: 3px solid var(--color-success, #16a34a);
 }
 
 .ai-trend-down {
-  color: #dc2626;
+  color: var(--color-danger, #ef4444);
   background: rgba(220,38,38,0.08);
-  border-left: 3px solid #dc2626;
+  border-left: 3px solid var(--color-danger, #ef4444);
 }
 
 /* Card rows (label + value pairs) */
@@ -1182,7 +1201,7 @@
 }
 
 .ai-card-label {
-  color: #374151; /* Đổi về xám */
+  color: var(--color-text-secondary, #374151); /* Đổi về xám */
   white-space: nowrap;
   flex-shrink: 0;
   max-width: 50%;
@@ -1210,9 +1229,9 @@
   white-space: nowrap;
 }
 
-.ai-badge-green  { background: rgba(22,163,74,0.12);  color: #15803d; }
-.ai-badge-blue   { background: rgba(59,130,246,0.12); color: #1d4ed8; }
-.ai-badge-red    { background: rgba(220,38,38,0.12);  color: #b91c1c; }
+.ai-badge-green  { background: rgba(22,163,74,0.12);  color: var(--color-success, #16a34a); }
+.ai-badge-blue   { background: rgba(59,130,246,0.12); color: var(--color-primary, #1565c0); }
+.ai-badge-red    { background: rgba(220,38,38,0.12);  color: var(--color-danger, #ef4444); }
 .ai-badge-gray   { background: rgba(0,0,0,0.06);      color: var(--color-text-muted); }
 
 /* ── Compact / Accordion Card ── */
@@ -1336,7 +1355,7 @@
   font-family: var(--font-family);
   font-size: var(--font-size-xs);
   font-weight: 700;
-  color: #0369a1;
+  color: var(--color-primary, #1565c0);
   background: linear-gradient(135deg, #e0f2fe, #cffafe);
   border: 1px solid rgba(14, 165, 233, 0.3);
   border-radius: var(--radius-full);
@@ -1357,7 +1376,7 @@
 
 .ai-table-btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-inverse, #fff);
   border-color: var(--color-primary);
 }
 
@@ -1429,7 +1448,7 @@
 
 .ai-modal-close:hover {
   background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
+  color: var(--color-danger, #ef4444);
 }
 
 .ai-modal-body {
@@ -1513,23 +1532,23 @@
 
 /* Gọi điện — xanh lá nhẹ */
 .ai-sales-btn-call {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border-color: #a5d6a7;
+  background: var(--color-success-soft, #e8f5e9);
+  color: var(--color-success, #16a34a);
+  border-color: var(--color-success-border, #a5d6a7);
 }
 
 /* Zalo — xanh dương */
 .ai-sales-btn-zalo {
-  background: #e3f2fd;
-  color: #1565c0;
-  border-color: #90caf9;
+  background: var(--color-primary-soft, #e3f2fd);
+  color: var(--color-primary, #1565c0);
+  border-color: var(--color-primary-border, #90caf9);
 }
 
 /* Lên đơn — cam nhẹ */
 .ai-sales-btn-order {
-  background: #fff8e1;
-  color: #e65100;
-  border-color: #ffcc80;
+  background: var(--color-warning-soft, #fff8e1);
+  color: var(--color-warning, #e65100);
+  border-color: var(--color-warning-border, #ffcc80);
 }
 
 /* Dark mode adjustments */
@@ -1598,7 +1617,7 @@
 
 .ai-sales-filter-chip.active {
   background: var(--color-primary, #1565c0);
-  color: #fff;
+  color: var(--color-text-inverse, #fff);
   border-color: var(--color-primary, #1565c0);
 }
 
@@ -1725,7 +1744,7 @@
 .chip-vibrant-debt {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
   border-color: rgba(239, 68, 68, 0.2);
-  color: #b91c1c;
+  color: var(--color-danger, #ef4444);
 }
 .chip-vibrant-debt:hover {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.1));
@@ -1734,7 +1753,7 @@
 .chip-vibrant-inventory {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
   border-color: rgba(59, 130, 246, 0.2);
-  color: #1d4ed8;
+  color: var(--color-primary, #1565c0);
 }
 .chip-vibrant-inventory:hover {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1));
@@ -1743,7 +1762,7 @@
 .chip-vibrant-orders {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(217, 119, 6, 0.05));
   border-color: rgba(245, 158, 11, 0.2);
-  color: #b45309;
+  color: var(--color-warning, #e65100);
 }
 .chip-vibrant-orders:hover {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1));
@@ -1761,8 +1780,8 @@
 @media (prefers-color-scheme: dark) {
   .ai-sales-chips-bar   { background: var(--color-surface, #1e1e2e); border-top-color: rgba(255,255,255,0.05); }
   .ai-sales-tab-btn     { color: #a1a1aa; }
-  .ai-sales-tab-btn:hover { color: #fff; }
-  .ai-sales-tab-btn.active { color: #fff; }
+  .ai-sales-tab-btn:hover { color: var(--color-text-inverse, #fff); }
+  .ai-sales-tab-btn.active { color: var(--color-text-inverse, #fff); }
   .ai-sales-chips-tabs  { border-bottom-color: rgba(255,255,255,0.05); }
   .ai-sales-chip        { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.12); color: #e4e4e7;}
   
@@ -1933,7 +1952,7 @@
 }
 .ai-sales-btn-call {
   background: rgba(16, 185, 129, 0.1);
-  color: #10B981;
+  color: var(--color-success, #16a34a);
 }
 .ai-sales-btn-zalo {
   background: rgba(59, 130, 246, 0.1);
@@ -1942,7 +1961,7 @@
 .ai-sales-btn-pdf {
   min-height: unset;
   background: rgba(239, 68, 68, 0.1);
-  color: #EF4444;
+  color: var(--color-danger, #ef4444);
 }
 .ai-sales-btn-disabled {
   background: var(--ai-bg-hover);
@@ -2051,7 +2070,7 @@
 
 .ai-sales-progress-container {
   padding: 20px 16px;
-  background: #fff;
+  background: var(--color-surface, #fff);
 }
 
 .ai-sales-progress-labels {
@@ -2086,7 +2105,7 @@
 
 .ai-sales-progress-bar-fill.success { background: #10b981; }
 .ai-sales-progress-bar-fill.warning { background: #f59e0b; }
-.ai-sales-progress-bar-fill.danger { background: #ef4444; }
+.ai-sales-progress-bar-fill.danger { background: var(--color-danger, #ef4444); }
 
 .ai-sales-progress-pct {
   text-align: right;
@@ -2181,7 +2200,7 @@
   height: 38px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-primary, #3b82f6), #6366f1);
-  color: #fff;
+  color: var(--color-text-inverse, #fff);
   font-size: 16px;
   font-weight: 700;
   display: flex;
@@ -2302,7 +2321,7 @@
     color: #1e3a8a;
 }
 .ai-catalog-subgroup-item {
-    background: #ffffff;
+    background: var(--color-surface, #fff);
     border: 1px solid #f1f5f9;
     border-radius: 6px;
     padding: 8px;

@@ -2,7 +2,7 @@ IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
     @Username    VARCHAR(50)  = '',
-    @khachhang   VARCHAR(50)  = '',
+    @MaKhachHang   VARCHAR(50)  = '',
     @timkiem   NVARCHAR(50) = '',      
     @TopN        INT          = 10
 AS
@@ -25,7 +25,7 @@ BEGIN
     DECLARE @ProgramID      VARCHAR(50) = ''
 
     -- ═══ Validate khachhang ═══
-    IF @khachhang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @khachhang)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
         SELECT N'❌ Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
@@ -41,7 +41,7 @@ BEGIN
     SELECT @DoanhSoHienTai = ISNULL(SUM(D.TotalAmount), 0)
     FROM AR_InvoiceTbl I
     JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @khachhang
+    WHERE I.ObjectID = @MaKhachHang
       AND ISNULL(I.StatusID, 0) != 10
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
@@ -84,7 +84,7 @@ BEGIN
     SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
     INTO #KhachQuen 
     FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @khachhang 
+    WHERE I.ObjectID = @MaKhachHang 
       AND ISNULL(I.StatusID,0) != 10 
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
     GROUP BY D.ItemID
@@ -206,8 +206,8 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tìm sản phẩm theo triệu chứng (SearchKey)
-EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @timkiem = N'ho', @TopN = 10;
+EXEC API_UpsellGoiY_AI @Username = 'admin', @MaKhachHang = 'KH001', @timkiem = N'ho', @TopN = 10;
 
 -- Kịch bản 2: Gợi ý Upsell tự động
-EXEC API_UpsellGoiY_AI @Username = 'admin', @khachhang = 'KH001', @timkiem = '', @TopN = 10;
+EXEC API_UpsellGoiY_AI @Username = 'admin', @MaKhachHang = 'KH001', @timkiem = '', @TopN = 10;
 */

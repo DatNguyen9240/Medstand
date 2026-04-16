@@ -68,6 +68,11 @@ echo [SETUP] Chua co base n8n. Dang khoi tao cai dat (30s - 1 Phut)...
 call "%npm_cmd%" install -g n8n
 
 :SKIP_N8N_INSTALL
+
+if not exist "%NPM_GLOBAL_DIR%\pm2.cmd" (
+    echo [SETUP] Tich hop Quan Gia PM2 Portable vao he thong...
+    call "%npm_cmd%" install -g pm2
+)
 :: ============================================================
 :: 4. CẤU HÌNH BIẾN MÔI TRƯỜNG N8N 
 :: ============================================================
@@ -89,26 +94,16 @@ set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 
 :: Don sach tien trinh cu neu mang hoac port bi ket
+call "%NPM_GLOBAL_DIR%\pm2.cmd" kill > nul 2>&1
 taskkill /f /im node.exe /t > nul 2>&1
+taskkill /f /im qdrant.exe /t > nul 2>&1
 taskkill /f /im cloudflared.exe /t > nul 2>&1
 
 :: ============================================================
-:: 5. KIỂM TRA && KHỞI ĐỘNG DỊCH VỤ PHỤ Trợ 
+:: 5. HỆ THỐNG PHỤ TRỢ (PM2 SẼ ĐẢM NHẬN NHƯNG KIỂM TRA TRƯỚC)
 :: ============================================================
 echo.
-echo [INFO] Quet dich vu phu...
-if exist "%BASE_DIR%\redis\redis-server.exe" (
-    start /min "" "%BASE_DIR%\redis\redis-server.exe" "%BASE_DIR%\redis\medstand.conf"
-    echo   - Redis Engine: OK
-)
-if exist "%BASE_DIR%\redis\redis-proxy.js" (
-    start /min "" "%NODE_EXE%" "%BASE_DIR%\redis\redis-proxy.js"
-    echo   - Redis Proxy: OK
-)
-if exist "%BASE_DIR%\qdrant\qdrant.exe" (
-    start /min "" "%BASE_DIR%\qdrant\qdrant.exe"
-    echo   - Qdrant Vector: OK
-)
+echo [INFO] Cac dich vu phu se do PM2 dam nhan (Redis, Qdrant)...
 
 :: ============================================================
 :: 6. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
@@ -156,16 +151,12 @@ set "N8N_WEBHOOK_TUNNEL_URL=!NGROK_URL!"
 
 :: Chi replace file neu tim thay de tranh bao loi bat thinh linh
 if not exist "%BASE_DIR%\..\env.js" goto SKIP_CF_TUNNEL
-powershell -NoProfile -Command "$f='%BASE_DIR%\..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace 'https://[a-zA-Z0-9-]+\.trycloudflare\.com', '!NGROK_URL!' | Set-Content -Path $f -Encoding UTF8"
+powershell -NoProfile -Command "$f='%BASE_DIR%\..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace \"N8N_BASE: '.*?'\", \"N8N_BASE: '!NGROK_URL!'\" | Set-Content -Path $f -Encoding UTF8"
 echo [OK] Da cap nhat tu dong link vao env.js.
 
 :SKIP_CF_TUNNEL
 
-:: Mo proxy phia ngoai
-set "PROXY_JS=%BASE_DIR%\..\proxy.js"
-if exist "%PROXY_JS%" (
-    start "CORS Proxy" cmd /k ^"^"%NODE_EXE%^" ^"%PROXY_JS%^"^"
-)
+:: PM2 Se Dam Nhan Viec Chay Proxy.js (CORS)
 
 :: ============================================================
 :: 7. DỌN DẸP RÁC TỰ ĐỘNG MỖI LẦN KHỞI ĐỘNG
@@ -177,15 +168,26 @@ if exist "%N8N_USER_FOLDER%\.n8n\n8nEventLog*.log" del /q /f "%N8N_USER_FOLDER%\
 if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul 2>&1
 
 :: ============================================================
-:: 8. EXECUTOR: GỌI N8N 
+:: 8. EXECUTOR: GỌI HỆ SINH THÁI PM2
 :: ============================================================
 echo.
-echo =======================================================
-echo          [ HOAN TAT ] N8N DANG KHOI DONG...
-echo =======================================================
-echo   - WEBHOOK_URL : %WEBHOOK_URL%
-echo   - HOST PORT   : Localhost:%N8N_PORT%
-echo =======================================================
-call "%NPM_GLOBAL_DIR%\n8n.cmd" start
+echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...
+call "%NPM_GLOBAL_DIR%\pm2.cmd" start "%BASE_DIR%\ecosystem.config.js"
 
-pause
+:: Save config
+call "%NPM_GLOBAL_DIR%\pm2.cmd" save > nul 2>&1
+
+echo.
+echo =======================================================
+echo     [ HOAN TAT ] HE THONG N8N PORTABLE DA LEN MANG
+echo =======================================================
+echo   - N8N Admin   : http://localhost:%N8N_PORT%
+echo   - Cong Public : %WEBHOOK_URL%
+echo =======================================================
+echo.
+echo [!] He thong dang duoc chay ngam an toan (Bang PM2 Portable).
+echo De xem cac luong chay an, hay chay lenh:
+echo   %NPM_GLOBAL_DIR%\pm2.cmd logs
+echo.
+echo Sep co the tat cua so chong chong nay di thoai mai.
+pause >nul

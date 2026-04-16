@@ -31,7 +31,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://127.0.0.1:6333/collections/medstand-policies/points/delete",
+        "url": "={{ $env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333' }}/collections/medstand-policies/points/delete",
         "sendBody": true,
         "bodyParameters": {
           "parameters": [

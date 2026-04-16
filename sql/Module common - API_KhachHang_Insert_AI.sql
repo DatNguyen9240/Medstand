@@ -1,4 +1,4 @@
-USE [medtest]
+
 GO
 
 SET ANSI_NULLS ON
@@ -58,7 +58,7 @@ BEGIN
         )
         VALUES (
             @NewID, 
-            ISNULL(@BranchID, 'MB'), 
+            ISNULL(@BranchID, ''), 
             @TenKhachHang, 
             @SoDienThoai, 
             @DiaChi,
