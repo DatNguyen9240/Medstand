@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 
 :: 1. Xác định đường dẫn gốc tuyệt đối an toàn cho Portable, bỏ dấu \ ở cuối
-set "BASE_DIR=%~dp0"
+set "BASE_DIR=%~sdp0"
 if "%BASE_DIR:~-1%"=="\" set "BASE_DIR=%BASE_DIR:~0,-1%"
 
 echo =======================================================
@@ -35,9 +35,9 @@ if not exist "%NODE_ZIP%" (
     exit /b 1
 )
 
-echo [SETUP] Giai nen sieu toc (tar.exe)...
+echo [SETUP] Giai nen sieu toc (PowerShell)...
 if not exist "%BASE_DIR%\.bin" mkdir "%BASE_DIR%\.bin"
-tar -xf "%NODE_ZIP%" -C "%BASE_DIR%\.bin"
+powershell -Command "Expand-Archive -Force -Path '%NODE_ZIP%' -DestinationPath '%BASE_DIR%\.bin'"
 del /f /q "%NODE_ZIP%" 2>nul
 
 :SKIP_NODE_SETUP

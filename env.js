@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================
  *  MEDSTAND — CẤU HÌNH HỆ THỐNG (UNIFIED CONFIG)
  *  File này là file DUY NHẤT cần sửa khi deploy sang server mới
