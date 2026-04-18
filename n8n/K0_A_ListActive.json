@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "K0-A · List Active APIs",
   "nodes": [
     {
@@ -80,7 +80,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }
@@ -142,7 +142,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }

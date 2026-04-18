@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "K0-E · Get System Meta",
   "nodes": [
     {
@@ -52,7 +52,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }

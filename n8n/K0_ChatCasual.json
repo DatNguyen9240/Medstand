@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "K0_ChatCasual (Fallback)",
   "nodes": [
     {
@@ -76,7 +76,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }

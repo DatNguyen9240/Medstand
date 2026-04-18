@@ -99,7 +99,13 @@
     });
   </script>
 
-  <!-- Chatbot Widget CSS (loaded globally for smooth nav) -->
+  <!--
+    CHATBOT WIDGET V5 — Chỉ load main.js (ES6 module).
+    Các script engine cũ (chatbot-api-engine.js, chatbot.js...) vẫn do
+    Router.js load đúng lúc khi user navigate vào trang #/chatbot.
+    main.js chỉ tạo floating button + Shadow DOM overlay.
+  -->
+  <script type="module" src="chatbot-widget/js/main.js"></script>
 
   <script src="src/pwa/pwa-register.js"></script>
 </body>

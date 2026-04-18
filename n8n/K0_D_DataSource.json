@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "K0-D · DataSource Lookup",
   "nodes": [
     {
@@ -80,7 +80,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }
@@ -143,7 +143,7 @@
               },
               {
                 "name": "Access-Control-Allow-Headers",
-                "value": "Content-Type, Authorization"
+                "value": "Content-Type, Authorization, x-api-key"
               }
             ]
           }
