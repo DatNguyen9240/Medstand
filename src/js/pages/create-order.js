@@ -1,9 +1,6 @@
 // -- Helpers ------------------------------------------------------------------
 function genUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    var r = Math.random() * 16 | 0;
-    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-  });
+  return 'AUTO_GEN';
 }
 function todayStr() {
   var d = new Date();
@@ -79,6 +76,28 @@ orderForm
   .addInput({ id: 'phone', label: 'Số điện thoại', type: 'tel', required: true, placeholder: 'Nhập số điện thoại' })
   .addInput({ id: 'memo', label: 'Ghi chú', placeholder: 'Ghi chú thêm', full: true })
   .addInput({ id: 'notes', label: 'Diễn giải', type: 'textarea', placeholder: 'Nhập diễn giải đơn hàng', full: true });
+
+// -- Tự động nhảy Tuyến thứ theo Ngày CT --------------------------------------
+function updateRouteDay(dateStr, force) {
+  if (!dateStr) return;
+  var d = new Date(dateStr);
+  var dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+  var routeDay = dayNames[d.getDay()];
+  if (force || !orderForm.getValues().route) {
+      orderForm.setListValue('route', routeDay, routeDay);
+  }
+}
+
+// Gọi mặc định cho ngày hôm nay (chờ renderDOM)
+setTimeout(function() { 
+  if (!$('#fs-orderDate').val()) return;
+  updateRouteDay($('#fs-orderDate').val(), false); 
+}, 300);
+
+// Bắt sự kiện người dùng đổi ngày
+$(document).on('change', '#fs-orderDate', function() {
+  updateRouteDay($(this).val(), true);
+});
 
 // -- Sự kiện khi chọn khách hàng -> Auto-fill ---------------------------------
 orderForm.onListChange('customer', function(val) {
@@ -284,7 +303,7 @@ function validateAndBuildPayload() {
     };
   });
 
-  var docId = genUUID();
+  var docId = v.orderId || genUUID();
   return {
     docId: docId,
     payload: {
@@ -292,8 +311,8 @@ function validateAndBuildPayload() {
       DocumentID: docId,
       DocumentDate: v.orderDate,
       BranchID: v.branch,
-      ManagerID: '',
-      EmployeeID: '',
+      ManagerID: user.ManagerID || 'ADMIN',
+      EmployeeID: user.EmployeeID || 'ADMIN',
       ObjectID: v.customer,
       Memo: v.memo || '',
       Notes: v.notes || '',
@@ -303,8 +322,8 @@ function validateAndBuildPayload() {
       ThuDiTuyen: v.route || '',
       StatusID: 0,
       ItemList: JSON.stringify(itemList),
-      SYSManagerID: user.ManagerID || '',
-      SYSEmployeeID: user.EmployeeID || ''
+      SYSManagerID: user.ManagerID || 'ADMIN',
+      SYSEmployeeID: user.EmployeeID || 'ADMIN'
     }
   };
 }
@@ -373,3 +392,123 @@ $('#btnDraftOrder').on('click', function () {
 
 // Initialize with one empty row
 appendProductRow();
+
+
+// -- DỮ LIỆU TỪ CHATBOT SANG (AUTO-MAP) --------------------------------------
+setTimeout(function() {
+  if (window.location.hash.indexOf('?data=') > -1) {
+    try {
+      var dataStr = decodeURIComponent(window.location.hash.split('?data=')[1]);
+      var params = JSON.parse(dataStr);
+      // alert('DEBUG FOUND HASH DATA: ' + Object.keys(params).join(', '));
+      
+      // Khôi phục khách hàng
+      if (params['@ObjectID']) {
+          var cusId = params['@ObjectID'];
+          orderForm.setListValue('customer', cusId, cusId + ' (Đang tải...)');
+          
+          Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
+            q: JSON.stringify({ User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: '', SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || '' })
+          }).then(function (res) {
+            var records = (res.data || res).records || res.data || res || [];
+            _customersCache = records;
+            var c = records.find(function(x) { return (x.ObjectID||'').toLowerCase() === cusId.toLowerCase(); });
+            if (!c) {
+                var searchLow = cusId.toLowerCase().trim();
+                c = records.find(function(x) {
+                    return (x.DisplayName||'').toLowerCase().indexOf(searchLow) > -1 || 
+                           (x.ObjectName||'').toLowerCase().indexOf(searchLow) > -1 || 
+                           (x.Phone||'') === searchLow;
+                });
+            }
+            if (c) {
+                orderForm.setListValue('customer', c.ObjectID, c.DisplayName || c.ObjectName);
+                
+                // Kích hoạt auto full Phường xã
+                orderForm.setValue('phone', c.Phone || '');
+                orderForm.setValue('address', c.Address || '');
+                if (c.XaPhuong) orderForm.setListValue('ward', c.XaPhuong, c.XaPhuong);
+            } else {
+                // Báo lỗi không khớp khách hàng
+                orderForm.setListValue('customer', '', 'Không tìm thấy: ' + cusId);
+            }
+          });
+      }
+      
+      if (params['@Description']) {
+          orderForm.setValue('memo', params['@Description']);
+      }
+      
+      // Khôi phục danh sách sản phẩm
+      if (params['@ItemList']) {
+          var items = typeof params['@ItemList'] === 'string' ? JSON.parse(params['@ItemList']) : params['@ItemList'];
+          if (items && items.length > 0) {
+              // Clear empty row
+              $('#dynamicProductRowsContainer').html('');
+              rowCounter = 0;
+              
+              items.forEach(function(it) {
+                  appendProductRow();
+                  var currentRId = rowCounter;
+                  var $picker = $('#productPickerContainer_' + currentRId);
+                  var pId = it.ItemID;
+                  var pName = it.ItemName || it.ItemID;
+                  
+                  $picker.attr('data-value', pId).attr('data-price', it.Price || 0).attr('data-name', pName).addClass('has-value');
+                  $picker.find('.filter-value-text').text(pName);
+                  $('#qty_' + currentRId).val(it.Quantity || 1);
+                  $('#price_' + currentRId).val(it.Price || 0);
+                  calculateRowTotal(currentRId);
+              });
+              
+              // Load full list
+              loadProducts(function(prods) {
+                  items.forEach(function(it, idx) {
+                     var match = prods.find(function(x) { return (x.ItemID||'').toLowerCase() === (it.ItemID||'').toLowerCase(); });
+                     if (!match) {
+                         var pLow = (it.ItemID||it.ItemName||'').toLowerCase().trim();
+                         match = prods.find(function(x) {
+                             return (x.ItemName||'').toLowerCase().indexOf(pLow) > -1 || (x.ItemID||'').toLowerCase().indexOf(pLow) > -1;
+                         });
+                     }
+                     
+                     if (match) {
+                        var realName = match.ItemName || match.ItemID;
+                        var realPrice = match.UnitPrice || match.Price || 0;
+                        var targetRId = idx + 1;
+                        
+                        // Extract Discount (Chiết khấu) from original chatbot string if present
+                        var chatbotString = it.ItemName || it.ItemID || '';
+                        var ckMatch = chatbotString.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
+                        var autoDiscount = 0;
+                        if (ckMatch) {
+                            autoDiscount = parseFloat(ckMatch[1]);
+                        }
+
+                        var $p = $('#productPickerContainer_' + targetRId);
+                        $p.attr('data-name', realName).attr('data-price', realPrice);
+                        $p.find('.filter-value-text').text(realName);
+                        $('#price_' + targetRId).val(realPrice);
+                        
+                        // Set auto discount if detected
+                        if (autoDiscount > 0) {
+                            $('#discount_' + targetRId).val(autoDiscount);
+                        }
+                        
+                        calculateRowTotal(targetRId);
+                     }
+                  });
+              });
+          }
+      }
+      
+      // Xóa trên URL
+      history.replaceState(null, null, '#/create-order');
+      setTimeout(function() { Alert.success('Đã tải dữ liệu Đơn hàng từ Chatbot!'); }, 500);
+      
+    } catch(e) { 
+       alert('Parse chatbot payload failed: ' + e.message); 
+       console.error('Parse chatbot payload failed:', e); 
+    }
+  }
+}, 500);

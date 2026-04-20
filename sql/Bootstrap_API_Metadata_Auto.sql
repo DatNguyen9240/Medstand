@@ -277,8 +277,8 @@ BEGIN
     -- Lấy thông tin cấu hình CHUẨN từ bảng API_Field (để ăn các cài đặt Override, Default, ControlType)
     SELECT 
         FieldCode   = f.FieldCode, 
-        FieldName   = REPLACE(f.FieldCode, '@', ''),
-        Placeholder = COALESCE(f.Placeholder, N'Nhập ' + REPLACE(f.FieldCode, '@', '')),
+        FieldName   = ISNULL(f.FieldName, REPLACE(f.FieldCode, '@', '')),
+        Placeholder = COALESCE(f.Placeholder, N'Nhập ' + ISNULL(f.FieldName, REPLACE(f.FieldCode, '@', ''))),
         IsRequired  = ISNULL(f.IsRequired, 0),
         ControlType = ISNULL(f.ControlType, 'TEXT'),
         OrderIndex  = f.OrderIndex,
@@ -388,6 +388,8 @@ BEGIN
         SELECT
             p.object_id,
             p.name AS StoredProcedure,
+            CASE WHEN p.name = 'API_DonHangChiTiet_Insert_AI' THEN '@lap_don_hang'
+            ELSE
             '@' + LOWER(
                 (
                         SELECT
@@ -408,7 +410,8 @@ BEGIN
                         ORDER BY n.Num
                         FOR XML PATH(''), TYPE
                     ).value('.', 'NVARCHAR(300)')
-            ) AS ApiCode,
+            ) 
+            END AS ApiCode,
             base.ApiNameRaw
         FROM sys.procedures p
         CROSS APPLY (
@@ -442,7 +445,7 @@ BEGIN
             FieldCode,
             CASE
                 -- API Name Dictionary (Mapping SP to Vietnamese)
-                WHEN StoredProcedure LIKE '%DonHangChiTiet%Insert%' THEN N'Nhập đơn hàng'
+                WHEN StoredProcedure LIKE '%DonHangChiTiet%Insert%' THEN N'Thêm đơn hàng'
                 WHEN StoredProcedure LIKE '%KhachHang%Insert%'     THEN N'Thêm khách hàng'
                 WHEN StoredProcedure LIKE '%CongNoChiTiet%'       THEN N'Công nợ chi tiết'
                 WHEN StoredProcedure LIKE '%CongNoKhachHang%'     THEN N'Công nợ khách hàng'
@@ -472,6 +475,10 @@ BEGIN
                 WHEN FieldCode = '@GhiChu' OR FieldCode = '@Notes' OR FieldCode = '@Memo' THEN N'Ghi chú'
                 WHEN FieldCode = '@DienGiai'   THEN N'Diễn giải'
                 WHEN FieldCode = '@NhomFilter' THEN N'Phân Loại Khách (VIP=A)'
+                WHEN FieldCode = '@ObjectGroupID' THEN N'Nhóm khách hàng'
+                WHEN FieldCode = '@SoNgayVangMat' THEN N'Số ngày vắng mặt'
+                WHEN FieldCode = '@NgayBaoDong' THEN N'Ngày báo động'
+                WHEN FieldCode = '@NgayTarget' THEN N'Ngày mục tiêu'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN N'Ngày'
                 WHEN FieldCode = '@NgayGiao'   THEN N'Ngày giao hàng'
                 WHEN FieldCode LIKE '%Date'    THEN N'Ngày'

@@ -18,10 +18,10 @@
         <h2 class="chat-welcome-title">Xin chào!</h2>
         <p class="chat-welcome-text">Tôi là trợ lý AI của bạn. Hãy hỏi tôi bất cứ điều gì!</p>
         <div class="chat-suggestions">
-            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Doanh số tháng này'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">📊 Doanh số tháng này</button>
-            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Top khách hàng'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">👥 Top khách hàng</button>
-            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='Đơn chờ duyệt'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">📦 Đơn chờ duyệt</button>
-            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='SP bán chạy'; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('btn-send').disabled=false;">🔥 SP bán chạy</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='@doanh_so '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus();">📊 Tra cứu doanh số</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='@danh_sach_tonkho '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus();">📦 Kiểm tra tồn kho</button>
+            <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='@san_pham_trong_tam '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus();">🔥 Hàng trọng tâm</button>
+            <button class="chat-chip" type="button" onclick="if(window.ApiEngine) { window.ApiEngine.selectApi('@lap_don_hang'); } else { document.getElementById('chat-input').value='@lap_don_hang '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus(); }">🛒 Thêm đơn hàng</button>
         </div>
     </div>
 

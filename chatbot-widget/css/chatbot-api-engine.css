@@ -314,6 +314,8 @@ body.ae-panel-open::before {
     bottom: auto;
     left: 0;
     width: 100%;
+    min-width: 320px;
+    max-width: 90vw;
     background: var(--ae-bg);
     border: 1px solid var(--ae-border);
     border-radius: 12px;
@@ -593,7 +595,7 @@ body.ae-panel-open::before {
 .ae-dg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--ae-accent); font-weight: 600; }
 .ae-dg-add-btn { background: var(--ae-bg); border: 1px solid var(--ae-accent); color: var(--ae-accent); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 .ae-dg-add-btn:hover { background: var(--ae-accent-soft); }
-.ae-dg-body { max-height: 200px; overflow-y: auto; padding-right: 5px; }
+.ae-dg-body { max-height: none; overflow: visible; padding-right: 5px; }
 .ae-dg-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; background: var(--ae-bg-alt); padding: 6px; border-radius: 6px; border: 1px solid var(--ae-border); }
 .ae-dg-col { display: flex; flex-direction: column; }
 .ae-dg-col.col-name { flex: 3; }

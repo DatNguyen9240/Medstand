@@ -154,7 +154,7 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "openAiApi",
         "method": "POST",
-        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "url": "={{ $env.LLM_API_BASE ? $env.LLM_API_BASE : 'https://openrouter.ai/api/v1' }}/chat/completions",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}"

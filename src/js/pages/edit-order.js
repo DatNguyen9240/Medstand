@@ -16,36 +16,67 @@
       OrderService.getDetail(orderId, '')
         .then(function (res) {
           var data = res.data || res;
-          var products = data.records || data.Table || [];
-          var summary = (data.Table1 && data.Table1[0]) || {};
-          var customer = (data.Table2 && data.Table2[0]) || {};
+          // API_DonHangChiTiet trả:
+          //   records   = chi tiết sản phẩm (cũng chứa order header)
+          //   records2  = order summary (TotalAmount, GiamGia...)
+          //   records3  = thông tin địa chỉ khách (XaPhuong, QuanHuyen...)
+          var products = data.records || [];
+          var p0       = products[0] || {};      // header bọc trong mỗi row sản phẩm
+          var customer = (data.records3 && data.records3[0]) || {};
 
-          // Fix SP aliases: Table1 trả NgayDatHang thay vì DocumentDate
-          summary.DocumentDate = summary.NgayDatHang || summary.DocumentDate || '';
-          // Customer info nằm ở Table2, merge vào summary để buildForm dùng
-          summary.ObjectID = customer.ObjectID || (products[0] && products[0].ObjectID) || '';
-          summary.ObjectName = customer.ObjectName || (products[0] && products[0].ObjectName) || '';
-          summary.Address = customer.Address || (products[0] && products[0].Address) || '';
-          summary.Phone = customer.Phone || (products[0] && products[0].Phone) || '';
-          summary.XaPhuong = customer.XaPhuong || '';
-          // SP trả ThuDiTuyen (alias của ThuTrongTuan)
-          summary.ThuTrongTuan = customer.ThuDiTuyen || (products[0] && products[0].ThuDiTuyen) || summary.ThuTrongTuan || '';
+          // Chuẩn hóa ngày: "2026-04-20T00:00:00" hoặc "20/04/2026" → YYYY-MM-DD
+          var rawDate = p0.NgayDatHang || p0.DocumentDate || '';
+          if (rawDate && rawDate.indexOf('/') !== -1) {
+            var dparts = rawDate.split('/');
+            if (dparts.length === 3) rawDate = dparts[2].substring(0,4) + '-' + dparts[1] + '-' + dparts[0];
+          } else if (rawDate.indexOf('T') !== -1) {
+            rawDate = rawDate.substring(0, 10);
+          }
+
+          // Build summary object từ p0 (order header) + records3 (địa chỉ)
+          var summary = {
+            StatusID:     undefined,          // sẽ fetch riêng
+            DocumentDate: rawDate,
+            BranchID:     p0.BranchID     || '',
+            BranchName:   p0.BranchName   || '',
+            CeoID:        p0.CeoID        || '',
+            CeoName:      p0.CeoName      || '',
+            ManagerID:    p0.ManagerID    || '',
+            ManagerName:  p0.ManagerName  || '',
+            EmployeeID:   p0.EmployeeID   || '',
+            EmployeeName: p0.EmployeeName || '',
+            Memo:         p0.Memo         || '',
+            Notes:        p0.Notes        || '',
+            // Thông tin khách hàng
+            ObjectID:     p0.ObjectID     || '',
+            ObjectName:   p0.ObjectName   || '',
+            Address:      customer.Address    || p0.Address    || '',
+            Phone:        p0.Phone        || '',
+            XaPhuong:     customer.XaPhuong   || p0.XaPhuong   || '',
+            ThuTrongTuan: p0.ThuDiTuyen   || ''
+          };
 
           $('#loading-state').hide();
           $('#edit-form-wrap').prop('hidden', false);
 
-          // Build form
+          // Build form với dữ liệu đã có
           buildForm(summary);
 
-          // Pre-fill products — SP giờ trả UserAutoID, row có UserAutoID là row cũ
+          // Pre-fill products
           if (products.length) {
-            products.forEach(function (p) {
-              appendProductRow(p);
-            });
+            products.forEach(function (p) { appendProductRow(p); });
           } else {
             appendProductRow();
           }
           updateLiveTotal();
+
+          // StatusID: thử đọc từ first product row, mặc định 0 nếu không có
+          setTimeout(function() {
+            if ($('#selAdminStatus').length) {
+              var sid = p0.StatusID !== undefined ? parseInt(p0.StatusID, 10) : 0;
+              $('#selAdminStatus').val(sid);
+            }
+          }, 300);
         })
         .catch(function (err) {
           console.error(err);
@@ -95,8 +126,10 @@
         .addList({
           id: 'employee', label: 'Tên nhân viên',
           loadFn: function (done) {
-            done([{ value: summary.EmployeeID || user.EmployeeID || '', label: summary.EmployeeName || user.EmployeeName || '' }]);
-            orderForm.setListValue('employee', summary.EmployeeID || user.EmployeeID || '', summary.EmployeeName || user.EmployeeName || '');
+            var empId  = summary.EmployeeID  || user.EmployeeID  || '';
+            var empName = summary.EmployeeName || user.EmployeeName || empId; // fallback to ID nếu name trống
+            done([{ value: empId, label: empName }]);
+            if (empId) orderForm.setListValue('employee', empId, empName);
           }
         })
         // Các trường cho phép sửa
@@ -113,12 +146,22 @@
               var records = (res.data || res).records || res.data || res || [];
               window._customerRecords = records;
               var opts = records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; });
+              // Đảm bảo khách hiện tại luôn có trong options
+              if (summary.ObjectID && !opts.find(function(o){ return o.value === summary.ObjectID; })) {
+                opts.unshift({ value: summary.ObjectID, label: summary.ObjectName || summary.ObjectID });
+              }
               done(opts);
               if (summary.ObjectID) {
                 var match = opts.find(function (o) { return o.value === summary.ObjectID; });
                 if (match) orderForm.setListValue('customer', match.value, match.label);
               }
-            }).catch(function () { done([]); });
+            }).catch(function () {
+              // Nếu API lỗi, vẫn hiện khách hàng hiện tại
+              var fallbackOpts = summary.ObjectID ? [{ value: summary.ObjectID, label: summary.ObjectName || summary.ObjectID }] : [];
+              window._customerRecords = fallbackOpts;
+              done(fallbackOpts);
+              if (summary.ObjectID) orderForm.setListValue('customer', summary.ObjectID, summary.ObjectName || summary.ObjectID);
+            });
           }
         })
         .addInput({ id: 'ward', label: 'Phường/Xã', value: summary.XaPhuong || '', placeholder: 'Phường/Xã', readonly: true })
@@ -129,10 +172,16 @@
             Http.get(API_CONFIG.ENDPOINTS.FILTER.ROUTE_DAYS, { q: JSON.stringify({ ThuDiTuyen: '' }) })
               .then(function (res) {
                 var records = (res.data || res).records || res.data || res || [];
-                var opts = records.map(function (r) { return { value: r.ThuTrongTuan || '', label: r.ThuTrongTuan || '' }; });
+                // API có thể trả ThuTrongTuan hoặc ThuDiTuyen
+                var opts = records.map(function (r) { 
+                  var val = r.ThuTrongTuan || r.ThuDiTuyen || '';
+                  return { value: val, label: val }; 
+                });
                 done(opts);
-                if (summary.ThuTrongTuan) {
-                  var match = opts.find(function (o) { return o.value === summary.ThuTrongTuan; });
+                // summary.ThuTrongTuan có thể là "Thứ 2" từ field ThuDiTuyen
+                var routeVal = summary.ThuTrongTuan || '';
+                if (routeVal) {
+                  var match = opts.find(function (o) { return o.value === routeVal; });
                   if (match) orderForm.setListValue('route', match.value, match.label);
                 }
               }).catch(function () { done([]); });
@@ -466,5 +515,57 @@
         Alert.error(err.message || 'Có lỗi xảy ra.');
       }).finally(function () {
         $btn.prop('disabled', false).text('CẬP NHẬT ĐƠN');
+      });
+    });
+    // ── Admin Approve ─────────────────────────────────────────────────────────────
+    // Hiển thị phần "Cập nhật trạng thái" cho tất cả user để test (hoặc đưa logic phân quyền về backend)
+    $('#adminApproveBtnContainer').html(
+      '<div style="display:inline-flex; align-items:center; gap:8px; margin-right:8px;">' +
+        '<select id="selAdminStatus" style="padding:0 12px; border-radius:var(--radius-md); border:1px solid #d1d5db; font-size:0.9rem; outline:none; background:#fff; font-weight:600; color:#374151; min-width:170px; height: 42px; cursor:pointer;">' +
+          '<option value="0">Mới tạo (Lưu nháp)</option>' +
+          '<option value="1">Đã Duyệt</option>' +
+          '<option value="2">Đang Giao Hàng</option>' + 
+          '<option value="10">Hoàn Thành</option>' +
+          '<option value="-1">Hủy Đơn</option>' +
+          '<option value="-2">Trả Lại Hàng</option>' +
+        '</select>' +
+        '<button type="button" id="btnApproveOrder" style="padding:0 24px;background:#3b82f6;color:#fff;border:none;border-radius:var(--radius-md);font-size:0.9rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap; height: 42px; transition: background 0.2s;">CẬP NHẬT TRẠNG THÁI</button>' +
+      '</div>'
+    ).show();
+
+    $('#btnApproveOrder').on('mouseenter', function() { $(this).css('background', '#2563eb'); })
+                         .on('mouseleave', function() { $(this).css('background', '#3b82f6'); });
+
+    $('#btnApproveOrder').on('click', function() {
+      var targetStatus = parseInt($('#selAdminStatus').val(), 10);
+      var $btn = $(this);
+      $btn.prop('disabled', true).text('ĐANG XỬ LÝ...');
+      OrderService.update({
+        OldKeyID: orderId,
+        BranchID: '', CeoID: '', ManagerID: '', EmployeeID: '', ObjectID: '', Memo: '', Notes: '', ThuDiTuyen: '', ItemList: '',
+        User: user.UserName || '',
+        StatusID: targetStatus
+      }).then(function (res) {
+        var data = res.data || res;
+        var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
+        var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
+        if (msgType == 1) { 
+          Alert.error(record.Msg || 'Lỗi cập nhật trạng thái'); 
+          $btn.prop('disabled', false).text('CẬP NHẬT TRẠNG THÁI');
+          return; 
+        }
+        Alert.success('Đã cập nhật trạng thái đơn hàng thành công!');
+        
+        // Hiển thị nút thành trạng thái Đã lưu
+        $btn.css('background', '#10b981').text('✅ ĐÃ LƯU!');
+        
+        // Khôi phục lại trạng thái nút sau 3s
+        setTimeout(function () {
+           $btn.prop('disabled', false).css('background', '#3b82f6').text('CẬP NHẬT TRẠNG THÁI');
+        }, 3000);
+        
+      }).catch(function (err) {
+        Alert.error(err.message || 'Lỗi hệ thống');
+        $btn.prop('disabled', false).text('CẬP NHẬT TRẠNG THÁI');
       });
     });

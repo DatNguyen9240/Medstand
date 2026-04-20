@@ -65,7 +65,7 @@ textarea.form-control {
 
 /* Biến thể 2 nút cho trang Edit */
 .responsive-grid.add-product-row.edit-mode {
-  grid-template-columns: minmax(60px, 1fr) 35px 50px 35px 60px 65px;
+  grid-template-columns: 3fr 1.2fr 1.8fr 1.2fr 1.8fr 68px;
 }
 
 
