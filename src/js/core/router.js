@@ -11,7 +11,7 @@ const Router = (() => {
     // Main app pages (need auth + nav)
     { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
     { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
-    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.tpl', scripts: ['chatbot-widget/js/chatbot-suggestions.js', 'chatbot-widget/js/chatbot-api-engine.js', 'chatbot-widget/js/chatbot.js', 'chatbot-widget/js/chatbot-renderers-medstand.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
+    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot-suggestions.js', 'chatbot-widget/js/chatbot-api-engine.js', 'chatbot-widget/js/chatbot.js', 'chatbot-widget/js/chatbot-renderers-medstand.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
     { path: 'orders', template: 'src/templates/orders.html', scripts: ['src/js/pages/orders.js'], css: ['src/css/pages/orders.css'], auth: true, nav: 'orders', title: 'Đơn hàng' },
     { path: 'account', template: 'src/templates/account.html', scripts: ['src/js/pages/account.js'], css: ['src/css/pages/account.css'], auth: true, nav: 'account', title: 'Tài khoản' },
@@ -43,6 +43,8 @@ const Router = (() => {
     { path: 'account-detail', template: 'src/templates/account-detail.html', scripts: ['src/js/pages/account-detail.js'], css: ['src/css/pages/account-detail.css'], auth: true, nav: 'account', title: 'Thông tin tài khoản' },
     { path: 'account-edit', template: 'src/templates/account-edit.html', scripts: ['src/js/pages/account-edit.js'], css: ['src/css/pages/account-edit.css'], auth: true, nav: 'account', title: 'Chỉnh sửa tài khoản' },
     { path: 'change-password', template: 'src/templates/change-password.html', scripts: ['src/js/pages/change-password.js'], css: ['src/css/components/forms.css', 'src/css/pages/change-password.css'], auth: true, nav: 'account', title: 'Đổi mật khẩu' },
+    { path: 'rag-admin', template: 'src/templates/rag-admin.html', scripts: ['src/js/pages/rag-admin.js'], css: ['src/css/pages/rag-admin.css'], auth: true, nav: 'account', title: 'Quản lý Tri thức' },
+
 
     // Survey
     { path: 'survey', template: 'src/templates/survey.html', scripts: ['src/js/pages/survey.js'], css: ['src/css/pages/survey.css'], auth: true, nav: 'account', title: 'Khảo sát' },

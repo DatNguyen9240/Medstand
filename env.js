@@ -9,7 +9,7 @@
 const ENV_VARS = {
     // Nếu chạy App ngay tại quầy thu ngân (Local), ưu tiên dùng 127.0.0.1 để không bị nghẽn mạng Cloudflare
     // Nếu dùng từ xa (Internet), dán link https://...trycloudflare.com sinh ra từ start_n8n.bat vào đây
-    N8N_BASE: 'https://findarticles-stomach-front-janet.trycloudflare.com',
+    N8N_BASE: 'https://depot-dist-fundamentals-counseling.trycloudflare.com',
     API_BASE: 'https://medtest.bms79.com',
     CHAT_API_KEY: 'test123456'
 };
@@ -90,7 +90,10 @@ window.API_CONFIG = {
             CHANNELS: '/api/API_KenhBan',
             ROUTE_DAYS: '/api/API_ThuDiTuyen',
         },
-        AI: { CATALOG: '/api/API_DanhMuc_AI' }
+        AI: { 
+            CATALOG: '/api/API_DanhMuc_AI',
+            ADMIN_UPLOAD: '/webhook/admin-upload'
+        }
     },
 
     CHAT_WEBHOOK: '/webhook/hook-ai-dainao', 

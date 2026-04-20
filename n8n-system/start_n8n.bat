@@ -26,6 +26,7 @@ echo [SETUP] Phat hien thieu Node.js hoac bi an mon.
 echo [SETUP] Tai han ban Portable moi de tiep tuc setup...
 
 if exist "%NODE_ZIP%" goto SKIP_NODE_DOWNLOAD
+if not exist "%BASE_DIR%\.bin" mkdir "%BASE_DIR%\.bin"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%NODE_URL%' -OutFile '%NODE_ZIP%' -UseBasicParsing"
 
 :SKIP_NODE_DOWNLOAD
@@ -48,6 +49,10 @@ set "PATH=%NODE_DIR%;%PATH%"
 :: 3. ÉP CHẾ ĐỘ PORTABLE 100% CHO NPM + N8N 
 :: ============================================================
 set "N8N_USER_FOLDER=%BASE_DIR%\n8n_data"
+set "PM2_HOME=%N8N_USER_FOLDER%\.pm2"
+set "PM2_RPC_PORT=//./pipe/rpc_n8n_medstand"
+set "PM2_PUB_PORT=//./pipe/pub_n8n_medstand"
+set "PM2_INTERACT_PORT=//./pipe/interact_n8n_medstand"
 set "NPM_GLOBAL_DIR=%N8N_USER_FOLDER%\npm_global"
 set "NPM_CACHE_DIR=%N8N_USER_FOLDER%\npm_cache"
 

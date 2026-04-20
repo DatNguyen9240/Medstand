@@ -1803,14 +1803,19 @@
                     if (isUserField) return;
 
                     // Tự động tính tham số thời gian cho TH2 (nhập qua Chat)
-                    var isStartD = (fcLow.indexOf('tu') > -1 || fcLow.indexOf('start') > -1 || fcLow.indexOf('from') > -1);
-                    var isEndD = (fcLow.indexOf('den') > -1 || fcLow.indexOf('end') > -1 || fcLow.indexOf('to') > -1);
-                    // Dự đoán nếu chỉ có 1 trường date và nó không rõ ràng thì nó là Đến Ngày
-                    var dCount = cfgParams.filter(function(x){ return x.ControlType==='date'; }).length;
-                    if (f.ControlType === 'date' && !isStartD && !isEndD) {
-                        if (dCount === 1) isEndD = true;
-                        else if (cfgParams.indexOf(f) === 0) isStartD = true;
-                        else isEndD = true;
+                    // Chỉ áp dụng nếu Field thực sự là kiểu date để tránh bắt nhầm (vd: @TopN có chứa "to")
+                    var isStartD = false, isEndD = false;
+                    if (f.ControlType === 'date') {
+                         isStartD = (fcLow.indexOf('tu') > -1 || fcLow.indexOf('start') > -1 || fcLow.indexOf('from') > -1);
+                         isEndD = (fcLow.indexOf('den') > -1 || fcLow.indexOf('end') > -1 || fcLow.indexOf('to') > -1);
+                         
+                         // Dự đoán nếu chỉ có 1 trường date và nó không rõ ràng thì nó là Đến Ngày
+                         var dCount = cfgParams.filter(function(x){ return x.ControlType==='date'; }).length;
+                         if (!isStartD && !isEndD) {
+                             if (dCount === 1) isEndD = true;
+                             else if (cfgParams.indexOf(f) === 0) isStartD = true;
+                             else isEndD = true;
+                         }
                     }
 
                     if (!params[f.FieldCode] && (isStartD || isEndD || f.ControlType === 'date')) {
@@ -1970,7 +1975,7 @@
                     });
                     
                     if (dataRows.length === 0) {
-                        _cbMsg && _cbMsg('ai', '❌ Không tìm thấy dữ liệu phù hợp với bộ lọc.');
+                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ. 🙇‍♀️');
                         return;
                     }
 
