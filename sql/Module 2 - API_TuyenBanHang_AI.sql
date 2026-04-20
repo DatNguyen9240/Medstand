@@ -107,11 +107,11 @@ BEGIN
     -- KẾT QUẢ 1: DANH SÁCH TUYẾN GHÉ (Tối ưu cho Sale)
     -- ═══════════════════════════════════════════════════════
     SELECT TOP (@TopN)
-        KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone, KH.Address,
-        KH.ZoneID AS Tuyen, KH.ThuTrongTuan AS LichGhe, FORMAT(L.LanMuaCuoi, 'MM/dd') AS LanMuaCuoi, L.SoNgayKhongMua,
-        L.ChuKyMuaTB_Ngay, FORMAT(L.NgayDuDoanHetHang, 'MM/dd') AS NgayDuDoanHetHang,
-        CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS NgayConLaiHetHang,
-        L.DiemUuTien,
+        KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone AS [SĐT], KH.Address AS [Địa Chỉ],
+        KH.ZoneID AS [Tuyến], KH.ThuTrongTuan AS [Lịch Ghé], FORMAT(L.LanMuaCuoi, 'dd/MM/yyyy') AS [Lần Mua Cuối], L.SoNgayKhongMua AS [Số Ngày Không Mua],
+        L.ChuKyMuaTB_Ngay AS [Chu Kỳ Mua TB (Ngày)], FORMAT(L.NgayDuDoanHetHang, 'dd/MM/yyyy') AS [Ngày Dự Đoán Hết Hàng],
+        CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS [Còn Lại (Ngày)],
+        L.DiemUuTien AS [Điểm Ưu Tiên],
         CONCAT(
             CASE
                 WHEN L.NgayConLaiHetHang < 0 THEN N'📍 Chưa phát sinh đơn hàng ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày'
@@ -119,7 +119,7 @@ BEGIN
                 ELSE N'📅 Theo lịch ghé'
             END,
             CASE WHEN KH.ZoneID IS NULL THEN N' | ⛔ Ngoài tuyến' ELSE '' END
-        ) AS LyDoGhe
+        ) AS [Lý Do Ghé]
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
     WHERE (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)

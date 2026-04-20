@@ -177,7 +177,7 @@ if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul
 :: ============================================================
 echo.
 echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...
-call "%NPM_GLOBAL_DIR%\pm2.cmd" start "%BASE_DIR%\ecosystem.config.js"
+call "%NPM_GLOBAL_DIR%\pm2.cmd" start "%BASE_DIR%\ecosystem.config.js" --update-env
 
 :: Save config
 call "%NPM_GLOBAL_DIR%\pm2.cmd" save > nul 2>&1

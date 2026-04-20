@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================
  *  MEDSTAND — CẤU HÌNH HỆ THỐNG (UNIFIED CONFIG)
  *  File này là file DUY NHẤT cần sửa khi deploy sang server mới
@@ -9,7 +9,7 @@
 const ENV_VARS = {
     // Nếu chạy App ngay tại quầy thu ngân (Local), ưu tiên dùng 127.0.0.1 để không bị nghẽn mạng Cloudflare
     // Nếu dùng từ xa (Internet), dán link https://...trycloudflare.com sinh ra từ start_n8n.bat vào đây
-    N8N_BASE: 'https://depot-dist-fundamentals-counseling.trycloudflare.com',
+    N8N_BASE: 'https://sacramento-reader-newly-obligations.trycloudflare.com',
     API_BASE: 'https://medtest.bms79.com',
     CHAT_API_KEY: 'test123456'
 };
@@ -90,23 +90,23 @@ window.API_CONFIG = {
             CHANNELS: '/api/API_KenhBan',
             ROUTE_DAYS: '/api/API_ThuDiTuyen',
         },
-        AI: { 
+        AI: {
             CATALOG: '/api/API_DanhMuc_AI',
             ADMIN_UPLOAD: '/webhook/admin-upload'
         }
     },
 
-    CHAT_WEBHOOK: '/webhook/hook-ai-dainao', 
-    CATALOG_ROOT_API: '@danh_muc', 
+    CHAT_WEBHOOK: '/webhook/hook-ai-dainao',
+    CATALOG_ROOT_API: '@danh_muc',
     CART_CUSTOMER_DS: '@danh_muc|@Type=khachhang|@timkiem={q}',
     ENTITY_LOOKUP_DS: '@danh_muc|@timkiem={q}',
 
     DEBT_WARN_THRESHOLD: 50000000,
     RETURN_KEYWORDS: ['trả', 'lỗi', 'hỏng'],
-    MSG_DEBT_RETURN:  'Có giao dịch trả hàng → Kiểm tra chất lượng SP trước khi giao.',
-    MSG_DEBT_HIGH:    'Công nợ vượt ngưỡng → Ưu tiên đôn đốc thu hồi trước khi xuất đơn mới.',
-    MSG_DEBT_ZERO:    'Thanh toán đúng hạn → Đề xuất đẩy mạnh up-sale.',
-    MSG_DEBT_NORMAL:  'Giao dịch đều đặn → Duy trì chăm sóc khách hàng thường xuyên.',
+    MSG_DEBT_RETURN: 'Có giao dịch trả hàng → Kiểm tra chất lượng SP trước khi giao.',
+    MSG_DEBT_HIGH: 'Công nợ vượt ngưỡng → Ưu tiên đôn đốc thu hồi trước khi xuất đơn mới.',
+    MSG_DEBT_ZERO: 'Thanh toán đúng hạn → Đề xuất đẩy mạnh up-sale.',
+    MSG_DEBT_NORMAL: 'Giao dịch đều đặn → Duy trì chăm sóc khách hàng thường xuyên.',
 };
 
 // Đảm bảo biến có thể truy cập trực tiếp bằng tên trong tất cả các scope

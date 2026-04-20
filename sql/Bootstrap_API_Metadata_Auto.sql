@@ -117,7 +117,7 @@ BEGIN
     ('PhanLoai','BADGE'), ('NhomKH','BADGE'), ('TrangThai','BADGE'), ('Status','BADGE'), ('QuaDaDat','BADGE'), ('PhanThuong','BADGE'),
     ('DoanhSo','MONEY'), ('TongNo','MONEY'), ('TonKho','MONEY'), ('DonGia','MONEY'), ('SoTien','MONEY'), 
     ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'), ('TichLuyDatDuoc','MONEY'),
-    ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'),
+    ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'), ('SĐT', 'PHONE'),
     ('Ngay','TREND'), ('NgayChungTu','TREND'), ('ThoiGian','TREND'), ('LoiNhacAI','TREND'), ('NgayGiao','TREND'),
     ('TyLe','PERCENT'), ('TangTruong','PERCENT'), ('PhanTram','PERCENT'), ('HoanThanh','PERCENT'), ('Percentage','PERCENT'),
     ('MucTieu','TARGET'), ('Target','TARGET'), ('DinhMuc','TARGET'), ('ChiTieu','TARGET'),
@@ -497,7 +497,7 @@ BEGIN
                     OR FieldCode LIKE '%DiaChi'
                 THEN 'textarea'
                 -- Tel: số điện thoại
-                WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone')
+                WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone', '@SĐT')
                     OR FieldCode LIKE '%SoDienThoai' OR FieldCode LIKE '%DienThoai'
                 THEN 'tel'
                  WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'

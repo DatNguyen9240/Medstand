@@ -116,10 +116,10 @@ const Router = (() => {
 
     hrefs.forEach(href => {
       // Skip if already in <head> as static
-      if (document.querySelector(`link[href="${href}"]`)) return;
+      if (document.querySelector(`link[href^="${href}"]`)) return;
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = href;
+      link.href = href + '?v=8.0';
       link.setAttribute('data-dynamic', 'true');
       document.head.appendChild(link);
       _dynamicStylesheets.push(link);
@@ -135,7 +135,8 @@ const Router = (() => {
         return;
       }
       const script = document.createElement('script');
-      script.src = src;
+      script.src = src + '?v=8.0';
+      script.charset = 'UTF-8';
       script.onload = () => {
         _loadedScripts.add(src);
         resolve();
