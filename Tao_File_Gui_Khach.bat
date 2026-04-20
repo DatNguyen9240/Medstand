@@ -19,7 +19,7 @@ if exist "%TMP_DIR%" rmdir /s /q "%TMP_DIR%"
 if exist "%ZIP_FILE%" del /q "%ZIP_FILE%"
 
 echo [1/3] Đang lọc file dọn rác ra thư mục tạm...
-robocopy "%SRC%" "%TMP_DIR%" /MIR /XD .git .cursor npm_global npm_cache .cache .bin qdrant_storage node_modules __pycache__ /XF *.zip Tao_File_Gui_Khach.bat /NJH /NJS /NDL /NC /NS /NP >nul
+robocopy "%SRC%" "%TMP_DIR%" /MIR /XD .git .cursor .venv .logs npm_global npm_cache .cache .bin qdrant_storage node_modules __pycache__ /XF *.zip Tao_File_Gui_Khach.bat /NJH /NJS /NDL /NC /NS /NP >nul
 
 echo [2/3] Đang nén file (Quá trình này cực kỳ nhanh vì chỉ còn Code)...
 powershell -Command "Compress-Archive -Path '%TMP_DIR%\*' -DestinationPath '%ZIP_FILE%'"
