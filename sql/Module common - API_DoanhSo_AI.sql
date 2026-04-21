@@ -59,7 +59,7 @@ BEGIN
         SELECT A.EmployeeID, A.EmployeeName, SUM(A.Amount) AS DoanhSo
         FROM AR_OrderAndReturnView A
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0, 10)
+            AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -89,7 +89,7 @@ BEGIN
         SELECT A.ObjectID, A.ObjectName, SUM(A.Amount) AS DoanhSo
         FROM AR_OrderAndReturnView A
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0, 10)
+            AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -121,7 +121,7 @@ BEGIN
         INNER JOIN AR_OrderDetailTbl D ON A.DocumentID = D.DocumentID
         INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0, 10)
+            AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)

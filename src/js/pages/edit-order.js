@@ -557,7 +557,7 @@
         Alert.success('Đã cập nhật trạng thái đơn hàng thành công!');
         
         // Hiển thị nút thành trạng thái Đã lưu
-        $btn.css('background', '#10b981').text('✅ ĐÃ LƯU!');
+        $btn.css('background', '#10b981').text('ĐÃ LƯU!');
         
         // Khôi phục lại trạng thái nút sau 3s
         setTimeout(function () {

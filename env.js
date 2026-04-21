@@ -9,7 +9,7 @@
 const ENV_VARS = {
     // Nếu chạy App ngay tại quầy thu ngân (Local), ưu tiên dùng 127.0.0.1 để không bị nghẽn mạng Cloudflare
     // Nếu dùng từ xa (Internet), dán link https://...trycloudflare.com sinh ra từ start_n8n.bat vào đây
-    N8N_BASE: 'https://sacramento-reader-newly-obligations.trycloudflare.com',
+    N8N_BASE: 'http://127.0.0.1:5678',
     API_BASE: 'https://medtest.bms79.com',
     CHAT_API_KEY: 'test123456'
 };

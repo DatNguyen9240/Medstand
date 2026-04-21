@@ -166,8 +166,9 @@ var MapPicker = (function () {
     }
 
     _map = L.map('mp-map').setView([lat, lng], 14);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=vi&gl=VN&x={x}&y={y}&z={z}', {
+      attribution: 'Map data &copy; Google',
+      maxZoom: 20
     }).addTo(_map);
 
     _map.on('click', function (e) {

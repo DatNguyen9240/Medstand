@@ -17,6 +17,14 @@ const DashboardService = (() => {
     return Http.get(EP.CHART2, { q: JSON.stringify({ FromDate: fromDate, ToDate: toDate }) });
   }
 
+  function getRevenueChart(fromDate, toDate) {
+    return Http.get(EP.REVENUE, { q: JSON.stringify({ FromDate: fromDate, ToDate: toDate }) });
+  }
+
+  function getOrders(fromDate, toDate) {
+    return Http.get(API_CONFIG.ENDPOINTS.ORDERS.LIST, { q: JSON.stringify({ FromDate: fromDate, ToDate: toDate }) });
+  }
+
   function getBirthdays(fromDate, toDate) {
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     return Http.get(EP.BIRTHDAYS, {
@@ -35,5 +43,5 @@ const DashboardService = (() => {
     return Http.get(EP.INFORMATIONS, { q: JSON.stringify({ FromDate: fromDate, ToDate: toDate }) });
   }
 
-  return { getStats, getRevenue, getChart2, getBirthdays, getInformations };
+  return { getStats, getRevenue, getChart2, getRevenueChart, getOrders, getBirthdays, getInformations };
 })();

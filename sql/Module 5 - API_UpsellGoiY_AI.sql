@@ -135,13 +135,22 @@ BEGIN
             CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
             ISNULL(S.QuantityinStock, 0)               AS TonKho,
             (
-                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
-                (CASE WHEN CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 OR
-                           CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0
-                 THEN 100000 ELSE 0 END) +
-                (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
-                           I.TuKhoa   COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%'
-                 THEN 50000 ELSE 0 END)
+                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 2000000 ELSE 0 END) +
+                
+                -- Ưu tiên 1: Tên chứa từ khoá nguyên bản ở đầu (VD: Bắt đầu bằng chữ "Thuốc ho")
+                (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE REPLACE(@timkiem, 'thuoc ', '') + N'%' OR I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 500000 ELSE 0 END) +
+                
+                -- Ưu tiên 2: Tên chứa chính xác từ khóa rời rạc (Full-text match)
+                (CASE WHEN CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(I.ItemName COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 THEN 300000 ELSE 0 END) +
+                
+                -- Ưu tiên 3: Tên chỉ nằm đâu đó trong chuỗi (Contains)
+                (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' THEN 100000 ELSE 0 END) +
+                
+                -- Ưu tiên 4: Từ khóa (TuKhoa) chứa full-text match
+                (CASE WHEN CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 THEN 50000 ELSE 0 END) +
+                
+                -- Ưu tiên 5: Từ khóa (TuKhoa) contains
+                (CASE WHEN I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' THEN 10000 ELSE 0 END)
             ) AS PriorityScore,
             N'🔍 Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | ⚠️ Hết hàng' ELSE N' | ✅ Còn hàng' END AS LyDoGoiY
         FROM CF_ItemTbl I
