@@ -1525,7 +1525,7 @@
 
                  + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
 
-                 + '<span class="ae-val-name">✍️ Vui lng tự nhập nội dung vo đy rồi bấm phm Enter...</span>'
+                 + '<span class="ae-val-name">✍️ Vui lòng tự nhập nội dung vào đây rồi bấm phím Enter...</span>'
 
                  + '</div>';
 
