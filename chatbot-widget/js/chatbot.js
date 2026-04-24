@@ -917,7 +917,14 @@
 
             // Cú pháp: /nạp [Tiêu đ bắt buộc] | [Ngày hết hạn (Tuỳ chn)]
 
-            if (String(text).trim().toLowerCase().indexOf('/nạp') === 0 || String(text).trim().toLowerCase().indexOf('/rag') === 0) {
+            var isUploadCommand = String(text).trim().toLowerCase().indexOf('/nạp') === 0 || String(text).trim().toLowerCase().indexOf('/rag') === 0;
+
+            if (fileList.length > 0 && !isUploadCommand) {
+                isUploadCommand = true;
+                text = '/nạp ' + String(text).trim();
+            }
+
+            if (isUploadCommand) {
 
                 if (fileList.length === 0) {
 
@@ -1354,15 +1361,11 @@
 
 
             if (res && res.action_code === 'ASK_CLARIFICATION') {
-
-                // Nhận dạng được câu chat vu vơ ngoài ngữ cảnh SQL (ví dụ: Hello, khoẻ không)
-
+                // Nhận dạng được câu chat ngoài ngữ cảnh SQL -> Tự động chuyển qua tìm kiếm RAG
                 var lastUsrMsg = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
-
-                _callCasualChatFallback(lastUsrMsg ? lastUsrMsg.content : '');
-
+                _addMessage('ai', 'Dạ, em đang tìm kiếm thông tin này trong kho tài liệu... 👩‍⚕️');
+                _doRAGSearch(lastUsrMsg ? lastUsrMsg.content : '');
                 return;
-
             }
 
 
@@ -1406,11 +1409,10 @@
 
 
             if (cleanData.length === 0) {
-
-                _addMessage('ai', 'Dạ, em đã tra cứu nhưng hiện tại không có dữ liệu nào phù hợp với yêu cầu của anh/chị ạ. 👩‍⚕️ ');
-
+                _addMessage('ai', 'Dạ, trong cơ sở dữ liệu (SQL) hiện không có thông tin này. Em đang tự động tìm kiếm thêm trong kho tài liệu (RAG)... 👩‍⚕️');
+                var lastUserQ = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
+                _doRAGSearch(lastUserQ ? lastUserQ.content : '');
                 return;
-
             }
 
 
