@@ -111,7 +111,7 @@ taskkill /f /im cloudflared.exe /t > nul 2>&1
 echo.
 if not exist "C:\Windows\System32\vcruntime140.dll" (
     echo [SETUP] Phat hien he thong thieu Microsoft Visual C++ Redistributable.
-    echo [SETUP] Dang tai va cai dat tu dong (can cho Qdrant AI)...
+    echo [SETUP] Dang tai va cai dat tu dong cho Qdrant AI...
     set "VCREDIST_URL=https://aka.ms/vs/17/release/vc_redist.x64.exe"
     set "VCREDIST_EXE=%BASE_DIR%\.bin\vc_redist.x64.exe"
     if not exist "%BASE_DIR%\.bin" mkdir "%BASE_DIR%\.bin"
@@ -126,7 +126,7 @@ if not exist "C:\Windows\System32\vcruntime140.dll" (
         echo [WARN] Khong the tai Visual C++. Qdrant co the se khong chay duoc.
     )
 ) else (
-    echo [INFO] Kiem tra loi C++: OK (Da co san).
+    echo [INFO] Kiem tra loi C++: OK. Da co san.
 )
 
 :: ============================================================
