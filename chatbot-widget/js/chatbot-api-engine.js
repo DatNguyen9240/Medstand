@@ -1521,7 +1521,7 @@
 
             _menuCreate();
 
-            var html = '<div class="ae-menu-item ae-val-item" style="color:var(--color-primary); font-style:italic;" '
+            var html = '<div class="ae-menu-item ae-val-item ae-no-pick" style="color:var(--color-primary); font-style:italic;" '
 
                  + 'data-code="' + _esc(keyword) + '" data-name="Tìm: \'' + _esc(keyword) + '\'">'
 
@@ -2261,7 +2261,11 @@
 
         }
 
-        if (items[idx]) { items[idx].click(); return true; }
+        if (items[idx]) { 
+            if (items[idx].classList.contains('ae-no-pick')) return false;
+            items[idx].click(); 
+            return true; 
+        }
 
         return false;
 
@@ -2905,6 +2909,10 @@
 
                 + '</div>';
 
+        }
+
+        else if (ctrl === 'tel') {
+            input = '<input type="tel" id="' + id + '" name="' + _esc(code) + '" class="ae-ctrl" value="' + _esc(defVal) + '" placeholder="' + _esc(ph) + '"' + (reqd ? ' required' : '') + ' data-field="' + id + '" oninput="this.value = this.value.replace(/[^0-9]/g, \'\')">';
         }
 
         else {

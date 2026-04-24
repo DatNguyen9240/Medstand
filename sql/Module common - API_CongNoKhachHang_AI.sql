@@ -6,6 +6,7 @@ AS
 BEGIN
    SET NOCOUNT ON
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
+   ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
    DECLARE @BanLanhDao BIT
    SELECT @BanLanhDao = COALESCE(Manager, 0) FROM dbo.SY_User WHERE UserName = @Username
    IF @MaKhachHang = '' OR @MaKhachHang IS NULL

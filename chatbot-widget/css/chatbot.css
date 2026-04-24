@@ -400,8 +400,9 @@
 }
 
 .chat-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+  border-color: var(--color-border-strong, #cbd5e1);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Ghost text wrapper — bọc quanh textarea */
@@ -2365,3 +2366,32 @@
     color: #ef4444;
     transform: translateY(-2px);
 }
+
+.chat-theme-btn-floating {
+    position: fixed;
+    top: 16px;
+    right: 64px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    background: rgba(var(--color-white-rgb, 255, 255, 255), 0.05);
+    border: 1px solid rgba(var(--color-white-rgb, 255, 255, 255), 0.1);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(var(--color-black-rgb, 0, 0, 0), 0.1);
+    transition: all 0.2s ease;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--color-text, #334155);
+}
+
+.chat-theme-btn-floating:hover {
+    background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.15);
+    border-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.4);
+    color: var(--color-primary, #3b82f6);
+    transform: translateY(-2px);
+}
+

@@ -4,7 +4,7 @@
 :root {
     /* Sử dụng biến có sẵn của Chatbot hoặc fallback nếu không có */
     --ae-bg: var(--color-surface, #ffffff);
-    --ae-bg-alt: var(--color-bg, #f8fafc);
+    --ae-bg-alt: var(--color-background, #f8fafc);
     --ae-text: var(--color-text, #1e293b);
     --ae-text-muted: var(--color-text-muted, #64748b);
     --ae-border: var(--color-border, #e2e8f0);
@@ -220,12 +220,13 @@ body.ae-panel-open::before {
     padding: 12px 14px;
     color: var(--ae-text);
     font-size: 15px;
+    font-family: inherit;
     transition: all 0.15s;
 }
 
 .ae-ctrl:focus {
     outline: none;
-    border-color: var(--ae-accent);
+    border-color: var(--color-border-strong, #cbd5e1);
     background: var(--ae-bg);
 }
 

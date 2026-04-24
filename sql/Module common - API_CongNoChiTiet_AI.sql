@@ -6,6 +6,7 @@ AS
 BEGIN
    SET NOCOUNT ON
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
+   ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
    IF @MaKhachHang = ''
    BEGIN
        SELECT N'Vui lòng cung cấp mã khách hàng để xem chi tiết.' AS [Msg], 1 AS [MsgType]

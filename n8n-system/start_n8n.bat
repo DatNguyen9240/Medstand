@@ -106,13 +106,37 @@ taskkill /f /im qdrant.exe /t > nul 2>&1
 taskkill /f /im cloudflared.exe /t > nul 2>&1
 
 :: ============================================================
-:: 5. HỆ THỐNG PHỤ TRỢ (PM2 SẼ ĐẢM NHẬN NHƯNG KIỂM TRA TRƯỚC)
+:: 5. KIỂM TRA VÀ CÀI ĐẶT VISUAL C++ (DÀNH CHO QDRANT)
+:: ============================================================
+echo.
+if not exist "C:\Windows\System32\vcruntime140.dll" (
+    echo [SETUP] Phat hien he thong thieu Microsoft Visual C++ Redistributable.
+    echo [SETUP] Dang tai va cai dat tu dong (can cho Qdrant AI)...
+    set "VCREDIST_URL=https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    set "VCREDIST_EXE=%BASE_DIR%\.bin\vc_redist.x64.exe"
+    if not exist "%BASE_DIR%\.bin" mkdir "%BASE_DIR%\.bin"
+    
+    if not exist "!VCREDIST_EXE!" (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!VCREDIST_URL!' -OutFile '!VCREDIST_EXE!' -UseBasicParsing"
+    )
+    if exist "!VCREDIST_EXE!" (
+        start /wait "" "!VCREDIST_EXE!" /install /quiet /norestart
+        echo [OK] Cai dat Visual C++ hoan tat.
+    ) else (
+        echo [WARN] Khong the tai Visual C++. Qdrant co the se khong chay duoc.
+    )
+) else (
+    echo [INFO] Kiem tra loi C++: OK (Da co san).
+)
+
+:: ============================================================
+:: 6. HỆ THỐNG PHỤ TRỢ (PM2 SẼ ĐẢM NHẬN NHƯNG KIỂM TRA TRƯỚC)
 :: ============================================================
 echo.
 echo [INFO] Cac dich vu phu se do PM2 dam nhan (Redis, Qdrant)...
 
 :: ============================================================
-:: 6. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
+:: 7. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
 :: ============================================================
 echo.
 set "CF_EXE=%BASE_DIR%\.bin\cloudflared.exe"
@@ -165,7 +189,7 @@ echo [OK] Da cap nhat tu dong link vao env.js.
 :: PM2 Se Dam Nhan Viec Chay Proxy.js (CORS)
 
 :: ============================================================
-:: 7. DỌN DẸP RÁC TỰ ĐỘNG MỖI LẦN KHỞI ĐỘNG
+:: 8. DỌN DẸP RÁC TỰ ĐỘNG MỖI LẦN KHỞI ĐỘNG
 :: ============================================================
 echo.
 echo [INFO] Dang tu dong don dep log va cache rac...
@@ -174,7 +198,7 @@ if exist "%N8N_USER_FOLDER%\.n8n\n8nEventLog*.log" del /q /f "%N8N_USER_FOLDER%\
 if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul 2>&1
 
 :: ============================================================
-:: 8. EXECUTOR: GỌI HỆ SINH THÁI PM2
+:: 9. EXECUTOR: GỌI HỆ SINH THÁI PM2
 :: ============================================================
 echo.
 echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...

@@ -191,6 +191,7 @@
     var $btnAttach = document.getElementById('btn-attach');
 
     var $btnClear = document.getElementById('btn-clear-chat');
+    var $btnTheme = document.getElementById('btn-theme-chatbot');
 
     var $fileInput = document.getElementById('chat-file-input');
 
@@ -4442,7 +4443,27 @@
 
     });
 
-
+    if ($btnTheme) {
+        var moon = document.getElementById('chatbot-icon-moon');
+        var sun = document.getElementById('chatbot-icon-sun');
+        
+        function syncIcons() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            if (moon) moon.style.display = isDark ? 'none' : '';
+            if (sun) sun.style.display = isDark ? '' : 'none';
+        }
+        
+        syncIcons();
+        window.addEventListener('themechanged', syncIcons);
+        
+        $btnTheme.addEventListener('click', function() {
+            if (typeof toggleTheme === 'function') {
+                toggleTheme();
+            } else {
+                console.warn('[Chatbot] toggleTheme is not defined in global scope. Cannot change theme.');
+            }
+        });
+    }
 
     // ── Suggestion chips (welcome screen) ──
 

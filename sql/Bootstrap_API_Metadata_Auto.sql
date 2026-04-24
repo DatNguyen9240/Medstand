@@ -253,7 +253,9 @@ END
 GO
 
 
-CREATE OR ALTER PROCEDURE dbo.API_GetConfig
+IF OBJECT_ID('dbo.API_GetConfig', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_GetConfig AS SELECT 1');
+GO
+ALTER PROCEDURE dbo.API_GetConfig
     @ApiCode VARCHAR(100)
 AS
 BEGIN
@@ -292,7 +294,9 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE dbo.API_ListActive
+IF OBJECT_ID('dbo.API_ListActive', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_ListActive AS SELECT 1');
+GO
+ALTER PROCEDURE dbo.API_ListActive
     @SearchKey NVARCHAR(100) = ''
 AS
 BEGIN
@@ -370,8 +374,10 @@ BEGIN
         FROM ParamCTE
         WHERE rn = 1;
 
+        IF OBJECT_ID('dbo.API_DanhMuc_AI', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_DanhMuc_AI AS SELECT 1');
+
         DECLARE @ProxySQL NVARCHAR(MAX) = '
-        CREATE OR ALTER PROCEDURE dbo.API_DanhMuc_AI
+        ALTER PROCEDURE dbo.API_DanhMuc_AI
             @Type NVARCHAR(50) = NULL,
             @timkiem NVARCHAR(255) = '''',
             ' + @ProxyParams + '
@@ -460,17 +466,29 @@ BEGIN
                 WHEN StoredProcedure LIKE '%TichLuy%'             THEN N'Tích lũy điểm'
                 WHEN StoredProcedure LIKE '%ChamDiemKH%'          THEN N'Chấm điểm khách hàng'
                 WHEN StoredProcedure LIKE '%TuyenBanHang%'        THEN N'Tuyến bán hàng'
+                WHEN StoredProcedure LIKE '%ThongBao%'            THEN N'Thông báo'
+                WHEN StoredProcedure LIKE '%TimSanPhamTheoTrieuChung%' THEN N'Tìm thuốc theo triệu chứng'
+                WHEN StoredProcedure LIKE '%TraCuu%TongHop%'      THEN N'Tra cứu tổng hợp'
+                WHEN StoredProcedure LIKE '%GoiYDonThuoc%'        THEN N'Gợi ý đơn thuốc'
+                WHEN StoredProcedure LIKE '%UpsellGoiY%'          THEN N'Gợi ý bán kèm (Upsell)'
+                WHEN StoredProcedure LIKE '%CapNhatKetQuaKhaoSat%' THEN N'Cập nhật kết quả khảo sát'
+                WHEN StoredProcedure LIKE '%DanhSachCauHoiKhaoSat%' THEN N'Danh sách câu hỏi khảo sát'
+                WHEN StoredProcedure LIKE '%KiemTraKhaoSatNgay%'  THEN N'Kiểm tra khảo sát ngày'
+                WHEN StoredProcedure LIKE '%KiemTraKhaoSat%'      THEN N'Kiểm tra khảo sát'
+                WHEN StoredProcedure LIKE '%LichSuKhaoSat%'       THEN N'Lịch sử khảo sát'
+                WHEN StoredProcedure LIKE '%DeXuatKhuyenMai%'     THEN N'Đề xuất khuyến mãi'
                 ELSE REPLACE(REPLACE(ApiNameRaw, 'API_', ''), '_', ' ')
             END AS ApiName,
             CASE
                 WHEN FieldCode = '@Username'   THEN N'Người dùng'
                 WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
+                WHEN FieldCode = '@Type'       THEN N'Loại danh mục'
                 WHEN FieldCode = '@MaKhachHang'  THEN N'Khách hàng'
                 WHEN FieldCode = '@ObjectID'   THEN N'Mã khách hàng'
                 WHEN FieldCode = '@ItemID'     THEN N'Mã sản phẩm'
                 WHEN FieldCode = '@DocumentID' THEN N'Mã đơn hàng'
                 WHEN FieldCode = '@TenKhachHang' THEN N'Tên khách hàng'
-                WHEN FieldCode = '@ObjectName' THEN N'Tên đối tượng'
+                WHEN FieldCode = '@ObjectName' THEN N'Tên khách hàng'
                 WHEN FieldCode = '@EmployeeID' THEN N'Mã nhân viên'
                 WHEN FieldCode = '@TenNhanVien' THEN N'Tên nhân viên'
                 WHEN FieldCode = '@TenSanPham' THEN N'Tên sản phẩm'
@@ -478,6 +496,7 @@ BEGIN
                 WHEN FieldCode = '@DiaChi'     THEN N'Địa chỉ'
                 WHEN FieldCode = '@GhiChu' OR FieldCode = '@Notes' OR FieldCode = '@Memo' THEN N'Ghi chú'
                 WHEN FieldCode = '@DienGiai'   THEN N'Diễn giải'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'Loại báo cáo'
                 WHEN FieldCode = '@NhomFilter' THEN N'Phân Loại Khách (VIP=A)'
                 WHEN FieldCode = '@ObjectGroupID' THEN N'Nhóm khách hàng'
                 WHEN FieldCode = '@SoNgayVangMat' THEN N'Số ngày vắng mặt'
@@ -502,11 +521,9 @@ BEGIN
                     OR FieldCode LIKE '%ChiTietList' OR FieldCode LIKE '%DetailList'
                 ) THEN 'datagrid'
                 -- Textarea: các trường văn bản dài
-                WHEN FieldCode IN ('@GhiChu', '@Notes', '@Memo', '@DienGiai', '@DiaChi',
-                                   '@TenKhachHang', '@TenSanPham', '@TenNhaCungCap')
+                WHEN FieldCode IN ('@GhiChu', '@Notes', '@Memo', '@DienGiai')
                     OR FieldCode LIKE '%GhiChu' OR FieldCode LIKE '%Notes'
                     OR FieldCode LIKE '%Memo'   OR FieldCode LIKE '%DienGiai'
-                    OR FieldCode LIKE '%DiaChi'
                 THEN 'textarea'
                 -- Tel: số điện thoại
                 WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone', '@SĐT')
@@ -514,7 +531,7 @@ BEGIN
                 THEN 'tel'
                  WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'
                  WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'combobox'
-                 WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' THEN 'combobox'
+                 WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   OR FieldCode LIKE '%Ngay' THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
@@ -532,7 +549,7 @@ BEGIN
                 WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'APICODE'
                 WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@TenSanPham') THEN 'APICODE'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN 'APICODE'
-                WHEN FieldCode = '@NhomFilter' THEN 'STATIC'
+                WHEN FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'STATIC'
                 ELSE NULL
             END AS DataSourceType,
             CASE
@@ -541,11 +558,13 @@ BEGIN
                 WHEN FieldCode = '@Type'      THEN '@danh_muc|@timkiem={q}'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN StoredProcedure LIKE '%GoiYDonThuoc%' AND FieldCode = '@timkiem' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
-                WHEN FieldCode = '@NhomFilter' THEN '[{"value":"A","label":"❤️ KHÁCH VIP"},{"value":"B","label":"🟢 ỔN ĐỊNH"},{"value":"C","label":"🔴 NGUY CƠ"}]'
+                WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"KHÁCH VIP"},{"value":"B","label":"ỔN ĐỊNH"},{"value":"C","label":"NGUY CƠ"}]'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
                 ELSE NULL
             END AS DataSourceValue,
             CASE
-                WHEN FieldCode = '@NhomFilter' THEN '[{"value":"A","label":"A - Khách VIP"},{"value":"B","label":"B - Ổn định"},{"value":"C","label":"C - Nguy cơ"}]'
+                WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"Khách VIP"},{"value":"B","label":"Ổn định"},{"value":"C","label":"Nguy cơ"}]'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
                 ELSE NULL
             END AS OptionsJson,
             CASE

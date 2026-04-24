@@ -18,6 +18,12 @@ BEGIN
     ELSE IF UPPER(@NhomFilter) LIKE '%NGUY CƠ%' OR UPPER(@NhomFilter) LIKE '%RỜI BỎ%' OR @NhomFilter = 'C' SET @NhomFilter = 'C'
     ELSE IF @NhomFilter != '' SET @NhomFilter = '' -- Hủy lọc nếu rác
 
+    -- Dọn dẹp rác do AI N8N nhận diện nhầm NhomFilter thành MaKhachHang
+    IF @MaKhachHang LIKE '%NhomFilter%' OR @MaKhachHang LIKE '%VIP%' OR UPPER(@MaKhachHang) LIKE '%ỔN ĐỊNH%' OR UPPER(@MaKhachHang) LIKE '%NGUY CƠ%'
+    BEGIN
+        SET @MaKhachHang = ''
+    END
+
     DECLARE @SYSBranchID VARCHAR(50) = ''
     SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
 
