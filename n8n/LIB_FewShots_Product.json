@@ -1,0 +1,11 @@
+[
+  { "input": "hôm nay bán gì cho HK001", "output": {"intent":"@goi_y_don_hang","params":{"@MaKhachHang":"HK001"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "shop này nên nhập thêm gì", "output": {"intent":"@goi_y_don_hang","params":{},"status":"ASK_CLARIFICATION","missing_fields":["@MaKhachHang"],"category":"PRODUCT"} },
+  { "input": "khách bị ho nên bán gì", "output": {"intent":"@upsell_goi_y","params":{"@timkiem":"ho"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "bệnh nhân đau đầu dùng thuốc gì", "output": {"intent":"@upsell_goi_y","params":{"@timkiem":"đau đầu"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "bán kèm thuốc Panadol", "output": {"intent":"@goi_y_don_thuoc","params":{"@timkiem":"Panadol"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "còn bao nhiêu hộp vitamin C", "output": {"intent":"@danh_sach_tonkho","params":{"@timkiem":"vitamin C"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "tra cứu thông tin thuốc Gabacitin", "output": {"intent":"@tra_cuu_san_pham","params":{"@timkiem":"Gabacitin"},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "hàng trọng tâm tháng này", "output": {"intent":"@san_pham_trong_tam","params":{},"status":"SUCCESS","category":"PRODUCT"} },
+  { "input": "hàng nào sắp date cần xả gấp", "output": {"intent":"@de_xuat_khuyen_mai","params":{},"status":"SUCCESS","category":"PRODUCT"} }
+]
