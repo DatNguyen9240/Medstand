@@ -822,6 +822,8 @@
         // Tắt dropdown nếu gửi bằng free chat
 
         if (window.ApiEngine && window.ApiEngine.hideMenu) window.ApiEngine.hideMenu();
+        if (typeof _mentionHide === 'function') _mentionHide();
+        if (typeof _ghostClear === 'function') _ghostClear();
 
 
 
