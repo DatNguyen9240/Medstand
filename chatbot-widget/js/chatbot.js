@@ -1411,8 +1411,10 @@
 
 
             if (cleanData.length === 0) {
-                _addMessage('ai', 'Dạ, trong cơ sở dữ liệu (SQL) hiện không có thông tin này. Em đang tự động tìm kiếm thêm trong kho tài liệu (RAG)... 👩‍⚕️');
-                var lastUserQ = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
+                _addMessage('ai', res.message || 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️');
+                return;
+            }
+);
                 _doRAGSearch(lastUserQ ? lastUserQ.content : '');
                 return;
             }
