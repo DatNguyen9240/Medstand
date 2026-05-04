@@ -86,7 +86,7 @@ const AuthService = (() => {
     } finally {
       deleteCookie('auth_token');
       localStorage.removeItem('auth_user');
-      window.location.href = 'login.html?v=' + Date.now();
+      window.location.href = 'pages/login.html?v=' + Date.now();
     }
   }
 

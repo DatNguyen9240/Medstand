@@ -223,7 +223,7 @@ const Router = (() => {
 
     // Auth guard — redirect to standalone login page
     if (route.auth && !_isLoggedIn()) {
-      window.location.href = 'login.html?v=' + Date.now();
+      window.location.href = 'pages/login.html?v=' + Date.now();
       return;
     }
 
@@ -390,7 +390,7 @@ const Router = (() => {
     // Initial route
     if (!location.hash || location.hash === '#' || location.hash === '#/') {
       if (!_isLoggedIn()) {
-        window.location.href = 'login.html?v=' + Date.now();
+        window.location.href = 'pages/login.html?v=' + Date.now();
         return;
       }
       location.hash = '#/home';

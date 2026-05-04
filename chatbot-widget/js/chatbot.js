@@ -1414,10 +1414,6 @@
                 _addMessage('ai', res.message || 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️');
                 return;
             }
-);
-                _doRAGSearch(lastUserQ ? lastUserQ.content : '');
-                return;
-            }
 
 
 

@@ -83,7 +83,7 @@ const Http = (() => {
       _alert('warning', 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       localStorage.removeItem('auth_user');
-      window.location.href = 'login.html';
+      window.location.href = 'pages/login.html';
       return;
     }
 
@@ -121,7 +121,7 @@ const Http = (() => {
       _alert('warning', data.msg || 'Phiên đăng nhập đã hết hạn.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       localStorage.removeItem('auth_user');
-      window.location.href = 'login.html';
+      window.location.href = 'pages/login.html';
       return;
     }
 

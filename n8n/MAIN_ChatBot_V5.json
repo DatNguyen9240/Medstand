@@ -82,7 +82,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.WEBHOOK_URL + 'webhook/intent-parser' }}",
+        "url": "={{ 'http://127.0.0.1:5678/' + 'webhook/intent-parser' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -202,7 +202,7 @@
       "onError": "continueErrorOutput",
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.WEBHOOK_URL + 'webhook/api-execute' }}",
+        "url": "={{ 'http://127.0.0.1:5678/' + 'webhook/api-execute' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -294,7 +294,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "={{ $env.WEBHOOK_URL + ($json.apiCode === 'casual_chat' || $json.apiCode === 'null' ? 'webhook/hook-ai-casual' : 'webhook/hook-ai-rag') }}",
+        "url": "={{ 'http://127.0.0.1:5678/' + ($json.apiCode === 'casual_chat' || $json.apiCode === 'null' ? 'webhook/hook-ai-casual' : 'webhook/hook-ai-rag') }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

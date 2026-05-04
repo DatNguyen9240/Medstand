@@ -4949,10 +4949,10 @@
 
                     }
 
+                } else {
+                    _closeFull(true);
                 }
-
-                return; // panel đang mở hoặc ẩn, toggle trạng thi thay v mở menu
-
+                if (_panelEl) return; // panel đang mở hoặc ẩn, toggle trạng thi thay v mở menu
             }
 
 
