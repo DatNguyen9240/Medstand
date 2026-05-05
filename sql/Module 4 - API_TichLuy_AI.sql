@@ -3,7 +3,7 @@ GO
 
 CREATE PROCEDURE API_TichLuy_AI
    @Username   VARCHAR(50)   = '',
-   @khachhang  VARCHAR(50)   = '',
+   @MaKhachHang  VARCHAR(50)   = '',
    @ProgramID  VARCHAR(50)   = '',
    @TuNgay   DATETIME      = NULL,
    @DenNgay     DATETIME      = NULL,
@@ -96,20 +96,20 @@ BEGIN
 
    FROM CF_ObjectTbl KH
    LEFT JOIN #TichLuy TL ON KH.ObjectID = TL.ObjectID
-   WHERE (@khachhang != '' AND KH.ObjectID = @khachhang)
-      OR (@khachhang = '' AND EXISTS (SELECT 1 FROM AR_PromotionGiftTbl G WHERE G.DocumentID = @ProgramID AND ISNULL(TL.TongTichLuy,0) >= G.TuDiem * 0.7))
+   WHERE (@MaKhachHang != '' AND KH.ObjectID = @MaKhachHang)
+      OR (@MaKhachHang = '' AND EXISTS (SELECT 1 FROM AR_PromotionGiftTbl G WHERE G.DocumentID = @ProgramID AND ISNULL(TL.TongTichLuy,0) >= G.TuDiem * 0.7))
    ORDER BY ISNULL(TL.TongTichLuy,0) DESC;
 
 
    -- ════════════════════════════════════════════════════
    -- BẢNG 2: SẢN PHẨM TRỌNG TÂM CHƯA PHÁT SINH DOANH SỐ (GỢI Ý)
    -- ════════════════════════════════════════════════════
-   IF @khachhang != ''
+   IF @MaKhachHang != ''
    BEGIN
        SELECT DISTINCT D.ItemID
        INTO #ItemsBought
        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-       WHERE I.ObjectID = @khachhang 
+       WHERE I.ObjectID = @MaKhachHang 
          AND I.DocumentDate BETWEEN @TuNgay AND @DenNgay
          AND ISNULL(I.StatusID, 0) != 10
          AND D.ItemID IN (SELECT ItemID FROM #TrongTam)
@@ -137,8 +137,8 @@ GO
 
 /* -- TEST SCRIPT --
 -- Kịch bản 1: Tra cứu tích lũy và gợi ý hàng chưa mua cho 1 khách
-EXEC API_TichLuy_AI @Username = 'admin', @khachhang = 'KH001';
+EXEC API_TichLuy_AI @Username = 'admin', @MaKhachHang = 'KH001';
 
 -- Kịch bản 2: Tra cứu tổng hợp toàn bộ các khách hàng tiềm năng
-EXEC API_TichLuy_AI @Username = 'admin', @khachhang = '';
+EXEC API_TichLuy_AI @Username = 'admin', @MaKhachHang = '';
 */

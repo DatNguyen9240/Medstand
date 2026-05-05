@@ -81,6 +81,12 @@ BEGIN
 END
 GO
 
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OptionsJson' AND Object_ID = Object_ID('dbo.API_Field'))
+BEGIN
+    ALTER TABLE dbo.API_Field ADD OptionsJson NVARCHAR(MAX) NULL;
+END
+GO
+
 IF OBJECT_ID('dbo.API_Action_Field', 'U') IS NULL
 BEGIN
     CREATE TABLE dbo.API_Action_Field (
@@ -111,7 +117,7 @@ BEGIN
     ('PhanLoai','BADGE'), ('NhomKH','BADGE'), ('TrangThai','BADGE'), ('Status','BADGE'), ('QuaDaDat','BADGE'), ('PhanThuong','BADGE'),
     ('DoanhSo','MONEY'), ('TongNo','MONEY'), ('TonKho','MONEY'), ('DonGia','MONEY'), ('SoTien','MONEY'), 
     ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'), ('TichLuyDatDuoc','MONEY'),
-    ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'),
+    ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'), ('SĐT', 'PHONE'),
     ('Ngay','TREND'), ('NgayChungTu','TREND'), ('ThoiGian','TREND'), ('LoiNhacAI','TREND'), ('NgayGiao','TREND'),
     ('TyLe','PERCENT'), ('TangTruong','PERCENT'), ('PhanTram','PERCENT'), ('HoanThanh','PERCENT'), ('Percentage','PERCENT'),
     ('MucTieu','TARGET'), ('Target','TARGET'), ('DinhMuc','TARGET'), ('ChiTieu','TARGET'),
@@ -138,6 +144,12 @@ BEGIN
         IsRequired      BIT            NOT NULL DEFAULT 0,
         OrderIndex      INT            NOT NULL DEFAULT 0
     );
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OptionsJson' AND Object_ID = Object_ID('dbo.API_Filter'))
+BEGIN
+    ALTER TABLE dbo.API_Filter ADD OptionsJson NVARCHAR(MAX) NULL;
 END
 GO
 
@@ -173,6 +185,29 @@ BEGIN
         IsConfirm          BIT NULL
     );
 END
+GO
+
+/* Self-healing: đảm bảo các cột mới tồn tại kể cả khi bảng đã được tạo từ version cũ */
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'UiTemplate'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD UiTemplate  VARCHAR(50)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IconEmoji'     AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IconEmoji   NVARCHAR(20)   NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IsActive'      AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IsActive    BIT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OrderIndex'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD OrderIndex  INT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ActionCode'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ActionCode  VARCHAR(50)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ActionName'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ActionName  NVARCHAR(200)  NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'ExecutionType' AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD ExecutionType VARCHAR(20)  NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'HttpMethod'    AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD HttpMethod  VARCHAR(10)    NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'IsConfirm'     AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD IsConfirm   BIT            NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'Category'      AND Object_ID = Object_ID('dbo.API_Metadata_Override'))
+    ALTER TABLE dbo.API_Metadata_Override ADD Category    NVARCHAR(100)  NULL;
 GO
 
 IF OBJECT_ID('dbo.API_Metadata_Field_Override', 'U') IS NULL
@@ -218,7 +253,9 @@ END
 GO
 
 
-CREATE OR ALTER PROCEDURE dbo.API_GetConfig
+IF OBJECT_ID('dbo.API_GetConfig', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_GetConfig AS SELECT 1');
+GO
+ALTER PROCEDURE dbo.API_GetConfig
     @ApiCode VARCHAR(100)
 AS
 BEGIN
@@ -242,8 +279,8 @@ BEGIN
     -- Lấy thông tin cấu hình CHUẨN từ bảng API_Field (để ăn các cài đặt Override, Default, ControlType)
     SELECT 
         FieldCode   = f.FieldCode, 
-        FieldName   = REPLACE(f.FieldCode, '@', ''),
-        Placeholder = COALESCE(f.Placeholder, N'Nhập ' + REPLACE(f.FieldCode, '@', '')),
+        FieldName   = ISNULL(f.FieldName, REPLACE(f.FieldCode, '@', '')),
+        Placeholder = COALESCE(f.Placeholder, N'Nhập ' + ISNULL(f.FieldName, REPLACE(f.FieldCode, '@', ''))),
         IsRequired  = ISNULL(f.IsRequired, 0),
         ControlType = ISNULL(f.ControlType, 'TEXT'),
         OrderIndex  = f.OrderIndex,
@@ -257,7 +294,9 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE dbo.API_ListActive
+IF OBJECT_ID('dbo.API_ListActive', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_ListActive AS SELECT 1');
+GO
+ALTER PROCEDURE dbo.API_ListActive
     @SearchKey NVARCHAR(100) = ''
 AS
 BEGIN
@@ -302,37 +341,90 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    IF @Apply = 1
+    BEGIN
+        -- =========================================================================
+        -- SELF HEALING PROXY: Tự động gom TẤT CẢ tham số trong hệ thống
+        -- để gen ra chữ ký (signature) cho API_DanhMuc_AI nhằm chặn lỗi "Too many arguments"
+        -- =========================================================================
+        DECLARE @ProxyParams NVARCHAR(MAX) = '';
+        
+        ;WITH ParamCTE AS (
+            SELECT 
+                p.name, 
+                t.name AS type_name, 
+                p.max_length, 
+                p.precision, 
+                p.scale,
+                ROW_NUMBER() OVER (PARTITION BY p.name ORDER BY p.max_length DESC) as rn
+            FROM sys.parameters p
+            JOIN sys.procedures pr ON p.object_id = pr.object_id
+            JOIN sys.types t ON p.user_type_id = t.user_type_id
+            WHERE pr.name LIKE 'API[_]%[_]AI' 
+              AND pr.name NOT IN ('API_DanhMuc_Core_AI', 'API_DanhMuc_AI', 'API_Metadata_AutoBootstrap_AI')
+              AND p.name NOT IN ('@Type', '@timkiem')
+        )
+        SELECT @ProxyParams = @ProxyParams + name + ' ' + UPPER(type_name) + 
+               CASE 
+                   WHEN type_name IN ('varchar', 'nvarchar', 'char', 'nchar') AND max_length <> -1 THEN '(' + CAST(max_length AS VARCHAR) + ')'
+                   WHEN type_name IN ('varchar', 'nvarchar', 'char', 'nchar') AND max_length = -1 THEN '(MAX)'
+                   WHEN type_name IN ('decimal', 'numeric') THEN '(' + CAST(precision AS VARCHAR) + ',' + CAST(scale AS VARCHAR) + ')'
+                   ELSE '' 
+               END + ' = NULL, '
+        FROM ParamCTE
+        WHERE rn = 1;
+
+        IF OBJECT_ID('dbo.API_DanhMuc_AI', 'P') IS NULL EXEC('CREATE PROCEDURE dbo.API_DanhMuc_AI AS SELECT 1');
+
+        DECLARE @ProxySQL NVARCHAR(MAX) = '
+        ALTER PROCEDURE dbo.API_DanhMuc_AI
+            @Type NVARCHAR(50) = NULL,
+            @timkiem NVARCHAR(255) = '''',
+            ' + @ProxyParams + '
+            @_Healed_ INT = 0
+        AS
+        BEGIN
+            EXEC dbo.API_DanhMuc_Core_AI @Type = @Type, @timkiem = @timkiem;
+        END';
+        
+        EXEC sp_executesql @ProxySQL;
+    END
+
     ;WITH SP_AI AS (
         SELECT
             p.object_id,
             p.name AS StoredProcedure,
+            CASE WHEN p.name = 'API_DonHangChiTiet_Insert_AI' THEN '@lap_don_hang'
+            ELSE
             '@' + LOWER(
                 (
-                    SELECT
-                        CASE
-                            WHEN n.Num > 1
-                                 AND SUBSTRING(base.ApiNameRaw, n.Num, 1) COLLATE Latin1_General_BIN LIKE '[A-Z]'
-                                 AND SUBSTRING(base.ApiNameRaw, n.Num - 1, 1) <> '_'
-                                 AND SUBSTRING(base.ApiNameRaw, n.Num - 1, 1) COLLATE Latin1_General_BIN NOT LIKE '[A-Z]'
-                            THEN '_'
-                            ELSE ''
-                        END
-                        + SUBSTRING(base.ApiNameRaw, n.Num, 1)
-                    FROM (
-                        SELECT TOP (LEN(base.ApiNameRaw))
-                               ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Num
-                        FROM sys.all_objects
-                    ) n
-                    ORDER BY n.Num
-                    FOR XML PATH(''), TYPE
-                ).value('.', 'NVARCHAR(300)')
-            ) AS ApiCode,
+                        SELECT
+                            CASE
+                                WHEN n.Num > 1
+                                     AND SUBSTRING(base.ApiNameRaw, n.Num, 1) COLLATE Latin1_General_BIN LIKE '[A-Z]'
+                                     AND SUBSTRING(base.ApiNameRaw, n.Num - 1, 1) <> '_'
+                                     AND SUBSTRING(base.ApiNameRaw, n.Num - 1, 1) COLLATE Latin1_General_BIN NOT LIKE '[A-Z]'
+                                THEN '_'
+                                ELSE ''
+                            END
+                            + SUBSTRING(base.ApiNameRaw, n.Num, 1)
+                        FROM (
+                            SELECT TOP (LEN(base.ApiNameRaw))
+                                   ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS Num
+                            FROM sys.all_objects
+                        ) n
+                        ORDER BY n.Num
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'NVARCHAR(300)')
+            ) 
+            END AS ApiCode,
             base.ApiNameRaw
         FROM sys.procedures p
         CROSS APPLY (
             SELECT REPLACE(REPLACE(p.name, 'API_', ''), '_AI', '') AS ApiNameRaw
         ) base
         WHERE p.name LIKE 'API[_]%[_]AI'
+          AND p.name <> 'API_DanhMuc_Core_AI'
     ),
     P AS (
         SELECT
@@ -359,36 +451,59 @@ BEGIN
             FieldCode,
             CASE
                 -- API Name Dictionary (Mapping SP to Vietnamese)
-                WHEN StoredProcedure LIKE '%DonHangChiTiet%Insert%' THEN N'Nhập đơn hàng'
+                WHEN StoredProcedure LIKE '%DonHangChiTiet%Insert%' THEN N'Thêm đơn hàng'
                 WHEN StoredProcedure LIKE '%KhachHang%Insert%'     THEN N'Thêm khách hàng'
                 WHEN StoredProcedure LIKE '%CongNoChiTiet%'       THEN N'Công nợ chi tiết'
                 WHEN StoredProcedure LIKE '%CongNoKhachHang%'     THEN N'Công nợ khách hàng'
                 WHEN StoredProcedure LIKE '%DanhMuc%'             THEN N'Danh mục'
                 WHEN StoredProcedure LIKE '%DanhsachTonKho%'      THEN N'Danh sách tồn kho'
                 WHEN StoredProcedure LIKE '%DoanhSo%'             THEN N'Doanh số'
+                WHEN StoredProcedure LIKE '%GoiYDonHang%'         THEN N'Gợi ý đơn hàng'
                 WHEN StoredProcedure LIKE '%DonHang%'             THEN N'Đơn hàng'
                 WHEN StoredProcedure LIKE '%HoaDon%'              THEN N'Hóa đơn'
-                WHEN StoredProcedure LIKE '%GoiYDonHang%'         THEN N'Gợi ý đơn hàng'
                 WHEN StoredProcedure LIKE '%SanPhamTrongTam%'     THEN N'Sản phẩm trọng tâm'
                 WHEN StoredProcedure LIKE '%TraCuuSanPham%'       THEN N'Tra cứu sản phẩm'
                 WHEN StoredProcedure LIKE '%TichLuy%'             THEN N'Tích lũy điểm'
                 WHEN StoredProcedure LIKE '%ChamDiemKH%'          THEN N'Chấm điểm khách hàng'
                 WHEN StoredProcedure LIKE '%TuyenBanHang%'        THEN N'Tuyến bán hàng'
+                WHEN StoredProcedure LIKE '%ThongBao%'            THEN N'Thông báo'
+                WHEN StoredProcedure LIKE '%TimSanPhamTheoTrieuChung%' THEN N'Tìm thuốc theo triệu chứng'
+                WHEN StoredProcedure LIKE '%TraCuu%TongHop%'      THEN N'Tra cứu tổng hợp'
+                WHEN StoredProcedure LIKE '%GoiYDonThuoc%'        THEN N'Gợi ý đơn thuốc'
+                WHEN StoredProcedure LIKE '%UpsellGoiY%'          THEN N'Gợi ý bán kèm (Upsell)'
+                WHEN StoredProcedure LIKE '%CapNhatKetQuaKhaoSat%' THEN N'Cập nhật kết quả khảo sát'
+                WHEN StoredProcedure LIKE '%DanhSachCauHoiKhaoSat%' THEN N'Danh sách câu hỏi khảo sát'
+                WHEN StoredProcedure LIKE '%KiemTraKhaoSatNgay%'  THEN N'Kiểm tra khảo sát ngày'
+                WHEN StoredProcedure LIKE '%KiemTraKhaoSat%'      THEN N'Kiểm tra khảo sát'
+                WHEN StoredProcedure LIKE '%LichSuKhaoSat%'       THEN N'Lịch sử khảo sát'
+                WHEN StoredProcedure LIKE '%DeXuatKhuyenMai%'     THEN N'Đề xuất khuyến mãi'
                 ELSE REPLACE(REPLACE(ApiNameRaw, 'API_', ''), '_', ' ')
             END AS ApiName,
             CASE
                 WHEN FieldCode = '@Username'   THEN N'Người dùng'
                 WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
-                WHEN FieldCode = '@khachhang'  THEN N'Khách hàng'
+                WHEN FieldCode = '@Type'       THEN N'Loại danh mục'
+                WHEN FieldCode = '@MaKhachHang'  THEN N'Khách hàng'
                 WHEN FieldCode = '@ObjectID'   THEN N'Mã khách hàng'
                 WHEN FieldCode = '@ItemID'     THEN N'Mã sản phẩm'
                 WHEN FieldCode = '@DocumentID' THEN N'Mã đơn hàng'
                 WHEN FieldCode = '@TenKhachHang' THEN N'Tên khách hàng'
+                WHEN FieldCode = '@ObjectName' THEN N'Tên khách hàng'
+                WHEN FieldCode = '@EmployeeID' THEN N'Mã nhân viên'
+                WHEN FieldCode = '@TenNhanVien' THEN N'Tên nhân viên'
+                WHEN FieldCode = '@TenSanPham' THEN N'Tên sản phẩm'
                 WHEN FieldCode = '@SoDienThoai' OR FieldCode = '@DienThoai' THEN N'Số điện thoại'
                 WHEN FieldCode = '@DiaChi'     THEN N'Địa chỉ'
                 WHEN FieldCode = '@GhiChu' OR FieldCode = '@Notes' OR FieldCode = '@Memo' THEN N'Ghi chú'
                 WHEN FieldCode = '@DienGiai'   THEN N'Diễn giải'
-                WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN N'Ngày'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'Loại báo cáo'
+                WHEN FieldCode = '@NhomFilter' THEN N'Phân Loại Khách (VIP=A)'
+                WHEN FieldCode = '@ObjectGroupID' THEN N'Nhóm khách hàng'
+                WHEN FieldCode = '@SoNgayVangMat' THEN N'Số ngày vắng mặt'
+                WHEN FieldCode = '@NgayBaoDong' THEN N'Ngày báo động'
+                WHEN FieldCode = '@NgayTarget' THEN N'Ngày mục tiêu'
+                WHEN FieldCode = '@TuNgay' THEN N'Từ ngày'
+                WHEN FieldCode = '@DenNgay' THEN N'Đến ngày'
                 WHEN FieldCode = '@NgayGiao'   THEN N'Ngày giao hàng'
                 WHEN FieldCode LIKE '%Date'    THEN N'Ngày'
                 WHEN FieldCode LIKE '@Top%'    THEN N'Số lượng'
@@ -406,45 +521,58 @@ BEGIN
                     OR FieldCode LIKE '%ChiTietList' OR FieldCode LIKE '%DetailList'
                 ) THEN 'datagrid'
                 -- Textarea: các trường văn bản dài
-                WHEN FieldCode IN ('@GhiChu', '@Notes', '@Memo', '@DienGiai', '@DiaChi',
-                                   '@TenKhachHang', '@TenSanPham', '@TenNhaCungCap')
+                WHEN FieldCode IN ('@GhiChu', '@Notes', '@Memo', '@DienGiai')
                     OR FieldCode LIKE '%GhiChu' OR FieldCode LIKE '%Notes'
                     OR FieldCode LIKE '%Memo'   OR FieldCode LIKE '%DienGiai'
-                    OR FieldCode LIKE '%DiaChi'
                 THEN 'textarea'
                 -- Tel: số điện thoại
-                WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone')
+                WHEN FieldCode IN ('@SoDienThoai', '@DienThoai', '@SDT', '@Phone', '@SĐT')
                     OR FieldCode LIKE '%SoDienThoai' OR FieldCode LIKE '%DienThoai'
                 THEN 'tel'
-                WHEN FieldCode = '@khachhang' THEN 'combobox'
-                WHEN FieldCode = '@ObjectID'  THEN 'combobox'
-                WHEN FieldCode = '@Type'      THEN 'combobox'
+                 WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'
+                 WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'combobox'
+                 WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   OR FieldCode LIKE '%Ngay' THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
                 ELSE 'text'
             END AS ControlType,
             0 AS IsRequired, -- Mặc định AI API là linh hoạt, SP sẽ tự handle giá trị default nội bộ
-            CASE WHEN FieldCode = '@Username' THEN 1 ELSE 0 END AS IsSystemParam,
+            CASE 
+                WHEN FieldCode = '@Username' THEN 1 
+                WHEN StoredProcedure = 'API_DanhMuc_AI' AND FieldCode NOT IN ('@Type', '@timkiem') THEN 1
+                ELSE 0 
+            END AS IsSystemParam,
             CASE
-                WHEN FieldCode = '@khachhang' THEN 'APICODE'
-                WHEN FieldCode = '@ObjectID'  THEN 'APICODE'
-                WHEN FieldCode = '@ItemID'    THEN 'APICODE'
                 WHEN FieldCode = '@Type'      THEN 'APICODE'
-                WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@itemname') THEN 'APICODE'
+                WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'APICODE'
+                WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'APICODE'
+                WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@TenSanPham') THEN 'APICODE'
+                WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN 'APICODE'
+                WHEN FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'STATIC'
                 ELSE NULL
             END AS DataSourceType,
             CASE
-                WHEN FieldCode = '@khachhang' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
-                WHEN FieldCode = '@ObjectID'  THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
-                WHEN FieldCode = '@ItemID'    THEN '@tra_cuu_san_pham|@TopN=50|@timkiem={q}'
+                WHEN FieldCode = '@MaKhachHang' OR FieldCode = '@ObjectID' OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
+                WHEN FieldCode = '@ItemID' OR FieldCode = '@TenSanPham' OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN FieldCode = '@Type'      THEN '@danh_muc|@timkiem={q}'
+                WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
+                WHEN StoredProcedure LIKE '%GoiYDonThuoc%' AND FieldCode = '@timkiem' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
+                WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"KHÁCH VIP"},{"value":"B","label":"ỔN ĐỊNH"},{"value":"C","label":"NGUY CƠ"}]'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
                 ELSE NULL
             END AS DataSourceValue,
+            CASE
+                WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"Khách VIP"},{"value":"B","label":"Ổn định"},{"value":"C","label":"Nguy cơ"}]'
+                WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
+                ELSE NULL
+            END AS OptionsJson,
             CASE
                 WHEN StoredProcedure LIKE '%CongNoChiTiet%' THEN 'CONG_NO'
                 WHEN StoredProcedure LIKE '%TichLuy%'       THEN 'TICH_LUY'
                 WHEN StoredProcedure LIKE '%DanhMuc%'       THEN 'CATALOG'
+                WHEN StoredProcedure LIKE '%TonKho%'        THEN 'CATALOG'
+                WHEN StoredProcedure LIKE '%TraCuuSanPham%' THEN 'CATALOG'
                 -- SP chứa param datagrid (Insert/Update có list sản phẩm) → dùng SMART_FORM
                 WHEN DataType = 'NVARCHAR' AND (
                     FieldCode LIKE '%ItemList%'    OR FieldCode LIKE '%itemlist%'
@@ -479,7 +607,7 @@ BEGIN
         FROM #AI_META
         ORDER BY ApiCode;
 
-        SELECT ApiCode, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DataSourceType, DataSourceValue, parameter_id
+        SELECT ApiCode, FieldCode, FieldName, DataType, ControlType, IsRequired, IsSystemParam, DataSourceType, DataSourceValue, OptionsJson, parameter_id
         FROM #AI_META
         ORDER BY ApiCode, parameter_id;
         RETURN;
@@ -618,7 +746,7 @@ BEGIN
     )
     SELECT
         d.ApiID, a.FieldCode, a.FieldName, a.DataType, a.ControlType, a.IsRequired, a.IsSystemParam,
-        NULL, NULL, NULL, NULL, NULL, a.DataSourceType, a.DataSourceValue, a.parameter_id
+        NULL, NULL, NULL, NULL, a.OptionsJson, a.DataSourceType, a.DataSourceValue, a.parameter_id
     FROM #AI_META a
     JOIN dbo.API_Definition d ON d.ApiCode = a.ApiCode
     WHERE NOT EXISTS (
@@ -634,6 +762,7 @@ BEGIN
             f.ControlType = a.ControlType,
             f.IsRequired = a.IsRequired,
             f.IsSystemParam = a.IsSystemParam,
+            f.OptionsJson = a.OptionsJson,
             f.DataSourceType = a.DataSourceType,
             f.DataSourceValue = a.DataSourceValue,
             f.OrderIndex = a.parameter_id
@@ -905,13 +1034,57 @@ END
 GO
 
 /* =========================================================
-   4) HOW TO RUN
+   4) PROJECT-SPECIFIC APICODE OVERRIDES
+   ---------------------------------------------------------
+   ✅ ĐÂY LÀ NƠI DUY NHẤT CẦN SỬA KHI CHUYỂN SANG PROJECT KHÁC.
+
+   Mục đích: Fix các ApiCode bị auto-gen sai tên do CamelCase ambiguity.
+   Ví dụ: "DanhsachTonKho" → auto gen ra "@danh_sach_ton_kho"
+           nhưng N8N intent đang map sang "@danh_sach_tonkho" → cần override.
+
+   Các SP khác (UiTemplate, Category...) đã được xử lý đúng bởi auto-gen.
+   CHỈ thêm dòng vào đây nếu ApiCode bị gen sai.
+
+   Cách dùng:
+   - Thêm dòng: ('API_TenSP_AI', '@api_code_muon_dung')
+   - Chạy lại : EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply=1, @UpdateExisting=1
    ========================================================= */
--- Preview:
--- EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 0, @UpdateExisting = 1;
+MERGE dbo.API_Metadata_Override AS t
+USING (VALUES
+    -- FORMAT: (StoredProcedure, ApiCode)
+    -- Chỉ liệt kê những SP có ApiCode bị gen sai
 
--- Apply:
--- EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
+    -- DanhsachTonKho → auto-gen: @danh_sach_ton_kho | cần: @danh_sach_tonkho
+    ('API_DanhsachTonKho_AI', '@danh_sach_tonkho')
 
--- Trigger log:
--- SELECT TOP 100 * FROM dbo.API_Metadata_DDL_Log ORDER BY LogID DESC;
+    /* ── THÊM PROJECT MỚI TẠI ĐÂY ─────────────────────────────────────
+       ,('API_TenSPKhac_AI', '@ten_api_dung')
+       ────────────────────────────────────────────────────────────────── */
+) AS s (StoredProcedure, ApiCode)
+ON  t.StoredProcedure = s.StoredProcedure
+WHEN MATCHED THEN
+    UPDATE SET t.ApiCode = s.ApiCode
+WHEN NOT MATCHED THEN
+    INSERT (StoredProcedure, ApiCode)
+    VALUES (s.StoredProcedure, s.ApiCode);
+GO
+
+/* =========================================================
+   5) HOW TO RUN
+   =========================================================
+   -- Preview (xem ApiCode sẽ được gen ra):
+   EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 0, @UpdateExisting = 1;
+
+   -- Apply (chạy 1 lần khi deploy hoặc sau khi sửa SP):
+   EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
+
+   -- Kiểm tra kết quả:
+   SELECT ApiCode, StoredProcedure, UiTemplate, Category
+   FROM dbo.API_Definition
+   ORDER BY OrderIndex, ApiCode;
+
+   -- DDL trigger log (auto-sync khi CREATE/ALTER SP):
+   SELECT TOP 50 * FROM dbo.API_Metadata_DDL_Log ORDER BY LogID DESC;
+   ========================================================= */
+
+

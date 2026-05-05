@@ -1,8 +1,9 @@
-﻿IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
+IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
 GO
 
 
 CREATE PROCEDURE API_TraCuuSanPham_AI
+    @Username VARCHAR(50) = '',
     @timkiem NVARCHAR(100) = '',
     @TopN      INT = 50
 AS

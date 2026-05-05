@@ -1,0 +1,145 @@
+{
+  "name": "K_RAG_Query_AntiBug",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hook-ai-rag",
+        "responseMode": "lastNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              { "name": "Access-Control-Allow-Origin", "value": "*" },
+              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+            ]
+          }
+        }
+      },
+      "id": "1",
+      "name": "Webhook RAG Search",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "618d820e-1be1-47a7-870e-e4712271e762"
+    },
+    {
+      "parameters": {
+        "jsCode": "const token = ($input.first().json.headers.authorization || '');\nif (!token.startsWith('Bearer ')) return [{ json: { passes: false, status: 'error', message: 'Truy cập bị từ chối' } }];\nreturn [{ json: { passes: true, query: $input.first().json.body.query || 'Xin chào', history: $input.first().json.body.history || [] } }];"
+      },
+      "id": "2",
+      "name": "Check JWT Security",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [200, 0]
+    },
+    {
+      "parameters": {
+        "conditions": { "boolean": [ { "value1": "={{ $json.passes }}", "value2": true } ] }
+      },
+      "id": "3",
+      "name": "If Valid JWT",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $json.query;\nconst lastUserMsgs = ($json.history || []).filter(m => m.role === 'user').slice(-2).map(m => m.content).join(' ');\nconst searchString = lastUserMsgs ? lastUserMsgs + ' ' + query : query;\nreturn [{ json: { input: searchString, model: 'openai/text-embedding-3-small' } }];"
+      },
+      "id": "4",
+      "name": "Prep Embedding Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 0]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "method": "POST",
+        "url": "={{ $env.LLM_API_BASE ? $env.LLM_API_BASE : 'https://openrouter.ai/api/v1' }}/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      },
+      "id": "5",
+      "name": "OpenAI: Get Vector",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [800, 0],
+      "credentials": { "openAiApi": { "id": "NUWWHWYzGHV6GY0g", "name": "OpenAi account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const vector = $input.first().json.data[0].embedding;\nreturn [{ json: { vector: vector, limit: 100, with_payload: true } }];"
+      },
+      "id": "6",
+      "name": "Prep Qdrant Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333' }}/collections/medstand-policies/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      },
+      "id": "7",
+      "name": "Qdrant: Find Docs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1200, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $('If Valid JWT').first().json.query;\nconst history = $('If Valid JWT').first().json.history || [];\nconst points = $input.first().json.result || [];\nlet contextStr = points.map(p => p.payload.pageContent || p.payload.text || p.payload.content || '').join('\\n\\n---\\n\\n');\n\nconst systemPrompt = `Bạn là Trợ lý Medstand. Chỉ trả lời dựa trên tài liệu tham chiếu dưới đây, không được bịa đặt. \nLuôn xưng 'Em' và gọi người dùng là 'Sếp'. Lịch sự, ngắn gọn và đi thẳng vào vấn đề.\n\n[TÀI LIỆU THAM CHIẾU]:\n` + contextStr;\n\nconst messages = [{ role: \"system\", content: systemPrompt }];\nhistory.forEach(m => messages.push({ role: m.role === 'ai' || m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));\nmessages.push({ role: \"user\", content: query });\n\nreturn [{ json: {\n  model: \"openai/gpt-4o-mini\",\n  temperature: 0,\n  messages: messages\n}}];"
+      },
+      "id": "8",
+      "name": "Prep OpenAI Chat Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 0]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "method": "POST",
+        "url": "={{ $env.LLM_API_BASE ? $env.LLM_API_BASE : 'https://openrouter.ai/api/v1' }}/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      },
+      "id": "9",
+      "name": "OpenAI: Chat RAG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1600, 0],
+      "credentials": { "openAiApi": { "id": "NUWWHWYzGHV6GY0g", "name": "OpenAi account" } }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.choices[0].message.content;\nreturn [{ json: { status: 'success', message: text } }];"
+      },
+      "id": "10",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 0]
+    }
+  ],
+  "connections": {
+    "Webhook RAG Search": { "main": [ [ { "node": "Check JWT Security", "type": "main", "index": 0 } ] ] },
+    "Check JWT Security": { "main": [ [ { "node": "If Valid JWT", "type": "main", "index": 0 } ] ] },
+    "If Valid JWT": { "main": [ [ { "node": "Prep Embedding Body", "type": "main", "index": 0 } ] ] },
+    "Prep Embedding Body": { "main": [ [ { "node": "OpenAI: Get Vector", "type": "main", "index": 0 } ] ] },
+    "OpenAI: Get Vector": { "main": [ [ { "node": "Prep Qdrant Body", "type": "main", "index": 0 } ] ] },
+    "Prep Qdrant Body": { "main": [ [ { "node": "Qdrant: Find Docs", "type": "main", "index": 0 } ] ] },
+    "Qdrant: Find Docs": { "main": [ [ { "node": "Prep OpenAI Chat Body", "type": "main", "index": 0 } ] ] },
+    "Prep OpenAI Chat Body": { "main": [ [ { "node": "OpenAI: Chat RAG", "type": "main", "index": 0 } ] ] },
+    "OpenAI: Chat RAG": { "main": [ [ { "node": "Format Response", "type": "main", "index": 0 } ] ] }
+  }
+}

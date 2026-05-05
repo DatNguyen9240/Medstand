@@ -38,7 +38,7 @@
     }
 
     .survey-result.perfect {
-      color: var(--color-success, #16a34a);
+      color: var(--color-success, var(--color-success-text));
     }
 
     .survey-result.partial {
@@ -46,7 +46,7 @@
     }
 
     .survey-result.zero {
-      color: var(--color-danger, #dc2626);
+      color: var(--color-danger, var(--color-danger-text));
     }
 
     .empty-msg {

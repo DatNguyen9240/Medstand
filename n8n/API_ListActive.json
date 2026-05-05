@@ -1,0 +1,234 @@
+﻿{
+  "name": "K0-A · List Active APIs",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api-list-active",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "id": "wh-list-active",
+      "name": "Webhook ListActive",
+      "webhookId": "list-active-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nreturn [{ json: { ...inputJson, headers: headers, _method: method.toUpperCase() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "check-method-list",
+      "name": "Check Method ListActive"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._method }}",
+              "rightValue": "OPTIONS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        0
+      ],
+      "id": "if-options-list",
+      "name": "Is OPTIONS? (ListActive)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        0
+      ],
+      "id": "cors-list",
+      "name": "CORS OK (ListActive)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC dbo.API_ListActive @SearchKey = '';"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        540,
+        0
+      ],
+      "id": "http-list-active",
+      "name": "MS SQL API_ListActive",
+      "credentials": {
+        "microsoftSql": {
+          "id": "",
+          "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nreturn [{ json: { records: items.map(i => i.json) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "format-list-active",
+      "name": "Format ListActive Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.records) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        0
+      ],
+      "id": "res-list-active",
+      "name": "Respond ListActive"
+    }
+  ],
+  "connections": {
+    "Webhook ListActive": {
+      "main": [
+        [
+          {
+            "node": "Check Method ListActive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Method ListActive": {
+      "main": [
+        [
+          {
+            "node": "Is OPTIONS? (ListActive)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is OPTIONS? (ListActive)": {
+      "main": [
+        [
+          {
+            "node": "CORS OK (ListActive)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "MS SQL API_ListActive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MS SQL API_ListActive": {
+      "main": [
+        [
+          {
+            "node": "Format ListActive Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format ListActive Response": {
+      "main": [
+        [
+          {
+            "node": "Respond ListActive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "K0-MetaAPI"
+    }
+  ]
+}

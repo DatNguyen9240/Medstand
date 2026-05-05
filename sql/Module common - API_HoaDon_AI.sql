@@ -26,12 +26,14 @@ BEGIN
     DECLARE @SYSCeoID       VARCHAR(50) = ''
     DECLARE @SYSManagerID   VARCHAR(50) = ''
     DECLARE @SYSEmployeeID  VARCHAR(50) = ''
+    DECLARE @IsManager      BIT         = 0
 
     SELECT
         @SYSBranchID   = ISNULL(BranchID, ''),
         @SYSCeoID      = ISNULL(CeoID, ''),
         @SYSManagerID  = ISNULL(ManagerID, ''),
-        @SYSEmployeeID = ISNULL(EmployeeID, '')
+        @SYSEmployeeID = ISNULL(EmployeeID, ''),
+        @IsManager     = ISNULL(Manager, 0)
     FROM SY_User WHERE UserName = @Username
 
     -------------------------------------------------
@@ -58,19 +60,23 @@ BEGIN
            OR O.Address LIKE N'%' + @timkiem + '%' 
            OR O.Phone LIKE '%' + @timkiem + '%')
       -- Phân quyền mượt: Cho phép AI (demo/admin) xem toàn bộ
-      AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @Username IN ('demo', 'admin'))
-      AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @Username IN ('demo', 'admin'))
-      AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @Username IN ('demo', 'admin'))
-      AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @Username IN ('demo', 'admin'))
+      AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
+      AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
+      AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+      AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
 
     -------------------------------------------------
-    -- 5. Kết quả Output (Trả về 2 Result Sets)
+    -- 5. Kết quả Output
     -------------------------------------------------
-    -- Bảng 1: Danh sách chi tiết
-    SELECT * FROM #BC ORDER BY DocumentDate DESC
-    
-    -- Bảng 2: Tổng cộng
-    SELECT SUM(BaseTotal) AS TongTien FROM #BC
+    IF NOT EXISTS (SELECT 1 FROM #BC)
+    BEGIN
+        SELECT TOP 0 1 AS NoData -- Return empty recordset instead of NULL sum
+    END
+    ELSE
+    BEGIN
+        -- Bảng 1: Danh sách chi tiết
+        SELECT * FROM #BC ORDER BY DocumentDate DESC
+    END
     
     DROP TABLE #BC
 END

@@ -24,3 +24,32 @@ node_modules/
 # ── Scratch / temp files (tạo bởi AI tools) ──
 scratch*
 *.scratch.*
+
+# ?? n8n-system binaries (node, cloudflared) ??
+n8n-system/.bin/
+n8n-system/bin/
+
+# ── Tài liệu Word (lưu local, không cần Git) ──
+HDSD_*.doc
+HDSD_*.docx
+HDSD_temp*.doc
+
+# ── Debug dump / test files ──
+qdrant_*.txt
+test_base64.txt
+*.scratch.txt
+
+# ── Log files ──
+*.log
+n8n-system/.logs/
+
+# ── n8n Qdrant storage (runtime data) ──
+n8n-system/storage/
+
+# ── Prompt scratch files ──
+n8n/prompt.txt
+
+# ── Archive / zip files ──
+Technical_Documentation/*.zip
+
+

@@ -55,11 +55,11 @@ function FilterComponent(config) {
 
   // Set date inputs (defaults or restored)
   if (self.singleDate) {
-    var singleEl = self.$modal.find('.filter-date-single')[0];
+    var singleEl = self.$modal.find('#filter-date-single')[0];
     if (singleEl) singleEl.value = self.dateFrom;
   } else {
-    var fromEl = self.$modal.find('.filter-date-from')[0];
-    var toEl = self.$modal.find('.filter-date-to')[0];
+    var fromEl = self.$modal.find('#filter-date-from')[0];
+    var toEl = self.$modal.find('#filter-date-to')[0];
     if (fromEl) fromEl.value = self.dateFrom;
     if (toEl) toEl.value = self.dateTo;
   }
@@ -236,11 +236,11 @@ FilterComponent.prototype._bindEvents = function ($container) {
   // Apply button
   self.$modal.find('.btn-filter-apply').on('click', function () {
     if (self.singleDate) {
-      self.dateFrom = self.$modal.find('.filter-date-single').val();
+      self.dateFrom = self.$modal.find('#filter-date-single').val();
       self.dateTo = self.dateFrom;
     } else {
-      self.dateFrom = self.$modal.find('.filter-date-from').val();
-      self.dateTo = self.$modal.find('.filter-date-to').val();
+      self.dateFrom = self.$modal.find('#filter-date-from').val();
+      self.dateTo = self.$modal.find('#filter-date-to').val();
     }
     self._saveState();
     self._closeModal();

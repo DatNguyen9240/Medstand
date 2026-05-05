@@ -1,0 +1,136 @@
+﻿{
+  "name": "K5 · CronJob Báo Cáo Tự Động",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-1200, 0],
+      "id": "cron-trigger-k5",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Xác định loại báo cáo theo giờ hiện tại\nconst now = new Date();\nconst hour = now.getHours();\n\nlet reportType = 'none';\nif (hour === 8) reportType = 'morning';\nelse if (hour === 12) reportType = 'midday';\nelse if (hour === 17) reportType = 'eod';\n\nif (reportType === 'none') {\n  return [{ json: { skip: true, hour, reportType } }];\n}\n\nreturn [{ json: { skip: false, hour, reportType } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-976, 0],
+      "id": "check-time-k5",
+      "name": "Kiểm Tra Giờ"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": false, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "false" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-752, 0],
+      "id": "check-should-run-k5",
+      "name": "Có Cần Chạy?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.reportType === 'morning' ? 'EXEC API_BaoCaoBuoiSang;' : $json.reportType === 'midday' ? 'EXEC API_BaoCaoTrua;' : 'EXEC API_BaoCaoEOD;' }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [-528, -80],
+      "id": "sql-query-k5",
+      "name": "Query SQL Báo Cáo",
+      "continueOnFail": true,
+      "credentials": {
+        "microsoftSql": {
+          "id": "5XZStIxQA6Sd5chg",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst reportType = $('Kiểm Tra Giờ').item.json.reportType;\nconst now = new Date();\nconst timeStr = now.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });\n\nlet rows = [];\ntry {\n  rows = items.map(i => i.json).filter(r => r && !r.error);\n} catch(e) {\n  rows = [];\n}\n\nconst reportTitles = {\n  morning: '🌅 BÁO CÁO BUỔI SÁNG',\n  midday: '🌞 BÁO CÁO GIỮA NGÀY',\n  eod: '🌆 BÁO CÁO CUỐI NGÀY'\n};\n\nconst title = reportTitles[reportType] || 'BÁO CÁO';\n\nif (!rows.length) {\n  return [{ json: {\n    message: title + '\\n' + timeStr + '\\n\\n✅ Không có dữ liệu cần xử lý.',\n    reportType\n  } }];\n}\n\nlet msg = title + '\\n' + timeStr + '\\n\\n';\n\nif (reportType === 'morning') {\n  msg += '📋 TỔNG QUAN HÔM NAY:\\n';\n  const total = rows.length;\n  msg += `• Có ${total} mục cần chú ý hôm nay.\\n`;\n  rows.slice(0, 10).forEach((r, i) => {\n    const line = Object.values(r).slice(0, 3).join(' | ');\n    msg += `  ${i+1}. ${line}\\n`;\n  });\n  if (total > 10) msg += `  ... và ${total - 10} mục khác.\\n`;\n} else {\n  rows.slice(0, 5).forEach((r, i) => {\n    const line = Object.entries(r).slice(0, 4).map(([k,v]) => `${k}: ${v}`).join(', ');\n    msg += `${i+1}. ${line}\\n`;\n  });\n}\n\nreturn [{ json: { message: msg, reportType, count: rows.length } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-304, -80],
+      "id": "format-report-k5",
+      "name": "Format Báo Cáo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  chat_id: $env.TELEGRAM_CHAT_ID,\n  text: $json.message,\n  parse_mode: 'HTML'\n}) }}",
+        "options": { "timeout": 10000 }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-80, -80],
+      "id": "send-telegram-k5",
+      "name": "Gửi Telegram",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.item.json;\nconst report = $('Format Báo Cáo').item.json;\nconsole.log('CronJob K5 completed:', report.reportType, '| Count:', report.count);\nreturn [{ json: {\n  status: 'done',\n  reportType: report.reportType,\n  count: report.count,\n  telegram_ok: !result.error\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [144, -80],
+      "id": "log-done-k5",
+      "name": "Log Xong"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Kiểm Tra Giờ", "type": "main", "index": 0 }]]
+    },
+    "Kiểm Tra Giờ": {
+      "main": [[{ "node": "Có Cần Chạy?", "type": "main", "index": 0 }]]
+    },
+    "Có Cần Chạy?": {
+      "main": [
+        [{ "node": "Query SQL Báo Cáo", "type": "main", "index": 0 }]
+      ]
+    },
+    "Query SQL Báo Cáo": {
+      "main": [[{ "node": "Format Báo Cáo", "type": "main", "index": 0 }]]
+    },
+    "Format Báo Cáo": {
+      "main": [[{ "node": "Gửi Telegram", "type": "main", "index": 0 }]]
+    },
+    "Gửi Telegram": {
+      "main": [[{ "node": "Log Xong", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}

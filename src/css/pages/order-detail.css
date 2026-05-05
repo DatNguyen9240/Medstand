@@ -28,7 +28,7 @@
       padding: 12px;
       border: none;
       border-radius: var(--radius-lg);
-      background: #dc2626;
+      background: var(--color-danger-text);
       color: #fff;
       font-weight: var(--font-weight-semibold);
       font-size: var(--font-size-md);
@@ -37,5 +37,5 @@
     }
 
     .btn-delete:hover {
-      background: #b91c1c;
+      background: var(--color-danger-text);
     }

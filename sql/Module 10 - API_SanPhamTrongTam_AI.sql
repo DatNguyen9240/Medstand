@@ -4,7 +4,7 @@ GO
 
 CREATE PROCEDURE API_SanPhamTrongTam_AI
     @Username   VARCHAR(50),
-    @khachhang  VARCHAR(50) = '', -- Mã khách hàng
+    @MaKhachHang  VARCHAR(50) = '', -- Mã khách hàng
     @TopN       INT = 500         
 AS
 BEGIN
@@ -25,7 +25,7 @@ BEGIN
     DECLARE @CurrentSales BIGINT = 0;
     SELECT @CurrentSales = CAST(ISNULL(SUM(AmountTotal), 0) AS BIGINT)
     FROM AR_InvoiceTbl
-    WHERE ObjectID = @khachhang AND StatusID <> 10
+    WHERE ObjectID = @MaKhachHang AND StatusID <> 10
       AND MONTH(DocumentDate) = MONTH(GETDATE()) AND YEAR(DocumentDate) = YEAR(GETDATE());
 
     -- Nén thang quà tặng thành chuỗi mũi tên trực quan
@@ -44,7 +44,7 @@ BEGIN
     SELECT 
         P.TenChuongTrinh AS [Chương Trình],
         P.FromDate AS [Từ Ngày], P.ToDate AS [Đến Ngày],
-        @khachhang AS [Mã Khách], 
+        @MaKhachHang AS [Mã Khách], 
         @CurrentSales AS [Doanh Số Hiện Tại],
         CAST(ISNULL(G.TuDiem, 0) AS BIGINT) AS [Mốc Kế Tiếp],
         CASE WHEN G.TuDiem IS NOT NULL THEN CAST(G.TuDiem - @CurrentSales AS BIGINT) ELSE 0 END AS [Còn Thiếu],

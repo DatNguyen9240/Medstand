@@ -6,25 +6,10 @@
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <link rel="manifest" href="src/pwa/manifest.json">
-  <meta name="theme-color" content="#3c50e0">
+  <meta name="theme-color" content="">
   <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
   <title>Medstand</title>
 
-  <!-- FORCE CLEAR CACHES - KHẮC PHỤC LỖI SERVICE WORKER -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister();
-        }
-      });
-    }
-    if ('caches' in window) {
-      caches.keys().then(function(names) {
-        for (let name of names) caches.delete(name);
-      });
-    }
-  </script>
 
   <!-- ── Core CSS ─────────────────────────────────── -->
   <link rel="stylesheet" href="src/css/design-tokens.css">
@@ -107,14 +92,20 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- SPA Router (must be last) -->
-  <script src="src/js/core/router.js"></script>
+  <script src="src/js/core/router.js?v=9.3"></script>
   <script>
     $(function () {
       Router.init();
     });
   </script>
 
-  <!-- Chatbot Widget CSS (loaded globally for smooth nav) -->
+  <!--
+    CHATBOT WIDGET V5 — Chỉ load main.js (ES6 module).
+    Các script engine cũ (chatbot-api-engine.js, chatbot.js...) vẫn do
+    Router.js load đúng lúc khi user navigate vào trang #/chatbot.
+    main.js chỉ tạo floating button + Shadow DOM overlay.
+  -->
+  <script type="module" src="chatbot-widget/js/main.js"></script>
 
   <script src="src/pwa/pwa-register.js"></script>
 </body>

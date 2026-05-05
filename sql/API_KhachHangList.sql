@@ -1,4 +1,4 @@
-USE [medtest]
+
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[API_KhachHangList]

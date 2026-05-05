@@ -71,6 +71,7 @@ var FormSelect = (function () {
     var html = Input.renderSelect({ key: id, label: opts.label, value: placeholder, locked: opts.locked, required: opts.required });
     var $el = $(html);
     $el.attr('id', 'fs-trigger-' + id);
+    $el.attr('data-field', id);      // ← cần để setListValue tìm được element
     if (opts.full) $el.css('grid-column', '1/-1');
 
     this.$container.append($el);
@@ -94,6 +95,16 @@ var FormSelect = (function () {
       });
     }
 
+    // autoload: gọi loadFn ngay khi init để pre-fill dữ liệu (edit mode)
+    // Mặc định autoload = true nếu không truyền opts.autoload = false
+    if (opts.autoload !== false && opts.loadFn) {
+      var selfPreload = this;
+      var fieldRef = this._fields[id];
+      opts.loadFn(function(options) {
+        fieldRef._cachedOptions = options;   // cache để picker dùng lại, không call API 2 lần
+      });
+    }
+
     return this;
   };
 
@@ -104,10 +115,7 @@ var FormSelect = (function () {
     var $trigger = $('#fs-trigger-' + id);
     var self = this;
 
-    $trigger.find('.filter-value-text').text('Đang tải...');
-
-    field.loadFn(function (options) {
-      // Restore placeholder instead of "loading"
+    function _renderModal(options) {
       var $text = $trigger.find('.filter-value-text');
       $text.text(field.labelText || field.placeholder);
 
@@ -168,6 +176,18 @@ var FormSelect = (function () {
 
         if (field.onChange) field.onChange(val, lbl);
       });
+    }
+
+    // Dùng cached options nếu đã autoload → không call API lần 2
+    if (field._cachedOptions) {
+      _renderModal(field._cachedOptions);
+      return;
+    }
+
+    $trigger.find('.filter-value-text').text('Đang tải...');
+    field.loadFn(function (options) {
+      field._cachedOptions = options;   // cache lại
+      _renderModal(options);
     });
   };
 

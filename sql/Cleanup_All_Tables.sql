@@ -2,7 +2,7 @@
 -- DỌN DẸP TOÀN BỘ CẤU TRÚC BẢNG METADATA CŨ (RESET TỪ ĐẦU)
 -- Chạy file này TRƯỚC KHI import lại Bootstrap_API_Metadata_Auto.sql
 -- ═══════════════════════════════════════════════════════════════════════════
-USE [medtest];
+
 GO
 
 PRINT N'Bắt đầu quá trình xóa các bảng Metadata cũ...';

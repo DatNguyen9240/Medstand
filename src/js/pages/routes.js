@@ -142,8 +142,9 @@
 
         if ($this.attr('data-tab') === 'map' && !map) {
           map = L.map('map-container').setView([21.0285, 105.8542], 13);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
+          L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=vi&gl=VN&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; Google',
+            maxZoom: 20
           }).addTo(map);
           markersLayer = L.layerGroup().addTo(map);
           renderMapMarkers(_routeData);

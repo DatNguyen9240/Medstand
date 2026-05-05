@@ -36,7 +36,7 @@
           $('#avatarPreview').attr('src', src);
         } else if (data.DisplayName) {
           $('#avatarPreview').attr('src',
-            'https://ui-avatars.com/api/?name=' + encodeURIComponent(data.DisplayName) + '&background=3c50e0&color=fff');
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(data.DisplayName)}&background=${getComputedStyle(document.documentElement).getPropertyValue('--color-primary').trim().replace('#', '') || '3c50e0'}&color=fff`);
         }
       }
 

@@ -1,0 +1,63 @@
+<header class="app-header">
+  <button type="button" class="btn-icon" aria-label="Quay lại" onclick="history.back()">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+  </button>
+  <span class="header-title">Quản lý Tri thức RAG</span>
+  <div style="width:40px"></div>
+</header>
+<main class="app-main">
+  <div class="app-content" style="padding: 16px;">
+    
+    <!-- Mô tả -->
+    <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-md); margin-bottom: 24px;">
+      <h3 style="margin: 0 0 8px; font-size: var(--font-size-md); color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        Cổng nạp dữ liệu cho AI
+      </h3>
+      <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
+        Tải lên các tài liệu như Chính sách bán hàng, Khuyến mãi, hoặc Cẩm nang y khoa để AI Trợ lý làm cơ sở tư vấn. N8N sẽ tự động xoá khi hết hạn.
+      </p>
+    </div>
+
+    <!-- Form Upload -->
+    <form id="rag-upload-form" class="rag-form-card" style="background: var(--color-surface); padding: 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--color-border);">
+      
+      <!-- Upload Zone -->
+      <div class="upload-zone" id="rag-dropzone" style="border: 2px dashed rgb(148, 163, 184); padding: 32px 16px; text-align: center; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; margin-bottom: 20px;">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;opacity:0.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+        <h4 style="margin: 0 0 8px; font-weight: 500;">Chạm hoặc kéo thả file vào đây</h4>
+        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">Hỗ trợ: PDF, DOCX, XLSX (Tối đa 10MB)</p>
+        <input type="file" id="rag-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx" style="display: none;" />
+      </div>
+
+      <div id="file-preview" style="display: none; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-sm); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(59, 130, 246, 0.2);">
+        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          <span id="file-name" style="font-weight: 500; font-size: var(--font-size-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">ten_file.pdf</span>
+        </div>
+        <button type="button" id="btn-remove-file" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+
+      <!-- Tiêu đề -->
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label for="rag-title" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: var(--font-size-sm);">Tên Tiêu Đề Mới</label>
+        <input type="text" id="rag-title" placeholder="Ví dụ: Chính sách bán hàng Tháng 5..." required style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font-family: inherit;">
+      </div>
+
+      <!-- Ngày hết hạn -->
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label for="rag-expiry" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: var(--font-size-sm);">Ngày hết hạn hiệu lực (Tùy chọn)</label>
+        <input type="date" id="rag-expiry" style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font-family: inherit;">
+        <p style="margin: 6px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">Nếu bỏ trống, tài liệu sẽ tồn tại vĩnh viễn.</p>
+      </div>
+
+      <button type="submit" id="btn-submit-rag" class="btn-primary" style="width: 100%; padding: 14px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        Bơm vào não AI
+      </button>
+    </form>
+
+  </div>
+</main>

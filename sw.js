@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v11';
+const CACHE_VERSION = 'medstand-v29';
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -12,9 +12,9 @@ const PRECACHE_URLS = [
   '/index.html',
 
   // Standalone auth pages
-  '/login.html',
-  '/register.html',
-  '/forgot-password.html',
+  '/pages/login.html',
+  '/pages/register.html',
+  '/pages/forgot-password.html',
 
   // Templates (loaded by router)
   '/src/templates/home.html',
@@ -57,7 +57,7 @@ const PRECACHE_URLS = [
   '/src/js/components/NavBar.js',
 
   // Offline fallback
-  '/offline.html',
+  '/pages/offline.html',
 ];
 
 // ── Install: cache từng file riêng, bỏ qua file lỗi ──────────────────────────
@@ -129,7 +129,7 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       }).catch(() => {
         if (request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
-          return caches.match('/offline.html');
+          return caches.match('/pages/offline.html');
         }
       });
     })

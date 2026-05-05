@@ -1,0 +1,183 @@
+{
+  "name": "AI · Intent Parser (V4 Sub-Flow)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "intent-parser",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "id": "webhook-intent-parser",
+      "name": "Webhook Intent Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══ Detect Category từ keyword để load đúng FewShots ═══\nconst body = $input.first().json.body || $input.first().json || {};\nconst message = (body.message || body.text || '').toLowerCase();\nconst historyContext = body.historyContext || '';\nconst sessionId = body.sessionId || 'default';\n\n// Keyword map để đoán category TRƯỚC khi gọi LLM\n// → load đúng few-shots, giảm token 40-60%\nconst CATEGORY_KEYWORDS = {\n  SALES:    ['doanh', 'dt ', 'dts', 'hóa đơn', 'đơn hàng', 'top nv', 'top kh', 'bán được', 'lên đơn', 'giỏ hàng', 'đặt hàng'],\n  CUSTOMER: ['khách', 'kh ', 'nợ', 'công nợ', 'vip', 'nhóm', 'tích lũy', 'hạng', 'ghé', 'tuyến', 'lâu chưa mua'],\n  PRODUCT:  ['thuốc', 'sp ', 'sản phẩm', 'tồn kho', 'còn hàng', 'gợi ý', 'ho ', 'cảm ', 'đau', 'bệnh', 'trọng tâm', 'date', 'xả hàng'],\n};\n\nlet category = 'GENERAL';\nfor (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {\n  if (keywords.some(kw => message.includes(kw))) {\n    category = cat;\n    break;\n  }\n}\n\n// Load few-shots theo category (hardcode để đảm bảo hoạt động)\nconst FEWSHOTS = {\n  SALES: [\n    'Input: \"doanh thu tháng này\" → {\"intent\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[THIS_MONTH_START]\",\"@DenNgay\":\"[TODAY]\"},\"status\":\"SUCCESS\",\"category\":\"SALES\"}',\n    'Input: \"top nv bán nhiều nhất năm nay\" → {\"intent\":\"@doanh_so\",\"params\":{\"@TuNgay\":\"[THIS_YEAR_START]\",\"@DenNgay\":\"[TODAY]\",\"@LoaiBaoCao\":\"NhanVien\"},\"status\":\"SUCCESS\",\"category\":\"SALES\"}',\n    'Input: \"lên đơn cho anh Hùng 10 abc, 5 xyz\" → {\"intent\":\"@lap_don_hang\",\"action\":\"ADD\",\"items\":[{\"keyword\":\"abc\",\"qty\":10},{\"keyword\":\"xyz\",\"qty\":5}],\"params\":{\"@MaKhachHang\":\"hùng\"},\"status\":\"SUCCESS\",\"category\":\"SALES\"}',\n  ],\n  CUSTOMER: [\n    'Input: \"HK001 thuộc nhóm nào\" → {\"intent\":\"@cham_diem_kh\",\"params\":{\"@MaKhachHang\":\"HK001\"},\"status\":\"SUCCESS\",\"category\":\"CUSTOMER\"}',\n    'Input: \"nó nợ bao nhiêu\" (no history) → {\"intent\":\"@cong_no_chi_tiet\",\"params\":{},\"status\":\"ASK_CLARIFICATION\",\"missing_fields\":[\"@MaKhachHang\"],\"category\":\"CUSTOMER\"}',\n    'Input: [History: KH001] \"mua nhiều vậy lên hạng chưa\" → {\"intent\":\"@cham_diem_kh\",\"params\":{\"@MaKhachHang\":\"KH001\"},\"status\":\"SUCCESS\",\"category\":\"CUSTOMER\"}',\n  ],\n  PRODUCT: [\n    'Input: \"khách bị ho nên bán gì\" → {\"intent\":\"@upsell_goi_y\",\"params\":{\"@timkiem\":\"ho\"},\"status\":\"SUCCESS\",\"category\":\"PRODUCT\"}',\n    'Input: \"còn bao nhiêu hộp vitamin C\" → {\"intent\":\"@danh_sach_tonkho\",\"params\":{\"@timkiem\":\"vitamin C\"},\"status\":\"SUCCESS\",\"category\":\"PRODUCT\"}',\n    'Input: \"hôm nay bán gì cho HK001\" → {\"intent\":\"@goi_y_don_hang\",\"params\":{\"@MaKhachHang\":\"HK001\"},\"status\":\"SUCCESS\",\"category\":\"PRODUCT\"}',\n  ],\n  GENERAL: [\n    'Input: \"xem giúp anh\" → {\"intent\":null,\"params\":{},\"status\":\"ASK_CLARIFICATION\",\"missing_fields\":[\"intent\"],\"category\":\"GENERAL\"}',\n  ]\n};\n\nconst fewShotStr = (FEWSHOTS[category] || FEWSHOTS.GENERAL).join('\\n');\n\nreturn [{ json: { message, historyContext, sessionId, category, fewShotStr, originalBody: body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "id": "detect-category",
+      "name": "Detect Category & Load FewShots"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        460
+      ],
+      "id": "intent-llm-model",
+      "name": "Intent LLM Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "mxZCAAqEX3fE4Amb",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ ($json.historyContext ? 'CONTEXT: ' + $json.historyContext + '\\n' : '') + 'USER: ' + $json.message + '\\n\\nFEW-SHOTS:\\n' + $json.fewShotStr }}",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "SystemMessagePromptTemplate",
+              "message": "=You are an Intent Parser in a production AI system for Medstand (pharmaceutical sales). Today: {{$now.format('yyyy-MM-dd')}}.\n\nYour ONLY job:\n- classify user intent from the list below\n- extract parameters if clearly present\n- return STRICT JSON — nothing else\n\nYou DO NOT: explain, generate SQL, add extra text outside JSON.\n\n## SUPPORTED INTENTS:\n@doanh_so           → doanh thu, doanh số, báo cáo bán hàng\n@hoa_don            → hóa đơn, xuất hóa đơn\n@don_hang           → tra cứu đơn hàng đã đặt\n@lap_don_hang       → lên đơn, thêm vào giỏ, đặt hàng\n@cham_diem_kh       → chấm điểm, phân nhóm, VIP, hạng khách\n@cong_no_khach_hang → tổng công nợ, danh sách nợ\n@cong_no_chi_tiet   → chi tiết nợ của 1 khách cụ thể\n@tich_luy           → tích lũy, tiến độ thưởng\n@tuyen_ban_hang     → tuyến ghé thăm, khách lâu chưa mua\n@goi_y_don_hang     → gợi ý bán hàng cho khách\n@upsell_goi_y       → thuốc theo triệu chứng, bệnh\n@goi_y_don_thuoc    → bán kèm theo đơn thuốc\n@danh_sach_tonkho   → tồn kho, còn hàng\n@tra_cuu_san_pham   → thông tin thuốc, thành phần\n@san_pham_trong_tam → hàng trọng tâm\n@de_xuat_khuyen_mai → hàng sắp date, xả hàng\ncasual_chat         → hỏi linh tinh, không liên quan (chào hỏi, tâm sự)\n\n## OUTPUT FORMAT (STRICT JSON ONLY):\n{\n  \"intent\": string,\n  \"confidence\": float (0→1),\n  \"reason\": string (<=15 words, factual),\n  \"action\": \"ADD\" | \"UPDATE\" | null,\n  \"items\": [{\"keyword\": string, \"qty\": number}],\n  \"params\": {\n    \"@MaKhachHang\": string | null,\n    \"@TuNgay\": \"YYYY-MM-DD\" | null,\n    \"@DenNgay\": \"YYYY-MM-DD\" | null,\n    \"@timkiem\": string | null,\n    \"@LoaiBaoCao\": \"KhachHang\" | \"NhanVien\" | null,\n    \"@TopN\": number | null\n  },\n  \"status\": \"SUCCESS\" | \"ASK_CLARIFICATION\",\n  \"missing_fields\": [],\n  \"casual_reply\": \"string | null (Nếu là casual_chat, hãy viết 1 câu trả lời thân thiện ngắn gọn tại đây)\"\n}\n\n## HARD RULES:\n1. Return ONLY valid JSON — no markdown, no explanation\n2. If unsure → intent = \"casual_chat\"\n3. Extract params ONLY if CLEARLY present — set null if missing, NEVER guess\n4. Resolve pronouns (nó, khách này) using CONTEXT if available\n5. Slang: dt/dts→@doanh_so | kh→customer | sp→product | th3→March\n6. Time: tháng này→[THIS_MONTH_START] to [TODAY] | năm nay→[THIS_YEAR_START] to [TODAY]\n7. MaKhachHang: UPPERCASE, remove spaces (HB 106 → HB106)\n8. MULTI-INTENT RULE: If the message could match 2+ different intents simultaneously → set confidence <= 0.55 and explain in reason (e.g. \"ambiguous: could be debt or order history\")\n9. VAGUE SENTENCE RULE: If sentence has no clear business keyword (e.g. \"khách này thế nào\", \"dạo này sao\") → set confidence <= 0.60\n\n## CONFIDENCE GUIDELINES:\n- 0.9–1.0 → very clear (explicit business keyword)\n- 0.7–0.9 → fairly clear\n- 0.5–0.7 → ambiguous or vague\n- <0.5    → very unclear / multi-intent / casual\n\nNOTE: Be CONSERVATIVE. When in doubt, score LOWER. The system will ask for clarification — that is safer than calling wrong API."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        680,
+        300
+      ],
+      "id": "extract-intent-chain",
+      "name": "Extract Intent Chain"
+    },
+    {
+      "parameters": {
+        "jsCode": "const llmRaw = $input.first().json.output || $input.first().json.text || '';\nconst category = $('Detect Category & Load FewShots').first().json.category;\n\nlet result = { intent: null, params: {}, status: 'ASK_CLARIFICATION', missing_fields: ['json_parse_error'], category };\ntry {\n  const m = llmRaw.match(/{[\\s\\S]*}/);\n  if (m) result = { ...JSON.parse(m[0]), category: JSON.parse(m[0]).category || category };\n} catch(e) {}\n\n// Normalize: ensure intent starts with @\nif (result.intent && !result.intent.startsWith('@')) result.intent = '@' + result.intent;\n\n// Date placeholder resolution\nconst now = new Date();\nconst pad = n => String(n).padStart(2,'0');\nconst toISO = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;\nconst placeholders = {\n  '[TODAY]':            toISO(now),\n  '[THIS_MONTH_START]': `${now.getFullYear()}-${pad(now.getMonth()+1)}-01`,\n  '[THIS_YEAR_START]':  `${now.getFullYear()}-01-01`,\n};\nfor (const k of Object.keys(result.params || {})) {\n  if (placeholders[result.params[k]]) result.params[k] = placeholders[result.params[k]];\n}\n\nreturn [{ json: result }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        300
+      ],
+      "id": "parse-and-resolve",
+      "name": "Parse & Resolve Placeholders"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1160,
+        300
+      ],
+      "id": "respond-intent",
+      "name": "Respond Intent JSON"
+    }
+  ],
+  "connections": {
+    "Webhook Intent Parser": {
+      "main": [
+        [
+          {
+            "node": "Detect Category & Load FewShots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Category & Load FewShots": {
+      "main": [
+        [
+          {
+            "node": "Extract Intent Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent LLM Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extract Intent Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Intent Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse & Resolve Placeholders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Resolve Placeholders": {
+      "main": [
+        [
+          {
+            "node": "Respond Intent JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "be68d696f27d4c1373e7243a00599f63286098f4005ab89f559d0576f4f35188"
+  }
+}

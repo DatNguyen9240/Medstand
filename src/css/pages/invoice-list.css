@@ -46,16 +46,16 @@
     }
 
     .invoice-card .status.exported {
-      background: #d1fae5;
-      color: #065f46;
+      background: var(--color-success-bg);
+      color: var(--color-success-text);
     }
 
     .invoice-card .status.draft {
-      background: #dbeafe;
-      color: #1e40af;
+      background: var(--color-info-bg);
+      color: var(--color-info-text);
     }
 
     .invoice-card .status.waiting {
-      background: #fef3c7;
-      color: #b45309;
+      background: var(--color-warning-bg);
+      color: var(--color-warning-text);
     }

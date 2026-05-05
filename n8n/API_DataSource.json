@@ -1,0 +1,235 @@
+{
+  "name": "K0-D · DataSource Lookup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api-datasource",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "id": "wh-datasource",
+      "name": "Webhook DataSource",
+      "webhookId": "datasource-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $json || {};\nconst headers = inputJson.headers || {};\nconst method = inputJson.method || headers['x-forwarded-method'] || 'POST';\nconst body = inputJson.body || {};\nlet dsVal = body.DataSourceValue || '';\nlet searchKey = body.SearchKey || '';\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\ndsVal = dsVal.replace(/'/g, \"''\");\nsearchKey = searchKey.replace(/'/g, \"''\");\n\nreturn [{ json: { ...inputJson, headers: headers, body: {...body, DataSourceValueSafe: dsVal, SearchKeySafe: searchKey}, _method: method.toUpperCase() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "check-datasource",
+      "name": "Check Method DataSource"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._method }}",
+              "rightValue": "OPTIONS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        0
+      ],
+      "id": "if-options-ds",
+      "name": "Is OPTIONS? (DataSource)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        0
+      ],
+      "id": "cors-ds",
+      "name": "CORS OK (DataSource)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- DANH SÁCH BẢO MẬT (EDIT HERE) ---\n// Danh sach SP can @Username (SP khac khong can, KHONG inject)\nconst NEEDS_AUTH = [\n  'API_DanhSachTonKho_AI',\n  'API_DoanhSo_AI',\n  'API_KhachHang_AI',\n  'API_NhanVien_AI',\n  'API_CongNo_AI',\n  'API_CongNoKhachHang_AI',\n  'API_CongNoChiTiet_AI',\n  'API_DonHang_AI',\n  'API_HoaDon_AI',\n  'API_GoiYDonHang_AI',\n  'API_TuyenBanHang_AI',\n  'API_ChamDiemKH_AI',\n  'API_TichLuy_AI',\n  'API_UpsellGoiY_AI',\n  'API_DeXuatKhuyenMai_AI',\n  'API_GoiYDonThuoc_AI',\n  'API_KhachHang_Insert_AI',\n  'API_DonHangChiTiet_Insert_AI',\n  'API_TraCuuSanPham_AI'\n];\n\n// Build DataSource SQL\nconst dsNode = $('Check Method DataSource').first().json;\nlet dsVal = dsNode.body.DataSourceValueSafe || '';\nconst searchKey = dsNode.body.SearchKeySafe || '';\n\n// Lay username tu body (frontend se gui len) hoac decode JWT\nlet username = dsNode.body.username || '';\nif (!username) {\n  try {\n    const authH = (dsNode.headers || {}).authorization || (dsNode.headers || {}).Authorization || '';\n    const tm = authH.match(/Bearer (.+)/);\n    if (tm) {\n      const b64 = tm[1].split('.')[1].replace(/-/g, '+').replace(/_/g, '/');\n      const pad = (4 - b64.length % 4) % 4;\n      const pl = JSON.parse(Buffer.from(b64 + '='.repeat(pad), 'base64').toString('utf8'));\n      username = pl.username || pl.Username || pl.sub || pl.name || '';\n    }\n  } catch(e) { username = ''; }\n}\n\nif (!dsVal) return [{ json: { query: \"SELECT 1 AS code, 'Empty DataSource' AS msg FOR JSON PATH;\" } }];\n\nconst parts = dsVal.split('|');\nlet spName = parts[0].trim();\n\nconst mapper = {\n  '@danh_muc': 'API_DanhMuc_Core_AI',\n  '@tra_cuu_san_pham': 'API_TraCuuSanPham_AI',\n  '@san_pham': 'API_TraCuuSanPham_AI'\n};\nif (mapper[spName.toLowerCase()]) spName = mapper[spName.toLowerCase()];\n\nif (!(/^(API_|sp_|@)/i.test(spName))) {\n  return [{ json: { query: \"SELECT 1 AS code, 'Invalid SP Name' AS msg FOR JSON PATH;\" } }];\n}\n\nlet query = `EXEC ${spName.replace(/[^a-zA-Z0-9_@]/g, '')}`;\nlet params = [];\n\nlet usedQ = false;\nlet usedUsername = false;\n\n// Xu ly tham so tu pipeline (uu tien cau hinh DB)\nfor (let i = 1; i < parts.length; i++) {\n  const p = parts[i].split('=');\n  if (p.length === 2) {\n    const pKey = p[0].trim().replace(/[^a-zA-Z0-9_@]/g, '');\n    let pVal = p[1].trim();\n    if (pVal.includes('{q}')) { pVal = pVal.replace('{q}', searchKey); usedQ = true; }\n    if (pVal.includes('{username}')) { \n      pVal = pVal.replace('{username}', username); \n      usedUsername = true;\n    }\n    params.push(`${pKey} = N'${pVal}'`);\n  }\n}\n\n// Bom @Username cho cac SP trong whitelist (neu chua co trong pipeline)\nif (!usedUsername && username && NEEDS_AUTH.indexOf(spName) !== -1) {\n  params.unshift(`@Username = N'${username.replace(/'/g, \"''\")}'`);\n}\n\n// Bom @timkiem mac dinh neu chua dung {q}\nif (searchKey && !usedQ) {\n  params.push(`@timkiem = N'${searchKey}'`);\n}\n\nif (params.length) query += ' ' + params.join(', ');\nquery += ';';\n\nreturn [{ json: { query } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        0
+      ],
+      "id": "build-datasource-sql",
+      "name": "Build DataSource SQL"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "http-datasource",
+      "name": "MS SQL DataSource",
+      "credentials": {
+        "microsoftSql": {
+          "id": "",
+          "name": "MS SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        0
+      ],
+      "id": "res-datasource",
+      "name": "Respond DataSource"
+    }
+  ],
+  "connections": {
+    "Webhook DataSource": {
+      "main": [
+        [
+          {
+            "node": "Check Method DataSource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Method DataSource": {
+      "main": [
+        [
+          {
+            "node": "Is OPTIONS? (DataSource)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is OPTIONS? (DataSource)": {
+      "main": [
+        [
+          {
+            "node": "CORS OK (DataSource)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build DataSource SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build DataSource SQL": {
+      "main": [
+        [
+          {
+            "node": "MS SQL DataSource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MS SQL DataSource": {
+      "main": [
+        [
+          {
+            "node": "Respond DataSource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "K0-MetaAPI"
+    }
+  ]
+}

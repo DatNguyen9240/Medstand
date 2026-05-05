@@ -12,22 +12,22 @@
       margin-left: 6px;
     }
 
-    .segment-item .badge.red { background: #fee2e2; color: #dc2626; }
-    .segment-item .badge.orange { background: #fff7ed; color: #ea580c; }
-    .segment-item .badge.yellow { background: #fef9c3; color: #ca8a04; }
+    .segment-item .badge.red { background: var(--color-danger-bg); color: var(--color-danger-text); }
+    .segment-item .badge.orange { background: var(--color-warning-bg); color: var(--color-warning-text); }
+    .segment-item .badge.yellow { background: var(--color-warning-bg); color: var(--color-warning-text); }
 
     .product-table .sl-zero {
-      color: #dc2626;
+      color: var(--color-danger-text);
       font-weight: var(--font-weight-semibold);
     }
 
     .product-table .sl-low {
-      color: #ea580c;
+      color: var(--color-warning-text);
       font-weight: var(--font-weight-semibold);
     }
 
     .product-table .sl-warn {
-      color: #ca8a04;
+      color: var(--color-warning-text);
       font-weight: var(--font-weight-semibold);
     }
 

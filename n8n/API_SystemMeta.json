@@ -1,0 +1,104 @@
+﻿{
+  "name": "K0-E · Get System Meta",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api-get-system-meta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "id": "wh-sys-meta",
+      "name": "Webhook GetSystemMeta",
+      "webhookId": "get-sys-meta-001"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC dbo.API_GetSystemMeta;"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "sql-sys-meta",
+      "name": "MS SQL GetSystemMeta",
+      "credentials": {
+        "microsoftSql": {
+          "id": "",
+          "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($input.all().map(i => i.json)) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        20,
+        0
+      ],
+      "id": "res-sys-meta",
+      "name": "Respond GetSystemMeta"
+    }
+  ],
+  "connections": {
+    "Webhook GetSystemMeta": {
+      "main": [
+        [
+          {
+            "node": "MS SQL GetSystemMeta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MS SQL GetSystemMeta": {
+      "main": [
+        [
+          {
+            "node": "Respond GetSystemMeta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "K0-MetaAPI"
+    }
+  ]
+}

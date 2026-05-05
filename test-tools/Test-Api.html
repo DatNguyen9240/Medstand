@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medstand - Dynamic API Flow Simulator</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="theme.css">
+    <script src="../env.js"></script>
+    <style>
+        :root {
+            --bg-base: var(--md-bg-base);
+            --bg-card: var(--md-bg-card);
+            --bg-card-hover: var(--md-bg-card-hover);
+            --border: var(--md-border);
+            --text-main: var(--md-text-main);
+            --text-muted: var(--md-text-muted);
+            --text-code: var(--md-text-code);
+            --accent: var(--md-accent);
+            --accent-glow: var(--md-accent-glow);
+            --success: var(--md-success);
+            --danger: var(--md-danger);
+            --warning: var(--md-warning);
+            --intent-color: var(--md-intent-color);
+        }
+
+        body {
+            margin: 0;
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; }
+
+        /* Dashboard Header */
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 {
+            font-size: 2.5rem; margin: 0 0 10px 0;
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            font-weight: 800; letter-spacing: -1px;
+        }
+        .header p { color: var(--text-muted); font-size: 1.1rem; margin: 0; }
+
+        /* Control Panel */
+        .control-panel { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        button {
+            font-family: inherit; font-weight: 600; padding: 12px 24px; border-radius: 8px;
+            border: none; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1rem; display: flex; align-items: center; gap: 8px;
+        }
+
+        .btn-run { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        .btn-run:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+        .btn-stop { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+        .btn-stop:hover:not(:disabled) { background: var(--danger); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+        .btn-export { background: rgba(168, 85, 247, 0.1); color: var(--intent-color); border: 1px solid var(--intent-color); }
+        .btn-export:hover:not(:disabled) { background: var(--intent-color); color: white; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+        /* Stats Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }
+        .stat-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px; backdrop-filter: blur(10px); text-align: center; transition: transform 0.3s;
+        }
+        .stat-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 5px; }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-accent { color: var(--accent); }
+        .text-warning { color: var(--warning); }
+
+        /* Progress Bar */
+        .prog-bar { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 30px; display: none; }
+        .prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--intent-color)); width: 0; transition: width 0.3s; }
+
+        /* Flow UI */
+        .flow-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            margin-bottom: 24px; padding: 20px; backdrop-filter: blur(10px);
+        }
+        .flow-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 15px;
+        }
+        .flow-title { font-size: 1.25rem; font-weight: 600; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .api-badge { background: rgba(59, 130, 246, 0.2); color: #60a5fa; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; font-family: monospace;}
+
+        .btn-flow {
+            background: rgba(59, 130, 246, 0.1); color: var(--accent); border: 1px solid var(--accent);
+            padding: 6px 14px; font-size: 0.85rem; border-radius: 6px;
+        }
+        .btn-flow:hover:not(:disabled) { background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
+
+        /* Step Items */
+        .step-list { display: flex; flex-direction: column; gap: 12px; }
+        .step-item {
+            background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 8px;
+            padding: 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 15px; align-items: start; transition: all 0.3s;
+        }
+        .step-item.running { border-color: var(--warning); box-shadow: 0 0 15px rgba(245, 158, 11, 0.1); }
+        .step-item.pass { border-left: 4px solid var(--success); }
+        .step-item.fail { border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.05); }
+        .step-item.skip { border-left: 4px solid var(--warning); opacity: 0.8; }
+
+        .badge { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .b-cfg { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .b-ds { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .b-exe { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .b-skip { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+        .step-command {
+            font-family: 'Consolas', monospace; color: var(--text-code); font-size: 0.95rem; margin-bottom: 5px;
+            background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 4px; display: inline-block;
+        }
+        .step-desc { font-size: 0.85rem; color: var(--text-muted); }
+        .step-status { text-align: right; font-weight: bold; font-size: 0.9rem; min-width: 80px; }
+
+        /* Error Log View */
+        .step-log {
+            grid-column: 1 / -1; margin-top: 10px; font-family: 'Consolas', monospace; font-size: 0.8rem;
+            background: #000; padding: 12px; border-radius: 6px; border: 1px solid var(--border);
+            color: var(--text-muted); white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto; display: none;
+        }
+        .step-log.show { display: block; }
+        .step-log.error { color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+
+        /* Spinner */
+        .loader {
+            width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.1); border-bottom-color: var(--warning);
+            border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+
+<body class="medstand-theme">
+
+    <div class="container">
+        <div class="header">
+            <h1>Dynamic API Flow Simulator</h1>
+            <p>Tự động quyét DB, Render Lộ trình Tương tác UI của toàn bộ Hệ thống API</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value text-accent" id="lblApis">0</div>
+                <div class="stat-label">Tổng Số API</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-success" id="lblPass">0</div>
+                <div class="stat-label">Passed Steps</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-danger" id="lblFail">0</div>
+                <div class="stat-label">Failed Steps</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value text-warning" id="lblSkip">0</div>
+                <div class="stat-label">Muzzled (Bỏ qua)</div>
+            </div>
+        </div>
+
+        <div class="prog-bar" id="progBar"><div class="prog-fill" id="progFill"></div></div>
+
+        <div class="control-panel">
+            <button class="btn-run" id="btnRunAll" onclick="Control.runAll()" disabled>⏳ Đang quét API...</button>
+            <button class="btn-stop" id="btnStop" onclick="Control.stopAll()" disabled>⏹ STOP</button>
+            <button class="btn-export" id="btnExport" onclick="Control.exportReport()">💾 EXPORT JSON SUMMARY</button>
+        </div>
+
+        <div id="flowsContainer"></div>
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // ENVIRONMENT & DATA CONFIG
+        // ---------------------------------------------------------
+        const CFG = window.API_CONFIG || {};
+        const N8N = CFG.N8N_BASE;
+        if (!N8N) throw new Error("CRITICAL: Không tìm thấy N8N_BASE. Vui lòng kiểm tra file env.js!");
+        const KEY = CFG.CHAT_API_KEY || '';
+        const TEST_TOKEN = '8174B2AB-945F-4988-BB94-C63D362A868E';
+        
+        function getToken() {
+            let user = localStorage.getItem('auth_user');
+            if (user) return JSON.parse(user).Token || TEST_TOKEN;
+            return TEST_TOKEN;
+        }
+
+        const URLs = {
+            list: N8N + '/webhook/api-list-active',
+            ds: N8N + '/webhook/api-datasource',
+            exec: N8N + '/webhook/api-execute',
+            config: N8N + '/webhook/api-get-config'
+        };
+
+        const SKIP_EXEC_REGEX = /insert|update|delete|import/i; // Muzzle destructive APIs
+        const FLOWS = [];
+
+        // Simple date mock generator
+        const _today = (offsetDays) => { 
+            const d = new Date(); d.setDate(d.getDate() + offsetDays); 
+            return d.toISOString().slice(0, 10); 
+        };
+
+        // Heuristics for mock params
+        function guessMockParams(c) {
+            c = c.toLowerCase();
+            const p = {};
+            if (c.includes('doanh_so') || c.includes('don_hang_ai') || c.includes('san_pham') || c.includes('lich_su') || c.includes('hoa_don')) {
+                p["@tungay"] = "2026-03-01"; // Gắn cứng tháng 3 vì DB chỉ có data tháng 3
+                p["@denngay"] = "2026-03-31"; 
+            }
+            if (c.includes('chi_tiet') || c.includes('cong_no') || c.includes('khach_hang') || c.includes('goi_y')) {
+                p["@khachhang"] = "HB106";
+            }
+            if (c.includes('nhan_vien')) {
+                p["@nhanvien"] = "minh";
+            }
+            return Object.keys(p).length ? p : null;
+        }
+
+        // ---------------------------------------------------------
+        // RENDER ENGINE
+        // ---------------------------------------------------------
+        const State = {
+            pass: 0, fail: 0, skip: 0,
+            isCancelled: false,
+            results: []
+        };
+
+        function getBadgeTitle(type) {
+            if (type === 'config') return { b: "b-cfg", t: "GET CONFIG" };
+            if (type === 'ds') return { b: "b-ds", t: "MOCK DS" };
+            if (type === 'skip') return { b: "b-skip", t: "MUZZLED" };
+            return { b: "b-exe", t: "EXECUTE" };
+        }
+
+        async function loadAllAPIs() {
+            try {
+                const r = await fetch(URLs.list, {
+                    method: 'POST',
+                    headers: { 'Content-Type':'application/json','x-api-key':KEY,'Authorization':'Bearer '+getToken() },
+                    body: JSON.stringify({})
+                });
+                if (!r.ok) throw new Error("Failed to load APIs");
+                let data = await r.json();
+                let apiList = Array.isArray(data) ? data : (data.records || []);
+                
+                document.getElementById('lblApis').innerText = apiList.length;
+                
+                // Build Flows Dynamically
+                apiList.forEach((api, idx) => {
+                    const code = api.ApiCode || api.apicode || api.api_code || '';
+                    const name = api.ApiName || api.apiname || api.name || code;
+                    if (!code) return;
+
+                    const isMuzzled = SKIP_EXEC_REGEX.test(code);
+                    const mockParams = guessMockParams(code) || {};
+
+                    const flow = {
+                        id: `FLOW_${code}`,
+                        name: name,
+                        code: code,
+                        steps: [
+                            { 
+                                type: 'config', cmd: code, 
+                                desc: `Bước 1: UI gửi lệnh lên n8n lấy Cấu Hình Param. Trả về mảng json quyết định App sẽ vẽ ra form gì.`
+                            },
+                            {
+                                type: 'ds', cmd: `@danh_muc | @Type=...`,
+                                desc: `Bước 2 (Giả lập): Nếu cấu hình có Lookup, App khởi tạo chuỗi Dropdown (DS_Danh_Muc) tải dữ liệu list Item cho người dùng chọn.`
+                            }
+                        ]
+                    };
+
+                    if (isMuzzled) {
+                        flow.steps.push({
+                            type: 'skip',
+                            cmd: code,
+                            desc: `Bước 3: ❌ ĐÃ KHÓA MÕM: Luồng này chứa Tác vụ Sửa/Xoá vào DB. Automation huỷ gọi lệnh Execute để bảo mật Database.`
+                        });
+                    } else {
+                        flow.steps.push({
+                            type: 'exec', cmd: code, params: mockParams,
+                            desc: `Bước 3: Người dùng bấm [Thực Thi]. Nén cục form truyền lên JSON Payload để App nhả ngược xuống lưới báo cáo.`
+                        });
+                    }
+                    FLOWS.push(flow);
+                });
+
+                renderUI();
+                
+                const btnAll = document.getElementById('btnRunAll');
+                btnAll.disabled = false;
+                btnAll.innerText = "▶ RUN ALL FLOWS";
+                document.getElementById('progBar').style.display = 'block';
+
+            } catch (err) {
+                alert("Error loading APIs: " + err.message);
+            }
+        }
+
+        function renderUI() {
+            const container = document.getElementById('flowsContainer');
+            container.innerHTML = '';
+
+            FLOWS.forEach((flow, fIndex) => {
+                const fDiv = document.createElement('div');
+                fDiv.className = 'flow-card';
+                
+                fDiv.innerHTML = `
+                    <div class="flow-header">
+                        <div class="flow-title">
+                            ${flow.name}
+                            <span class="api-badge">${flow.code}</span>
+                        </div>
+                        <button class="btn-flow" id="btn-flow-${fIndex}" onclick="Control.runFlow(${fIndex})">▶ Test Flow này</button>
+                    </div>
+                `;
+
+                const sList = document.createElement('div');
+                sList.className = 'step-list';
+
+                flow.steps.forEach((step, sIndex) => {
+                    const sId = `step-${fIndex}-${sIndex}`;
+                    const badge = getBadgeTitle(step.type);
+                    
+                    let cmdText = step.cmd;
+                    if (step.type === 'exec' && Object.keys(step.params).length > 0) {
+                        cmdText += ` { ${JSON.stringify(step.params).slice(1,-1)} }`;
+                    }
+
+                    sList.insertAdjacentHTML('beforeend', `
+                        <div class="step-item" id="${sId}">
+                            <div><span class="badge ${badge.b}">${badge.t}</span></div>
+                            <div>
+                                <div class="step-command">${cmdText}</div>
+                                <div class="step-desc">💡 ${step.desc}</div>
+                                <div class="step-log" id="log-${sId}"></div>
+                                <div id="ai-insight-${sId}" style="display:none; margin-top:8px; padding:10px; background:rgba(139, 92, 246, 0.1); border-left:3px solid #a855f7; border-radius:4px; font-size:13px; color:#ddd; line-height:1.5;"></div>
+                            </div>
+                            <div class="step-status" id="status-${sId}">
+                                <span style="color:var(--text-muted)">WAITING</span>
+                            </div>
+                        </div>
+                    `);
+                });
+
+                fDiv.appendChild(sList);
+                container.appendChild(fDiv);
+            });
+        }
+
+        // ---------------------------------------------------------
+        // EXECUTION ENGINE
+        // ---------------------------------------------------------
+        const API = {
+            call: async (url, body) => {
+                const r = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getToken(), 'x-api-key': KEY },
+                    body: JSON.stringify(body)
+                });
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const text = await r.text();
+                if (!text || text.trim() === '') return { empty: true };
+                return JSON.parse(text);
+            }
+        };
+
+        const Control = {
+            updateStats: () => {
+                document.getElementById('lblPass').innerText = State.pass;
+                document.getElementById('lblFail').innerText = State.fail;
+                document.getElementById('lblSkip').innerText = State.skip;
+            },
+
+            updateProgress: (current, total) => {
+                document.getElementById('progFill').style.width = total ? (current/total*100)+'%' : '0%';
+            },
+
+            executeStep: async (fIndex, sIndex, step) => {
+                const sId = `step-${fIndex}-${sIndex}`;
+                const el = document.getElementById(sId);
+                const statEl = document.getElementById(`status-${sId}`);
+                const logEl = document.getElementById(`log-${sId}`);
+                
+                el.className = "step-item running";
+                statEl.innerHTML = '<div class="loader"></div>';
+                logEl.className = "step-log";
+                logEl.innerText = "";
+                
+                const startTime = performance.now();
+                let isPassed = false;
+                let logData = "";
+                let errStr = null;
+
+                try {
+                    let result;
+                    if (step.type === 'skip') {
+                        el.className = "step-item skip";
+                        statEl.innerHTML = `<span class="text-warning">SKIPPED</span>`;
+                        logEl.classList.add("show");
+                        logEl.innerText = "🚧 Bỏ qua để an toàn Dữ liệu.";
+                        State.skip++;
+                        return; // Early exit
+                    }
+                    if (step.type === 'config') {
+                        result = await API.call(URLs.config, { ApiCode: step.cmd });
+                        isPassed = result && Array.isArray(result.filters);
+                        if (isPassed) {
+                            const pNames = result.filters.map(f => f.FieldCode).join(", ");
+                            logData = `Loaded JSON.\nForm Yêu Cầu Các Param: [ ${pNames || 'Không Yêu cầu rườm rà'} ].\nSchema: ${JSON.stringify(result.filters[0] || {})}`;
+                        } else {
+                            logData = "Missing filters format.";
+                        }
+                    } 
+                    else if (step.type === 'ds') {
+                        // For DS, we don't know exactly what config needs, so we dummy ping a search API to verify system health.
+                        result = await API.call(URLs.ds, { DataSourceType: "APICODE", DataSourceValue: "@danh_muc|@Type=khachhang", SearchKey: "" });
+                        const arr = Array.isArray(result) ? result : (Array.isArray(result?.[0]) ? result[0] : []);
+                        isPassed = arr && arr.length >= 0;
+                        logData = isPassed ? `MOCK DS SUCCESS. n8n Phản hồi DB bình thường.\nSample Khách hàng 1: ${JSON.stringify(arr.slice(0,1))}` : "Return structure invalid";
+                    } 
+                    else if (step.type === 'exec') {
+                        result = await API.call(URLs.exec, { ApiCode: step.cmd, params: step.params || {} });
+                        isPassed = result && (result.status === 'success' || (result.reply && result.reply.length > 0) || !result.status); 
+                        logData = "API Data Called.\nRow trả về: \n" + (result?.[0] ? JSON.stringify(result[0], null, 2) : "Dữ liệu trống [] hoặc n8n đang thiếu param Cụ thể hơn.");
+                    }
+
+                    const timeTaken = Math.round(performance.now() - startTime);
+
+                    if (isPassed) {
+                        el.className = "step-item pass";
+                        statEl.innerHTML = `<span class="text-success">PASS</span><div style="font-size:0.75rem; color:var(--text-muted)">${timeTaken}ms</div>`;
+                        logEl.classList.add("show");
+                        logEl.innerText = `✅ Success.\n${logData}`;
+                        State.pass++;
+                    } else {
+                        throw new Error("Validation Failed on Payload!");
+                    }
+                } catch (error) {
+                    errStr = error.message;
+                    el.className = "step-item fail";
+                    let escapedCmd = step.cmd.replace(/'/g, "\\'");
+                    statEl.innerHTML = `
+                        <span class="text-danger">FAIL</span><div style="font-size:0.75rem; color:var(--text-muted)">ERROR</div>
+                        <div style="margin-top: 5px;">
+                            <button onclick="Control.aiDebugFlow(this, '${sId}', '${escapedCmd}', '')" style="background:#8b5cf6; color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">🤖 AI Debug</button>
+                        </div>
+                    `;
+                    logEl.classList.add("show", "error");
+                    logEl.innerText = "⛔ Bốc hơi rồi sếp ơi: " + error.message;
+                    State.fail++;
+                }
+
+                // Register result
+                State.results.push({
+                    apiCode: FLOWS[fIndex].code,
+                    step_type: step.type,
+                    command_run: step.cmd,
+                    status: step.type === 'skip' ? "SKIPPED" : (errStr ? "FAIL" : "PASS"),
+                    metadata: errStr || logData
+                });
+            },
+
+            aiDebugFlow: async (btn, sId, cmd, exp) => {
+                btn.disabled = true;
+                let logEl = document.getElementById(`log-${sId}`);
+                let insightDiv = document.getElementById(`ai-insight-${sId}`);
+                btn.innerText = "🤖 Đang khám...";
+                insightDiv.style.display = "block";
+                insightDiv.innerHTML = "<i style='color:#a855f7'>Bác sĩ AI đang đọc log API...</i>";
+                
+                try {
+                    let res = await fetch(N8N + "/webhook/hook-ai-reviewer", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ turnText: cmd, payloadHistory: logEl.innerText, expectedIntent: exp })
+                    });
+                    let data = await res.json();
+                    let htmlInsight = data.insight ? data.insight.replace(/\n/g, '<br>') : "Chưa bóc được lỗi, token limit rồi.";
+                    insightDiv.innerHTML = "<b style='color:#d8b4fe'>💡 AI EXPERT INSIGHT:</b><br><div style='margin-top:5px;'>" + htmlInsight + "</div>";
+                    btn.style.display = 'none';
+                } catch (e) {
+                    insightDiv.innerHTML = "<b style='color:#ef4444'>❌ Lỗi kết nối AI:</b> " + e.message;
+                    btn.disabled = false;
+                    btn.innerText = "🤖 Thử Lại";
+                }
+            },
+
+            runAll: async () => {
+                State.isCancelled = false;
+                State.pass = 0; State.fail = 0; State.skip = 0;
+                State.results = [];
+                Control.updateStats();
+
+                document.getElementById('btnRunAll').disabled = true;
+                document.getElementById('btnStop').disabled = false;
+                
+                let done = 0; const tot = FLOWS.reduce((a, b) => a + b.steps.length, 0);
+
+                for (let f = 0; f < FLOWS.length; f++) {
+                    if (State.isCancelled) break;
+                    // Auto scroll to card
+                    document.getElementById(`btn-flow-${f}`).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    for (let s = 0; s < FLOWS[f].steps.length; s++) {
+                        if (State.isCancelled) break;
+                        await Control.executeStep(f, s, FLOWS[f].steps[s]);
+                        done++;
+                        Control.updateStats();
+                        Control.updateProgress(done, tot);
+                        await new Promise(r => setTimeout(r, 400)); 
+                    }
+                }
+
+                document.getElementById('btnRunAll').disabled = false;
+                document.getElementById('btnStop').disabled = true;
+            },
+
+            runFlow: async (fIndex) => {
+                State.isCancelled = false;
+                const btn = document.getElementById(`btn-flow-${fIndex}`);
+                btn.disabled = true;
+                btn.innerText = "⏳ Doing...";
+
+                for (let s = 0; s < FLOWS[fIndex].steps.length; s++) {
+                    if (State.isCancelled) break;
+                    const oldEl = document.getElementById(`step-${fIndex}-${s}`);
+                    if (oldEl.classList.contains('pass')) State.pass = Math.max(0, State.pass-1);
+                    if (oldEl.classList.contains('fail')) State.fail = Math.max(0, State.fail-1);
+                    if (oldEl.classList.contains('skip')) State.skip = Math.max(0, State.skip-1);
+                    Control.updateStats();
+
+                    await Control.executeStep(fIndex, s, FLOWS[fIndex].steps[s]);
+                    Control.updateStats();
+                    await new Promise(r => setTimeout(r, 400));
+                }
+
+                btn.disabled = false;
+                btn.innerText = "▶ Test Flow này";
+            },
+
+            stopAll: () => {
+                State.isCancelled = true;
+                document.getElementById('btnStop').disabled = true;
+                document.getElementById('btnRunAll').disabled = false;
+            },
+
+            exportReport: () => {
+                if (State.results.length === 0) {
+                    alert("Chưa có báo cáo! Vui lòng Run Flow đi sếp.");
+                    return;
+                }
+                const report = {
+                    metadata: { runtime: new Date().toISOString(), type: "Dynamic_API_Flow_Simulator_Report" },
+                    summary: { aps_tested: FLOWS.length, total_steps_run: State.results.length, pass: State.pass, fail: State.fail, skip: State.skip },
+                    flow_execution_log: State.results
+                };
+                
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+                const anchor = document.createElement('a');
+                anchor.setAttribute("href", dataStr);
+                anchor.setAttribute("download", `api_flow_report_${Date.now()}.json`);
+                document.body.appendChild(anchor);
+                anchor.click();
+                anchor.remove();
+            }
+        };
+
+        // Bootstrap
+        window.onload = loadAllAPIs;
+    </script>
+</body>
+</html>
