@@ -342,19 +342,19 @@ const Router = (() => {
       if (window.innerWidth > 768) return;
       if (document.body.getAttribute('data-page') === 'chatbot') return;
       if (_inputTags.indexOf(e.target.tagName) === -1) return;
-      // Bỏ qua radio và checkbox vì chúng không mở bàn phím ảo
-      if (e.target.tagName === 'INPUT' && (e.target.type.toLowerCase() === 'radio' || e.target.type.toLowerCase() === 'checkbox')) return;
+      // Bỏ qua radio, checkbox, và date vì chúng không mở bàn phím ảo (dùng picker native)
+      if (e.target.tagName === 'INPUT' && (e.target.type.toLowerCase() === 'radio' || e.target.type.toLowerCase() === 'checkbox' || e.target.type.toLowerCase() === 'date')) return;
       _toggleFixed(false);
     });
     document.addEventListener('focusout', function (e) {
       if (window.innerWidth > 768) return;
       if (document.body.getAttribute('data-page') === 'chatbot') return;
       if (_inputTags.indexOf(e.target.tagName) === -1) return;
-      if (e.target.tagName === 'INPUT' && (e.target.type.toLowerCase() === 'radio' || e.target.type.toLowerCase() === 'checkbox')) return;
+      if (e.target.tagName === 'INPUT' && (e.target.type.toLowerCase() === 'radio' || e.target.type.toLowerCase() === 'checkbox' || e.target.type.toLowerCase() === 'date')) return;
       // Delay đủ lâu để button click kịp xử lý trước khi layout shift
       setTimeout(function () {
         var active = document.activeElement;
-        if (active && _inputTags.indexOf(active.tagName) !== -1 && !(active.tagName === 'INPUT' && (active.type.toLowerCase() === 'radio' || active.type.toLowerCase() === 'checkbox'))) return;
+        if (active && _inputTags.indexOf(active.tagName) !== -1 && !(active.tagName === 'INPUT' && (active.type.toLowerCase() === 'radio' || active.type.toLowerCase() === 'checkbox' || active.type.toLowerCase() === 'date'))) return;
         _toggleFixed(true);
       }, 150);
     });
