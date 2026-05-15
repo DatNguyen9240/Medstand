@@ -4,7 +4,7 @@
  *
  * ⚡ Đổi thành false để TẮT survey check khi develop
  */
-var SURVEY_CHECK_ENABLED = true;
+var SURVEY_CHECK_ENABLED = false;
 var _surveyDoneToday = false; // Chỉ gọi API 1 lần khi đã xác nhận xong
 
 (function () {

@@ -63,11 +63,13 @@
       var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
       var now = new Date();
       var thoiGianBatDau = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+      var gioPhut = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      var dynamicTitle = 'Bài khảo sát ngày ' + String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() + ' ' + gioPhut;
 
       var payload = {
         User: authUser.UserName || authUser.Username || authUser.username || '', 
         DocumentID: '', 
-        Title: 'Bài khảo sát số 01',
+        Title: dynamicTitle,
         ThoiGianBatDau: thoiGianBatDau,
         ThoiGianLamBai: '5p',
         SoCauHoi: 3
