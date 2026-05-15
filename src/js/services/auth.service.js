@@ -86,6 +86,7 @@ const AuthService = (() => {
     } finally {
       deleteCookie('auth_token');
       localStorage.removeItem('auth_user');
+      localStorage.removeItem('survey_doc_id'); // Xóa để acc mới không bị lẫn bài cũ
       window.location.href = 'pages/login.html?v=' + Date.now();
     }
   }
