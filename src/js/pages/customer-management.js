@@ -121,7 +121,7 @@ custForm
     }
   })
   .addList({
-    id: 'district', label: 'Quận/Huyện', required: true, placeholder: 'Quận/Huyện',
+    id: 'district', label: 'Quận/Huyện', required: true, placeholder: 'Quận/Huyện', autoload: false,
     loadFn: function (done) {
       var prov = custForm.getValue('province');
       if (!prov) { Alert.warning('Vui lòng chọn Tỉnh/Thành phố trước.'); done([]); return; }
@@ -136,7 +136,7 @@ custForm
     }
   })
   .addList({
-    id: 'ward', label: 'Phường/Xã', required: true, placeholder: 'Phường/Xã',
+    id: 'ward', label: 'Phường/Xã', required: true, placeholder: 'Phường/Xã', autoload: false,
     loadFn: function (done) {
       var prov = custForm.getValue('province');
       if (!prov) { Alert.warning('Vui lòng chọn Tỉnh/Thành phố trước.'); done([]); return; }
@@ -204,6 +204,12 @@ custForm
 
 // Cascade: province ? reset district + ward
 custForm.onListChange('province', function () {
+  // Xóa cache nội bộ của FormSelect để nó gọi lại loadFn khi mở picker
+  var distField = custForm._fields['district'];
+  var wardField = custForm._fields['ward'];
+  if (distField) distField._cachedOptions = null;
+  if (wardField) wardField._cachedOptions = null;
+
   custForm.setListValue('district', '', '');
   custForm.setListValue('ward', '', '');
 });
