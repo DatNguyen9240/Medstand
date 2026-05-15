@@ -5,10 +5,12 @@
  * ⚡ Đổi thành false để TẮT survey check khi develop
  */
 var SURVEY_CHECK_ENABLED = true;
+var _surveyDoneToday = false; // Chỉ gọi API 1 lần khi đã xác nhận xong
 
 (function () {
   window.triggerSurveyCheck = function () {
     if (!SURVEY_CHECK_ENABLED) return;
+    if (_surveyDoneToday) return; // Đã xong rồi, bỏ qua
 
     // Không chạy trên trang login, register, survey (đang làm khảo sát)
     var hash = (location.hash || '').toLowerCase();
@@ -59,6 +61,7 @@ var SURVEY_CHECK_ENABLED = true;
               };
             }
           } else {
+            _surveyDoneToday = true; // Lưu lại: hôm nay đã xong, không gọi API nữa
             console.log('[SurveyCheck] Survey not required (KiemTra=0).');
           }
         })
