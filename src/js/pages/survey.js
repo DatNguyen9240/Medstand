@@ -1,4 +1,5 @@
-    // determine if quiz or detail
+    (function () {
+// determine if quiz or detail
     const params = (window._routeParams || {});
     const startQuiz = params.start === '1';
     const content = $('#content-area')[0];
@@ -133,7 +134,8 @@
 
       Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
         User: authUser4.UserName || '',
-        DocumentID: docId
+        DocumentID: docId,
+        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
       }).then(function () {
         return Http.get(API_CONFIG.ENDPOINTS.SURVEY.RESULTS, { q: JSON.stringify({ DocumentID: docId }) });
       }).then(function (resKQ) {
@@ -187,7 +189,8 @@
 
       Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
         User: authUser3.UserName || '',
-        DocumentID: docId
+        DocumentID: docId,
+        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
       }).then(function (res) {
         var data = res.data || res;
         var msg = (data.records && data.records[0] && data.records[0].Msg) || data.msg || 'Bạn có đồng ý nộp bài?';
@@ -236,3 +239,4 @@
         Alert.error('Lỗi khi nộp bài. Vui lòng thử lại.');
       });
     }
+})();
