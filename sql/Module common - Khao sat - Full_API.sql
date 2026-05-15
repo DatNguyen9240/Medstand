@@ -86,6 +86,7 @@ BEGIN
 
     UPDATE dbo.AR_DotKhaoSatTbl 
     SET ThoiGianKetThuc = GETDATE(),
+        DocumentDate = GETDATE(), -- Cập nhật ngày nộp bài về hôm nay
         KetQuaDung = ISNULL(@SoCauDung, 0),
         KetQuaSai = ISNULL(@SoCauSai, 0),
         SoCauHoi = ISNULL(@TongCau, 3)
@@ -124,9 +125,9 @@ BEGIN
     IF EXISTS (
         SELECT 1 
         FROM AR_DotKhaoSatTbl 
-        WHERE LTRIM(RTRIM(UserName)) = LTRIM(RTRIM(@User)) 
+        WHERE UPPER(LTRIM(RTRIM(UserName))) = UPPER(LTRIM(RTRIM(@User)))
           AND CAST(DocumentDate AS DATE) = CAST(GETDATE() AS DATE)
-          AND ISNULL(KetQuaDung, 0) = 3 -- Phải đúng tuyệt đối 3 câu mới tính là xong
+          AND ISNULL(KetQuaDung, 0) = 3
     )
         SELECT '0' AS KiemTra;
     ELSE

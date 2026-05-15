@@ -74,5 +74,8 @@ var SURVEY_CHECK_ENABLED = true;
   triggerSurveyCheck();
 
   // Lắng nghe sự kiện đổi trang (SPA)
-  window.addEventListener('hashchange', triggerSurveyCheck);
+  // Dùng setTimeout để đảm bảo localStorage đã cập nhật thông tin user mới trước khi kiểm tra
+  window.addEventListener('hashchange', function () {
+    setTimeout(triggerSurveyCheck, 1000);
+  });
 })();
