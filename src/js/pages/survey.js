@@ -1,4 +1,5 @@
-    // determine if quiz or detail
+    (function () {
+// determine if quiz or detail
     const params = (window._routeParams || {});
     const startQuiz = params.start === '1';
     const content = $('#content-area')[0];
@@ -54,21 +55,26 @@
 
     if (!startQuiz) {
       // ── Detail view: gọi API_BatDauBaiKhaoSat ──
-      // Xóa timer cũ để bắt đầu mới khi nhấn BẮT ĐẦU
+      // Xóa các thông tin cũ để đảm bảo tạo bản ghi mới cho ngày hôm nay
       sessionStorage.removeItem('surveyStartTime');
+      localStorage.removeItem('survey_doc_id'); 
+      
       content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
       var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
       var now = new Date();
       var thoiGianBatDau = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
 
-      Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, {
-        User: authUser.UserName || '',
-        DocumentID: localStorage.getItem('survey_doc_id') || '',
+      var payload = {
+        User: authUser.UserName || authUser.Username || authUser.username || '', 
+        DocumentID: '', 
         Title: 'Bài khảo sát số 01',
         ThoiGianBatDau: thoiGianBatDau,
         ThoiGianLamBai: '5p',
         SoCauHoi: 3
-      }).then(function (res) {
+      };
+      console.log('[Survey] Start Payload:', payload);
+
+      Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, payload).then(function (res) {
         var data = res.data || res;
         var info = (data.records && data.records[0]) || data;
         if (info.DocumentID) localStorage.setItem('survey_doc_id', info.DocumentID);
@@ -133,7 +139,8 @@
 
       Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
         User: authUser4.UserName || '',
-        DocumentID: docId
+        DocumentID: docId,
+        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
       }).then(function () {
         return Http.get(API_CONFIG.ENDPOINTS.SURVEY.RESULTS, { q: JSON.stringify({ DocumentID: docId }) });
       }).then(function (resKQ) {
@@ -187,7 +194,8 @@
 
       Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
         User: authUser3.UserName || '',
-        DocumentID: docId
+        DocumentID: docId,
+        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
       }).then(function (res) {
         var data = res.data || res;
         var msg = (data.records && data.records[0] && data.records[0].Msg) || data.msg || 'Bạn có đồng ý nộp bài?';
@@ -236,3 +244,4 @@
         Alert.error('Lỗi khi nộp bài. Vui lòng thử lại.');
       });
     }
+})();

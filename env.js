@@ -23,7 +23,7 @@ window.API_CONFIG = {
     ENDPOINTS: {
         AUTH: {
             LOGIN: '/api/login',
-            LOGOUT: '/logout',
+            LOGOUT: '/api/logout',
             USER_INFO: '/api/API_UserInfo',
             UPDATE_FIREBASE_TOKEN: '/api/API_UsertokenFirebase',
             CHANGE_PASSWORD: '/api/changepassword',
