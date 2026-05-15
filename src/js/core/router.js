@@ -342,18 +342,21 @@ const Router = (() => {
       if (window.innerWidth > 768) return;
       if (document.body.getAttribute('data-page') === 'chatbot') return;
       if (_inputTags.indexOf(e.target.tagName) === -1) return;
+      // Bỏ qua radio và checkbox vì chúng không mở bàn phím ảo
+      if (e.target.tagName === 'INPUT' && (e.target.type === 'radio' || e.target.type === 'checkbox')) return;
       _toggleFixed(false);
     });
     document.addEventListener('focusout', function (e) {
       if (window.innerWidth > 768) return;
       if (document.body.getAttribute('data-page') === 'chatbot') return;
       if (_inputTags.indexOf(e.target.tagName) === -1) return;
+      if (e.target.tagName === 'INPUT' && (e.target.type === 'radio' || e.target.type === 'checkbox')) return;
       // Delay đủ lâu để button click kịp xử lý trước khi layout shift
       setTimeout(function () {
         var active = document.activeElement;
-        if (active && _inputTags.indexOf(active.tagName) !== -1) return;
+        if (active && _inputTags.indexOf(active.tagName) !== -1 && !(active.tagName === 'INPUT' && (active.type === 'radio' || active.type === 'checkbox'))) return;
         _toggleFixed(true);
-      }, 300);
+      }, 150);
     });
 
     // ── Fix: Android Back button đóng keyboard nhưng KHÔNG fire focusout ──
