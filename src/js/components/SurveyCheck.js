@@ -36,9 +36,10 @@ var SURVEY_CHECK_ENABLED = true;
     // Gọi API kiểm tra
     if (typeof Http !== 'undefined' && typeof API_CONFIG !== 'undefined') {
       var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
-      console.log('[SurveyCheck] Checking status for User:', authUser.UserName);
-
-      Http.get(API_CONFIG.ENDPOINTS.SURVEY.CHECK_DAILY, { q: JSON.stringify({ User: authUser.UserName || '' }) })
+      var userName = authUser.UserName || authUser.Username || authUser.username || '';
+      
+      console.log('[SurveyCheck] Checking status for User:', userName);
+      Http.get(API_CONFIG.ENDPOINTS.SURVEY.CHECK_DAILY, { q: JSON.stringify({ User: userName }) })
         .then(function (res) {
           var data = res.data || res;
           var record = (data.records && data.records[0]) || {};
