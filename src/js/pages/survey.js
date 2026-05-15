@@ -64,14 +64,17 @@
       var now = new Date();
       var thoiGianBatDau = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
 
-      Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, {
-        User: authUser.UserName || '',
-        DocumentID: '', // Để trống để SQL tự cấp ID mới
+      var payload = {
+        User: authUser.UserName || authUser.Username || authUser.username || '', 
+        DocumentID: '', 
         Title: 'Bài khảo sát số 01',
         ThoiGianBatDau: thoiGianBatDau,
         ThoiGianLamBai: '5p',
         SoCauHoi: 3
-      }).then(function (res) {
+      };
+      console.log('[Survey] Start Payload:', payload);
+
+      Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, payload).then(function (res) {
         var data = res.data || res;
         var info = (data.records && data.records[0]) || data;
         if (info.DocumentID) localStorage.setItem('survey_doc_id', info.DocumentID);
