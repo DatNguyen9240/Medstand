@@ -55,8 +55,10 @@
 
     if (!startQuiz) {
       // ── Detail view: gọi API_BatDauBaiKhaoSat ──
-      // Xóa timer cũ để bắt đầu mới khi nhấn BẮT ĐẦU
+      // Xóa các thông tin cũ để đảm bảo tạo bản ghi mới cho ngày hôm nay
       sessionStorage.removeItem('surveyStartTime');
+      localStorage.removeItem('survey_doc_id'); 
+      
       content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
       var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
       var now = new Date();
@@ -64,7 +66,7 @@
 
       Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, {
         User: authUser.UserName || '',
-        DocumentID: localStorage.getItem('survey_doc_id') || '',
+        DocumentID: '', // Để trống để SQL tự cấp ID mới
         Title: 'Bài khảo sát số 01',
         ThoiGianBatDau: thoiGianBatDau,
         ThoiGianLamBai: '5p',
