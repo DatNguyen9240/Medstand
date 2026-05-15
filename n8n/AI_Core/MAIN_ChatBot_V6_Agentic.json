@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "MAIN_ChatBot_V6_Agentic",
   "nodes": [
     {
@@ -12,27 +12,31 @@
       "name": "Webhook V6",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        0,
-        0
-      ]
+      "position": [ 0, 0 ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.agentContext) staticData.agentContext = {};\nconst sessionId = $json.body.session_id || $json.query.session_id || 'default_session';\nstaticData.agentContext[sessionId] = $json.headers.authorization || '';\nreturn [{ json: $json }];"
+      },
+      "id": "save-context",
+      "name": "Save Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [ 150, 0 ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.body.message || $json.query.message }}",
+        "text": "={{ $json.body.text || $json.query.text }}",
         "options": {
-          "systemMessage": "Bạn là Trợ lý phân tích Dữ liệu và Tri thức cấp cao của Medstand.\nTính cách: Chuyên nghiệp, nghiêm túc, đi thẳng vào vấn đề. Tuyệt đối không dùng biểu tượng cảm xúc (Emoji).\n\nQuy tắc cốt lõi:\n1. Không bao giờ tự bịa ra số liệu. Nếu không biết, hãy dùng Tool. Nếu Tool không có dữ liệu, hãy báo thẳng là không tìm thấy.\n2. Phân biệt rõ ràng: Nếu khách hỏi về Hóa đơn, Doanh số, Khách hàng, Tồn kho -> Dùng Tool_Tra_Cuu_SQL.\n3. Nếu khách hỏi về Luật lệ, Chính sách, Sổ tay, Khuyến mãi chữ -> Dùng Tool_Tra_Cuu_RAG.\n4. Tuyệt đối từ chối mọi yêu cầu có ý định THÊM, SỬA, XÓA dữ liệu.\n5. Khi Tool trả về tóm tắt (Mini Summary), hãy dùng các con số trong tóm tắt đó để trả lời khách hàng một cách thông minh, và kết thúc bằng câu: 'Mời bạn xem chi tiết tại bảng dữ liệu.'\n6. QUAN TRỌNG: Nếu Tool SQL trả về thuộc tính Cache_ID (Mã Ngăn Kéo), BẠN BẮT BUỘC PHẢI in nguyên văn dòng chữ 'Mã Ngăn Kéo: <giá trị Cache_ID>' ở cuối cùng câu trả lời của bạn. Đây là lệnh hệ thống, không được tự ý lược bỏ.\n7. KHI TRẢ LỜI TỪ RAG: Bắt buộc đính kèm trích dẫn ngay trong câu theo định dạng: [Nguồn: <Tên tài liệu>]. KHÔNG SỬ DỤNG EMOJI.\n8. KHI KẾT THÚC CÂU: Bắt buộc đính kèm 3 gợi ý câu hỏi tiếp theo cho người dùng bằng XML: <suggest>Câu hỏi 1 | Câu hỏi 2 | Câu hỏi 3</suggest>. KHÔNG SỬ DỤNG EMOJI."
+          "systemMessage": "Hôm nay là: {{$now.format('yyyy-MM-dd')}}. Bạn PHẢI lấy năm hiện tại làm mặc định khi người dùng hỏi về ngày/tháng mà không nhắc năm.\n\nBạn là Trợ lý phân tích Dữ liệu và Tri thức cấp cao của Medstand.\nTính cách: Chuyên nghiệp, nghiêm túc, đi thẳng vào vấn đề. Tuyệt đối không dùng biểu tượng cảm xúc (Emoji).\n\nQuy tắc cốt lõi:\n1. Không bao giờ tự bịa ra số liệu. Nếu không biết, hãy dùng Tool. Nếu Tool không có dữ liệu, hãy báo thẳng là không tìm thấy.\n2. Phân biệt rõ ràng: Nếu khách hỏi về Hóa đơn, Doanh số, Khách hàng, Tồn kho -> Dùng Tool_Tra_Cuu_SQL.\n3. Nếu khách hỏi về Luật lệ, Chính sách, Sổ tay, Khuyến mãi chữ -> Dùng Tool_Tra_Cuu_RAG.\n4. KẾT HỢP ĐA CÔNG CỤ (MULTI-TOOL ROUTING): Nếu người dùng hỏi một câu phức tạp chứa cả yêu cầu số liệu (SQL) và quy định (RAG), BẠN PHẢI gọi LẦN LƯỢT CẢ 2 TOOL để thu thập đủ thông tin trước khi tổng hợp câu trả lời cuối cùng.\n5. Tuyệt đối từ chối mọi yêu cầu có ý định THÊM, SỬA, XÓA dữ liệu.\n6. Khi Tool trả về tóm tắt (Mini Summary), hãy dùng các con số trong tóm tắt đó để trả lời khách hàng một cách thông minh, và kết thúc bằng câu: 'Mời bạn xem chi tiết tại bảng dữ liệu.'\n7. QUAN TRỌNG: Nếu Tool SQL trả về thuộc tính Cache_ID (Mã Ngăn Kéo), BẠN BẮT BUỘC PHẢI in nguyên văn dòng chữ 'Mã Ngăn Kéo: <giá trị Cache_ID>' ở cuối cùng câu trả lời của bạn. Đây là lệnh hệ thống, không được tự ý lược bỏ.\n8. KHI TRẢ LỜI TỪ RAG: Bắt buộc đính kèm trích dẫn ngay trong câu theo định dạng: [Nguồn: <Tên tài liệu>]. KHÔNG SỬ DỤNG EMOJI.\n9. KHI KẾT THÚC CÂU: Bắt buộc đính kèm 3 gợi ý câu hỏi tiếp theo cho người dùng bằng XML: <suggest>Câu hỏi 1 | Câu hỏi 2 | Câu hỏi 3</suggest>. KHÔNG SỬ DỤNG EMOJI."
         }
       },
       "id": "ai-agent",
       "name": "AI Agent Brain",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1,
-      "position": [
-        300,
-        0
-      ]
+      "position": [ 300, 0 ]
     },
     {
       "parameters": {
@@ -45,24 +49,19 @@
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [
-        300,
-        200
-      ]
+      "position": [ 300, 200 ]
     },
     {
       "parameters": {
-        "sessionId": "={{ $json.body.sessionId || 'default_session' }}",
-        "sessionTtl": 7200
+        "sessionKey": "={{ $json.body.session_id }}",
+        "sessionTtl": 7200,
+        "contextWindowLength": 10
       },
       "id": "redis-memory",
       "name": "Redis Chat Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryRedisChatMessages",
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1,
-      "position": [
-        450,
-        200
-      ]
+      "position": [ 450, 200 ]
     },
     {
       "parameters": {
@@ -79,10 +78,7 @@
       "name": "Tra cứu Số liệu (SQL)",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1,
-      "position": [
-        450,
-        400
-      ]
+      "position": [ 450, 400 ]
     },
     {
       "parameters": {
@@ -99,27 +95,32 @@
       "name": "Tra cứu Tài liệu (RAG)",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1,
-      "position": [
-        650,
-        400
-      ]
+      "position": [ 650, 400 ]
     },
     {
       "parameters": {
-        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet message = agentOutput;\nlet finalData = [];\n\n// Dò tìm chuỗi Mã Ngăn Kéo mà con Agent nhả ra\nconst cacheRegex = /Mã Ngăn Kéo:\\s*([a-zA-Z0-9_\\-]+)/i;\nconst match = message.match(cacheRegex);\n\nif (match) {\n    const cacheId = match[1];\n    \n    // Mở hầm N8N lấy dữ liệu thô\n    const staticData = $getWorkflowStaticData('global');\n    if (staticData.dataCache && staticData.dataCache[cacheId]) {\n        finalData = staticData.dataCache[cacheId].data;\n        \n        // Tự hủy Cache ngay sau khi lấy xong (Giải phóng RAM)\n        delete staticData.dataCache[cacheId];\n    } else if (staticData[cacheId]) {\n        // Fallback cho cache cũ\n        finalData = staticData[cacheId];\n        delete staticData[cacheId];\n    }\n    \n    // Gọt bỏ dòng 'Mã Ngăn Kéo...' khỏi tin nhắn để hiển thị cho đẹp\n    message = message.replace(match[0], '').trim();\n}\n\nif (!finalData || finalData.length === 0) {\n    return [{\n        json: {\n            status: \"error\",\n            message: \"Hệ thống đang quá tải hoặc dữ liệu đã hết hạn. Xin vui lòng đặt lại câu hỏi.\",\n            data: []\n        }\n    }];\n}\n\nreturn [{\n    json: {\n        status: \"success\",\n        message: message.trim(),\n        data: finalData\n    }\n}];"
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet message = agentOutput;\nlet finalData = [];\n\nconst cacheRegex = /Mã Ngăn Kéo:\\s*([a-zA-Z0-9_\\-]+)/i;\nconst match = message.match(cacheRegex);\n\nif (match) {\n    const cacheId = match[1];\n    const staticData = $getWorkflowStaticData('global');\n    if (staticData.dataCache && staticData.dataCache[cacheId]) {\n        finalData = staticData.dataCache[cacheId].data;\n        delete staticData.dataCache[cacheId];\n    } else if (staticData[cacheId]) {\n        finalData = staticData[cacheId];\n        delete staticData[cacheId];\n    }\n    message = message.replace(match[0], '').trim();\n    if (!finalData || finalData.length === 0) {\n        return [{\n            json: {\n                status: \"error\",\n                message: \"Hệ thống đang quá tải hoặc dữ liệu đã hết hạn. Xin vui lòng đặt lại câu hỏi.\",\n                data: []\n            }\n        }];\n    }\n}\n\nreturn [{\n    json: {\n        status: \"success\",\n        message: message.trim(),\n        data: finalData\n    }\n}];"
       },
       "id": "response-assembler",
       "name": "Response Assembler",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        0
-      ]
+      "position": [ 900, 0 ]
     }
   ],
   "connections": {
     "Webhook V6": {
+      "main": [
+        [
+          {
+            "node": "Save Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Context": {
       "main": [
         [
           {

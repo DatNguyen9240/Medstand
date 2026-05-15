@@ -3966,7 +3966,7 @@
 
 
 
-        _cbMsg && _cbMsg('user', '📡 ' + dispName + (ps ? '\n' + ps : ''));
+        _cbMsg && _cbMsg('user', dispName + (ps ? '\n' + ps : ''));
 
         _cbShow && _cbShow();
 
@@ -4046,7 +4046,7 @@
 
                     if (dataRows.length === 0) {
 
-                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ. 👩‍⚕️');
+                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ.');
 
                         return;
 

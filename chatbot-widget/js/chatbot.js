@@ -600,7 +600,7 @@
         _saveCache(chatHistory);
         $welcome.style.display = 'none';
 
-        if (role === 'ai' && !noTypewriter) {
+        if (false) { // Disabled typewriter effect per user request
             var emptyBubble = _bubbleHTML(role, "", msg.time, fileName);
             $messages.insertAdjacentHTML('beforeend', emptyBubble);
             
@@ -1353,7 +1353,7 @@
                     window.ApiEngine.applyFormUpdate(res);
                     if (res.message) _addMessage('ai', res.message);
                 } else {
-                    _addMessage('ai', 'Dạ, giao diện Form hiện tại chưa hỗ trợ đồng bộ dữ liệu này ạ. 👩‍⚕️');
+                    _addMessage('ai', 'Dạ, giao diện Form hiện tại chưa hỗ trợ đồng bộ dữ liệu này ạ.');
                 }
                 return;
             }
@@ -1383,7 +1383,7 @@
             if (res && res.action_code === 'ASK_CLARIFICATION') {
                 // Nhận dạng được câu chat ngoài ngữ cảnh SQL -> Tự động chuyển qua tìm kiếm RAG
                 var lastUsrMsg = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
-                _addMessage('ai', 'Dạ, em đang tìm kiếm thông tin này trong kho tài liệu... 👩‍⚕️');
+                _addMessage('ai', 'Dạ, em đang tìm kiếm thông tin này trong kho tài liệu...');
                 _doRAGSearch(lastUsrMsg ? lastUsrMsg.content : '');
                 return;
             }
@@ -1521,7 +1521,7 @@
 
             
 
-            if (reply === '[]' || reply === '{}') reply = 'Dạ, em không tìm thấy kết quả nào, danh sách hiện đang trống ạ. 👩‍⚕️ ';
+            if (reply === '[]' || reply === '{}') reply = 'Dạ, em không tìm thấy kết quả nào, danh sách hiện đang trống ạ.';
 
 
 
@@ -1929,7 +1929,7 @@
 
             if (moneyF) {
 
-                html += '<div class="ai-card-money">💰 ' + _esc(moneyF.key) + ': <strong>' + _fmtCellVal(moneyF.val) + '</strong></div>';
+                html += '<div class="ai-card-money">' + _esc(moneyF.key) + ': <strong>' + _fmtCellVal(moneyF.val) + '</strong></div>';
 
                 usedKeys.push(moneyF.key);
 
@@ -2430,7 +2430,7 @@
 
             if (moneyF && grp.commonKeys.indexOf(moneyF.key) !== -1) {
 
-                html += '<div class="ai-catalog-money">💰 ' + _esc(_fmtCellVal(moneyF.val)) + '</div>';
+                html += '<div class="ai-catalog-money">' + _esc(_fmtCellVal(moneyF.val)) + '</div>';
 
             }
 
