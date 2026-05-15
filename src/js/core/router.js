@@ -49,7 +49,7 @@ const Router = (() => {
     // Survey
     { path: 'survey', template: 'src/templates/survey.html', scripts: ['src/js/pages/survey.js'], css: ['src/css/pages/survey.css'], auth: true, nav: 'account', title: 'Khảo sát' },
     { path: 'survey-question', template: 'src/templates/survey-question.html', scripts: ['src/js/pages/survey-question.js'], css: ['src/css/pages/survey-question.css'], auth: true, nav: 'account', title: 'Làm khảo sát' },
-    { path: 'survey-history', template: 'src/templates/survey-history.html', scripts: ['src/js/pages/survey-history.js'], css: ['src/css/pages/survey-history.css'], auth: true, nav: 'account', title: 'Lịch sử khảo sát' },
+    { path: 'survey-history', template: 'src/templates/survey-history.html', scripts: ['src/js/pages/survey-history.js?v=9.6'], css: ['src/css/pages/survey-history.css'], auth: true, nav: 'account', title: 'Lịch sử khảo sát' },
   ];
 
   // ── State ──────────────────────────────────────────────────────────────
