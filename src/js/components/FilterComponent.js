@@ -69,14 +69,23 @@ function FilterComponent(config) {
 
   // Always trigger initial load (with saved state if any)
   setTimeout(function () {
-    if (self._savedSearch && self.config.onSearch) {
-      self.config.onSearch(self._savedSearch);
-    } else if (self.config.onApply) {
-      self.config.onApply({
+    if (self.config.onInit) {
+      self.config.onInit({
         dateFrom: self.dateFrom,
         dateTo: self.dateTo,
-        filters: Object.assign({}, self.values)
+        filters: Object.assign({}, self.values),
+        search: self._savedSearch || ''
       });
+    } else {
+      if (self._savedSearch && self.config.onSearch) {
+        self.config.onSearch(self._savedSearch);
+      } else if (self.config.onApply) {
+        self.config.onApply({
+          dateFrom: self.dateFrom,
+          dateTo: self.dateTo,
+          filters: Object.assign({}, self.values)
+        });
+      }
     }
   }, 0);
 }

@@ -16,7 +16,7 @@ const AuthService = (() => {
   }
 
   function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
     return match ? decodeURIComponent(match[1]) : '';
   }
 

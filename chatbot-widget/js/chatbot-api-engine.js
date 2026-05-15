@@ -5015,9 +5015,9 @@
 
         getFieldsByRole: _getFieldsByRole,
         // Cho php project-specific renderer gọi datasource qua n8n
-        // Signature: loadDataSource(apiCode, dsString, keyword, callback)
         loadDataSource: _loadDataSource,
-        selectApi: _onApiSelected
+        selectApi: _onApiSelected,
+        hideMenu: _menuHide
     };
 
 })();

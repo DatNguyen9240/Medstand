@@ -49,7 +49,7 @@ const Http = (() => {
 
   /** Lấy token từ cookie `auth_token` */
   function _getToken() {
-    const match = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
+    const match = document.cookie.match(/(?:^|;\s*)auth_token=([^;]*)/);
     return match ? decodeURIComponent(match[1]) : '';
   }
 
@@ -160,6 +160,9 @@ const Http = (() => {
         const tid = setTimeout(() => controller.abort(), TIMEOUT_MS);
         const res = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(tid);
+        if (!res.ok && res.status >= 500) {
+          throw new Error('Server error: ' + res.status);
+        }
         return res;
       } catch (err) {
         console.warn(`[HTTP] Attempt ${attempt}/${retries} failed:`, err.message);

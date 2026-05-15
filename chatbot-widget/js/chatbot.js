@@ -268,53 +268,53 @@
 
 
     function _bubbleHTML(role, content, time, fileName, rawHtml) {
-
         var cls = role === 'user' ? 'user' : 'ai';
-
         var timeStr = time ? _formatTime(time) : '';
-
-        var text = rawHtml ? rawHtml : (role === 'user' ? _esc(content) : _formatAI(content));
-
-
+        
+        var suggestionsHtml = '';
+        var processedContent = content || '';
+        
+        if (role === 'ai' && typeof processedContent === 'string') {
+            var suggestMatch = processedContent.match(/<suggest>(.*?)<\/suggest>/i);
+            if (suggestMatch) {
+                var buttons = suggestMatch[1].split('|');
+                suggestionsHtml = '<div class="ai-quick-replies" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;">';
+                buttons.forEach(function(btn) {
+                    var btnText = btn.trim();
+                    if (btnText) {
+                        suggestionsHtml += '<button type="button" style="background:#f0f4f8; border:1px solid #cce4f7; padding:6px 12px; border-radius:15px; font-size:13px; color:#1976d2; cursor:pointer;" onclick="var i=document.getElementById(\'chat-input\'); if(i){i.value=\'' + _esc(btnText) + '\'; i.focus();}">[ ' + _esc(btnText) + ' ]</button>';
+                    }
+                });
+                suggestionsHtml += '</div>';
+                processedContent = processedContent.replace(/<suggest>.*?<\/suggest>/ig, '');
+            }
+            
+            processedContent = processedContent.replace(/\[Nguồn:\s*(.*?)\]/ig, function(match, sourceName) {
+                return '<span class="ai-citation" style="display:inline-block; background:#e8f5e9; border:1px solid #c8e6c9; color:#2e7d32; font-size:12px; padding:2px 8px; border-radius:12px; margin:0 4px; cursor:pointer;" onclick="alert(\'Nguồn trích dẫn: ' + _esc(sourceName) + '\\n(Tính năng Split-view PDF sẽ được kích hoạt ở bản cập nhật sau)\');">[ Nguồn: ' + _esc(sourceName) + ' ]</span>';
+            });
+        }
+        
+        var text = rawHtml ? rawHtml : (role === 'user' ? _esc(processedContent) : _formatAI(processedContent));
 
         var hasCard = role === 'ai' && (text.indexOf('ai-card') !== -1 || text.indexOf('ai-table') !== -1 || text.indexOf('ai-summary') !== -1);
-
         if (hasCard) cls += ' has-table';
 
-
-
         var fileTag = '';
-
         if (fileName) {
-
             fileTag = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:12px;opacity:0.85">'
-
                 + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-
                 + '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>'
-
                 + '<polyline points="14 2 14 8 20 8"></polyline></svg>'
-
                 + '<span>' + _esc(fileName) + '</span></div>';
-
         }
 
-
-
         return '<div class="chat-bubble ' + cls + '">'
-
             + fileTag
-
             + '<div class="chat-bubble-body">' + text + '</div>'
-
+            + suggestionsHtml
             + (timeStr ? '<span class="chat-bubble-time">' + timeStr + '</span>' : '')
-
             + '</div>';
-
     }
-
-
-
     function _formatAI(text) {
 
         var parts = text.split(/(```[\s\S]*?```)/g);
@@ -593,22 +593,40 @@
 
 
 
-    function _addMessage(role, content, fileName) {
-
+    function _addMessage(role, content, fileName, noTypewriter) {
         var msg = { role: role, content: content, time: Date.now() };
-
         if (fileName) msg.fileName = fileName;
-
         chatHistory.push(msg);
-
         _saveCache(chatHistory);
-
         $welcome.style.display = 'none';
 
-        $messages.insertAdjacentHTML('beforeend', _bubbleHTML(role, content, msg.time, fileName));
-
+        if (role === 'ai' && !noTypewriter) {
+            var emptyBubble = _bubbleHTML(role, "", msg.time, fileName);
+            $messages.insertAdjacentHTML('beforeend', emptyBubble);
+            
+            var textEls = $messages.querySelectorAll('.chat-bubble-body');
+            var targetEl = textEls[textEls.length - 1];
+            if (targetEl) {
+                var i = 0;
+                var textToType = content || '';
+                function typeWriter() {
+                    if (i < textToType.length) {
+                        var charToType = textToType.charAt(i);
+                        var currentText = textToType.substring(0, i + 1);
+                        targetEl.innerHTML = _esc(currentText).replace(/\\n/g, '<br/>');
+                        i++;
+                        setTimeout(typeWriter, 15);
+                        _scrollBottom();
+                    }
+                }
+                typeWriter();
+            } else {
+                $messages.insertAdjacentHTML('beforeend', _bubbleHTML(role, content, msg.time, fileName));
+            }
+        } else {
+            $messages.insertAdjacentHTML('beforeend', _bubbleHTML(role, content, msg.time, fileName));
+        }
         _scrollBottom();
-
     }
 
 
@@ -1386,7 +1404,7 @@
 
 
 
-            if (res && res.status === 'success' && Array.isArray(res.data) && res.data.length > 0) {
+            if (res && res.status === 'success' && Array.isArray(res.data)) {
 
                 // 1. Lc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả v)
 
