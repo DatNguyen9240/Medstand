@@ -135,3 +135,21 @@ BEGIN
         SELECT '1' AS KiemTra;
 END
 GO
+
+-- 6. API LỊCH SỬ BÀI KHẢO SÁT (HISTORY)
+-- FE gửi: User
+CREATE OR ALTER PROCEDURE [dbo].[API_LichSuBaiKhaoSat]
+    @User VARCHAR(50) = ''
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        DocumentID,
+        ISNULL(Title, N'Bài khảo sát') AS Title,
+        CONVERT(VARCHAR, DocumentDate, 103) + ' ' + LEFT(CONVERT(VARCHAR, DocumentDate, 108), 5) AS ThoiGian,
+        CAST(ISNULL(KetQuaDung, 0) AS VARCHAR) + '/' + CAST(ISNULL(SoCauHoi, 3) AS VARCHAR) AS KetQua
+    FROM dbo.AR_DotKhaoSatTbl
+    WHERE UPPER(LTRIM(RTRIM(UserName))) = UPPER(LTRIM(RTRIM(@User)))
+    ORDER BY DocumentDate DESC;
+END
+GO
