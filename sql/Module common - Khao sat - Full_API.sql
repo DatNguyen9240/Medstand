@@ -86,7 +86,8 @@ BEGIN
 
     UPDATE dbo.AR_DotKhaoSatTbl 
     SET ThoiGianKetThuc = GETDATE(),
-        DocumentDate = GETDATE(), -- Cập nhật ngày nộp bài về hôm nay
+        DocumentDate = GETDATE(),
+        UserName = @User,
         KetQuaDung = ISNULL(@SoCauDung, 0),
         KetQuaSai = ISNULL(@SoCauSai, 0),
         SoCauHoi = ISNULL(@TongCau, 3)
