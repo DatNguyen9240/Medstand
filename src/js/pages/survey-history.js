@@ -56,7 +56,10 @@
         $('#skeleton-list').prop('hidden', false);
         $('#survey-list').prop('hidden', true);
 
-        Http.get(API_CONFIG.ENDPOINTS.SURVEY.HISTORY)
+        var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+        var payload = { User: authUser.UserName || authUser.Username || authUser.username || '' };
+
+        Http.get(API_CONFIG.ENDPOINTS.SURVEY.HISTORY, { q: JSON.stringify(payload) })
           .then(function (res) {
             var data = res.data || res;
             allRecords = data.records || [];
