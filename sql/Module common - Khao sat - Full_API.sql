@@ -37,10 +37,15 @@ CREATE OR ALTER PROCEDURE [dbo].[API_ChiTietBaiKhaoSat]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT TOP 3 MaCauHoi, NoiDung, DapAn1, DapAn2, DapAn3, DapAn4, DapAnDung
-    FROM dbo.CF_DanhSachCauHoiTbl
-    WHERE ISNULL(isDisable, 0) = 0
-    ORDER BY MaCauHoi DESC;
+    
+    WITH LatestQuestions AS (
+        SELECT TOP 3 
+            MaCauHoi, NoiDung, DapAn1, DapAn2, DapAn3, DapAn4, DapAnDung
+        FROM dbo.CF_DanhSachCauHoiTbl
+        WHERE ISNULL(isDisable, 0) = 0
+        ORDER BY MaCauHoi DESC
+    )
+    SELECT * FROM LatestQuestions ORDER BY NEWID();
 END
 GO
 
@@ -121,6 +126,7 @@ BEGIN
         FROM AR_DotKhaoSatTbl 
         WHERE LTRIM(RTRIM(UserName)) = LTRIM(RTRIM(@User)) 
           AND CAST(DocumentDate AS DATE) = CAST(GETDATE() AS DATE)
+          AND ISNULL(KetQuaDung, 0) = 3 -- Phải đúng tuyệt đối 3 câu mới tính là xong
     )
         SELECT '0' AS KiemTra;
     ELSE
