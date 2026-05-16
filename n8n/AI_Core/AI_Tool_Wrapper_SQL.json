@@ -1,16 +1,135 @@
 {
   "name": "K_Tool_Wrapper_SQL",
   "nodes": [
-    { "parameters": {}, "id": "1", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [0, 0] },
-    { "parameters": { "method": "POST", "url": "http://127.0.0.1:5678/webhook/intent-parser", "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ message: typeof $json.query === 'object' ? JSON.stringify($json.query) : $json.query, sessionId: 'agent' }) }}" }, "id": "2", "name": "Call Intent Parser", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [200, 0] },
-    { "parameters": { "jsCode": "const data = $input.first().json;\n\nconst staticData = $getWorkflowStaticData('global');\nlet sessionId = 'default_session';\nif (typeof data.query === 'object' && data.query.sessionId) {\n    sessionId = data.query.sessionId;\n} else if (typeof data.query === 'string') {\n    try {\n        const parsed = JSON.parse(data.query);\n        if (parsed.sessionId) sessionId = parsed.sessionId;\n    } catch(e) {}\n}\nconst context = (staticData.agentContext && staticData.agentContext[sessionId]) || '';\ndata.token = context || 'Bearer empty';\n\nconst cleanParams = {};\nlet rawParams = {};\nif (typeof data.query === 'object') {\n    rawParams = data.query.params || data.query;\n} else if (typeof data.query === 'string') {\n    try { rawParams = JSON.parse(data.query).params || JSON.parse(data.query); } catch(e) {}\n}\nfor (const key in rawParams) {\n  const val = rawParams[key];\n  if (val !== null && val !== undefined && val !== '' && val !== 'null') {\n    cleanParams[key] = val;\n  }\n}\ndata.cleanParams = cleanParams;\nreturn [{ json: data }];" }, "id": "clean_params", "name": "Clean Params", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [400, 0] },
-    { "parameters": { "method": "POST", "url": "http://127.0.0.1:5678/webhook/api-execute", "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "={{ $json.token }}" } ] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ ApiCode: $json.intent, params: $json.cleanParams }) }}" }, "id": "3", "name": "Call API Execute", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [600, 0] },
-    { "parameters": { "jsCode": "const responseData = $input.first().json;\nlet result = JSON.stringify(responseData);\nif (responseData.data) { result = \"Data: \" + JSON.stringify(responseData.data); }\nreturn [{ json: { response: result } }];" }, "id": "4", "name": "Format Output", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [800, 0] }
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/intent-parser",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: typeof $json.query === 'object' ? JSON.stringify($json.query) : $json.query, sessionId: 'agent' }) }}"
+      },
+      "id": "2",
+      "name": "Call Intent Parser",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nlet sessionId = 'default_session';\ndata.token = triggerData.authorization || 'Bearer empty';\ndata.cookie = triggerData.cookie || '';\n\nconst cleanParams = {};\nlet rawParams = {};\nif (typeof data.query === 'object') {\n    rawParams = data.query.params || data.query;\n} else if (typeof data.query === 'string') {\n    try { rawParams = JSON.parse(data.query).params || JSON.parse(data.query); } catch(e) {}\n}\nfor (const key in rawParams) {\n  const val = rawParams[key];\n  if (val !== null && val !== undefined && val !== '' && val !== 'null') {\n    cleanParams[key] = val;\n  }\n}\ndata.cleanParams = cleanParams;\nreturn [{ json: data }];"
+      },
+      "id": "clean_params",
+      "name": "Clean Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/api-execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Cookie",
+              "value": "={{ $json.cookie }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ApiCode: $json.intent, params: $json.cleanParams }) }}"
+      },
+      "id": "3",
+      "name": "Call API Execute",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseData = $input.first().json;\nlet result = JSON.stringify(responseData);\nif (responseData.data) { result = \"Data: \" + JSON.stringify(responseData.data); }\nreturn [{ json: { response: result } }];"
+      },
+      "id": "4",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    }
   ],
   "connections": {
-    "Execute Workflow Trigger": { "main": [ [ { "node": "Call Intent Parser", "type": "main", "index": 0 } ] ] },
-    "Call Intent Parser": { "main": [ [ { "node": "Clean Params", "type": "main", "index": 0 } ] ] },
-    "Clean Params": { "main": [ [ { "node": "Call API Execute", "type": "main", "index": 0 } ] ] },
-    "Call API Execute": { "main": [ [ { "node": "Format Output", "type": "main", "index": 0 } ] ] }
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Intent Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Intent Parser": {
+      "main": [
+        [
+          {
+            "node": "Clean Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Params": {
+      "main": [
+        [
+          {
+            "node": "Call API Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call API Execute": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

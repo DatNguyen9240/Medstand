@@ -5,107 +5,181 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "chat-v6",
-        "responseMode": "lastNode",
+        "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook-trigger",
+      "id": "be526da5-6a78-4e8e-8f0d-7ef10a83c06b",
       "name": "Webhook V6",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 1,
-      "position": [ 0, 0 ]
+      "typeVersion": 2,
+      "position": [
+        8512,
+        1744
+      ],
+      "webhookId": "f3b1811a-71e9-4dfa-9611-493f223c71e2"
     },
     {
       "parameters": {
-        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.agentContext) staticData.agentContext = {};\nconst sessionId = $json.body.session_id || $json.query.session_id || 'default_session';\nstaticData.agentContext[sessionId] = $json.headers.authorization || '';\nreturn [{ json: $json }];"
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nif (!staticData.agentContext) staticData.agentContext = {};\nconst sessionId = $json.body?.session_id || $json.body?.sessionId || $json.query?.session_id || 'default_session';\n\n// Lấy Token từ Webhook (Giống hệt luồng V5)\nconst authHeader = $input.first().json.headers?.authorization || '';\nstaticData.agentContext[sessionId] = authHeader;\nstaticData.agentContext['default_session'] = authHeader; // Bơm tạm token cho default_session để Tool chạy được\n\n// Đảm bảo truyền clean text cho Agent\nconst rawMessage = $json.body?.message || $json.body?.text || $json.body?.content || $json.query?.text || '';\n\nreturn [{ \n  json: { \n    input: rawMessage\n  } \n}];"
       },
-      "id": "save-context",
+      "id": "f3fa4b9a-0bb6-474a-8776-2350e9df84ab",
       "name": "Save Context",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 150, 0 ]
+      "position": [
+        8720,
+        1744
+      ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.body.text || $json.query.text }}",
+        "text": "={{ $json.input }}",
         "options": {
-          "systemMessage": "Hôm nay là: {{$now.format('yyyy-MM-dd')}}. Bạn PHẢI lấy năm hiện tại làm mặc định khi người dùng hỏi về ngày/tháng mà không nhắc năm.\n\nBạn là Trợ lý phân tích Dữ liệu và Tri thức cấp cao của Medstand.\nTính cách: Chuyên nghiệp, nghiêm túc, đi thẳng vào vấn đề. Tuyệt đối không dùng biểu tượng cảm xúc (Emoji).\n\nQuy tắc cốt lõi:\n1. Không bao giờ tự bịa ra số liệu. Nếu không biết, hãy dùng Tool. Nếu Tool không có dữ liệu, hãy báo thẳng là không tìm thấy.\n2. Phân biệt rõ ràng: Nếu khách hỏi về Hóa đơn, Doanh số, Khách hàng, Tồn kho -> Dùng Tool_Tra_Cuu_SQL.\n3. Nếu khách hỏi về Luật lệ, Chính sách, Sổ tay, Khuyến mãi chữ -> Dùng Tool_Tra_Cuu_RAG.\n4. KẾT HỢP ĐA CÔNG CỤ (MULTI-TOOL ROUTING): Nếu người dùng hỏi một câu phức tạp chứa cả yêu cầu số liệu (SQL) và quy định (RAG), BẠN PHẢI gọi LẦN LƯỢT CẢ 2 TOOL để thu thập đủ thông tin trước khi tổng hợp câu trả lời cuối cùng.\n5. Tuyệt đối từ chối mọi yêu cầu có ý định THÊM, SỬA, XÓA dữ liệu.\n6. Khi Tool trả về tóm tắt (Mini Summary), hãy dùng các con số trong tóm tắt đó để trả lời khách hàng một cách thông minh, và kết thúc bằng câu: 'Mời bạn xem chi tiết tại bảng dữ liệu.'\n7. QUAN TRỌNG: Nếu Tool SQL trả về thuộc tính Cache_ID (Mã Ngăn Kéo), BẠN BẮT BUỘC PHẢI in nguyên văn dòng chữ 'Mã Ngăn Kéo: <giá trị Cache_ID>' ở cuối cùng câu trả lời của bạn. Đây là lệnh hệ thống, không được tự ý lược bỏ.\n8. KHI TRẢ LỜI TỪ RAG: Bắt buộc đính kèm trích dẫn ngay trong câu theo định dạng: [Nguồn: <Tên tài liệu>]. KHÔNG SỬ DỤNG EMOJI.\n9. KHI KẾT THÚC CÂU: Bắt buộc đính kèm 3 gợi ý câu hỏi tiếp theo cho người dùng bằng XML: <suggest>Câu hỏi 1 | Câu hỏi 2 | Câu hỏi 3</suggest>. KHÔNG SỬ DỤNG EMOJI."
+          "systemMessage": "Hôm nay là: {{$now.format('yyyy-MM-dd')}}. Bạn PHẢI lấy năm hiện tại làm mặc định khi người dùng hỏi về ngày/tháng mà không nhắc năm.\n\nBạn là Trợ lý phân tích Dữ liệu và Tri thức cấp cao của Medstand.\nTính cách: Chuyên nghiệp, nghiêm túc, đi thẳng vào vấn đề. Tuyệt đối không dùng biểu tượng cảm xúc (Emoji).\n\nQuy tắc cốt lõi:\n1. Không bao giờ tự bịa ra số liệu. Nếu không biết, hãy dùng Tool. Nếu Tool không có dữ liệu, hãy báo thẳng là không tìm thấy.\n2. Phân biệt rõ ràng: Nếu khách hỏi về Hóa đơn, Doanh số, Khách hàng, Tồn kho -> Dùng Tool_Tra_Cuu_SQL.\n3. Nếu khách hỏi về Luật lệ, Chính sách, Sổ tay, Khuyến mãi chữ -> Dùng Tool_Tra_Cuu_RAG.\n4. KẾT HỢP ĐA CÔNG CỤ (MULTI-TOOL ROUTING): Nếu người dùng hỏi một câu phức tạp chứa cả yêu cầu số liệu (SQL) và quy định (RAG), BẠN PHẢI gọi LẦN LƯỢT CẢ 2 TOOL để thu thập đủ thông tin trước khi tổng hợp câu trả lời cuối cùng.\n5. Tuyệt đối từ chối mọi yêu cầu có ý định THÊM, SỬA, XÓA dữ liệu.\n6. Khi Tool trả về tóm tắt (Mini Summary), hãy dùng các con số trong tóm tắt đó để trả lời khách hàng một cách thông minh, và kết thúc bằng câu: 'Mời bạn xem chi tiết tại bảng dữ liệu.'\n7. QUAN TRỌNG: Nếu Tool SQL trả về thuộc tính Cache_ID (Mã Ngăn Kéo), BẠN BẮT BUỘC PHẢI in nguyên văn dòng chữ 'Mã Ngăn Kéo: <giá trị Cache_ID>' ở cuối cùng câu trả lời của bạn. Đây là lệnh hệ thống, không được tự ý lược bỏ.\n8. KHI TRẢ LỜI TỪ RAG: Bắt buộc đính kèm trích dẫn ngay trong câu theo định dạng: [Nguồn: <Tên tài liệu>]. KHÔNG SỬ DỤNG EMOJI.\n9. KHI KẾT THÚC CÂU: Bắt buộc đính kèm 3 gợi ý câu hỏi tiếp theo cho người dùng bằng XML: <suggest>Câu hỏi 1 | Câu hỏi 2 | Câu hỏi 3</suggest>. KHÔNG SỬ DỤNG EMOJI.\n\nPhiên làm việc (sessionId) của người dùng hiện tại là: {{ $('Webhook V6').first().json.body?.session_id || $('Webhook V6').first().json.body?.sessionId || $('Webhook V6').first().json.query?.session_id || 'default_session' }}. BẠN BẮT BUỘC phải truyền chính xác chuỗi sessionId này vào thông số sessionId của các Tool."
         }
       },
-      "id": "ai-agent",
+      "id": "ab54d7c5-656c-490f-8f60-a6b4e2f51436",
       "name": "AI Agent Brain",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 1,
-      "position": [ 300, 0 ]
+      "typeVersion": 1.6,
+      "position": [
+        8976,
+        1744
+      ]
     },
     {
       "parameters": {
-        "model": "gpt-4o-mini",
+        "model": "openai/gpt-4o-mini",
         "options": {
           "temperature": 0.1
         }
       },
-      "id": "openai-model",
+      "id": "b39b9239-1a2d-4d48-9b21-cba4a2be94d3",
       "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [ 300, 200 ]
+      "position": [
+        8976,
+        1952
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "frs6ZRDbNFeYhZf7",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
-        "sessionKey": "={{ $json.body.session_id }}",
-        "sessionTtl": 7200,
-        "contextWindowLength": 10
+        "sessionKey": "={{ $('Webhook V6').first().json.body?.session_id || $('Webhook V6').first().json.body?.sessionId || $('Webhook V6').first().json.query?.session_id || 'default_session' }}"
       },
-      "id": "redis-memory",
+      "id": "aa6c4931-d7a7-41a0-8f93-77bc4a5be934",
       "name": "Redis Chat Memory",
       "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
       "typeVersion": 1,
-      "position": [ 450, 200 ]
+      "position": [
+        9120,
+        1952
+      ],
+      "credentials": {
+        "redis": {
+          "id": "ZgCV64OurMo9np6L",
+          "name": "Redis account"
+        }
+      }
     },
     {
       "parameters": {
         "name": "Tool_Tra_Cuu_SQL",
-        "description": "BẮT BUỘC sử dụng công cụ này khi người dùng hỏi về: Doanh số, Doanh thu, Khách hàng, Sản phẩm, Tồn kho, Hóa đơn, Công nợ.\n\nĐầu vào (JSON):\n- intent: Tên hành động (vd: @doanh_so, @cong_no)\n- tu_ngay: (Tùy chọn) YYYY-MM-DD\n- sessionId: Bắt buộc lấy từ phiên người dùng.",
-        "workflowId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "API_Execute"
-        }
+        "description": "BẮT BUỘC dùng khi người dùng hỏi về Số liệu, Tra cứu Database (Doanh số, Doanh thu, Khách hàng, Sản phẩm, Tồn kho, Hóa đơn, Công nợ). Tự động trích xuất intent và các tham số như ngày tháng (YYYY-MM-DD), mã khách hàng, từ khóa.",
+        "workflowId": "66lgmYt08BYEBL8T",
+        "specifyInputSchema": true,
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sessionId": "={{ $('Webhook V6').first().json.body?.session_id || $('Webhook V6').first().json.body?.sessionId || $('Webhook V6').first().json.query?.session_id || 'default_session' }}",
+            "authorization": "={{ $('Webhook V6').first().json.headers?.authorization || '' }}",
+            "cookie": "={{ $('Webhook V6').first().json.headers?.cookie || '' }}"
+          }
+        },
+        "jsonSchema": "{\"type\": \"object\", \"properties\": {\"sessionId\": {\"type\": \"string\", \"description\": \"B\\u1eaft bu\\u1ed9c truy\\u1ec1n sessionId c\\u1ee7a phi\\u00ean l\\u00e0m vi\\u1ec7c hi\\u1ec7n t\\u1ea1i\"}, \"intent\": {\"type\": \"string\", \"description\": \"M\\u00e3 nghi\\u1ec7p v\\u1ee5 c\\u1ea7n g\\u1ecdi. CH\\u1ec8 CH\\u1eccN 1: @goi_y_don_hang, @upsell_goi_y, @goi_y_don_thuoc, @tuyen_ban_hang, @cham_diem_kh, @tich_luy, @de_xuat_khuyen_mai, @danh_sach_tonkho, @tra_cuu_san_pham, @san_pham_trong_tam, @doanh_so, @hoa_don, @cong_no_khach_hang, @cong_no_chi_tiet, @don_hang, @lap_don_hang.\", \"enum\": [\"@goi_y_don_hang\", \"@upsell_goi_y\", \"@goi_y_don_thuoc\", \"@tuyen_ban_hang\", \"@cham_diem_kh\", \"@tich_luy\", \"@de_xuat_khuyen_mai\", \"@danh_sach_tonkho\", \"@tra_cuu_san_pham\", \"@san_pham_trong_tam\", \"@doanh_so\", \"@hoa_don\", \"@cong_no_khach_hang\", \"@cong_no_chi_tiet\", \"@don_hang\", \"@lap_don_hang\"]}, \"@TuNgay\": {\"type\": \"string\", \"description\": \"T\\u1eeb ng\\u00e0y (YYYY-MM-DD)\"}, \"@DenNgay\": {\"type\": \"string\", \"description\": \"\\u0110\\u1ebfn ng\\u00e0y (YYYY-MM-DD)\"}, \"@MaKhachHang\": {\"type\": \"string\"}, \"@timkiem\": {\"type\": \"string\"}, \"@TopN\": {\"type\": \"number\"}, \"@SoNgayVangMat\": {\"type\": \"number\"}, \"@LoaiBaoCao\": {\"type\": \"string\"}}, \"required\": [\"sessionId\", \"intent\"]}"
       },
-      "id": "tool-sql",
+      "id": "a9e32f64-ae18-47c3-b0b9-640ab95b8618",
       "name": "Tra cứu Số liệu (SQL)",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1,
-      "position": [ 450, 400 ]
+      "position": [
+        9120,
+        2144
+      ]
     },
     {
       "parameters": {
         "name": "Tool_Tra_Cuu_RAG",
-        "description": "BẮT BUỘC sử dụng công cụ này khi người dùng hỏi về: Luật lệ, Nội quy, Sổ tay nhân viên, Chính sách công ty, Hướng dẫn sử dụng.\n\nĐầu vào (JSON):\n- cau_hoi: Câu hỏi nguyên bản của người dùng\n- linh_vuc: 'HR' hoặc 'Sales'",
-        "workflowId": {
-          "__rl": true,
-          "value": "",
-          "mode": "list",
-          "cachedResultName": "AI_RAG_Query"
-        }
+        "description": "BẮT BUỘC dùng công cụ này khi người dùng hỏi về: Luật lệ, Nội quy, Sổ tay nhân viên, Chính sách công ty.",
+        "workflowId": "6YAPfwEnAobtKBNL",
+        "specifyInputSchema": true,
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sessionId": "={{ $('Webhook V6').first().json.body?.session_id || $('Webhook V6').first().json.body?.sessionId || $('Webhook V6').first().json.query?.session_id || 'default_session' }}",
+            "authorization": "={{ $('Webhook V6').first().json.headers?.authorization || '' }}",
+            "cookie": "={{ $('Webhook V6').first().json.headers?.cookie || '' }}"
+          }
+        },
+        "jsonSchema": "{\"type\": \"object\", \"properties\": {\"sessionId\": {\"type\": \"string\", \"description\": \"B\\u1eaft bu\\u1ed9c truy\\u1ec1n sessionId c\\u1ee7a phi\\u00ean l\\u00e0m vi\\u1ec7c hi\\u1ec7n t\\u1ea1i\"}, \"query\": {\"type\": \"string\", \"description\": \"C\\u00e2u h\\u1ecfi t\\u00ecm ki\\u1ebfm trong t\\u00e0i li\\u1ec7u RAG\"}}, \"required\": [\"sessionId\", \"query\"]}"
       },
-      "id": "tool-rag",
+      "id": "ac59dc0b-8821-4a11-bc4c-1bcacc9c635c",
       "name": "Tra cứu Tài liệu (RAG)",
       "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 1,
-      "position": [ 650, 400 ]
+      "position": [
+        9312,
+        2144
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet message = agentOutput;\nlet finalData = [];\n\nconst cacheRegex = /Mã Ngăn Kéo:\\s*([a-zA-Z0-9_\\-]+)/i;\nconst match = message.match(cacheRegex);\n\nif (match) {\n    const cacheId = match[1];\n    const staticData = $getWorkflowStaticData('global');\n    if (staticData.dataCache && staticData.dataCache[cacheId]) {\n        finalData = staticData.dataCache[cacheId].data;\n        delete staticData.dataCache[cacheId];\n    } else if (staticData[cacheId]) {\n        finalData = staticData[cacheId];\n        delete staticData[cacheId];\n    }\n    message = message.replace(match[0], '').trim();\n    if (!finalData || finalData.length === 0) {\n        return [{\n            json: {\n                status: \"error\",\n                message: \"Hệ thống đang quá tải hoặc dữ liệu đã hết hạn. Xin vui lòng đặt lại câu hỏi.\",\n                data: []\n            }\n        }];\n    }\n}\n\nreturn [{\n    json: {\n        status: \"success\",\n        message: message.trim(),\n        data: finalData\n    }\n}];"
+        "jsCode": "const agentOutput = $input.first().json.output || $input.first().json.text || JSON.stringify($input.first().json);\nlet message = agentOutput;\nlet finalData = [];\n\nconst cacheRegex = /Mã Ngăn Kéo:\\s*([a-zA-Z0-9_\\-]+)/i;\nconst match = message.match(cacheRegex);\n\nif (match) {\n    const cacheId = match[1];\n    const staticData = $getWorkflowStaticData('global');\n    if (staticData.dataCache && staticData.dataCache[cacheId]) {\n        finalData = staticData.dataCache[cacheId].data;\n        delete staticData.dataCache[cacheId];\n    } else if (staticData[cacheId]) {\n        finalData = staticData[cacheId];\n        delete staticData[cacheId];\n    }\n    message = message.replace(match[0], '').trim();\n    if (!finalData || finalData.length === 0) {\n        return [{\n            json: {\n                status: 'error',\n                message: 'Hệ thống đang quá tải hoặc dữ liệu đã hết hạn. Xin vui lòng đặt lại câu hỏi.',\n                data: [],\n                count: 0\n            }\n        }];\n    }\n}\n\nreturn [{\n    json: {\n        status: 'success',\n        message: message.trim(),\n        data: finalData,\n        count: finalData.length || 0\n    }\n}];"
       },
-      "id": "response-assembler",
+      "id": "58534508-685c-483a-bf62-f900ca210cbe",
       "name": "Response Assembler",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [ 900, 0 ]
+      "position": [
+        9376,
+        1744
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, message: $json.message, data: $json.data, count: $json.count, apiCode: 'V6_AGENT', username: 'AI Agent', intentParams: {}, _debug: { matchedBy: 'AGENT', session_id: $('Webhook V6').first().json.body?.session_id || $('Webhook V6').first().json.body?.sessionId || $('Webhook V6').first().json.query?.session_id || 'default_session' } }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "id": "81645f8a-fa39-4326-8a52-c3029bce0079",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        9664,
+        1744
+      ]
     }
   ],
   "connections": {
@@ -131,41 +205,23 @@
         ]
       ]
     },
-    "OpenAI Chat Model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "AI Agent Brain",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Tra cứu Số liệu (SQL)": {
-      "ai_tool": [
-        {
-          "node": "AI Agent Brain",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
-    },
-    "Tra cứu Tài liệu (RAG)": {
-      "ai_tool": [
-        {
-          "node": "AI Agent Brain",
-          "type": "ai_tool",
-          "index": 0
-        }
-      ]
-    },
     "AI Agent Brain": {
       "main": [
         [
           {
             "node": "Response Assembler",
             "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -181,9 +237,39 @@
           }
         ]
       ]
+    },
+    "Tra cứu Số liệu (SQL)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tra cứu Tài liệu (RAG)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent Brain",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Response Assembler": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
-  },
-  "settings": {
-    "executionOrder": "v1"
   }
 }

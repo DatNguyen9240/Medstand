@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "K0-C · Execute API",
   "nodes": [
     {
@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputJson = $json || {};\n// --- TÍCH HỢP TƯƠNG THÍCH AGENT ---\nconst isAgent = (inputJson.sessionId && inputJson.intent);\nlet body = inputJson.body || {};\nlet headers = inputJson.headers || {};\nlet method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (isAgent) {\n    body = { ...inputJson };\n    body.ApiCode = inputJson.intent; // Agent gọi tool dùng intent\n    body.params = { ...inputJson };\n    method = 'POST'; // Bỏ qua OPTIONS check\n}\n// ---------------------------------\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\n\nif (!headers.authorization && headers.cookie) {\n  const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n  if (m) headers.authorization = 'Bearer ' + m[1];\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nlet username = body.username || '';\nif (!username) {\n  try {\n    const authH = headers.authorization || headers.Authorization || '';\n    const tm = authH.match(/Bearer (.+)/);\n    if (tm) {\n      const b64 = tm[1].split('.')[1].replace(/-/g, '+').replace(/_/g, '/');\n      const pad = (4 - b64.length % 4) % 4;\n      const pl = JSON.parse(Buffer.from(b64 + '='.repeat(pad), 'base64').toString('utf8'));\n      username = pl.username || pl.Username || pl.sub || pl.name || '';\n\n// --- BẮT ĐẦU VÁ JWT EXPIRATION ---\nif (pl && pl.exp) {\n  const nowSecs = Math.floor(Date.now() / 1000);\n  if (nowSecs > pl.exp) {\n    throw new Error(\"SECURITY_ALERT: Token đăng nhập đã hết hạn (Expired). Vui lòng đăng nhập lại!\");\n  }\n}\n// --- KẾT THÚC VÁ JWT ---\n\n    }\n  } catch(e) { username = ''; }\n}\n\nif (username && !params['@Username']) {\n  params['@Username'] = username;\n}\n\n\n// --- BẮT ĐẦU VÁ BẢO MẬT: REGEX VALIDATOR ---\nconst sqlBlacklist = /(--|;|\bDROP\b|\bTRUNCATE\b|\bDELETE\b|\bUPDATE\b|\bINSERT\b|\bEXEC\b|\bALTER\b)/i;\nfor (const key in params) {\n  if (Object.prototype.hasOwnProperty.call(params, key)) {\n    const val = String(params[key]);\n    if (sqlBlacklist.test(val)) {\n      apiCode = '@invalid_code'; // Đổi mã thành invalid để chặn lệnh SQL\n      params['@SecurityBlock'] = 'Phát hiện từ khóa nghi ngờ SQL Injection: ' + val;\n    }\n  }\n}\n// --- KẾT THÚC VÁ BẢO MẬT ---\n\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { _isAgent: isAgent, ...inputJson, headers: headers, body: {...body, ApiCode: apiCode, params: params}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\n// --- TÍCH HỢP TƯƠNG THÍCH AGENT ---\nconst isAgent = (inputJson.sessionId && inputJson.intent);\nlet body = inputJson.body || {};\nlet headers = inputJson.headers || {};\nlet method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (isAgent) {\n    body = { ...inputJson };\n    body.ApiCode = inputJson.intent; // Agent gọi tool dùng intent\n    body.params = { ...inputJson };\n    method = 'POST'; // Bỏ qua OPTIONS check\n    if (inputJson.authorization) headers.authorization = inputJson.authorization;\n    if (inputJson.cookie) headers.cookie = inputJson.cookie;\n}\n// ---------------------------------\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\n\nif (!headers.authorization || headers.authorization.trim() === '' || headers.authorization.includes('empty') || headers.authorization.includes('null')) {\n  if (headers.cookie) {\n    const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n    if (m) headers.authorization = 'Bearer ' + m[1];\n  }\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nlet username = body.username || '';\nif (!username) {\n  try {\n    const authH = headers.authorization || headers.Authorization || '';\n    const tm = authH.match(/Bearer (.+)/);\n    if (tm) {\n      const b64 = tm[1].split('.')[1].replace(/-/g, '+').replace(/_/g, '/');\n      const pad = (4 - b64.length % 4) % 4;\n      const pl = JSON.parse(Buffer.from(b64 + '='.repeat(pad), 'base64').toString('utf8'));\n      username = pl.username || pl.Username || pl.sub || pl.name || '';\n\n// --- BẮT ĐẦU VÁ JWT EXPIRATION ---\nif (pl && pl.exp) {\n  const nowSecs = Math.floor(Date.now() / 1000);\n  if (nowSecs > pl.exp) {\n    throw new Error(\"SECURITY_ALERT: Token đăng nhập đã hết hạn (Expired). Vui lòng đăng nhập lại!\");\n  }\n}\n// --- KẾT THÚC VÁ JWT ---\n\n    }\n  } catch(e) { \n    username = ''; \n    const authH = headers.authorization || headers.Authorization || '';\n    const tm2 = authH.match(/Bearer (.+)/);\n    if (tm2) {\n        inputJson._uuidToken = tm2[1]; \n    }\n}\n}\n\nif (username && !params['@Username']) {\n  params['@Username'] = username;\n}\n\n\n// --- BẮT ĐẦU VÁ BẢO MẬT: REGEX VALIDATOR ---\nconst sqlBlacklist = /(--|;|\bDROP\b|\bTRUNCATE\b|\bDELETE\b|\bUPDATE\b|\bINSERT\b|\bEXEC\b|\bALTER\b)/i;\nfor (const key in params) {\n  if (Object.prototype.hasOwnProperty.call(params, key)) {\n    const val = String(params[key]);\n    if (sqlBlacklist.test(val)) {\n      apiCode = '@invalid_code'; // Đổi mã thành invalid để chặn lệnh SQL\n      params['@SecurityBlock'] = 'Phát hiện từ khóa nghi ngờ SQL Injection: ' + val;\n    }\n  }\n}\n// --- KẾT THÚC VÁ BẢO MẬT ---\n\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { _isAgent: isAgent, ...inputJson, headers: headers, body: {...body, ApiCode: apiCode, params: params}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -97,7 +97,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Build dynamic EXEC SQL từ ApiCode + params JSON\nconst execNode = $('Check Method Execute').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nconst paramsStr = execNode._paramsSafeStr || '{}';\n\n// Build query: tra cuu SP name tu API_Definition, roi dong goi voi params\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = N'${paramsStr}';\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = \\u0027DEFAULT\\u0027;\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, \\u0027DEFAULT\\u0027) FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, \\u0027Missing para or Object not support\\u0027 AS msg, \\u0027DEFAULT\\u0027 AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N\\u0027EXEC \\u0027 + QUOTENAME(@SPName) + N\\u0027 \\u0027;\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', '\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%';\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query } }];"
+        "jsCode": "\nconst execNode = $('Check Method Execute').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nlet paramsStr = execNode._paramsSafeStr || '{}';\n\nlet realUsername = '';\ntry {\n    let data = $json || {};\n    if (data.data) data = data.data;\n    if (data.Data) data = data.Data;\n    if (data.records && Array.isArray(data.records) && data.records.length > 0) data = data.records[0];\n    \n    realUsername = data.username || data.Username || data.UserName || data.name || data.sub || data.User || '';\n} catch(e) {}\n\n// ĐÃ XÓA FAILSAFE ADMIN ĐỂ ĐẢM BẢO BẢO MẬT TUYỆT ĐỐI\n\ntry {\n    let p = JSON.parse(paramsStr.replace(/''/g, \"'\")); // Un-escape first\n    \n    // XÓA CÁC THAM SỐ NULL ĐỂ KHÔNG LÀM HỎNG SQL\n    for (let k in p) {\n        if (p[k] === null) {\n            delete p[k];\n        }\n    }\n    \n    // CHỈ NẠP USERNAME KHI TOKEN THẬT SỰ CÓ DỮ LIỆU\n    if (realUsername) p['@Username'] = realUsername;\n    \n    paramsStr = JSON.stringify(p).replace(/'/g, \"''\"); // Re-escape\n} catch(e) {}\n\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = N'${paramsStr}';\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = 'DEFAULT';\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, 'DEFAULT') FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, 'Missing para or Object not support' AS msg, 'DEFAULT' AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N'EXEC ' + QUOTENAME(@SPName) + N' ';\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + \n        CASE WHEN [type] = 0 THEN ' = NULL, '\n             ELSE N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', ' END\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%';\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query, debug_username: realUsername, debug_api_response: $json } }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -182,6 +182,50 @@
         -500,
         200
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json._uuidToken }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "e0c9d913-e6cd-4491-8894-878af6e97a9b",
+      "name": "Is UUID Token?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://medtest.bms79.com/api/API_UserInfo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json._uuidToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c9d738a7-9fb3-4c27-a8cf-f14c9f71ca2e",
+      "name": "Resolve UUID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "onError": "continueErrorOutput"
     }
   ],
   "connections": {
@@ -218,7 +262,7 @@
         ],
         [
           {
-            "node": "Build Execute SQL",
+            "node": "Is UUID Token?",
             "type": "main",
             "index": 0
           }
@@ -263,6 +307,35 @@
         [
           {
             "node": "Check Method Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is UUID Token?": {
+      "main": [
+        [
+          {
+            "node": "Resolve UUID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Execute SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve UUID": {
+      "main": [
+        [
+          {
+            "node": "Build Execute SQL",
             "type": "main",
             "index": 0
           }
