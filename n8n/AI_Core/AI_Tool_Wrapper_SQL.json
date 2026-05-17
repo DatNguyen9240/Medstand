@@ -31,7 +31,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst triggerData = $('Execute Workflow Trigger').first().json;\nlet sessionId = 'default_session';\ndata.token = triggerData.authorization || 'Bearer empty';\ndata.cookie = triggerData.cookie || '';\n\nconst cleanParams = {};\nlet rawParams = {};\nif (typeof data.query === 'object') {\n    rawParams = data.query.params || data.query;\n} else if (typeof data.query === 'string') {\n    try { rawParams = JSON.parse(data.query).params || JSON.parse(data.query); } catch(e) {}\n}\nfor (const key in rawParams) {\n  const val = rawParams[key];\n  if (val !== null && val !== undefined && val !== '' && val !== 'null') {\n    cleanParams[key] = val;\n  }\n}\ndata.cleanParams = cleanParams;\nreturn [{ json: data }];"
+        "jsCode": "const triggerData = $input.first().json;\nconst data = { ...triggerData };\n\ndata.sessionId = triggerData.sessionId || 'default_session';\ndata.intent = triggerData.intent || 'unknown';\ndata.token = triggerData.authorization || 'Bearer empty';\ndata.cookie = triggerData.cookie || '';\n\nconst cleanParams = {};\nconst reservedKeys = ['sessionId', 'intent', 'token', 'cookie', 'authorization'];\nfor (const key in triggerData) {\n  if (!reservedKeys.includes(key)) {\n    const val = triggerData[key];\n    if (val !== null && val !== undefined && val !== '' && val !== 'null') {\n      // Nếu key đã có @ thì giữ nguyên, nếu chưa có thì thêm vào\n      const paramName = key.startsWith('@') ? key : '@' + key;\n      cleanParams[paramName] = val;\n    }\n  }\n}\ndata.cleanParams = cleanParams;\nreturn [{ json: data }];"
       },
       "id": "clean_params",
       "name": "Clean Params",
@@ -61,7 +61,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ ApiCode: $json.intent, params: $json.cleanParams }) }}"
+        "jsonBody": "={{ JSON.stringify({ ApiCode: $json.intent, params: $json.cleanParams, sessionId: $json.sessionId, intent: $json.intent, _isAgent: true }) }}"
       },
       "id": "3",
       "name": "Call API Execute",
@@ -88,17 +88,6 @@
   ],
   "connections": {
     "Execute Workflow Trigger": {
-      "main": [
-        [
-          {
-            "node": "Call Intent Parser",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Call Intent Parser": {
       "main": [
         [
           {
