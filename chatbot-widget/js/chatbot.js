@@ -1855,7 +1855,7 @@
 
         html += '<div class="ai-inline-container" id="' + viewId + '">';
 
-        html += '<div class="ai-view-cards">';
+        html += '<div class="ai-view-cards" style="display:none">';
 
         html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
 
@@ -1991,9 +1991,9 @@
 
         var toggleText = '📊 Xem dạng bảng';
 
-        html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
+        html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '" style="display:none">' + toggleText + '</button>';
 
-        html += '<div class="ai-view-table" style="display:none">';
+        html += '<div class="ai-view-table">';
 
         html += _buildInlineTable(rows, keys);
 
@@ -2255,7 +2255,7 @@
 
         var viewId = 'view-' + (++_modalIdCounter);
         html += '<div class="ai-inline-container" id="' + viewId + '">';
-        html += '<div class="ai-view-cards">';
+        html += '<div class="ai-view-cards" style="display:none">';
         html += '<div class="ai-catalog-grid">';
 
 
@@ -2577,9 +2577,9 @@
         // Toggle sang bảng
         var toggleText = '📊 Xem dạng bảng';
 
-        html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
+        html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '" style="display:none">' + toggleText + '</button>';
 
-        html += '<div class="ai-view-table" style="display:none">';
+        html += '<div class="ai-view-table">';
 
         html += _buildInlineTable(rows, keys);
 
