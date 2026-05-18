@@ -1941,7 +1941,7 @@
 
                 var trendCls = (tv.indexOf('-') !== -1 || tv.indexOf('giảm') !== -1) ? 'ai-trend-down' : 'ai-trend-up';
 
-                html += '<div class="ai-card-trend ' + trendCls + '">📈 ' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
+                html += '<div class="ai-card-trend ' + trendCls + '">' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
 
                 usedKeys.push(trendF.key);
 
@@ -1989,7 +1989,7 @@
 
         // Nút toggle bảng
 
-        var toggleText = '📊 Xem dạng bảng';
+        var toggleText = 'Xem dạng bảng';
 
         html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
 
@@ -2575,7 +2575,7 @@
         html += '</div>'; // ai-view-cards
 
         // Toggle sang bảng
-        var toggleText = '📊 Xem dạng bảng';
+        var toggleText = 'Xem dạng bảng';
 
         html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
 
@@ -2893,7 +2893,7 @@
 
                 // Restore text gốc từ data attribute (tránh encoding mismatch)
 
-                var origText = tableBtn.getAttribute('data-orig-text') || '📊 Xem dạng bảng';
+                var origText = tableBtn.getAttribute('data-orig-text') || 'Xem dạng bảng';
 
                 tableBtn.textContent = origText;
 
