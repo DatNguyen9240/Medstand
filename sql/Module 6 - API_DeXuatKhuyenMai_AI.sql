@@ -27,17 +27,17 @@ BEGIN
         CAST(I.QuantityinStock AS INT) AS TonKho,
         L.HanDungNhat AS HanDung,
         CASE 
-            WHEN L.HanDungNhat <= DATEADD(MONTH, 6, GETDATE()) THEN N'🔴 XẢ HÀNG SÂU'
+            WHEN L.HanDungNhat <= DATEADD(MONTH, 6, GETDATE()) THEN N'XẢ HÀNG SÂU'
             WHEN I.QuantityinStock > 0 AND (ISNULL(V.TocDo,0) = 0 OR (I.QuantityinStock / NULLIF(V.TocDo, 0)) > 180) 
-                THEN N'🟠 CHẠY COMBO'
-            ELSE N'🟢 THEO DÕI' 
+                THEN N'COMBO/ĐẨY HÀNG'
+            ELSE N'THEO DÕI' 
         END AS LoaiDeXuat,
         CASE 
             -- Trường hợp cận date (Ưu tiên cảnh báo đầu tiên)
             WHEN L.HanDungNhat <= DATEADD(MONTH, 3, GETDATE()) 
-                THEN N'⚠️ KHẨN CẤP: Hạn dùng chỉ còn < 3 tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Xả hàng ngay!'
+                THEN N'KHẨN CẤP: Hạn dùng chỉ còn < 3 tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Xả hàng ngay!'
             WHEN L.HanDungNhat <= DATEADD(MONTH, 6, GETDATE()) 
-                THEN N'🔴 CẬN DATE: Hạn dùng còn < 6 tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Nên giảm giá sâu.'
+                THEN N'CẬN DATE: Hạn dùng còn < 6 tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Nên giảm giá sâu.'
             
             -- Trường hợp hàng chậm, vòng quay thấp
             WHEN I.QuantityinStock > 0 AND ISNULL(V.TocDo,0) = 0 
@@ -45,7 +45,7 @@ BEGIN
             WHEN I.QuantityinStock > 0 AND (I.QuantityinStock / NULLIF(V.TocDo, 0)) > 180 
                 THEN N'📦 TỒN KHO CAO: Dự kiến ' + CAST(CAST(I.QuantityinStock / NULLIF(V.TocDo, 0) AS INT) AS VARCHAR) + N' ngày mới hết. Nên đóng combo.'
             
-            ELSE N'✅ Ổn định: Tốc độ bán tốt.'
+            ELSE N'Ổn định: Tốc độ bán tốt.'
         END AS ChiTietAI
     FROM IV_StockTbl I 
     JOIN CF_ItemTbl CF ON I.ItemID = CF.ItemID 

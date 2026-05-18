@@ -270,16 +270,16 @@
     function _bubbleHTML(role, content, time, fileName, rawHtml) {
         var cls = role === 'user' ? 'user' : 'ai';
         var timeStr = time ? _formatTime(time) : '';
-        
+
         var suggestionsHtml = '';
         var processedContent = content || '';
-        
+
         if (role === 'ai' && typeof processedContent === 'string') {
             var suggestMatch = processedContent.match(/<suggest>(.*?)<\/suggest>/i);
             if (suggestMatch) {
                 var buttons = suggestMatch[1].split('|');
                 suggestionsHtml = '<div class="ai-quick-replies" style="margin-top:10px; display:flex; flex-wrap:wrap; gap:5px;">';
-                buttons.forEach(function(btn) {
+                buttons.forEach(function (btn) {
                     var btnText = btn.trim();
                     if (btnText) {
                         suggestionsHtml += '<button type="button" style="background:#f0f4f8; border:1px solid #cce4f7; padding:6px 12px; border-radius:15px; font-size:13px; color:#1976d2; cursor:pointer;" onclick="var i=document.getElementById(\'chat-input\'); if(i){i.value=\'' + _esc(btnText) + '\'; i.focus();}">[ ' + _esc(btnText) + ' ]</button>';
@@ -288,12 +288,12 @@
                 suggestionsHtml += '</div>';
                 processedContent = processedContent.replace(/<suggest>.*?<\/suggest>/ig, '');
             }
-            
-            processedContent = processedContent.replace(/\[Nguồn:\s*(.*?)\]/ig, function(match, sourceName) {
+
+            processedContent = processedContent.replace(/\[Nguồn:\s*(.*?)\]/ig, function (match, sourceName) {
                 return '<span class="ai-citation" style="display:inline-block; background:#e8f5e9; border:1px solid #c8e6c9; color:#2e7d32; font-size:12px; padding:2px 8px; border-radius:12px; margin:0 4px; cursor:pointer;" onclick="alert(\'Nguồn trích dẫn: ' + _esc(sourceName) + '\\n(Tính năng Split-view PDF sẽ được kích hoạt ở bản cập nhật sau)\');">[ Nguồn: ' + _esc(sourceName) + ' ]</span>';
             });
         }
-        
+
         var text = rawHtml ? rawHtml : (role === 'user' ? _esc(processedContent) : _formatAI(processedContent));
 
         var hasCard = role === 'ai' && (text.indexOf('ai-card') !== -1 || text.indexOf('ai-table') !== -1 || text.indexOf('ai-summary') !== -1);
@@ -603,7 +603,7 @@
         if (false) { // Disabled typewriter effect per user request
             var emptyBubble = _bubbleHTML(role, "", msg.time, fileName);
             $messages.insertAdjacentHTML('beforeend', emptyBubble);
-            
+
             var textEls = $messages.querySelectorAll('.chat-bubble-body');
             var targetEl = textEls[textEls.length - 1];
             if (targetEl) {
@@ -893,7 +893,7 @@
 
         })).then(function (fileList) {
 
-            
+
 
             // --- KIỂM TRA LỆNH HỎI TÀI LIỆU RAG ---
 
@@ -903,7 +903,7 @@
 
                 var queryText = String(text).replace(/^\/(hi|hoi|searchrag)/i, '').trim();
 
-                
+
 
                 if (!queryText) {
 
@@ -921,7 +921,7 @@
 
                 _doRAGSearch(queryText);
 
-                
+
 
                 $input.value = '';
 
@@ -962,7 +962,7 @@
 
                 var extractedExpiry = 'never'; // Bản N8N không hỗ trợ Auto-Extract, mặc định là never
 
-                
+
 
                 // Nếu khách có gạch dc "Tiêu đ | 2026-10-15"
 
@@ -976,7 +976,7 @@
 
                 } else if (titleText.length === 0) {
 
-                     titleText = fileList[0].name.split('.')[0];
+                    titleText = fileList[0].name.split('.')[0];
 
                 }
 
@@ -1008,7 +1008,7 @@
 
                 // Gửi bằng form data tới webhook admin-upload
 
-                var doUpload = function(fileBlob) {
+                var doUpload = function (fileBlob) {
 
                     var formData = new FormData();
 
@@ -1038,37 +1038,37 @@
 
                     })
 
-                    .then(function(res) { return res.json(); })
+                        .then(function (res) { return res.json(); })
 
-                    .then(function(result) {
+                        .then(function (result) {
 
-                        _hideTyping(); _setStopMode(false);
+                            _hideTyping(); _setStopMode(false);
 
-                        var data = Array.isArray(result) ? result[0] : result;
+                            var data = Array.isArray(result) ? result[0] : result;
 
-                        if (data && data.status !== "error") {
+                            if (data && data.status !== "error") {
 
-                            let expiredText = data.expiryDate === 'never' ? 'Vĩnh viễn' : data.expiryDate;
+                                let expiredText = data.expiryDate === 'never' ? 'Vĩnh viễn' : data.expiryDate;
 
-                            let serverMsg = data.message || 'ã nạp thành công!';
+                                let serverMsg = data.message || 'ã nạp thành công!';
 
-                            _addMessage('ai', '✅ **' + serverMsg + '**\n\n- File: `' + fileList[0].name + '`\n- Tiêu đ: **' + (data.title || titleText) + '**\n- Hết hạn: **' + expiredText + '**');
+                                _addMessage('ai', '✅ **' + serverMsg + '**\n\n- File: `' + fileList[0].name + '`\n- Tiêu đ: **' + (data.title || titleText) + '**\n- Hết hạn: **' + expiredText + '**');
 
-                        } else {
+                            } else {
 
-                            _addMessage('ai', ' Không thể nạp tài liệu: ' + (data.error || data.message || 'Lỗi hệ thống'));
+                                _addMessage('ai', ' Không thể nạp tài liệu: ' + (data.error || data.message || 'Lỗi hệ thống'));
 
-                        }
+                            }
 
-                    })
+                        })
 
-                    .catch(function(err) {
+                        .catch(function (err) {
 
-                        _hideTyping(); _setStopMode(false);
+                            _hideTyping(); _setStopMode(false);
 
-                        _addMessage('ai', ' Tải lên thất bại: ' + err.message);
+                            _addMessage('ai', ' Tải lên thất bại: ' + err.message);
 
-                    });
+                        });
 
                 };
 
@@ -1078,7 +1078,7 @@
 
                 var ext = fileList[0].name.split('.').pop().toLowerCase();
 
-                
+
 
                 if (ext === 'xls' || ext === 'xlsx') {
 
@@ -1090,7 +1090,7 @@
 
                         script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js';
 
-                        script.onload = function() { processExcel(origFile); };
+                        script.onload = function () { processExcel(origFile); };
 
                         document.head.appendChild(script);
 
@@ -1106,25 +1106,25 @@
 
                         var r = new FileReader();
 
-                        r.onload = function(e) {
+                        r.onload = function (e) {
 
                             try {
 
                                 var data = new Uint8Array(e.target.result);
 
-                                var workbook = XLSX.read(data, {type: 'array'});
+                                var workbook = XLSX.read(data, { type: 'array' });
 
                                 var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
                                 var csvStr = XLSX.utils.sheet_to_csv(firstSheet);
 
-                                var b = new Blob([csvStr], {type: 'text/csv'});
+                                var b = new Blob([csvStr], { type: 'text/csv' });
 
-                                var newF = new File([b], fileList[0].name.replace(/\.[^/.]+$/, "") + ".csv", {type: "text/csv"});
+                                var newF = new File([b], fileList[0].name.replace(/\.[^/.]+$/, "") + ".csv", { type: "text/csv" });
 
                                 doUpload(newF);
 
-                            } catch(err) {
+                            } catch (err) {
 
                                 _hideTyping(); _setStopMode(false);
 
@@ -1156,7 +1156,7 @@
 
             var pastMsgs = chatHistory.slice(-11, -1); // Lấy 10 câu trước (chừa câu hiện tại)
 
-            var historyStr = pastMsgs.map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
+            var historyStr = pastMsgs.map(function (m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
 
 
 
@@ -1214,7 +1214,7 @@
 
         var pastMsgs = chatHistory.slice(-11, -1);
 
-        var historyStr = pastMsgs.map(function(m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
+        var historyStr = pastMsgs.map(function (m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
 
 
 
@@ -1230,11 +1230,11 @@
 
             body: JSON.stringify(payload)
 
-        }).then(function(res) {
+        }).then(function (res) {
 
             return res.json();
 
-        }).then(function(data) {
+        }).then(function (data) {
 
             _hideTyping();
 
@@ -1242,7 +1242,7 @@
 
             else _addMessage('ai', "Xin lỗi, tôi chưa thể trả li câu hi này.");
 
-        }).catch(function(err) {
+        }).catch(function (err) {
 
             _hideTyping();
 
@@ -1262,7 +1262,7 @@
 
         var payload = { query: query, history: typeof chatHistory !== 'undefined' ? chatHistory.slice(-8) : [] };
 
-        
+
 
         var userStr = localStorage.getItem('auth_user');
 
@@ -1280,7 +1280,7 @@
 
         // Feature 4: Timeout UX Chống treo giả sau 8s
 
-        var searchingTimeout = setTimeout(function() {
+        var searchingTimeout = setTimeout(function () {
 
             _addMessage('ai', 'Dạ em vẫn đang lục lại các chính sách liên quan, sắp có kết quả rồi ạ! ');
 
@@ -1298,11 +1298,11 @@
 
             body: JSON.stringify(payload)
 
-        }).then(function(res) {
+        }).then(function (res) {
 
             return res.json();
 
-        }).then(function(data) {
+        }).then(function (data) {
 
             data = Array.isArray(data) ? data[0] : data;
 
@@ -1320,7 +1320,7 @@
 
             }
 
-        }).catch(function(err) {
+        }).catch(function (err) {
 
             clearTimeout(searchingTimeout);
 
@@ -1382,7 +1382,7 @@
 
             if (res && res.action_code === 'ASK_CLARIFICATION') {
                 // Nhận dạng được câu chat ngoài ngữ cảnh SQL -> Tự động chuyển qua tìm kiếm RAG
-                var lastUsrMsg = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
+                var lastUsrMsg = chatHistory.slice().reverse().find(function (m) { return m.role === 'user'; });
                 _addMessage('ai', 'Dạ, em đang tìm kiếm thông tin này trong kho tài liệu...');
                 _doRAGSearch(lastUsrMsg ? lastUsrMsg.content : '');
                 return;
@@ -1394,7 +1394,7 @@
 
                 if (res.message) _addMessage('ai', res.message);
 
-                var lastUserQ = chatHistory.slice().reverse().find(function(m) { return m.role === 'user'; });
+                var lastUserQ = chatHistory.slice().reverse().find(function (m) { return m.role === 'user'; });
 
                 _doRAGSearch(lastUserQ ? lastUserQ.content : '');
 
@@ -1428,54 +1428,54 @@
 
 
 
-            if (cleanData.length === 0) {
-                _addMessage('ai', res.message || 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️');
+                if (cleanData.length === 0) {
+                    _addMessage('ai', res.message || 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️');
+                    return;
+                }
+
+
+
+                // 2. Tìm Mã ối Tượng (Customer Code) từ metadata
+
+                var idF = _pickField(res.intentParams || {}, 'ID');
+
+                var khCode = idF ? idF.val : '';
+
+
+
+                // 3. Xác định UI Template & Renderer
+
+                var apiCode = (res.apiCode || '').toLowerCase();
+
+                var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
+
+                var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
+
+                // 4. Render — truyn meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
+
+                var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode };
+
+                var cardHtml = renderFn(cleanData, res.message, khCode || apiCode, renderMeta);
+
+                _addHtmlMessage(cardHtml, '📊 Kết quả');
+
                 return;
+
             }
 
 
 
-            // 2. Tìm Mã ối Tượng (Customer Code) từ metadata
+            // -- Xử lý Lỗi --
 
-            var idF = _pickField(res.intentParams || {}, 'ID');
+            if (res && res.status === 'error') {
 
-            var khCode = idF ? idF.val : '';
+                var errorMsg = (res.message && res.message.length < 100) ? res.message : 'Dạ hệ thống đang bận hoặc dữ liệu chưa sẵn sàng ạ.';
 
+                _addMessage('ai', ' ' + errorMsg);
 
+                return;
 
-            // 3. Xác định UI Template & Renderer
-
-            var apiCode = (res.apiCode || '').toLowerCase();
-
-            var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
-
-            var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
-
-            // 4. Render — truyn meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
-
-            var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode };
-
-            var cardHtml = renderFn(cleanData, res.message, khCode || apiCode, renderMeta);
-
-            _addHtmlMessage(cardHtml, '📊 Kết quả');
-
-            return;
-
-        }
-
-
-
-        // -- Xử lý Lỗi --
-
-        if (res && res.status === 'error') {
-
-            var errorMsg = (res.message && res.message.length < 100) ? res.message : 'Dạ hệ thống đang bận hoặc dữ liệu chưa sẵn sàng ạ.';
-
-            _addMessage('ai', ' ' + errorMsg);
-
-            return;
-
-        }
+            }
 
 
 
@@ -1519,7 +1519,7 @@
 
             }
 
-            
+
 
             if (reply === '[]' || reply === '{}') reply = 'Dạ, em không tìm thấy kết quả nào, danh sách hiện đang trống ạ.';
 
@@ -1941,7 +1941,7 @@
 
                 var trendCls = (tv.indexOf('-') !== -1 || tv.indexOf('giảm') !== -1) ? 'ai-trend-down' : 'ai-trend-up';
 
-                html += '<div class="ai-card-trend ' + trendCls + '">' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
+                html += '<div class="ai-card-trend ' + trendCls + '">📈 ' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
 
                 usedKeys.push(trendF.key);
 
@@ -1989,7 +1989,7 @@
 
         // Nút toggle bảng
 
-        var toggleText = 'Xem dạng bảng';
+        var toggleText = '📊 Xem dạng bảng';
 
         html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
 
@@ -2270,7 +2270,7 @@
 
         var groupMap = {};
 
-        
+
 
         rows.forEach(function (row, idx) {
 
@@ -2288,7 +2288,7 @@
 
             if (!tVal && !idVal) gKey = 'ROW::' + idx;
 
-            
+
 
             if (!groupMap[gKey]) {
 
@@ -2320,17 +2320,17 @@
 
         // Tìm các key chung và key biến đổi cho từng nhóm
 
-        groups.forEach(function(g) {
+        groups.forEach(function (g) {
 
             g.commonKeys = [];
 
             g.varyingKeys = [];
 
-            keys.forEach(function(k) {
+            keys.forEach(function (k) {
 
                 var firstVal = g.rows[0][k];
 
-                var isVarying = g.rows.some(function(r) { return r[k] !== firstVal; });
+                var isVarying = g.rows.some(function (r) { return r[k] !== firstVal; });
 
                 if (isVarying) g.varyingKeys.push(k);
 
@@ -2466,91 +2466,91 @@
 
                 html += '<div class="ai-catalog-details-content">';
 
-                
 
-                var storehouseKeys = grp.varyingKeys.filter(function(k) { return /storehouse|kho$|makho/i.test(k); });
 
-                
+                var storehouseKeys = grp.varyingKeys.filter(function (k) { return /storehouse|kho$|makho/i.test(k); });
+
+
 
                 if (storehouseKeys.length > 0) {
 
-                     var shKey = storehouseKeys[0];
+                    var shKey = storehouseKeys[0];
 
-                     var shGroups = {};
+                    var shGroups = {};
 
-                     grp.rows.forEach(function(r) {
+                    grp.rows.forEach(function (r) {
 
-                         var shVal = String(r[shKey] || 'Khác');
+                        var shVal = String(r[shKey] || 'Khác');
 
-                         if (!shGroups[shVal]) shGroups[shVal] = [];
+                        if (!shGroups[shVal]) shGroups[shVal] = [];
 
-                         shGroups[shVal].push(r);
+                        shGroups[shVal].push(r);
 
-                     });
+                    });
 
-                     
 
-                     Object.keys(shGroups).forEach(function(shVal) {
 
-                         html += '<div class="ai-catalog-subgroup-title"> Kho: <strong>' + _esc(shVal) + '</strong> (' + shGroups[shVal].length + ' mục)</div>';
+                    Object.keys(shGroups).forEach(function (shVal) {
 
-                         shGroups[shVal].forEach(function(r, sIdx) {
+                        html += '<div class="ai-catalog-subgroup-title"> Kho: <strong>' + _esc(shVal) + '</strong> (' + shGroups[shVal].length + ' mục)</div>';
 
-                              html += '<div class="ai-catalog-subgroup-item">';
+                        shGroups[shVal].forEach(function (r, sIdx) {
 
-                              grp.varyingKeys.forEach(function(k) {
+                            html += '<div class="ai-catalog-subgroup-item">';
 
-                                  if (k === shKey || usedKeys.indexOf(k) !== -1) return;
+                            grp.varyingKeys.forEach(function (k) {
 
-                                  var val = r[k];
+                                if (k === shKey || usedKeys.indexOf(k) !== -1) return;
 
-                                  if (val === null || val === undefined || String(val).trim() === '') return;
+                                var val = r[k];
 
-                                  html += '<div class="ai-catalog-row-small">';
+                                if (val === null || val === undefined || String(val).trim() === '') return;
 
-                                  html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                                html += '<div class="ai-catalog-row-small">';
 
-                                  html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                                html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
 
-                                  html += '</div>';
+                                html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
 
-                              });
+                                html += '</div>';
 
-                              html += '</div>';
+                            });
 
-                         });
+                            html += '</div>';
 
-                     });
+                        });
+
+                    });
 
                 } else {
 
-                     grp.rows.forEach(function(r, sIdx) {
+                    grp.rows.forEach(function (r, sIdx) {
 
-                          html += '<div class="ai-catalog-subgroup-item">';
+                        html += '<div class="ai-catalog-subgroup-item">';
 
-                          html += '<div class="ai-catalog-subgroup-title">Mục ' + (sIdx+1) + '</div>';
+                        html += '<div class="ai-catalog-subgroup-title">Mục ' + (sIdx + 1) + '</div>';
 
-                          grp.varyingKeys.forEach(function(k) {
+                        grp.varyingKeys.forEach(function (k) {
 
-                              if (usedKeys.indexOf(k) !== -1) return;
+                            if (usedKeys.indexOf(k) !== -1) return;
 
-                              var val = r[k];
+                            var val = r[k];
 
-                              if (val === null || val === undefined || String(val).trim() === '') return;
+                            if (val === null || val === undefined || String(val).trim() === '') return;
 
-                              html += '<div class="ai-catalog-row-small">';
+                            html += '<div class="ai-catalog-row-small">';
 
-                              html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                            html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
 
-                              html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                            html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
 
-                              html += '</div>';
+                            html += '</div>';
 
-                          });
+                        });
 
-                          html += '</div>';
+                        html += '</div>';
 
-                     });
+                    });
 
                 }
 
@@ -2575,7 +2575,7 @@
         html += '</div>'; // ai-view-cards
 
         // Toggle sang bảng
-        var toggleText = 'Xem dạng bảng';
+        var toggleText = '📊 Xem dạng bảng';
 
         html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '">' + toggleText + '</button>';
 
@@ -2893,7 +2893,7 @@
 
                 // Restore text gốc từ data attribute (tránh encoding mismatch)
 
-                var origText = tableBtn.getAttribute('data-orig-text') || 'Xem dạng bảng';
+                var origText = tableBtn.getAttribute('data-orig-text') || '📊 Xem dạng bảng';
 
                 tableBtn.textContent = origText;
 
@@ -4466,17 +4466,17 @@
     if ($btnTheme) {
         var moon = document.getElementById('chatbot-icon-moon');
         var sun = document.getElementById('chatbot-icon-sun');
-        
+
         function syncIcons() {
             var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             if (moon) moon.style.display = isDark ? 'none' : '';
             if (sun) sun.style.display = isDark ? '' : 'none';
         }
-        
+
         syncIcons();
         window.addEventListener('themechanged', syncIcons);
-        
-        $btnTheme.addEventListener('click', function() {
+
+        $btnTheme.addEventListener('click', function () {
             if (typeof toggleTheme === 'function') {
                 toggleTheme();
             } else {

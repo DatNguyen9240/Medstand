@@ -18,7 +18,7 @@ BEGIN
 
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
-        SELECT 'N/A' AS [Mã SP], N'❌ Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
+        SELECT 'N/A' AS [Mã SP], N'Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
         RETURN;
     END
 
@@ -104,42 +104,52 @@ BEGIN
     SELECT DISTINCT ItemID INTO #TrongTam 
     FROM AR_SanPhamTrongTamDetailTbl WHERE DocumentID = @CurProgramID
 
+    -- TIÊU CHÍ 6: Đã mua hôm nay (Real-time Filter) quét cả đơn nháp (Order) và hóa đơn (Invoice)
+    SELECT DISTINCT ItemID INTO #DaMuaHomNay FROM (
+        SELECT D.ItemID
+        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        WHERE I.ObjectID = @MaKhachHang AND CAST(I.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND ISNULL(I.StatusID, 0) != 10
+        UNION
+        SELECT D.ItemID
+        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+        WHERE O.ObjectID = @MaKhachHang AND CAST(O.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND ISNULL(O.StatusID, 0) != 10
+    ) T
+
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
     SELECT TOP (@TopN)
-        L.ItemID                                        AS [Mã SP],
-        CF.ItemName                                     AS [Sản phẩm],
-        CAST(L.TongTien AS BIGINT)                      AS [Đã mua (đ)],
-        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [Lần cuối],
-        CK.ChuKyTrungBinh                               AS [Chu kỳ (ngày)],
-        -- Dự kiến còn lại: Nếu < 0 (đã quá hạn) thì hiện 0 cho trực quan
+        L.ItemID                                        AS [MaSanPham],
+        CF.ItemName                                     AS [TenSanPham],
+        CAST(L.TongTien AS BIGINT)                      AS [TongDaMua],
+        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [LanMuaCuoi],
+        CK.ChuKyTrungBinh                               AS [ChuKyNgay],
         CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
-             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [Còn (ngày)],
+             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [TonKho],
         CONCAT(
             CASE 
-                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh 
-                THEN N'☢️ Quá hạn mua ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
-                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 
-                THEN N'✨ THỜI ĐIỂM VÀNG (~' + CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS VARCHAR) + N' ngày)'
-                ELSE N'📦 Ổn định'
+                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Quá hạn ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
+                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'THỜI ĐIỂM VÀNG'
+                ELSE N'Ổn định'
             END,
-            CASE WHEN TT.ItemID IS NOT NULL THEN N' | 🔥 Trọng tâm' ELSE '' END,
-            CASE WHEN MV.ItemID IS NOT NULL THEN N' | 📅 Mùa vụ' ELSE '' END,
-            CASE WHEN KM.ItemID IS NOT NULL THEN N' | 🎁 Khuyến mãi' ELSE '' END
-        )                                               AS [Gợi ý]
+            CASE WHEN TT.ItemID IS NOT NULL THEN N' | Trọng tâm' ELSE '' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N' | Mùa vụ' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N' | Khuyến mãi' ELSE '' END
+        )                                               AS [TrangThai]
     FROM #LichSu L
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
     LEFT JOIN #KhuyenMai KM ON L.ItemID = KM.ItemID
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
+    LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
     LEFT JOIN CF_ItemTbl CF ON L.ItemID = CF.ItemID
     WHERE ISNULL(CF.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI') -- Lọc rác
       AND CF.ItemID NOT LIKE 'KM%' AND CF.ItemID NOT LIKE 'BB%'
+      AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
              (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 
              (CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
              L.SoLanMua DESC
 
-    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam;
+    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
 END
 GO
 

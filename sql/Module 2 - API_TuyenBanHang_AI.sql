@@ -14,7 +14,7 @@ BEGIN
    -- 0. KIỂM TRA khachhang HỢP LỆ (Nếu có truyền vào)
    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
    BEGIN
-       SELECT 'N/A' AS ObjectID, N'❌ Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
+       SELECT 'N/A' AS ObjectID, N'Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
        RETURN;
    END
     SET DATEFIRST 7  -- Chủ nhật = 1, Thứ 2 = 2, ..., Thứ 7 = 7
@@ -42,19 +42,24 @@ BEGIN
     FROM SY_User WHERE UserName = @Username
 
 
-    -- ═══ Lần mua cuối + Số ngày không mua ═══
+    -- ═══ Lần mua cuối + Số ngày không mua (Tính cả hóa đơn & đơn nháp) ═══
     SELECT
-        I.ObjectID,
-        MAX(I.DocumentDate)                             AS LanMuaCuoi,
-        DATEDIFF(DAY, MAX(I.DocumentDate), @TuNgay)   AS SoNgayKhongMua
+        T.ObjectID,
+        MAX(T.DocumentDate)                             AS LanMuaCuoi,
+        DATEDIFF(DAY, MAX(T.DocumentDate), @TuNgay)   AS SoNgayKhongMua
     INTO #LanMuaCuoi
-    FROM AR_InvoiceTbl I
-    WHERE ISNULL(I.StatusID, 0) != 10
-      AND (@MaKhachHang   = '' OR I.ObjectID  = @MaKhachHang)
-      AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
-      AND (@SYSCeoID     = '' OR I.CeoID     = @SYSCeoID)
-      AND (@SYSManagerID = '' OR I.ManagerID = @SYSManagerID)
-    GROUP BY I.ObjectID
+    FROM (
+        SELECT ObjectID, DocumentDate, BranchID, CeoID, ManagerID 
+        FROM AR_InvoiceTbl WHERE ISNULL(StatusID, 0) != 10
+        UNION ALL
+        SELECT ObjectID, DocumentDate, BranchID, CeoID, ManagerID 
+        FROM AR_OrderTbl WHERE ISNULL(StatusID, 0) != 10
+    ) T
+    WHERE (@MaKhachHang   = '' OR T.ObjectID  = @MaKhachHang)
+      AND (@SYSBranchID  = '' OR T.BranchID  = @SYSBranchID)
+      AND (@SYSCeoID     = '' OR T.CeoID     = @SYSCeoID)
+      AND (@SYSManagerID = '' OR T.ManagerID = @SYSManagerID)
+    GROUP BY T.ObjectID
 
 
     -- ═══ Chu kỳ mua TB theo khách ═══
