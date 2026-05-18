@@ -840,6 +840,7 @@
         _addMessage('user', displayText, attachedFileName);
 
         $input.value = '';
+        _autoResize();
 
         _updateSendBtn();
 
@@ -881,9 +882,9 @@
 
             var normalizedText = String(text).trim().toLowerCase();
 
-            if (normalizedText.indexOf('/hi') === 0 || normalizedText.indexOf('/hoi') === 0 || normalizedText.indexOf('/searchrag') === 0) {
+            if (normalizedText.indexOf('/h i') === 0 || normalizedText.indexOf('/hoi') === 0 || normalizedText.indexOf('/searchrag') === 0) {
 
-                var queryText = String(text).replace(/^\/(hi|hoi|searchrag)/i, '').trim();
+                var queryText = String(text).replace(/^\/(h i|hoi|searchrag)/i, '').trim();
 
                 
 
@@ -891,7 +892,7 @@
 
                     _hideTyping(); _setStopMode(false);
 
-                    _addMessage('ai', 'Dạ sếp muốn tìm kiếm thông tin gì trong kho tài liệu ạ? (Ví dụ: `/hi Quy định đổi trả thuốc`)');
+                    _addMessage('ai', 'Dạ sếp muốn tìm kiếm thông tin gì trong kho tài liệu ạ? (Ví dụ: `/h i Quy định đổi trả thuốc`)');
 
                     return;
 
@@ -899,13 +900,14 @@
 
 
 
-                _addMessage('ai', ' ang bới móc kho dữ liệu tài liệu RAG...');
+                _addMessage('ai', '   ang bới móc kho dữ liệu tài liệu RAG...');
 
                 _doRAGSearch(queryText);
 
                 
 
                 $input.value = '';
+                _autoResize();
 
                 _updateSendBtn();
 
@@ -3916,6 +3918,7 @@
         var after = text.substring($input.selectionStart);
 
         $input.value = before + insertText + ' ' + after;
+        _autoResize();
 
         // Set cursor after inserted text
 
