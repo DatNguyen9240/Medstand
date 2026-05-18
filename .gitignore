@@ -53,3 +53,8 @@ n8n/prompt.txt
 Technical_Documentation/*.zip
 
 
+
+# AI Agent Context Files
+.agent/
+AGENTS.md
+Phan_Tich_BRD_AI_Sale.md
