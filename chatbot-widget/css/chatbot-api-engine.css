@@ -137,11 +137,11 @@ body.ae-panel-open::before {
 /* Điều chỉnh lại vị trí ở màn hình lớn để tránh bị lệch do có sidebar */
 @media (min-width: 768px) {
     .ae-panel {
-        left: calc(50% + var(--sidebar-width, 240px) / 2);
+        left: calc(50% + var(--sidebar-width, 280px) / 2);
     }
 
     body.sidebar-collapsed .ae-panel {
-        left: calc(50% + var(--sidebar-collapsed-width, 64px) / 2);
+        left: calc(50% + var(--sidebar-collapsed-width, 80px) / 2);
     }
 }
 
