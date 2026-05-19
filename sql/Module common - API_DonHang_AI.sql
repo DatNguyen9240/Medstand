@@ -26,6 +26,27 @@ BEGIN
    IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    
+   -- CLEAN AI EXTRACTED BRACKETS
+   IF @EmployeeID LIKE '%\[%\]%' ESCAPE '\'
+   BEGIN
+       SET @EmployeeID = SUBSTRING(@EmployeeID, CHARINDEX('[', @EmployeeID) + 1, CHARINDEX(']', @EmployeeID) - CHARINDEX('[', @EmployeeID) - 1)
+   END
+   IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+   BEGIN
+       SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
+   END
+
+   -- ANTI-HALLUCINATION: Clear hallucinated IDs (e.g. LLM compressed a name like 'TRẦNVĂNHƯỞNG')
+   -- Valid IDs without numbers are very rare and short.
+   IF @MaKhachHang <> '' AND LEN(@MaKhachHang) > 8 AND @MaKhachHang NOT LIKE '%[0-9]%'
+   BEGIN
+       SET @MaKhachHang = ''
+   END
+   IF @EmployeeID <> '' AND LEN(@EmployeeID) > 8 AND @EmployeeID NOT LIKE '%[0-9]%'
+   BEGIN
+       SET @EmployeeID = ''
+   END
+   
    SET @timkiem = ISNULL(@timkiem, '')
    SET @StatusName = ISNULL(@StatusName, '')
 

@@ -266,8 +266,6 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
   color: var(--color-primary);
-  position: sticky;
-  top: 0;
 }
 
 .chat-bubble.ai .ai-table tbody tr:last-child td {

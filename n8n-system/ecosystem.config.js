@@ -28,13 +28,6 @@ module.exports = {
       max_memory_restart: "1G"
     },
     {
-      name: "Medstand_CORSProxy",
-      script: "..\\proxy.js",
-      interpreter: nodeExe,
-      cwd: __dirname,
-      watch: false
-    },
-    {
       name: "Medstand_N8N",
       script: path.join(n8nDir, 'npm_global', 'node_modules', 'n8n', 'bin', 'n8n'),
       interpreter: nodeExe,

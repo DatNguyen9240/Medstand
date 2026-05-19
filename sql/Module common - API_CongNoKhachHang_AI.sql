@@ -5,6 +5,20 @@ CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
 AS
 BEGIN
    SET NOCOUNT ON
+
+   -- CLEAN AI EXTRACTED BRACKETS
+   IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+   BEGIN
+       SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
+   END
+
+   -- ANTI-HALLUCINATION: Clear hallucinated IDs (e.g. LLM compressed a name like 'TRẦNVĂNHƯỞNG')
+   -- Valid IDs without numbers are very rare and short.
+   IF @MaKhachHang <> '' AND LEN(@MaKhachHang) > 8 AND @MaKhachHang NOT LIKE '%[0-9]%'
+   BEGIN
+       SET @MaKhachHang = ''
+   END
+
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
    DECLARE @BanLanhDao BIT

@@ -37,6 +37,67 @@ BEGIN
     SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
     SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
 
+    -- SMART AI ID ROUTING
+    DECLARE @ExtractedID VARCHAR(50) = ''
+
+    IF @TenNhanVien LIKE '%\[%\]%' ESCAPE '\'
+    BEGIN
+        SET @ExtractedID = SUBSTRING(@TenNhanVien, CHARINDEX('[', @TenNhanVien) + 1, CHARINDEX(']', @TenNhanVien) - CHARINDEX('[', @TenNhanVien) - 1)
+        SET @TenNhanVien = ''
+    END
+    ELSE IF @EmployeeID LIKE '%\[%\]%' ESCAPE '\'
+    BEGIN
+        SET @ExtractedID = SUBSTRING(@EmployeeID, CHARINDEX('[', @EmployeeID) + 1, CHARINDEX(']', @EmployeeID) - CHARINDEX('[', @EmployeeID) - 1)
+        SET @EmployeeID = ''
+    END
+    ELSE IF @ObjectName LIKE '%\[%\]%' ESCAPE '\'
+    BEGIN
+        SET @ExtractedID = SUBSTRING(@ObjectName, CHARINDEX('[', @ObjectName) + 1, CHARINDEX(']', @ObjectName) - CHARINDEX('[', @ObjectName) - 1)
+        SET @ObjectName = ''
+    END
+    ELSE IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+    BEGIN
+        SET @ExtractedID = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
+        SET @MaKhachHang = ''
+    END
+
+    -- Handle case where N8N already extracted the ID but put it in the wrong ID field
+    IF @ExtractedID = '' AND (@MaKhachHang LIKE 'MED%' OR @MaKhachHang LIKE 'NV%')
+    BEGIN
+        SET @ExtractedID = @MaKhachHang
+        SET @MaKhachHang = ''
+    END
+    ELSE IF @ExtractedID = '' AND (@EmployeeID LIKE 'KH%' OR @EmployeeID LIKE 'CTY%' OR @EmployeeID LIKE 'CUS%')
+    BEGIN
+        SET @ExtractedID = @EmployeeID
+        SET @EmployeeID = ''
+    END
+
+    -- Route the extracted ID correctly based on prefix
+    IF @ExtractedID <> ''
+    BEGIN
+        IF @ExtractedID LIKE 'MED%' OR @ExtractedID LIKE 'NV%'
+        BEGIN
+            SET @EmployeeID = @ExtractedID
+        END
+        ELSE
+        BEGIN
+            SET @MaKhachHang = @ExtractedID
+        END
+    END
+
+    -- ANTI-HALLUCINATION: Clear hallucinated IDs (e.g. LLM compressed a name like 'TRẦNVĂNHƯỞNG')
+    -- Valid IDs without numbers are very rare and short.
+    IF @MaKhachHang <> '' AND LEN(@MaKhachHang) > 8 AND @MaKhachHang NOT LIKE '%[0-9]%'
+    BEGIN
+        SET @MaKhachHang = ''
+    END
+    IF @EmployeeID <> '' AND LEN(@EmployeeID) > 8 AND @EmployeeID NOT LIKE '%[0-9]%'
+    BEGIN
+        SET @EmployeeID = ''
+    END
+
+
     -- 3. Lấy thông tin quyền hạn của User
     DECLARE @SYSBranchID   VARCHAR(50) = ''
     DECLARE @SYSCeoID      VARCHAR(50) = ''
