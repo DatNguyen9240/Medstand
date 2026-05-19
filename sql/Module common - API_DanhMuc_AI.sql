@@ -1,22 +1,36 @@
 CREATE OR ALTER PROCEDURE [dbo].[API_DanhMuc_Core_AI]
     @Type NVARCHAR(50) = NULL,
-    @timkiem NVARCHAR(255) = ''
+    @timkiem NVARCHAR(255) = '',
+    @Username VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON
 
     SET @timkiem = ISNULL(@timkiem, '')
 
+    DECLARE @SYSBranchID    VARCHAR(50) = ''
+    DECLARE @SYSCeoID       VARCHAR(50) = ''
+    DECLARE @SYSManagerID   VARCHAR(50) = ''
+    
+    IF @Username <> ''
+    BEGIN
+        SELECT
+            @SYSBranchID   = ISNULL(BranchID, ''),
+            @SYSCeoID      = ISNULL(CeoID, ''),
+            @SYSManagerID  = ISNULL(ManagerID, '')
+        FROM SY_User WHERE UserName = @Username
+    END
+
     -- =========================================
     -- 1. Không truyền type → trả categories
     -- =========================================
     IF ISNULL(@Type, '') = ''
     BEGIN
-        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'💊' AS icon, '@tra_cuu_san_pham|@TopN=50' AS DataSourceValue
-        UNION ALL SELECT 'khachhang', N'Khách hàng', N'👤', '@danh_muc|@Type=khachhang'
-        UNION ALL SELECT 'donhang', N'Đơn hàng', N'📋', 'API_DonHang_AI|@Username={username}'
-        UNION ALL SELECT 'khohang', N'Kho hàng', N'📦', 'API_DanhsachTonKho_AI|@Username={username}'
-        UNION ALL SELECT 'nhanvien', N'Nhân viên', N'👨‍💼', '@danh_muc|@Type=nhanvien'
+        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'' AS icon, '@tra_cuu_san_pham|@TopN=50' AS DataSourceValue
+        UNION ALL SELECT 'khachhang', N'Khách hàng', N'', '@danh_muc|@Type=khachhang'
+        UNION ALL SELECT 'donhang', N'Đơn hàng', N'', 'API_DonHang_AI|@Username={username}'
+        UNION ALL SELECT 'khohang', N'Kho hàng', N'', 'API_DanhsachTonKho_AI|@Username={username}'
+        UNION ALL SELECT 'nhanvien', N'Nhân viên', N'', '@danh_muc|@Type=nhanvien'
         RETURN
     END
 
@@ -42,6 +56,7 @@ BEGIN
             ) AS ExtraData
         FROM CF_ObjectTbl
         WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+          AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)))
           AND (@timkiem = '' 
                OR ObjectName LIKE N'%' + @timkiem + '%'
                OR ObjectID LIKE '%' + @timkiem + '%'
@@ -85,9 +100,12 @@ BEGIN
             ) AS ExtraData
         FROM AR_OrderTbl A
         LEFT JOIN CF_ObjectTbl O ON O.ObjectID = A.ObjectID
-        WHERE @timkiem = ''
+        WHERE (ISNULL(@SYSBranchID, '') = '' OR A.BranchID = @SYSBranchID)
+          AND (ISNULL(@SYSCeoID, '') = '' OR A.CeoID = @SYSCeoID)
+          AND (ISNULL(@SYSManagerID, '') = '' OR A.ManagerID = @SYSManagerID)
+          AND (@timkiem = ''
            OR A.DocumentID LIKE '%' + @timkiem + '%'
-           OR O.ObjectName LIKE N'%' + @timkiem + '%'
+           OR O.ObjectName LIKE N'%' + @timkiem + '%')
 
         UNION ALL
 
@@ -107,6 +125,8 @@ BEGIN
             ) AS ExtraData
         FROM CF_ObjectTbl
         WHERE isEmployee = 1 AND ISNULL(isDisable, 0) = 0
+          AND (ISNULL(@SYSBranchID, '') = '' OR BranchID = @SYSBranchID)
+          AND (ISNULL(@SYSCeoID, '') = '' OR CeoID = @SYSCeoID)
           AND (@timkiem = ''
                OR ObjectName LIKE N'%' + @timkiem + '%'
                OR Phone LIKE '%' + @timkiem + '%')
@@ -138,6 +158,7 @@ BEGIN
             ) AS ExtraData
         FROM CF_ObjectTbl
         WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+          AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)))
           AND (@timkiem = '' 
                OR ObjectName LIKE N'%' + @timkiem + '%'
                OR ObjectID LIKE '%' + @timkiem + '%'

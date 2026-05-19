@@ -66,9 +66,9 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
             -- BẢO MẬT RLS: Nếu không phải Manager, user BẮT BUỘC phải được gán ít nhất 1 mã định danh.
             -- Nếu user cấu hình thiếu (trắng toàn bộ mã), chặn đứng xem toàn bộ dữ liệu (Chống lỗi Tautology)
@@ -105,9 +105,9 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
             AND (
                 @IsManager = 1 
@@ -145,9 +145,9 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
             AND (
                 @IsManager = 1 

@@ -384,7 +384,7 @@ BEGIN
             @_Healed_ INT = 0
         AS
         BEGIN
-            EXEC dbo.API_DanhMuc_Core_AI @Type = @Type, @timkiem = @timkiem;
+            EXEC dbo.API_DanhMuc_Core_AI @Type = @Type, @timkiem = @timkiem, @Username = @Username;
         END';
         
         EXEC sp_executesql @ProxySQL;

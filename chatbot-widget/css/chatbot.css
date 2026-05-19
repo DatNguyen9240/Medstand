@@ -2551,40 +2551,26 @@
 }
 
 /* Nút xóa chat trôi nổi góc trên cùng (Floating Clear Chat Button) */
-.chat-clear-btn-floating {
-  position: fixed;
-  top: 16px;
-  right: 16px;
+.chat-header-actions {
+  position: sticky;
+  top: 0;
   z-index: 100;
-  width: 40px;
-  height: 40px;
-  background: rgba(var(--color-white-rgb, 255, 255, 255), 0.05);
-  border: 1px solid rgba(var(--color-white-rgb, 255, 255, 255), 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(var(--color-black-rgb, 0, 0, 0), 0.1);
-  transition: all 0.2s ease;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-bottom: 8px;
+  background: var(--color-background, transparent);
+  /* Optional: a slight gradient at the bottom so it fades into messages */
 }
 
-.chat-clear-btn-floating:hover {
-  background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.15);
-  border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.4);
-  color: #ef4444;
-  transform: translateY(-2px);
-}
-
-.chat-theme-btn-floating {
-  position: fixed;
-  top: 16px;
-  right: 64px;
-  z-index: 100;
+.chat-header-actions .chat-action-btn {
   width: 40px;
   height: 40px;
-  background: rgba(var(--color-white-rgb, 255, 255, 255), 0.05);
-  border: 1px solid rgba(var(--color-white-rgb, 255, 255, 255), 0.1);
+  background: rgba(var(--color-white-rgb, 255, 255, 255), 0.5);
+  border: 1px solid rgba(var(--color-slate-300-rgb, 203, 213, 225), 0.8);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(var(--color-black-rgb, 0, 0, 0), 0.1);
+  box-shadow: 0 2px 8px rgba(var(--color-black-rgb, 0, 0, 0), 0.05);
   transition: all 0.2s ease;
   border-radius: 50%;
   display: flex;
@@ -2594,7 +2580,14 @@
   color: var(--color-text, #334155);
 }
 
-.chat-theme-btn-floating:hover {
+.chat-header-actions .chat-clear-btn:hover {
+  background: rgba(var(--color-danger-rgb, 239, 68, 68), 0.15);
+  border-color: rgba(var(--color-danger-rgb, 239, 68, 68), 0.4);
+  color: #ef4444;
+  transform: translateY(-2px);
+}
+
+.chat-header-actions #btn-theme-chatbot:hover {
   background: rgba(var(--color-primary-rgb, 59, 130, 246), 0.15);
   border-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.4);
   color: var(--color-primary, #3b82f6);
