@@ -96,7 +96,7 @@ window.API_CONFIG = {
         }
     },
 
-    CHAT_WEBHOOK: '/webhook/chat-v6',
+    CHAT_WEBHOOK: '/webhook/hook-ai-dainao',
     CATALOG_ROOT_API: '@danh_muc',
     CART_CUSTOMER_DS: '@danh_muc|@Type=khachhang|@timkiem={q}',
     ENTITY_LOOKUP_DS: '@danh_muc|@timkiem={q}',
