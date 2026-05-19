@@ -512,3 +512,9 @@ setTimeout(function() {
     }
   }
 }, 500);
+
+// -- Cleanup Hooks (Chống rò rỉ bộ nhớ) --------------------------------
+window._pageCleanupHooks = window._pageCleanupHooks || [];
+window._pageCleanupHooks.push(function() {
+  $(document).off('change', '#fs-orderDate');
+});

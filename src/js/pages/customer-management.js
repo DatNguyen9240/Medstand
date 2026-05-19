@@ -385,3 +385,11 @@ $(document).on('input', '#fs-birthday', function () {
   else if (v.length > 2) v = v.substring(0, 2) + '/' + v.substring(2);
   this.value = v;
 });
+
+// -- Cleanup Hooks (Chống rò rỉ bộ nhớ) --------------------------------
+window._pageCleanupHooks = window._pageCleanupHooks || [];
+window._pageCleanupHooks.push(function() {
+  $(document).off('click', '.customer-card');
+  $(document).off('click', '#btn-open-map');
+  $(document).off('input', '#fs-birthday');
+});

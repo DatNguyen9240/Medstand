@@ -56,6 +56,7 @@ const Router = (() => {
   let _currentRoute = null;
   let _loadedScripts = new Set();    // track loaded page scripts
   let _dynamicStylesheets = [];       // track dynamic CSS <link> elements
+  window._pageCleanupHooks = [];      // track global cleanup hooks per page
 
   // ── Template cache ─────────────────────────────────────────────────────
   const _templateCache = {};
@@ -233,6 +234,14 @@ const Router = (() => {
     // FilterComponent appends overlay/modal/select to body
     $('.filter-overlay, .filter-modal, .select-modal').remove();
     $('body').css('overflow', '').removeClass('has-total-bar');
+
+    // Run cleanup hooks from previous page
+    if (window._pageCleanupHooks && window._pageCleanupHooks.length > 0) {
+      window._pageCleanupHooks.forEach(hook => {
+        try { hook(); } catch (e) { console.error('[Router] Cleanup error:', e); }
+      });
+      window._pageCleanupHooks = [];
+    }
 
     // Scroll to top first
     window.scrollTo(0, 0);

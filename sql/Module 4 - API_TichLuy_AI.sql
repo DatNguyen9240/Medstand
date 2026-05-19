@@ -39,13 +39,19 @@ BEGIN
    ) X
 
 
-   -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM
-   SELECT I.ObjectID, SUM(D.TotalAmount) AS TongHoaDon INTO #HoaDon
-   FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-   JOIN #TrongTam T ON D.ItemID = T.ItemID
-   WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
-     AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
-   GROUP BY I.ObjectID
+    -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM (Tính cả hóa đơn & đơn nháp)
+    SELECT I.ObjectID, SUM(I.TotalAmount) AS TongHoaDon INTO #HoaDon
+    FROM (
+        SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.ItemID, D.TotalAmount
+        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        UNION ALL
+        SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.ItemID, D.TotalAmount
+        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+    ) I
+    JOIN #TrongTam T ON I.ItemID = T.ItemID
+    WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
+      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+    GROUP BY I.ObjectID
 
 
    SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
@@ -90,8 +96,8 @@ BEGIN
 
        CASE
            WHEN EXISTS (SELECT 1 FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0))
-                THEN N'💡 Thiếu ' + FORMAT((SELECT TOP 1 TuDiem FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC) - ISNULL(TL.TongTichLuy,0), 'N0') + N'đ để đạt mốc tiếp theo.'
-           ELSE N'🎉 Tuyệt vời! Bạn đã đạt mốc quà cao nhất trong chương trình.'
+                THEN N'Thiếu ' + FORMAT((SELECT TOP 1 TuDiem FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC) - ISNULL(TL.TongTichLuy,0), 'N0') + N'đ để đạt mốc tiếp theo.'
+           ELSE N'Tuyệt vời! Bạn đã đạt mốc quà cao nhất trong chương trình.'
        END AS LoiNhacAI
 
    FROM CF_ObjectTbl KH
@@ -106,13 +112,19 @@ BEGIN
    -- ════════════════════════════════════════════════════
    IF @MaKhachHang != ''
    BEGIN
-       SELECT DISTINCT D.ItemID
+       SELECT DISTINCT I.ItemID
        INTO #ItemsBought
-       FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+       FROM (
+           SELECT I.ObjectID, I.DocumentDate, I.StatusID, D.ItemID
+           FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+           UNION ALL
+           SELECT O.ObjectID, O.DocumentDate, O.StatusID, D.ItemID
+           FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+       ) I
        WHERE I.ObjectID = @MaKhachHang 
          AND I.DocumentDate BETWEEN @TuNgay AND @DenNgay
          AND ISNULL(I.StatusID, 0) != 10
-         AND D.ItemID IN (SELECT ItemID FROM #TrongTam)
+         AND I.ItemID IN (SELECT ItemID FROM #TrongTam)
 
        SELECT TOP 12
            I.ItemID,

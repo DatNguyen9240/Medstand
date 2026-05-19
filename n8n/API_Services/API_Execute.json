@@ -1,0 +1,355 @@
+{
+  "name": "K0-C · Execute API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api-execute",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "id": "wh-execute",
+      "name": "Webhook Execute",
+      "webhookId": "execute-001"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputJson = $json || {};\n// --- TÍCH HỢP TƯƠNG THÍCH AGENT ---\nlet body = inputJson.body || {};\nconst isAgent = (inputJson.sessionId && inputJson.intent) || (body.sessionId && body.intent) || inputJson._isAgent || body._isAgent;\nlet headers = inputJson.headers || {};\nlet method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (isAgent) {\n    body = { ...inputJson, ...body };\n    body.ApiCode = body.intent || inputJson.intent; // Agent gọi tool dùng intent\n    body.params = { ...inputJson, ...body.params };\n    method = 'POST'; // Bỏ qua OPTIONS check\n    if (inputJson.authorization || body.authorization) headers.authorization = inputJson.authorization || body.authorization;\n    if (inputJson.cookie || body.cookie) headers.cookie = inputJson.cookie || body.cookie;\n}\n// ---------------------------------\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\n\nif (!headers.authorization || headers.authorization.trim() === '' || headers.authorization.includes('empty') || headers.authorization.includes('null')) {\n  if (headers.cookie) {\n    const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n    if (m) headers.authorization = 'Bearer ' + m[1];\n  }\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nlet username = body.username || '';\nif (!username) {\n  try {\n    const authH = headers.authorization || headers.Authorization || '';\n    const tm = authH.match(/Bearer (.+)/);\n    if (tm) {\n      const token = tm[1];\n      \n      // --- 1. LOCAL EXPIRATION CHECK FOR JWT ---\n      if (token.includes('.')) {\n        try {\n          const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');\n          const pad = (4 - b64.length % 4) % 4;\n          const pl = JSON.parse(Buffer.from(b64 + '='.repeat(pad), 'base64').toString('utf8'));\n          if (pl && pl.exp) {\n            const nowSecs = Math.floor(Date.now() / 1000);\n            if (nowSecs > pl.exp) {\n              throw new Error(\"SECURITY_ALERT: Token đăng nhập đã hết hạn (Expired). Vui lòng đăng nhập lại!\");\n            }\n          }\n        } catch(e) {\n          if (e.message && e.message.includes('SECURITY_ALERT')) throw e;\n        }\n      }\n      \n      // --- 2. VERIFY SIGNATURE (API_UserInfo) OR CACHE ---\n      // We NEVER trust the JWT payload's username directly. \n      // It MUST be validated by the backend at least once to ensure signature is correct.\n      try {\n        const staticData = $getWorkflowStaticData('global');\n        if (staticData.uuidCache && staticData.uuidCache[token]) {\n            username = staticData.uuidCache[token]; // Already verified by backend previously\n        } else {\n            inputJson._uuidToken = token; // Mark for 'Resolve UUID' node to call API_UserInfo\n        }\n      } catch(err) {\n        inputJson._uuidToken = token;\n      }\n    }\n  } catch(e) { \n    if (e.message && e.message.includes('SECURITY_ALERT')) throw e;\n    username = '';\n  }\n}\n\nif (username && !params['@Username']) {\n  params['@Username'] = username;\n}\n\n\n// --- BẮT ĐẦU VÁ BẢO MẬT: REGEX VALIDATOR ---\nconst sqlBlacklist = /(--|;|\\bDROP\\b|\\bTRUNCATE\\b|\\bDELETE\\b|\\bUPDATE\\b|\\bINSERT\\b|\\bEXEC\\b|\\bALTER\\b)/i;\nfor (const key in params) {\n  if (Object.prototype.hasOwnProperty.call(params, key)) {\n    const val = String(params[key]);\n    if (sqlBlacklist.test(val)) {\n      apiCode = '@invalid_code'; // Đổi mã thành invalid để chặn lệnh SQL\n      params['@SecurityBlock'] = 'Phát hiện từ khóa nghi ngờ SQL Injection: ' + val;\n    }\n  }\n}\n// --- KẾT THÚC VÁ BẢO MẬT ---\n\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { _isAgent: isAgent, ...inputJson, headers: headers, body: {...body, ApiCode: apiCode, params: params}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ],
+      "id": "check-execute",
+      "name": "Check Method Execute"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._method }}",
+              "rightValue": "OPTIONS",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        0
+      ],
+      "id": "if-options-exec",
+      "name": "Is OPTIONS? (Execute)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        0
+      ],
+      "id": "cors-exec",
+      "name": "CORS OK (Execute)"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst execNode = $('Check Method Execute').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nlet paramsStr = execNode._paramsSafeStr || '{}';\n\nlet realUsername = '';\ntry {\n    let data = $json || {};\n    if (data.data) data = data.data;\n    if (data.Data) data = data.Data;\n    if (data.records && Array.isArray(data.records) && data.records.length > 0) data = data.records[0];\n    \n    realUsername = data.username || data.Username || data.UserName || data.name || data.sub || data.User || '';\n    if (realUsername && execNode._uuidToken) {\n        const staticData = $getWorkflowStaticData('global');\n        if (!staticData.uuidCache) staticData.uuidCache = {};\n        staticData.uuidCache[execNode._uuidToken] = realUsername;\n    }\n} catch(e) {}\n\n// ĐÃ XÓA FAILSAFE ADMIN ĐỂ ĐẢM BẢO BẢO MẬT TUYỆT ĐỐI\n\ntry {\n    let p = JSON.parse(paramsStr.replace(/''/g, \"'\")); // Un-escape first\n    \n    // XÓA CÁC THAM SỐ NULL ĐỂ KHÔNG LÀM HỎNG SQL\n    for (let k in p) {\n        if (p[k] === null) {\n            delete p[k];\n        }\n    }\n    \n    // CHỈ NẠP USERNAME KHI TOKEN THẬT SỰ CÓ DỮ LIỆU\n    if (realUsername) p['@Username'] = realUsername;\n    \n    paramsStr = JSON.stringify(p).replace(/'/g, \"''\"); // Re-escape\n} catch(e) {}\n\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = N'${paramsStr}';\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = 'DEFAULT';\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, 'DEFAULT') FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, 'Missing para or Object not support' AS msg, 'DEFAULT' AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N'EXEC ' + QUOTENAME(@SPName) + N' ';\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + \n        CASE WHEN [type] = 0 THEN ' = NULL, '\n             ELSE N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', ' END\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%';\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query, debug_username: realUsername, debug_api_response: $json } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        0
+      ],
+      "id": "build-execute-sql",
+      "name": "Build Execute SQL"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "http-execute",
+      "name": "MS SQL Execute",
+      "credentials": {
+        "microsoftSql": {
+          "id": "",
+          "name": "MS SQL account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\nconst JSON_KEY = 'JSON_F52E2B61-18A1-11d1-B105-00805F49916B';\nlet payload = items.map(i => i.json);\n\n// 0. Extract Metadata\nlet uiTemplate = 'DEFAULT';\nconst metaIdx = payload.findIndex(r => r.Metadata_UiTemplate !== undefined);\nif (metaIdx !== -1) {\n  uiTemplate = payload[metaIdx].Metadata_UiTemplate;\n  payload.splice(metaIdx, 1);\n}\n\n// Xu ly SQL FOR JSON PATH output (khi SP khong tim thay trong API_Definition)\n// N8N MS SQL tra ve [{JSON_F52E...: '[{\"code\":2,\"msg\":\"...\"}]'}]\nif (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n  try {\n    const inner = JSON.parse(payload[0][JSON_KEY]);\n    if (Array.isArray(inner) && inner.length > 0) {\n      if (inner[0].code === 1 || inner[0].code === 2) {\n        return [{ json: { reply: inner[0].msg || 'ApiCode chua duoc dang ky trong he thong', status: 'error', data: [], uiTemplate: uiTemplate } }];\n      }\n      payload = inner;\n    }\n  } catch(e) {\n    return [{ json: { reply: 'Loi xu ly ket qua SQL', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n  if (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n    return [{ json: { reply: 'Khong tim thay API phu hop', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n}\n\n// Kiem tra loi don gian {code, msg}\nif (payload.length === 1 && (payload[0].code === 1 || payload[0].code === 2 || payload[0].error)) {\n  return [{ json: { reply: payload[0].msg || payload[0].error || 'Loi khong xac dinh', status: 'error', data: [], uiTemplate: uiTemplate } }];\n}\n\n// Loc bo cac row con JSON_KEY\npayload = payload.filter(r => r[JSON_KEY] === undefined);\n\nif (payload.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\n// --- DATA BYPASS CỦA GIAI ĐOẠN 2 ---\nlet isAgent = false;\nlet sessionId = 'unknown';\ntry {\n    const checkNode = $('Check Method Execute').first();\n    if (checkNode && checkNode.json) {\n        if (checkNode.json._isAgent) isAgent = true;\n        if (checkNode.json.body && checkNode.json.body.sessionId) sessionId = checkNode.json.body.sessionId;\n    }\n} catch(e) {}\n\nif (isAgent) {\n    let cacheId = sessionId + '_' + Math.random().toString(36).substr(2, 9);\n    try {\n        const crypto = require('crypto');\n        cacheId = crypto.createHmac('sha256', 'Medstand_Enterprise_Secret').update(sessionId + '_' + ($execution ? $execution.id : 'local')).digest('hex');\n    } catch(e) { }\n    \n    const now = Date.now();\n    const TTL_MS = 30 * 60 * 1000;\n    \n    // 1. StaticData (Workflow Local)\n    try {\n        const staticData = $getWorkflowStaticData('global');\n        if (!staticData.dataCache) staticData.dataCache = {};\n        for (const key in staticData.dataCache) {\n            if (staticData.dataCache[key] && staticData.dataCache[key].timestamp && (now - staticData.dataCache[key].timestamp > TTL_MS)) {\n                delete staticData.dataCache[key];\n            }\n        }\n        staticData.dataCache[cacheId] = {\n            timestamp: now,\n            data: payload\n        };\n    } catch(e) {}\n    \n    // 2. Global Node.js Object (Cross-Workflow Memory)\n    try {\n        if (!global.__MEDSTAND_CACHE__) global.__MEDSTAND_CACHE__ = {};\n        for (const key in global.__MEDSTAND_CACHE__) {\n            if (global.__MEDSTAND_CACHE__[key] && global.__MEDSTAND_CACHE__[key].timestamp && (now - global.__MEDSTAND_CACHE__[key].timestamp > TTL_MS)) {\n                delete global.__MEDSTAND_CACHE__[key];\n            }\n        }\n        global.__MEDSTAND_CACHE__[cacheId] = {\n            timestamp: now,\n            data: payload\n        };\n    } catch(e) {}\n    \n    // 3. File System (Cross-Worker / Disk Backup)\n    try {\n        const fs = require('fs');\n        const path = require('path');\n        const os = require('os');\n        const cacheDir = path.join(os.tmpdir(), 'n8n_cache');\n        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });\n        fs.writeFileSync(path.join(cacheDir, cacheId + '.json'), JSON.stringify(payload));\n    } catch(e) {}\n    \n    // Tính toán Tóm tắt nhanh cho AI (Mini Summary)\n    let tongTien = 0;\n    for(const r of payload) {\n        if(r.ThanhTien) tongTien += Number(r.ThanhTien);\n        if(r.TongTien) tongTien += Number(r.TongTien);\n        if(r.DoanhThu) tongTien += Number(r.DoanhThu);\n    }\n    \n    let summary = `Đã tìm thấy ${payload.length} kết quả.`;\n    if(tongTien > 0) summary += ` Tổng tiền tạm tính: ${tongTien}.`;\n    summary += ` Mã Ngăn Kéo: ${cacheId}`;\n    \n    // CHỈ TRẢ VỀ TÓM TẮT CHO AI ĐỌC\n    return [{ json: { status: 'success', Cache_ID: cacheId, summary: summary } }];\n}\n// ----------------------------------\n\nreturn [{ json: { \n  reply: 'Tim thay ' + payload.length + ' ket qua.', \n  status: 'success', \n  count: payload.length, \n  data: payload, uiTemplate: uiTemplate \n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        0
+      ],
+      "id": "format-execute",
+      "name": "Format Execute Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "res-execute",
+      "name": "Respond Execute"
+    },
+    {
+      "parameters": {},
+      "id": "trigger-execute-workflow",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json._uuidToken }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "e0c9d913-e6cd-4491-8894-878af6e97a9b",
+      "name": "Is UUID Token?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://medtest.bms79.com/api/API_UserInfo",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json._uuidToken }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c9d738a7-9fb3-4c27-a8cf-f14c9f71ca2e",
+      "name": "Resolve UUID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "connections": {
+    "Webhook Execute": {
+      "main": [
+        [
+          {
+            "node": "Check Method Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Method Execute": {
+      "main": [
+        [
+          {
+            "node": "Is OPTIONS? (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is OPTIONS? (Execute)": {
+      "main": [
+        [
+          {
+            "node": "CORS OK (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is UUID Token?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Execute SQL": {
+      "main": [
+        [
+          {
+            "node": "MS SQL Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MS SQL Execute": {
+      "main": [
+        [
+          {
+            "node": "Format Execute Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Execute Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Check Method Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is UUID Token?": {
+      "main": [
+        [
+          {
+            "node": "Resolve UUID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Execute SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve UUID": {
+      "main": [
+        [
+          {
+            "node": "Build Execute SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "K0-MetaAPI"
+    }
+  ]
+}

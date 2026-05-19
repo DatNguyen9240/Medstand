@@ -1,0 +1,124 @@
+{
+  "name": "K_Tool_Wrapper_SQL",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/intent-parser",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: typeof $json.query === 'object' ? JSON.stringify($json.query) : $json.query, sessionId: 'agent' }) }}"
+      },
+      "id": "2",
+      "name": "Call Intent Parser",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const triggerData = $input.first().json;\nconst data = { ...triggerData };\n\ndata.sessionId = triggerData.sessionId || 'default_session';\ndata.intent = triggerData.intent || 'unknown';\ndata.token = triggerData.authorization || 'Bearer empty';\ndata.cookie = triggerData.cookie || '';\n\nconst cleanParams = {};\nconst reservedKeys = ['sessionId', 'intent', 'token', 'cookie', 'authorization'];\nfor (const key in triggerData) {\n  if (!reservedKeys.includes(key)) {\n    const val = triggerData[key];\n    if (val !== null && val !== undefined && val !== '' && val !== 'null') {\n      // Nếu key đã có @ thì giữ nguyên, nếu chưa có thì thêm vào\n      const paramName = key.startsWith('@') ? key : '@' + key;\n      cleanParams[paramName] = val;\n    }\n  }\n}\ndata.cleanParams = cleanParams;\nreturn [{ json: data }];"
+      },
+      "id": "clean_params",
+      "name": "Clean Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/api-execute",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Cookie",
+              "value": "={{ $json.cookie }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ApiCode: $json.intent, params: $json.cleanParams, sessionId: $json.sessionId, intent: $json.intent, _isAgent: true }) }}"
+      },
+      "id": "3",
+      "name": "Call API Execute",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseData = $input.first().json;\nlet result = \"Kết quả: \" + (responseData.summary || \"Đã xử lý xong.\");\nif (responseData.data) { result = \"Data: \" + JSON.stringify(responseData.data); }\nif (responseData.Cache_ID) {\n    result += `\\n\\n[LỆNH HỆ THỐNG: BẠN PHẢI BÊ NGUYÊN VĂN DÒNG CHỮ SAU VÀO CUỐI CÙNG CỦA CÂU TRẢ LỜI CỦA BẠN. ĐÂY LÀ ĐIỀU KIỆN BẮT BUỘC KHÔNG THỂ THIẾU.]\\nMã Ngăn Kéo: ${responseData.Cache_ID}`;\n}\nreturn [{ json: { response: result } }];"
+      },
+      "id": "4",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Clean Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Params": {
+      "main": [
+        [
+          {
+            "node": "Call API Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call API Execute": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

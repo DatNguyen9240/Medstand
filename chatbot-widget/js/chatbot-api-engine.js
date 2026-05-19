@@ -1031,9 +1031,9 @@
 
 
 
-            var dispName = pick(['Name', 'ObjectName', 'FullName', 'label']) || r.label || r.value || '';
+            var dispName = pick(['Name', 'ObjectName', 'FullName', 'label', 'ItemName', 'Sản Phẩm', 'Sản phẩm', 'San Pham', 'San pham', 'TenCuaHang', 'Tên cửa hàng']) || r.label || r.value || '';
 
-            var dispId = pick(['MaDanhMuc', 'MaKhachHang', 'MA_KH', 'ID', 'Code', 'CustomerID']) || r.value || '';
+            var dispId = pick(['MaDanhMuc', 'MaKhachHang', 'MA_KH', 'ID', 'Code', 'CustomerID', 'ItemID', 'DocumentID', 'Mã sp', 'Mã SP', 'Ma sp', 'Ma SP']) || r.value || '';
 
             var pl = pick(['PhanLoai', 'type', 'Type']) || '';
 
@@ -1211,9 +1211,9 @@
 
 
 
-                var mAD = pickRaw(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'MA_KH', 'CUSTOMER_ID', 'CustomerCode', 'CustomerID', 'Ma', 'Code', 'ID']) || r.value || '';
+                var mAD = pickRaw(['MaDanhMuc', 'ObjectID', 'MaKhachHang', 'MA_KH', 'CUSTOMER_ID', 'CustomerCode', 'CustomerID', 'Ma', 'Code', 'ID', 'ItemID', 'DocumentID', 'Mã sp', 'Mã SP', 'Ma sp', 'Ma SP']) || r.value || '';
 
-                var mName = pickRaw(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TEN_KH', 'TenKhachHang', 'Ten', 'label']) || r.label || r.Name || '';
+                var mName = pickRaw(['Name', 'ObjectName', 'FullName', 'HoTen', 'HOTEN', 'TEN_KH', 'TenKhachHang', 'Ten', 'label', 'ItemName', 'Sản Phẩm', 'Sản phẩm', 'San Pham', 'San pham', 'TenCuaHang', 'Tên cửa hàng']) || r.label || r.Name || '';
 
                 var mPL = pickRaw(['PhanLoai', 'type', 'Type']) || '';
 
@@ -3966,7 +3966,7 @@
 
 
 
-        _cbMsg && _cbMsg('user', '📡 ' + dispName + (ps ? '\n' + ps : ''));
+        _cbMsg && _cbMsg('user', dispName + (ps ? '\n' + ps : ''));
 
         _cbShow && _cbShow();
 
@@ -4046,7 +4046,7 @@
 
                     if (dataRows.length === 0) {
 
-                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ. 👩‍⚕️');
+                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ.');
 
                         return;
 
@@ -5015,9 +5015,9 @@
 
         getFieldsByRole: _getFieldsByRole,
         // Cho php project-specific renderer gọi datasource qua n8n
-        // Signature: loadDataSource(apiCode, dsString, keyword, callback)
         loadDataSource: _loadDataSource,
-        selectApi: _onApiSelected
+        selectApi: _onApiSelected,
+        hideMenu: _menuHide
     };
 
 })();

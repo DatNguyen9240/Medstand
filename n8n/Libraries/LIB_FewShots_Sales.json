@@ -1,0 +1,9 @@
+[
+  { "input": "doanh thu tháng này bao nhiêu", "output": {"intent":"@doanh_so","params":{"@TuNgay":"[THIS_MONTH_START]","@DenNgay":"[TODAY]"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "dt t3 của tôi", "output": {"intent":"@doanh_so","params":{"@TuNgay":"2025-03-01","@DenNgay":"2025-03-31"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "top khách mua nhiều nhất năm nay", "output": {"intent":"@doanh_so","params":{"@TuNgay":"[THIS_YEAR_START]","@DenNgay":"[TODAY]","@LoaiBaoCao":"KhachHang"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "top nv bán nhiều nhất tháng này", "output": {"intent":"@doanh_so","params":{"@TuNgay":"[THIS_MONTH_START]","@DenNgay":"[TODAY]","@LoaiBaoCao":"NhanVien"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "xem hóa đơn tuần này", "output": {"intent":"@hoa_don","params":{"@TuNgay":"[THIS_WEEK_START]","@DenNgay":"[TODAY]"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "tra cứu đơn hàng của HK001", "output": {"intent":"@don_hang","params":{"@MaKhachHang":"HK001"},"status":"SUCCESS","category":"SALES"} },
+  { "input": "lên đơn cho anh Hùng 10 abc, 5 xyz", "output": {"intent":"@lap_don_hang","action":"ADD","items":[{"keyword":"abc","qty":10},{"keyword":"xyz","qty":5}],"params":{"@MaKhachHang":"hùng"},"status":"SUCCESS","category":"SALES"} }
+]

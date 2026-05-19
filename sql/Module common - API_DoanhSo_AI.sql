@@ -2,6 +2,7 @@ IF OBJECT_ID('API_DoanhSo_AI', 'P') IS NOT NULL DROP PROCEDURE API_DoanhSo_AI;
 GO
 
 CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
+    @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
     @MaKhachHang    VARCHAR(50)    = '',
     @ObjectName   NVARCHAR(200)  = '',
@@ -28,7 +29,8 @@ BEGIN
     END
 
     -- 2. Defaults
-    IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
+    -- Cập nhật: Mặc định nếu không truyền ngày thì lấy từ ĐẦU THÁNG HIỆN TẠI đến hiện tại
+    IF @TuNgay IS NULL SET @TuNgay = DATEADD(DAY, 1 - DAY(GETDATE()), CAST(GETDATE() AS DATE))
     IF @DenNgay IS NULL SET @DenNgay = GETDATE()
 
     -- Fix bounds: 00:00:00 to 23:59:59 (Safe Math Version to avoid string conversion errors)
@@ -68,6 +70,15 @@ BEGIN
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+            -- BẢO MẬT RLS: Nếu không phải Manager, user BẮT BUỘC phải được gán ít nhất 1 mã định danh.
+            -- Nếu user cấu hình thiếu (trắng toàn bộ mã), chặn đứng xem toàn bộ dữ liệu (Chống lỗi Tautology)
+            AND (
+                @IsManager = 1 
+                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
+                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
+                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
+                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+            )
         GROUP BY A.EmployeeID, A.EmployeeName
 
         IF @LoaiBaoCao = 'NhanVien' 
@@ -98,6 +109,13 @@ BEGIN
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+            AND (
+                @IsManager = 1 
+                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
+                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
+                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
+                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+            )
         GROUP BY A.ObjectID, A.ObjectName
 
         IF @LoaiBaoCao = 'KhachHang'
@@ -131,6 +149,13 @@ BEGIN
             AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
             AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
             AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+            AND (
+                @IsManager = 1 
+                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
+                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
+                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
+                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+            )
             AND ISNULL(D.isKM, 0) = 0
         GROUP BY B.ItemID, B.ItemName
 

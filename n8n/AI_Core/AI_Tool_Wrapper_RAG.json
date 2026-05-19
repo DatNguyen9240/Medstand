@@ -1,0 +1,12 @@
+{
+  "name": "K_Tool_Wrapper_RAG",
+  "nodes": [
+    { "parameters": {}, "id": "1", "name": "Execute Workflow Trigger", "type": "n8n-nodes-base.executeWorkflowTrigger", "typeVersion": 1, "position": [0, 0] },
+    { "parameters": { "method": "POST", "url": "http://127.0.0.1:5678/webhook/hook-ai-rag", "sendHeaders": true, "headerParameters": { "parameters": [ { "name": "Authorization", "value": "Bearer local_wrapper_bypass" } ] }, "sendBody": true, "specifyBody": "json", "jsonBody": "={{ JSON.stringify({ query: typeof $json.query === 'object' ? JSON.stringify($json.query) : $json.query }) }}" }, "id": "2", "name": "Call RAG Query", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4, "position": [200, 0] },
+    { "parameters": { "jsCode": "const responseData = $input.first().json;\nreturn [{ json: { response: responseData.message || JSON.stringify(responseData) } }];" }, "id": "3", "name": "Format Output", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [400, 0] }
+  ],
+  "connections": {
+    "Execute Workflow Trigger": { "main": [ [ { "node": "Call RAG Query", "type": "main", "index": 0 } ] ] },
+    "Call RAG Query": { "main": [ [ { "node": "Format Output", "type": "main", "index": 0 } ] ] }
+  }
+}

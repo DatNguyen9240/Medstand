@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 //  Medstand — Project-Specific Renderers
 //  Load SAU chatbot.js và chatbot-api-engine.js:
 //    <script src="chatbot.js"></script>
@@ -239,9 +239,132 @@
         return html;
     }
 
+    
+    // ════════════════════════════════════════════════════════════════
+    //  RENDERER: DYNAMIC METRIC CARD (Thẻ Chỉ Số Nhanh)
+    // ════════════════════════════════════════════════════════════════
+    function _renderMetricCard(rows, headerMsg, apiCode, meta) {
+        if (!rows || rows.length === 0) return '';
+        var r0 = rows[0];
+        var keys = Object.keys(r0);
+        
+        var numKey = null, strKey = null;
+        for(var i=0; i<keys.length; i++) {
+            var val = r0[keys[i]];
+            if (typeof val === 'number' && !numKey) numKey = keys[i];
+            else if (typeof val === 'string' && !strKey) strKey = keys[i];
+        }
+        if (!numKey) numKey = keys[0];
+        if (!strKey) strKey = keys.find(function(k){return k!==numKey;}) || '';
+        
+        var valToShow = r0[numKey];
+        var title = numKey.replace(/_/g, ' ').toUpperCase();
+        
+        var html = '<div class="ai-sales-debt-card" style="text-align:center; padding:25px 15px; border-top: 4px solid #2196f3; background: linear-gradient(180deg, #f0f8ff 0%, #ffffff 100%);">';
+        html += '<div style="font-size:14px; color:#555; text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">' + h.esc(title) + '</div>';
+        html += '<div style="font-size:36px; font-weight:800; color:#1976d2; margin:10px 0;">' + h.fmtCellVal(valToShow) + '</div>';
+        if (strKey && r0[strKey]) {
+            html += '<div style="font-size:13px; color:#888; background:#e3f2fd; padding:4px 10px; border-radius:12px; display:inline-block;">' + h.esc(String(r0[strKey])) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  RENDERER: DYNAMIC ALERT CARD (Thẻ Cảnh Báo)
+    // ════════════════════════════════════════════════════════════════
+    function _renderAlertCard(rows, headerMsg, apiCode, meta) {
+        if (!rows || rows.length === 0) return '';
+        var html = '<div class="ai-sales-debt-card" style="border: 1px solid #ffcdd2; border-left: 5px solid #f44336; background:#fff9f9;">';
+        html += '<div style="color:#c62828; font-weight:bold; font-size:15px; margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #ffebee;">CẢNH BÁO TỪ HỆ THỐNG</div>';
+        
+        rows.forEach(function(r) {
+            html += '<div style="background:#ffffff; border:1px solid #ffcdd2; margin-bottom:10px; padding:12px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">';
+            var keys = Object.keys(r);
+            if(keys.length > 0) {
+                html += '<div style="font-weight:bold; color:#b71c1c; font-size:15px;">' + h.esc(String(r[keys[0]])) + '</div>';
+                html += '<ul style="margin:8px 0 0 0; padding-left:22px; font-size:13px; color:#444; line-height:1.6;">';
+                for(var i=1; i<keys.length; i++) {
+                    html += '<li><b>' + h.esc(keys[i]) + ':</b> ' + h.esc(String(r[keys[i]])) + '</li>';
+                }
+                html += '</ul>';
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  RENDERER: DYNAMIC BAR CHART (Biểu đồ ngang cho Mobile)
+    // ════════════════════════════════════════════════════════════════
+    function _renderBarChart(rows, headerMsg, apiCode, meta) {
+        if (!rows || rows.length === 0) return '';
+        var cardId = 'chart-' + h.nextId() + '-' + Date.now();
+        
+        // Thuật toán bóc tách trục X và Y tự động
+        var keys = Object.keys(rows[0]);
+        var labelKey = keys.find(function(k){return typeof rows[0][k] === 'string';}) || keys[0];
+        var dataKey = keys.find(function(k){return typeof rows[0][k] === 'number';}) || keys[1] || keys[0];
+        
+        var labels = [];
+        var dataVals = [];
+        rows.forEach(function(r) {
+            labels.push(String(r[labelKey]).substring(0,25) + '...'); 
+            dataVals.push(Number(r[dataKey]) || 0);
+        });
+        
+        var chartHeight = Math.max(200, rows.length * 45); // Chiều cao động giãn theo số cột
+        
+        var html = '<div class="ai-sales-debt-card" style="padding:15px; overflow:hidden;">';
+        html += '<div style="font-weight:bold; font-size:15px; margin-bottom:15px; color:#333;">Phân tích: ' + h.esc(dataKey) + '</div>';
+        html += '<div style="position:relative; width:100%; height:' + chartHeight + 'px;">';
+        html += '<canvas id="' + cardId + '"></canvas>';
+        html += '</div></div>';
+        
+        // Delay vẽ biểu đồ chờ DOM load
+        setTimeout(function() {
+            var canvas = document.getElementById(cardId);
+            if (!canvas) return;
+            if (typeof Chart === 'undefined') {
+                canvas.parentNode.innerHTML += '<div style="color:red; font-size:12px;">Hệ thống đang thiếu thư viện Chart.js</div>';
+                return;
+            }
+            new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: dataKey,
+                        data: dataVals,
+                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Ép ngang cho Mobile
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, ticks: { font: { size: 10 } } },
+                        y: { ticks: { font: { size: 11 } } }
+                    }
+                }
+            });
+        }, 150);
+        
+        return html;
+    }
+
     // ── Đăng ký vào hệ thống ─────────────────────────────────────
     ApiChatbot.registerRenderer('CONG_NO',  _renderCongNoChiTiet);
     ApiChatbot.registerRenderer('TICH_LUY', _renderTichLuy);
+    ApiChatbot.registerRenderer('METRIC_CARD', _renderMetricCard);
+    ApiChatbot.registerRenderer('ALERT_CARD', _renderAlertCard);
+    ApiChatbot.registerRenderer('BAR_CHART', _renderBarChart);
 
-    console.log('[Medstand Renderers] Đã đăng ký: CONG_NO, TICH_LUY');
+    console.log('[Medstand Renderers] Đã đăng ký: CONG_NO, TICH_LUY, METRIC_CARD, ALERT_CARD, BAR_CHART');
 })();

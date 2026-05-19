@@ -32,7 +32,7 @@ BEGIN
     -- 2. Validation cơ bản
     IF ISNULL(@TenKhachHang, '') = ''
     BEGIN
-        SELECT N'❌ Lỗi: Tên khách hàng không được để trống.' AS [message], 'chat' AS [action];
+        SELECT N'Lỗi: Tên khách hàng không được để trống.' AS [message], 'chat' AS [action];
         RETURN;
     END
 
@@ -69,13 +69,13 @@ BEGIN
             @Username, GETDATE()
         );
 
-        SELECT N'✅ Đã thêm khách hàng thành công!' + CHAR(13)
+        SELECT N'Đã thêm khách hàng thành công!' + CHAR(13)
              + N'👤 Tên: ' + @TenKhachHang + CHAR(13)
              + N'🆔 Mã: ' + @NewID + CHAR(13)
              + N'📞 SĐT: ' + @SoDienThoai AS [message], 'chat' AS [action];
     END TRY
     BEGIN CATCH
-        SELECT N'❌ Lỗi SQL (' + CAST(ERROR_NUMBER() AS VARCHAR) + '): ' + ERROR_MESSAGE() AS [message], 'chat' AS [action];
+        SELECT N'Lỗi SQL (' + CAST(ERROR_NUMBER() AS VARCHAR) + '): ' + ERROR_MESSAGE() AS [message], 'chat' AS [action];
     END CATCH
 END
 GO

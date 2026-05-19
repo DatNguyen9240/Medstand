@@ -13,13 +13,17 @@ BEGIN
     SELECT CAST(value AS NVARCHAR(100))
     FROM STRING_SPLIT(REPLACE(@timkiem, ';', ','), ',') WHERE value != '';
 
+    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa từ Chatbot AI trả về
+    UPDATE @Keys 
+    SET TuKhoa = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(TuKhoa, '.', ''), ',', ''), '-', '')));
+
     -- BẢNG 1: Tìm sản phẩm thay thế (Món khớp trực tiếp)
     DECLARE @Table1 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(500), Unit NVARCHAR(50), TuKhoa NVARCHAR(500), LyDoGoiY NVARCHAR(1000));
     
     INSERT INTO @Table1 (ItemID, ItemName, Unit, TuKhoa, LyDoGoiY)
     SELECT DISTINCT TOP 10
         CF.ItemID, CF.ItemName, CF.Unit, CF.TuKhoa,
-        N'✨ Gợi ý Medstand cho: ' + K.TuKhoa AS LyDoGoiY
+        N'Gợi ý Medstand cho: ' + K.TuKhoa AS LyDoGoiY
     FROM CF_ItemTbl CF JOIN @Keys K ON (
         N' ' + REPLACE(REPLACE(REPLACE(CF.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
         OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(CF.TuKhoa,''), ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
@@ -42,7 +46,7 @@ BEGIN
     IF @CoreName != '' AND LEN(@CoreName) > 5
     BEGIN
         INSERT INTO @FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
-        SELECT TOP 2 ItemID, ItemName, Unit, N'💡 SẢN PHẨM TƯƠNG TỰ: Gợi ý quy cách khác hoặc hàng cùng loại', 1
+        SELECT TOP 2 ItemID, ItemName, Unit, N'SẢN PHẨM TƯƠNG TỰ: Gợi ý quy cách khác hoặc hàng cùng loại', 1
         FROM CF_ItemTbl
         WHERE ItemName LIKE @CoreName + '%'
           AND ItemID NOT IN (SELECT ItemID FROM @Table1)
@@ -54,7 +58,7 @@ BEGIN
     INSERT INTO @FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
     SELECT TOP 3 
         CF.ItemID, CF.ItemName, CF.Unit, 
-        N'💡 GỢI Ý BÁN KÈM: Sản phẩm thường xuyên "cặp bài trùng" trong cùng hóa đơn', 2
+        N'GỢI Ý BÁN KÈM: Sản phẩm thường xuyên "cặp bài trùng" trong cùng hóa đơn', 2
     FROM AR_InvoiceDetailTbl D
     JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
     JOIN AR_InvoiceDetailTbl D_Other ON I.DocumentID = D_Other.DocumentID
@@ -71,6 +75,17 @@ BEGIN
     -- Xóa cờ 2 bảng, dồn hết về bảng cuối
     INSERT INTO @FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
     SELECT ItemID, ItemName, Unit, LyDoGoiY, 0 FROM @Table1;
+
+    -- Nếu không tìm thấy kết quả nào, trả về thông báo lỗi thân thiện để Chatbot hiển thị
+    IF NOT EXISTS (SELECT 1 FROM @FinalGoiY)
+    BEGIN
+        SELECT 
+            'N/A' AS ItemID, 
+            N'Không tìm thấy sản phẩm gốc' AS ItemName, 
+            '' AS Unit, 
+            N'Vui lòng kiểm tra lại từ khóa (Ví dụ: tên thuốc phải chính xác). Hệ thống cần 1 sản phẩm mồi để phân tích bán chéo.' AS CanhBaoAI;
+        RETURN;
+    END
 
     -- Xuất kết quả Bảng dồn sắp xếp theo thứ tự ưu tiên
     SELECT ItemID, ItemName, Unit, CanhBaoAI FROM @FinalGoiY ORDER BY Priority ASC, ItemName ASC;

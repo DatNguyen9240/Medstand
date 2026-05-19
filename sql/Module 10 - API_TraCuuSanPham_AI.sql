@@ -10,6 +10,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa
+    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));
 
     -- 1. Tìm các mã sản phẩm khớp từ khóa (Rất nhanh vì chỉ quét bảng danh mục)
     SELECT TOP (@TopN)
@@ -55,15 +57,27 @@ BEGIN
     GROUP BY D.ItemID;
 
 
-    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn giá, Tồn kho
-    SELECT
-        ROW_NUMBER() OVER (ORDER BY I.ItemName) AS [STT],
-        I.ItemID AS [Mã sp],
-        I.ItemName AS [Sản Phẩm],
-        CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-        ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
-    FROM #Items I
-    LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID;
+    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn Giá, Tồn Kho
+    IF NOT EXISTS (SELECT 1 FROM #Items)
+    BEGIN
+        SELECT
+            1 AS [STT],
+            'N/A' AS [Mã sp],
+            N'Không tìm thấy sản phẩm' AS [Sản Phẩm],
+            0 AS [Đơn Giá],
+            0 AS [Tồn Kho];
+    END
+    ELSE
+    BEGIN
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY I.ItemName) AS [STT],
+            I.ItemID AS [Mã sp],
+            I.ItemName AS [Sản Phẩm],
+            CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
+            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
+        FROM #Items I
+        LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID;
+    END
 
 
     DROP TABLE #Items; DROP TABLE #LatestPriceHeader; DROP TABLE #FinalPrices;

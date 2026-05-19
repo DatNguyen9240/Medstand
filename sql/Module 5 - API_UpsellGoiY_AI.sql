@@ -27,7 +27,7 @@ BEGIN
     -- ═══ Validate khachhang ═══
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
-        SELECT N'❌ Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
+        SELECT N'Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
     END
 
@@ -37,10 +37,15 @@ BEGIN
     WHERE GETDATE() BETWEEN FromDate AND ToDate
     ORDER BY ToDate DESC
 
-    -- ═══ 2. Doanh số hiện tại của khách trong tháng ═══
-    SELECT @DoanhSoHienTai = ISNULL(SUM(D.TotalAmount), 0)
-    FROM AR_InvoiceTbl I
-    JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    -- ═══ 2. Doanh số hiện tại của khách trong tháng (Tính cả hóa đơn & đơn nháp) ═══
+    SELECT @DoanhSoHienTai = ISNULL(SUM(I.TotalAmount), 0)
+    FROM (
+        SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.TotalAmount
+        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        UNION ALL
+        SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.TotalAmount
+        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+    ) I
     WHERE I.ObjectID = @MaKhachHang
       AND ISNULL(I.StatusID, 0) != 10
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
@@ -113,6 +118,9 @@ BEGIN
     -- BẢNG 2: GỢI Ý SẢN PHẨM (KỊCH BẢN CHIA NHÁNH BẰNG IF ELSE)
     -- ════════════════════════════════════════════════════
 
+    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa
+    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));
+
     IF @timkiem != ''
     BEGIN
         -- ====================================================================
@@ -124,9 +132,9 @@ BEGIN
             CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
             CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
             CASE 
-                WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
-                WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
-                ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+                WHEN @ProgramID = '' THEN N'Hiện không có chương trình tích lũy nào đang chạy.'
+                WHEN @MucTarget > 0  THEN N'Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+                ELSE N'Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
             END AS LoiNhacAI,
 
             I.ItemID, 
@@ -152,7 +160,8 @@ BEGIN
                 -- Ưu tiên 5: Từ khóa (TuKhoa) contains
                 (CASE WHEN I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' THEN 10000 ELSE 0 END)
             ) AS PriorityScore,
-            N'🔍 Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | ⚠️ Hết hàng' ELSE N' | ✅ Còn hàng' END AS LyDoGoiY
+            N'Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | Hết hàng' ELSE N' | Còn hàng' END AS LyDoGoiY
+        INTO #KetQuaKichBan1
         FROM CF_ItemTbl I
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
         LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
@@ -160,7 +169,29 @@ BEGIN
           AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
           AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
           AND (I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%')
-        ORDER BY PriorityScore DESC
+        ORDER BY PriorityScore DESC;
+
+        -- Fallback nếu không tìm thấy gì
+        IF NOT EXISTS (SELECT 1 FROM #KetQuaKichBan1)
+        BEGIN
+            SELECT 
+                0 AS DoanhSoDaDat,
+                0 AS MucTieuTiepTheo,
+                0 AS SoTienConThieu,
+                N'Rất tiếc, hệ thống không tìm thấy kết quả nào' AS LoiNhacAI,
+                'N/A' AS ItemID, 
+                N'Không tìm thấy sản phẩm' AS ItemName, 
+                '' AS Unit, 
+                0 AS GiaBan,
+                0 AS TonKho,
+                0 AS PriorityScore,
+                N'Vui lòng thử lại với từ khóa khác hoặc kiểm tra lại tên.' AS LyDoGoiY;
+        END
+        ELSE
+        BEGIN
+            SELECT * FROM #KetQuaKichBan1 ORDER BY PriorityScore DESC;
+        END
+        DROP TABLE #KetQuaKichBan1;
     END
     ELSE
     BEGIN
@@ -173,9 +204,9 @@ BEGIN
             CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
             CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
             CASE 
-                WHEN @ProgramID = '' THEN N'ℹ️ Hiện không có chương trình tích lũy nào đang chạy.'
-                WHEN @MucTarget > 0  THEN N'💡 Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
-                ELSE N'🎉 Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+                WHEN @ProgramID = '' THEN N'Hiện không có chương trình tích lũy nào đang chạy.'
+                WHEN @MucTarget > 0  THEN N'Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+                ELSE N'Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
             END AS LoiNhacAI,
 
             I.ItemID, 
@@ -190,10 +221,10 @@ BEGIN
                 (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
             ) AS PriorityScore,
             CASE
-                WHEN TT.ItemID IS NOT NULL THEN N'🔥 Hàng TRỌNG TÂM - Cần đẩy!'
-                WHEN KQ.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng khách quen'
-                WHEN BC.ItemID IS NOT NULL THEN N'🎁 Combo: Hàng bán chạy'
-                ELSE N'✨ Gợi ý sẵn có'
+                WHEN TT.ItemID IS NOT NULL THEN N'Hàng TRỌNG TÂM - Cần đẩy!'
+                WHEN KQ.ItemID IS NOT NULL THEN N'Combo: Hàng khách quen'
+                WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy'
+                ELSE N'Gợi ý sẵn có'
             END AS LyDoGoiY
         FROM CF_ItemTbl I
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  

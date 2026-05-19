@@ -121,9 +121,9 @@ BEGIN
         KH.Phone,
         S.Nhom,
         CASE S.Nhom
-            WHEN 'A' THEN N'⭐ Khách VIP (Top 20%)'
-            WHEN 'B' THEN N'🟢 Khách ổn định (Top 50%)'
-            WHEN 'C' THEN N'🔴 Khách nguy cơ'
+            WHEN 'A' THEN N'Khách VIP (Top 20%)'
+            WHEN 'B' THEN N'Khách Hàng Thường'
+            WHEN 'C' THEN N'Khách Có Nguy Cơ (Dưới chuẩn)'
         END                             AS PhanLoai,
         S.TotalScore                    AS DiemTongHop,
         S.R_Score, S.F_Score, S.M_Score, S.C_Score,
@@ -133,18 +133,18 @@ BEGIN
         S.Recency_Days                  AS SoNgayKhongMua,
         -- Xu hướng tiêu thụ (C): Phòng thủ NULLIF
         CASE
-            WHEN S.DoanhSo3ThangTruoc = 0                                      THEN N'📈 Khách mới (chưa đủ chu kỳ)'
-            WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * 1.1              THEN N'📈 Tăng trưởng'
-            WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.9              THEN N'📉 Sụt giảm'
-            ELSE N'➡️ Ổn định'
+            WHEN S.DoanhSo3ThangTruoc = 0                                      THEN N'Khách mới (chưa đủ chu kỳ)'
+            WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * 1.1              THEN N'Tăng trưởng'
+            WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.9              THEN N'Sụt giảm'
+            ELSE N'Ổn định'
         END                             AS XuHuong,
         -- Cảnh báo AI
         CASE
-            WHEN S.Recency_Days >= 90  THEN N'🔴 NGUY CƠ: Đã quá 90 ngày chưa có đơn hàng'
-            WHEN S.Nhom = 'A' AND S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.7
-                                       THEN N'⚠️ Cảnh báo: Khách VIP đang sụt giảm mạnh'
+            WHEN S.Recency_Days >= 90  THEN N'NGUY CƠ: Đã quá 90 ngày chưa có đơn hàng'
+            WHEN S.Nhom = 'A' AND S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.8
+                                       THEN N'Cảnh báo: Khách VIP đang sụt giảm mạnh'
             WHEN KH.DateCreate >= DATEADD(DAY,-30,GETDATE())
-                                       THEN N'📰 Khách mới: Cần chăm sóc đơn đầu tiên'
+                                       THEN N'Khách mới: Cần chăm sóc đơn đầu tiên'
             ELSE NULL
         END                             AS CanhBaoAI
     FROM CF_ObjectTbl KH
