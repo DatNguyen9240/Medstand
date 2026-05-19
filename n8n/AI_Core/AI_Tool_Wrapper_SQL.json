@@ -74,7 +74,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const responseData = $input.first().json;\nlet result = JSON.stringify(responseData);\nif (responseData.data) { result = \"Data: \" + JSON.stringify(responseData.data); }\nreturn [{ json: { response: result } }];"
+        "jsCode": "const responseData = $input.first().json;\nlet result = \"Kết quả: \" + (responseData.summary || \"Đã xử lý xong.\");\nif (responseData.data) { result = \"Data: \" + JSON.stringify(responseData.data); }\nif (responseData.Cache_ID) {\n    result += `\\n\\n[LỆNH HỆ THỐNG: BẠN PHẢI BÊ NGUYÊN VĂN DÒNG CHỮ SAU VÀO CUỐI CÙNG CỦA CÂU TRẢ LỜI CỦA BẠN. ĐÂY LÀ ĐIỀU KIỆN BẮT BUỘC KHÔNG THỂ THIẾU.]\\nMã Ngăn Kéo: ${responseData.Cache_ID}`;\n}\nreturn [{ json: { response: result } }];"
       },
       "id": "4",
       "name": "Format Output",
