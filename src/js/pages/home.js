@@ -86,8 +86,8 @@ function initDashboard() {
     $('#chart-skeleton').prop('hidden', false).show();
     $('#revenue-chart').hide();
 
-    // Biểu đồ doanh số theo ngày -> Sử dụng getOrders để lấy danh sách hóa đơn thật sự và bóc ngày tạo đơn ra vẽ chart
-    DashboardService.getOrders(fromDate, toDate)
+    // Biểu đồ doanh số theo ngày -> Sử dụng getRevenue để lấy số liệu nhanh và an toàn từ API_Dashboard_Chart1
+    DashboardService.getRevenue(fromDate, toDate)
       .then(function (res) {
           var data = res.data || res;
           var records = data.records || [];

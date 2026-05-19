@@ -1,7 +1,4 @@
-IF OBJECT_ID('API_DoanhSo_AI', 'P') IS NOT NULL DROP PROCEDURE API_DoanhSo_AI;
-GO
-
-CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
+ALTER PROCEDURE [dbo].[API_DoanhSo_AI]
     @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
     @MaKhachHang    VARCHAR(50)    = '',
@@ -12,28 +9,28 @@ CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
     @TuNgay       DATETIME       = NULL,
     @DenNgay      DATETIME       = NULL,
     @TopN         INT            = 50,
-    @LoaiBaoCao   VARCHAR(50)    = 'TatCa'
+    @LoaiBaoCao   VARCHAR(50)    = 'TatCa',
+    @ManagerID    VARCHAR(50)    = ''
 AS
 BEGIN
     SET NOCOUNT ON;
     SET ANSI_WARNINGS OFF;
-    DECLARE @BC TABLE (EmployeeID VARCHAR(50), EmployeeName NVARCHAR(200), DoanhSo MONEY);
+    DECLARE @BC TABLE (EmployeeID VARCHAR(50), EmployeeName NVARCHAR(200), ManagerID VARCHAR(50), BranchID VARCHAR(50), DoanhSo MONEY);
     DECLARE @BC2 TABLE (ObjectID VARCHAR(50), ObjectName NVARCHAR(200), DoanhSo MONEY);
     DECLARE @BC3 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(200), SoLuong FLOAT, DoanhSo MONEY);
     
     -- 1. Validate User
-    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE (UserName = @Username OR HoTen = @Username) AND COALESCE(Disable, 0) = 0)
     BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
         RETURN
     END
 
     -- 2. Defaults
-    -- Cập nhật: Mặc định nếu không truyền ngày thì lấy từ ĐẦU THÁNG HIỆN TẠI đến hiện tại
     IF @TuNgay IS NULL SET @TuNgay = DATEADD(DAY, 1 - DAY(GETDATE()), CAST(GETDATE() AS DATE))
     IF @DenNgay IS NULL SET @DenNgay = GETDATE()
 
-    -- Fix bounds: 00:00:00 to 23:59:59 (Safe Math Version to avoid string conversion errors)
+    -- Fix bounds: 00:00:00 to 23:59:59 (Safe Math Version)
     SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
     SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
 
@@ -43,83 +40,54 @@ BEGIN
     IF @TenNhanVien LIKE '%\[%\]%' ESCAPE '\'
     BEGIN
         SET @ExtractedID = SUBSTRING(@TenNhanVien, CHARINDEX('[', @TenNhanVien) + 1, CHARINDEX(']', @TenNhanVien) - CHARINDEX('[', @TenNhanVien) - 1)
-        SET @TenNhanVien = ''
-    END
-    ELSE IF @EmployeeID LIKE '%\[%\]%' ESCAPE '\'
-    BEGIN
-        SET @ExtractedID = SUBSTRING(@EmployeeID, CHARINDEX('[', @EmployeeID) + 1, CHARINDEX(']', @EmployeeID) - CHARINDEX('[', @EmployeeID) - 1)
-        SET @EmployeeID = ''
-    END
-    ELSE IF @ObjectName LIKE '%\[%\]%' ESCAPE '\'
-    BEGIN
-        SET @ExtractedID = SUBSTRING(@ObjectName, CHARINDEX('[', @ObjectName) + 1, CHARINDEX(']', @ObjectName) - CHARINDEX('[', @ObjectName) - 1)
-        SET @ObjectName = ''
-    END
-    ELSE IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
-    BEGIN
-        SET @ExtractedID = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
-        SET @MaKhachHang = ''
-    END
-
-    -- Handle case where N8N already extracted the ID but put it in the wrong ID field
-    IF @ExtractedID = '' AND (@MaKhachHang LIKE 'MED%' OR @MaKhachHang LIKE 'NV%')
-    BEGIN
-        SET @ExtractedID = @MaKhachHang
-        SET @MaKhachHang = ''
-    END
-    ELSE IF @ExtractedID = '' AND (@EmployeeID LIKE 'KH%' OR @EmployeeID LIKE 'CTY%' OR @EmployeeID LIKE 'CUS%')
-    BEGIN
-        SET @ExtractedID = @EmployeeID
-        SET @EmployeeID = ''
-    END
-
-    -- Route the extracted ID correctly based on prefix
-    IF @ExtractedID <> ''
-    BEGIN
-        IF @ExtractedID LIKE 'MED%' OR @ExtractedID LIKE 'NV%'
+        IF EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @ExtractedID)
         BEGIN
             SET @EmployeeID = @ExtractedID
-        END
-        ELSE
-        BEGIN
-            SET @MaKhachHang = @ExtractedID
+            SET @TenNhanVien = ''
         END
     END
 
-    -- ANTI-HALLUCINATION: Clear hallucinated IDs (e.g. LLM compressed a name like 'TRẦNVĂNHƯỞNG')
-    -- Valid IDs without numbers are very rare and short.
-    IF @MaKhachHang <> '' AND LEN(@MaKhachHang) > 8 AND @MaKhachHang NOT LIKE '%[0-9]%'
+    -- Trích xuất ManagerID dạng ngoặc vuông [QLBH024] nếu có
+    IF @ManagerID LIKE '%\[%\]%' ESCAPE '\'
     BEGIN
-        SET @MaKhachHang = ''
+        SET @ExtractedID = SUBSTRING(@ManagerID, CHARINDEX('[', @ManagerID) + 1, CHARINDEX(']', @ManagerID) - CHARINDEX('[', @ManagerID) - 1)
+        IF EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @ExtractedID)
+        BEGIN
+            SET @ManagerID = @ExtractedID
+        END
     END
-    IF @EmployeeID <> '' AND LEN(@EmployeeID) > 8 AND @EmployeeID NOT LIKE '%[0-9]%'
+
+    -- TỰ ĐỘNG CHUYỂN HƯỚNG MÃ SALE SANG MÃ QUẢN LÝ (Nếu mã đó thực chất là một Manager)
+    IF @EmployeeID <> '' AND EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @EmployeeID AND COALESCE(Manager, 0) = 1)
     BEGIN
+        SET @ManagerID = @EmployeeID
         SET @EmployeeID = ''
     END
 
-
     -- 3. Lấy thông tin quyền hạn của User
-    DECLARE @SYSBranchID   VARCHAR(50) = ''
-    DECLARE @SYSCeoID      VARCHAR(50) = ''
-    DECLARE @SYSManagerID  VARCHAR(50) = ''
-    DECLARE @SYSEmployeeID VARCHAR(50) = ''
-    DECLARE @IsManager     BIT         = 0
+    DECLARE @SYSBranchID    VARCHAR(50) = ''
+    DECLARE @SYSCeoID       VARCHAR(50) = ''
+    DECLARE @SYSManagerID   VARCHAR(50) = ''
+    DECLARE @SYSEmployeeID  VARCHAR(50) = ''
+    DECLARE @IsManager      BIT         = 0
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
 
     SELECT
-        @SYSBranchID   = COALESCE(BranchID, ''),
-        @SYSCeoID      = COALESCE(CeoID, ''),
-        @SYSManagerID  = COALESCE(ManagerID, ''),
-        @SYSEmployeeID = COALESCE(EmployeeID, ''),
-        @IsManager     = COALESCE(Manager, 0)
-    FROM SY_User WHERE UserName = @Username
+        @SYSBranchID    = COALESCE(BranchID, ''),
+        @SYSCeoID       = COALESCE(CeoID, ''),
+        @SYSManagerID   = COALESCE(ManagerID, ''),
+        @SYSEmployeeID  = COALESCE(EmployeeID, ''),
+        @IsManager      = COALESCE(Manager, 0),
+        @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WHERE UserName = @Username OR HoTen = @Username
 
     -------------------------------------------------
     -- Báo Cáo Nhân Viên
     -------------------------------------------------
     IF @LoaiBaoCao = 'NhanVien' OR @LoaiBaoCao = 'TatCa'
     BEGIN
-        INSERT INTO @BC (EmployeeID, EmployeeName, DoanhSo)
-        SELECT A.EmployeeID, A.EmployeeName, SUM(A.Amount) AS DoanhSo
+        INSERT INTO @BC (EmployeeID, EmployeeName, ManagerID, BranchID, DoanhSo)
+        SELECT A.EmployeeID, A.EmployeeName, MAX(A.ManagerID) AS ManagerID, MAX(A.BranchID) AS BranchID, SUM(A.Amount) AS DoanhSo
         FROM AR_OrderAndReturnView A
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0)
@@ -127,14 +95,14 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
-            -- BẢO MẬT RLS: Nếu không phải Manager, user BẮT BUỘC phải được gán ít nhất 1 mã định danh.
-            -- Nếu user cấu hình thiếu (trắng toàn bộ mã), chặn đứng xem toàn bộ dữ liệu (Chống lỗi Tautology)
+            AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
                 @IsManager = 1 
+                OR @SYSUserGroupID = 'Admin'
                 OR NULLIF(@SYSBranchID, '') IS NOT NULL 
                 OR NULLIF(@SYSCeoID, '') IS NOT NULL 
                 OR NULLIF(@SYSManagerID, '') IS NOT NULL 
@@ -146,7 +114,9 @@ BEGIN
         BEGIN
             SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, EmployeeName) AS STT, 
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
-                EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+                EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], 
+                ManagerID AS [Mã Quản Lý], BranchID AS [Chi Nhánh],
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
             FROM @BC ORDER BY DoanhSo DESC
             RETURN;
         END
@@ -166,12 +136,14 @@ BEGIN
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+            AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
                 @IsManager = 1 
+                OR @SYSUserGroupID = 'Admin'
                 OR NULLIF(@SYSBranchID, '') IS NOT NULL 
                 OR NULLIF(@SYSCeoID, '') IS NOT NULL 
                 OR NULLIF(@SYSManagerID, '') IS NOT NULL 
@@ -190,7 +162,7 @@ BEGIN
     END
 
     -------------------------------------------------
-    -- Báo Cáo Sản Phẩm Bán Chạy
+    -- Báo Cáo Sản Phẩm
     -------------------------------------------------
     IF @LoaiBaoCao = 'SanPham' OR @LoaiBaoCao = 'TatCa'
     BEGIN
@@ -206,12 +178,14 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+            AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
+            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
                 @IsManager = 1 
+                OR @SYSUserGroupID = 'Admin'
                 OR NULLIF(@SYSBranchID, '') IS NOT NULL 
                 OR NULLIF(@SYSCeoID, '') IS NOT NULL 
                 OR NULLIF(@SYSManagerID, '') IS NOT NULL 
@@ -230,10 +204,12 @@ BEGIN
         END
     END
 
-    -- Fallback for TatCa defaults to NhanVien to prevent Node Crash from multi-recordsets
+    -- Fallback for TatCa defaults to NhanVien to prevent Node Crash
     SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, EmployeeName) AS STT, 
             FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
-            EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+            EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], 
+            ManagerID AS [Mã Quản Lý], BranchID AS [Chi Nhánh],
+            FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
         FROM @BC ORDER BY DoanhSo DESC
 END
 GO
