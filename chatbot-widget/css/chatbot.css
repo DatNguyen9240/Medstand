@@ -260,12 +260,17 @@
 }
 
 .chat-bubble.ai .ai-table th {
-  background: rgba(var(--color-primary-rgb), 0.08);
   font-weight: 600;
   font-size: 0.82em;
   text-transform: uppercase;
   letter-spacing: 0.3px;
   color: var(--color-primary);
+  /* Fix sticky header overlap with chat actions */
+  position: sticky;
+  top: 48px; /* Height of the sticky chat actions */
+  z-index: 90;
+  background: var(--color-surface, #ffffff);
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 .chat-bubble.ai .ai-table tbody tr:last-child td {
@@ -1537,7 +1542,8 @@
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(var(--color-primary-rgb), 0.08);
+  background: var(--color-surface, #ffffff);
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 /* ── Desktop: modal as centered dialog ── */
