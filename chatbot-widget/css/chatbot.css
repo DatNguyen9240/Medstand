@@ -267,7 +267,7 @@
   color: var(--color-primary);
   /* Fix sticky header overlap with chat actions */
   position: sticky;
-  top: 48px; /* Height of the sticky chat actions */
+  top: 0;
   z-index: 90;
   background: var(--color-surface, #ffffff);
   box-shadow: inset 0 -1px 0 var(--color-border);
@@ -2563,8 +2563,8 @@
   justify-content: flex-end;
   gap: 12px;
   padding-bottom: 8px;
-  background: var(--color-background, transparent);
-  /* Optional: a slight gradient at the bottom so it fades into messages */
+  background: transparent;
+  pointer-events: none;
 }
 
 .chat-header-actions .chat-action-btn {
