@@ -60,9 +60,9 @@ BEGIN
            OR O.Address LIKE N'%' + @timkiem + '%' 
            OR O.Phone LIKE '%' + @timkiem + '%')
       -- Phân quyền mượt: Cho phép AI (demo/admin) xem toàn bộ
-      AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID   OR @IsManager = 1)
-      AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID         OR @IsManager = 1)
-      AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @IsManager = 1)
+      AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
+      AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
+      AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
       AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
 
     -------------------------------------------------

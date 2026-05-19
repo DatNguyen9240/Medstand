@@ -81,9 +81,9 @@ BEGIN
        AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
        -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ
-       AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID   OR @IsManager = 1)
-       AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID      OR @IsManager = 1)
-       AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID OR @IsManager = 1)
+       AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID)
+       AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID)
+       AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID)
        AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID           OR @IsManager = 1)
        AND (@timkiem = ''
             OR A.DocumentID LIKE '%' + @timkiem + '%'
