@@ -89,11 +89,9 @@
             var data = JSON.parse(raw);
 
             if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
-
                 localStorage.removeItem(_getSessionKey());
-
+                sessionStorage.removeItem('ai_chat_session_id'); // Clear backend memory
                 return [];
-
             }
 
             return data.messages || [];
@@ -4446,15 +4444,11 @@
 
 
     $btnClear.addEventListener('click', function () {
-
         if (!chatHistory.length) return;
-
         chatHistory = [];
-
         _clearCache();
-
+        sessionStorage.removeItem('ai_chat_session_id'); // Clear backend memory too
         $messages.innerHTML = '';
-
         $welcome.style.display = '';
 
         _clearFiles();
