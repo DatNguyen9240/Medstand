@@ -96,17 +96,11 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
-                @IsManager = 1 
-                OR @SYSUserGroupID = 'Admin'
-                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
-                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
-                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
-                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+                @SYSUserGroupID = 'Admin'
+                OR A.EmployeeID = @SYSEmployeeID
+                OR A.ManagerID = @SYSEmployeeID
+                OR A.CeoID = @SYSEmployeeID
             )
         GROUP BY A.EmployeeID, A.EmployeeName
 
@@ -137,17 +131,11 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
-                @IsManager = 1 
-                OR @SYSUserGroupID = 'Admin'
-                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
-                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
-                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
-                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+                @SYSUserGroupID = 'Admin'
+                OR A.EmployeeID = @SYSEmployeeID
+                OR A.ManagerID = @SYSEmployeeID
+                OR A.CeoID = @SYSEmployeeID
             )
         GROUP BY A.ObjectID, A.ObjectName
 
@@ -179,17 +167,11 @@ BEGIN
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
-            AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID OR @SYSUserGroupID = 'Admin')
-            AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1 OR @SYSUserGroupID = 'Admin')
             AND (
-                @IsManager = 1 
-                OR @SYSUserGroupID = 'Admin'
-                OR NULLIF(@SYSBranchID, '') IS NOT NULL 
-                OR NULLIF(@SYSCeoID, '') IS NOT NULL 
-                OR NULLIF(@SYSManagerID, '') IS NOT NULL 
-                OR NULLIF(@SYSEmployeeID, '') IS NOT NULL
+                @SYSUserGroupID = 'Admin'
+                OR A.EmployeeID = @SYSEmployeeID
+                OR A.ManagerID = @SYSEmployeeID
+                OR A.CeoID = @SYSEmployeeID
             )
             AND ISNULL(D.isKM, 0) = 0
         GROUP BY B.ItemID, B.ItemName

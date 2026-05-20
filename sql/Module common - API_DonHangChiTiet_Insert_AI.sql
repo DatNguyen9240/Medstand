@@ -33,11 +33,7 @@ BEGIN
     SELECT N'ERR:Mã khách hàng không tồn tại: ' + @ObjectID AS DocumentID
     RETURN
 END
-IF COALESCE(@DocumentID, '') <> '' AND NOT EXISTS (SELECT 1 FROM AR_OrderTbl WHERE DocumentID = @DocumentID)
-BEGIN
-    SELECT N'ERR:Đơn hàng không tồn tại' AS DocumentID
-    RETURN
-END
+    -- Đã bỏ kiểm tra đơn hàng không tồn tại để tự động khởi tạo nếu truyền mã mới chưa có trong hệ thống
 -- ═══ 2. PARSE JSON + LẤY GIÁ ═══
 SELECT 
     J.ItemID, SUM(J.Quantity) AS Quantity, MAX(I.ItemName) AS ItemName, MAX(P.UnitPrice) AS UnitPrice, MAX(P.DiemSanPham) AS DiemSanPham
@@ -82,17 +78,21 @@ END
 -- ═══ 3. TẠO ĐƠN + CHI TIẾT ═══
 BEGIN TRANSACTION
 BEGIN TRY
-    IF COALESCE(@DocumentID, '') = ''
+    IF COALESCE(@DocumentID, '') = '' OR NOT EXISTS (SELECT 1 FROM AR_OrderTbl WHERE DocumentID = @DocumentID)
     BEGIN
-        DECLARE @Prefix VARCHAR(10) = 'DMB' + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
-                                           + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2)
-        DECLARE @MaxNum INT
-        SELECT @MaxNum = ISNULL(MAX(CAST(
-            SUBSTRING(DocumentID, CHARINDEX('/', DocumentID) + 1, LEN(DocumentID)) AS INT
-        )), 0)
-        FROM AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
-        WHERE DocumentID LIKE @Prefix + '/%'
-        SET @DocumentID = @Prefix + '/' + CAST(@MaxNum + 1 AS VARCHAR)
+        IF COALESCE(@DocumentID, '') = ''
+        BEGIN
+            DECLARE @Prefix VARCHAR(10) = 'DMB' + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
+                                               + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2)
+            DECLARE @MaxNum INT
+            SELECT @MaxNum = ISNULL(MAX(CAST(
+                SUBSTRING(DocumentID, CHARINDEX('/', DocumentID) + 1, LEN(DocumentID)) AS INT
+            )), 0)
+            FROM AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
+            WHERE DocumentID LIKE @Prefix + '/%'
+            SET @DocumentID = @Prefix + '/' + CAST(@MaxNum + 1 AS VARCHAR)
+        END
+
         INSERT INTO AR_OrderTbl (
             DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID,
             ObjectID, BranchID, UserCreate, DateCreate, StatusID

@@ -37,7 +37,7 @@ window.API_CONFIG = {
         DASHBOARD: {
             STATS: '/api/Dashboard/Stats',
             REVENUE: '/api/Dashboard/Revenue',
-            CHART1: '/api/API_Dashboard_Chart1',
+            CHART1: '/api/API_DoanhSo_AI',
             CHART2: '/api/API_Dashboard_Chart2',
             BIRTHDAYS: '/api/API_Dashboard_SinhNhat',
             INFORMATIONS: '/api/API_Dashboard_ThongTin',

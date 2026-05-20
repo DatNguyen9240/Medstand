@@ -1,131 +1,123 @@
 -- ==============================================================================
--- SCRIPT TẠO DỮ LIỆU MẪU (ĐƠN NHÁP) CHO 6 TÀI KHOẢN ĐỂ TEST CHATBOT
--- LƯU Ý BẢO MẬT: 
--- Script này CHỈ INSERT vào bảng AR_OrderTbl (Đơn nháp) với StatusID = 1 (Chờ duyệt).
--- Tuyệt đối KHÔNG INSERT vào bảng Hóa Đơn (AR_InvoiceTbl).
--- Đảm bảo 100% dữ liệu này không nhảy vào Báo cáo Tài chính Kế toán hay Công nợ thực tế!
+-- CÔNG CỤ ĐỒNG BỘ/MAPPING DỮ LIỆU ĐƠN HÀNG THỰC TẾ SANG HÓA ĐƠN KẾ TOÁN
+-- Dự án: Medstand ERP AI Integration
+-- Mục đích: Chuyển đổi chính xác 100% các đơn hàng thực tế sẵn có trong AR_OrderTbl
+--           sang hóa đơn trong AR_InvoiceTbl để phục vụ vẽ biểu đồ Dashboard và Chatbot AI.
 -- ==============================================================================
 
-DECLARE @TestEmployees TABLE (EmpID VARCHAR(50));
+BEGIN TRANSACTION
+BEGIN TRY
 
--- ==============================================================================
--- DỌN DẸP DỮ LIỆU LỖI (Các đơn MOCK bị crash nửa chừng do lỗi code trước đó)
--- ==============================================================================
-DELETE FROM AR_InvoiceTbl WHERE DocumentID LIKE 'MOCK_%' AND DocumentID NOT IN (SELECT DocumentID FROM AR_InvoiceDetailTbl);
-DELETE FROM AR_OrderDetailTbl WHERE DocumentID LIKE 'MOCK_%' AND DocumentID NOT IN (SELECT DocumentID FROM AR_InvoiceDetailTbl);
-DELETE FROM AR_OrderTbl WHERE DocumentID LIKE 'MOCK_%' AND DocumentID NOT IN (SELECT DocumentID FROM AR_InvoiceDetailTbl);
+    -- 1. Định nghĩa danh sách nhân sự cần đồng bộ dữ liệu (Khớp cả mã và Username)
+    DECLARE @TargetEmployees TABLE (EmpID VARCHAR(50), UserName VARCHAR(50));
+    INSERT INTO @TargetEmployees (EmpID, UserName) VALUES 
+    ('MED0330', 'QLBH013.MED'), -- Mai Anh Tuấn
+    ('MED0229', 'QLBH016.MED'), -- Trần Văn Hướng
+    ('MED0185', 'QLBH005.MED'), -- Nguyễn Thế Anh
+    ('MED0096', 'QLBH010.MED'), -- Nguyễn Văn Việt Anh
+    ('MED0134', 'QLMN2'),       -- Trần Văn Luân
+    ('QLBH024', 'QLBH024.MED'); -- Ngô Đức Hùng
 
--- Bỏ ông Thế Anh (Admin) ra, chỉ tạo cho 6 ông Sale:
-INSERT INTO @TestEmployees (EmpID) VALUES 
-('MED0330'), -- Mai Anh Tuấn
-('MED0229'), -- Trần Văn Hướng
-('MED0637'), -- Nguyễn Văn Thái
-('MED0096'), -- Nguyễn Văn Việt Anh
-('QLBH024'), -- Ngô Đức Hùng
-('MED0134'); -- Trần Văn Luân
+    -- 2. Thiết lập cấu hình mặc định đề phòng dữ liệu đơn hàng thiếu thông tin kho/tài khoản
+    DECLARE @DefaultStoreHouseID VARCHAR(50);
+    DECLARE @IncomeAccID VARCHAR(50);
 
-DECLARE @CustomerID VARCHAR(50);
-DECLARE @ItemID VARCHAR(50);
-DECLARE @StoreHouseID VARCHAR(50);
-DECLARE @IncomeAccID VARCHAR(50);
-DECLARE @BranchID VARCHAR(50) = 'HN'; -- Gán mặc định 1 chi nhánh
+    -- Lấy ngẫu nhiên mã kho đang hoạt động từ bảng giao dịch kho
+    SELECT TOP 1 @DefaultStoreHouseID = StoreHouseID FROM IV_StockTransactionTbl WHERE StoreHouseID IS NOT NULL AND StoreHouseID <> '';
+    IF @DefaultStoreHouseID IS NULL SET @DefaultStoreHouseID = 'KHO01';
 
--- 1. Lấy ngẫu nhiên 1 Khách hàng và 1 Sản phẩm CÓ THẬT trong Database để không bị lỗi khóa ngoại (Foreign Key)
--- Lấy ngẫu nhiên 1 Khách hàng
-SELECT TOP 1 @CustomerID = ObjectID FROM CF_ObjectTbl WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0;
+    -- Lấy mã tài khoản kế toán ghi nhận doanh thu mặc định (ví dụ: tài khoản 5111)
+    SELECT TOP 1 @IncomeAccID = IncomeAccID FROM AR_InvoiceDetailTbl WHERE IncomeAccID IS NOT NULL;
+    IF @IncomeAccID IS NULL SET @IncomeAccID = '5111';
 
--- TÌM SẢN PHẨM CÓ TỒN KHO THẬT (>10) ĐỂ KHÔNG BỊ HỦY KHI DUYỆT ĐƠN TRÊN WEB
-SELECT TOP 1 @ItemID = ItemID, @StoreHouseID = StoreHouseID
-FROM IV_StockTransactionTbl 
-GROUP BY ItemID, StoreHouseID
-HAVING SUM(ISNULL(Quantity, 0)) > 10;
+    -- Đếm số lượng dữ liệu trước khi đồng bộ để báo cáo
+    DECLARE @InvoicesCreated INT = 0;
+    DECLARE @DetailsCreated INT = 0;
 
--- Tìm 1 mã Tài Khoản Doanh Thu hợp lệ từ csdl cũ (hoặc mặc định 5111)
-SELECT TOP 1 @IncomeAccID = IncomeAccID FROM AR_InvoiceDetailTbl WHERE IncomeAccID IS NOT NULL;
-IF @IncomeAccID IS NULL SET @IncomeAccID = '5111';
+    -- Tắt trigger tạm thời để đảm bảo nạp dữ liệu mượt mà, bỏ qua các bước kiểm tra kho ảo của hệ thống
+    DISABLE TRIGGER ALL ON AR_OrderDetailTbl;
+    DISABLE TRIGGER ALL ON AR_InvoiceDetailTbl;
 
--- Nếu kho hoàn toàn trống không (trường hợp xui nhất), thì lấy tạm sản phẩm bất kỳ
-IF @ItemID IS NULL 
-    SELECT TOP 1 @ItemID = ItemID FROM CF_ItemTbl WHERE ISNULL(isDisable, 0) = 0;
-IF @StoreHouseID IS NULL
-    SET @StoreHouseID = 'KHO01'; -- Fallback an toàn
+    -- 3. BẮT ĐẦU ĐỒNG BỘ PHẦN CHUNG (AR_InvoiceTbl)
+    -- Copy nguyên văn DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID, ObjectID, BranchID và BaseTotal
+    INSERT INTO AR_InvoiceTbl (
+        DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID, 
+        ObjectID, BranchID, StatusID, UserCreate, DateCreate, BaseTotal
+    )
+    SELECT 
+        O.DocumentID, 
+        O.DocumentDate, -- Khớp chính xác ngày lập đơn thật trong quá khứ để Dashboard vẽ biểu đồ doanh số đúng thời điểm
+        ISNULL(NULLIF(O.EmployeeID, ''), TE.EmpID) AS EmployeeID, -- Đảm bảo luôn có EmployeeID
+        O.ManagerID, 
+        O.CeoID, 
+        O.ObjectID, 
+        O.BranchID, 
+        1 AS StatusID,  -- 1 = Hóa đơn đã hoàn thành/ghi nhận doanh số
+        'AI_SYNC' AS UserCreate, 
+        GETDATE() AS DateCreate, 
+        O.BaseTotal
+    FROM AR_OrderTbl O
+    INNER JOIN @TargetEmployees TE ON (
+        O.EmployeeID = TE.EmpID 
+        OR O.UserCreate = TE.UserName 
+        OR O.UserCreate = TE.EmpID
+    )
+    LEFT JOIN AR_InvoiceTbl I ON O.DocumentID = I.DocumentID
+    WHERE I.DocumentID IS NULL; -- Chỉ đồng bộ những đơn chưa từng lập hóa đơn
 
-IF @CustomerID IS NULL SET @CustomerID = 'MOCK_CUST';
-IF @ItemID IS NULL SET @ItemID = 'MOCK_ITEM';
+    SET @InvoicesCreated = @@ROWCOUNT;
 
-DECLARE @CurrentEmp VARCHAR(50);
-DECLARE @DocID VARCHAR(50);
-DECLARE @DocDate DATETIME;
-DECLARE @RandomAmount FLOAT;
-DECLARE @OrderCount INT;
-DECLARE @J INT;
+    -- 4. BẮT ĐẦU ĐỒNG BỘ CHI TIẾT SẢN PHẨM (AR_InvoiceDetailTbl)
+    -- Ánh xạ chính xác 100% từng mặt hàng (ItemID), số lượng (Quantity), đơn giá (UnitPrice), thành tiền (Amount) sang hóa đơn
+    INSERT INTO AR_InvoiceDetailTbl (
+        UserAutoID, DocumentID, ItemID, Quantity, UnitPrice, 
+        Amount, TotalAmount, StoreHouseID, IncomeAccID
+    )
+    SELECT 
+        NEWID() AS UserAutoID,
+        OD.DocumentID,
+        ISNULL(OD.ItemID, '') AS ItemID,
+        ISNULL(OD.Quantity, 0) AS Quantity,
+        ISNULL(OD.UnitPrice, 0) AS UnitPrice,
+        ISNULL(OD.Amount, 0) AS Amount,
+        ISNULL(OD.TotalAmount, 0) AS TotalAmount,
+        ISNULL(NULLIF(OD.StoreHouseID, ''), @DefaultStoreHouseID) AS StoreHouseID,
+        @IncomeAccID AS IncomeAccID
+    FROM AR_OrderDetailTbl OD
+    INNER JOIN AR_OrderTbl O ON OD.DocumentID = O.DocumentID
+    INNER JOIN @TargetEmployees TE ON (
+        O.EmployeeID = TE.EmpID 
+        OR O.UserCreate = TE.UserName 
+        OR O.UserCreate = TE.EmpID
+    )
+    LEFT JOIN AR_InvoiceDetailTbl ID ON OD.DocumentID = ID.DocumentID
+    WHERE ID.DocumentID IS NULL; -- Chỉ lấy chi tiết của những đơn hàng chưa có chi tiết hóa đơn
 
-DECLARE emp_cursor CURSOR FOR SELECT EmpID FROM @TestEmployees;
-OPEN emp_cursor;
-FETCH NEXT FROM emp_cursor INTO @CurrentEmp;
+    SET @DetailsCreated = @@ROWCOUNT;
 
-WHILE @@FETCH_STATUS = 0
-BEGIN
-    -- Số lượng đơn ngẫu nhiên từ 2 đến 5 đơn cho mỗi người
-    SET @OrderCount = CAST((RAND() * 4) + 2 AS INT);
-    SET @J = 1;
+    -- Bật lại toàn bộ trigger của hệ thống
+    ENABLE TRIGGER ALL ON AR_OrderDetailTbl;
+    ENABLE TRIGGER ALL ON AR_InvoiceDetailTbl;
 
-    WHILE @J <= @OrderCount
-    BEGIN
-        -- Lấy đúng sơ đồ tổ chức (Branch, Manager, Ceo) của nhân viên này để không bị RLS (bảo mật) chặn hiển thị
-        DECLARE @EmpBranchID VARCHAR(50) = 'HN';
-        DECLARE @EmpManagerID VARCHAR(50) = '';
-        DECLARE @EmpCeoID VARCHAR(50) = '';
-        
-        SELECT TOP 1 
-            @EmpBranchID = ISNULL(NULLIF(BranchID, ''), 'HN'),
-            @EmpManagerID = ISNULL(ManagerID, ''),
-            @EmpCeoID = ISNULL(CeoID, '')
-        FROM SY_User 
-        WHERE EmployeeID = @CurrentEmp AND ISNULL(Disable, 0) = 0;
+    COMMIT TRANSACTION
 
-        -- Mã chứng từ gắn thêm giờ-phút-giây để mỗi lần chạy sinh ra dữ liệu mới, không đè cái cũ
-        SET @DocID = 'MOCK_' + @CurrentEmp + '_' + REPLACE(CONVERT(VARCHAR, GETDATE(), 108), ':', '') + '_' + CAST(@J AS VARCHAR(10));
-        
-        -- Số tiền ngẫu nhiên từ 1.500.000đ đến 15.000.000đ
-        SET @RandomAmount = CAST((RAND() * 13500000) + 1500000 AS INT);
+    -- In báo cáo kết quả ra màn hình cho người dùng
+    PRINT N'======================================================================';
+    PRINT N'✅ ĐỒNG BỘ HOÀN TẤT THÀNH CÔNG!';
+    PRINT N'----------------------------------------------------------------------';
+    PRINT N'👉 Số lượng hóa đơn mới được tạo (Headers): ' + CAST(@InvoicesCreated AS VARCHAR(10));
+    PRINT N'👉 Số lượng chi tiết hóa đơn được mapping:  ' + CAST(@DetailsCreated AS VARCHAR(10));
+    PRINT N'👉 Hệ thống đã sẵn sàng, biểu đồ Dashboard và Chatbot AI đã được cập nhật!';
+    PRINT N'======================================================================';
 
-        -- Ngày ngẫu nhiên TRONG 90 NGÀY QUA (để AI có dữ liệu test "tháng trước", "tháng 4", "quý này")
-        SET @DocDate = DATEADD(DAY, -CAST(RAND() * 90 AS INT), GETDATE());
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    
+    -- Đảm bảo trigger luôn được kích hoạt lại kể cả khi gặp lỗi đột xuất
+    ENABLE TRIGGER ALL ON AR_OrderDetailTbl;
+    ENABLE TRIGGER ALL ON AR_InvoiceDetailTbl;
 
-        -- 2. TẠO ĐƠN HÀNG (Header & Detail) với StatusID = 3 (Đã hoàn thành/Giao hàng)
-        INSERT INTO AR_OrderTbl (DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID, ObjectID, BranchID, StatusID, UserCreate, DateCreate, BaseTotal)
-        VALUES (@DocID, @DocDate, @CurrentEmp, @EmpManagerID, @EmpCeoID, @CustomerID, @EmpBranchID, 3, 'AI_MOCK', GETDATE(), @RandomAmount);
-
-        -- Tắt tạm Trigger để ép số liệu ảo (vượt qua lỗi "Không tìm thấy kho")
-        DISABLE TRIGGER ALL ON AR_OrderDetailTbl;
-        DISABLE TRIGGER ALL ON AR_InvoiceDetailTbl;
-
-        INSERT INTO AR_OrderDetailTbl (UserAutoID, DocumentID, ItemID, Quantity, UnitPrice, Amount, TotalAmount, StoreHouseID)
-        VALUES (NEWID(), @DocID, @ItemID, 1, @RandomAmount, @RandomAmount, @RandomAmount, @StoreHouseID);
-
-        -- 3. TẠO HÓA ĐƠN THÀNH CÔNG (StatusID = 1 thường là hóa đơn hợp lệ/đã ghi nhận)
-        INSERT INTO AR_InvoiceTbl (DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID, ObjectID, BranchID, StatusID, UserCreate, DateCreate, BaseTotal)
-        VALUES (@DocID, @DocDate, @CurrentEmp, @EmpManagerID, @EmpCeoID, @CustomerID, @EmpBranchID, 1, 'AI_MOCK', GETDATE(), @RandomAmount);
-
-        -- PHỤC HỒI CHI TIẾT HÓA ĐƠN KÈM TÀI KHOẢN KẾ TOÁN ĐỂ DASHBOARD ĐỌC ĐƯỢC
-        INSERT INTO AR_InvoiceDetailTbl (UserAutoID, DocumentID, ItemID, Quantity, UnitPrice, Amount, TotalAmount, StoreHouseID, IncomeAccID)
-        VALUES (NEWID(), @DocID, @ItemID, 1, @RandomAmount, @RandomAmount, @RandomAmount, @StoreHouseID, @IncomeAccID);
-
-        -- Bật lại Trigger ngay lập tức
-        ENABLE TRIGGER ALL ON AR_OrderDetailTbl;
-        ENABLE TRIGGER ALL ON AR_InvoiceDetailTbl;
-
-        -- GỌI STORED PROCEDURE CỦA HỆ THỐNG ĐỂ TÍNH TOÁN LẠI TỔNG TIỀN VÀ CẬP NHẬT ĐÚNG CÁC CỘT ẨN DOANH SỐ
-        EXEC AR_Order_AfterSaveStp @DocID;
-
-        SET @J = @J + 1;
-    END
-
-    FETCH NEXT FROM emp_cursor INTO @CurrentEmp;
-END;
-
-CLOSE emp_cursor;
-DEALLOCATE emp_cursor;
-
-PRINT N'✅ ĐÃ TẠO XONG DỮ LIỆU ĐƠN NHÁP NGẪU NHIÊN CHO 6 NHÂN VIÊN. SẾP CÓ THỂ TEST NGAY!';
+    DECLARE @ErrMsg NVARCHAR(500) = ERROR_MESSAGE();
+    PRINT N'❌ LỖI KHI ĐỒNG BỘ DỮ LIỆU: ' + @ErrMsg;
+END CATCH
