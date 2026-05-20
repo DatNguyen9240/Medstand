@@ -125,6 +125,11 @@ BEGIN TRY
     -- Tính toán lại tổng tiền/kho (nếu có các Stp bổ trợ)
     EXEC AR_Order_AfterSaveStp @DocumentID
 
+    -- FALLBACK UPDATE TỔNG TIỀN (PHÒNG THỦ KHI AR_Order_AfterSaveStp CHƯA CẬP NHẬT HOẶC KHÔNG TỒN TẠI TRÊN MÔI TRƯỜNG TEST)
+    UPDATE AR_OrderTbl
+    SET BaseTotal = COALESCE((SELECT SUM(TotalAmount) FROM AR_OrderDetailTbl WHERE DocumentID = @DocumentID), 0)
+    WHERE DocumentID = @DocumentID
+
     COMMIT TRANSACTION
 END TRY
 BEGIN CATCH

@@ -47,7 +47,7 @@ window.API_CONFIG = {
             ROUTE_STATUSES: '/api/API_TrangThaiTuyen',
         },
         ORDERS: {
-            LIST: '/api/API_DonHang',
+            LIST: '/api/API_DonHang_AI',
             CREATE: '/api/API_DonHang_Insert',
             UPDATE: '/api/API_DonHang_Update',
             DELETE: '/api/API_DonHang_Delete',

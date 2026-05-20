@@ -1,20 +1,48 @@
 ALTER PROCEDURE [dbo].[API_DoanhSo_AI]
     @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
-    @MaKhachHang    VARCHAR(50)    = '',
+    @User         VARCHAR(50)    = '', -- Dashboard alias
+    @MaKhachHang  VARCHAR(50)    = '',
     @ObjectName   NVARCHAR(200)  = '',
     @EmployeeID   VARCHAR(50)    = '',
-    @TenNhanVien NVARCHAR(200)  = '',
-    @TenSanPham     NVARCHAR(200)  = '',
+    @TenNhanVien  NVARCHAR(200)  = '',
+    @TenSanPham   NVARCHAR(200)  = '',
     @TuNgay       DATETIME       = NULL,
     @DenNgay      DATETIME       = NULL,
+    @FromDate     DATETIME       = NULL, -- Dashboard alias
+    @ToDate       DATETIME       = NULL, -- Dashboard alias
     @TopN         INT            = 50,
     @LoaiBaoCao   VARCHAR(50)    = 'TatCa',
-    @ManagerID    VARCHAR(50)    = ''
+    @ManagerID    VARCHAR(50)    = '',
+    @BranchID     VARCHAR(50)    = '', -- Dashboard alias
+    @CeoID        VARCHAR(50)    = '', -- Dashboard alias
+    -- Context parameters injected automatically by .NET server from claims
+    @SYSBranchID  VARCHAR(50)    = '',
+    @SYSCeoID     VARCHAR(50)    = '',
+    @SYSManagerID VARCHAR(50)    = '',
+    @SYSEmployeeID VARCHAR(50)   = ''
 AS
 BEGIN
     SET NOCOUNT ON;
     SET ANSI_WARNINGS OFF;
+    
+    -- MAPPING DASHBOARD PARAMETERS
+    IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+    IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
+    IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 50;
+    
+    -- SANITIZE NULLS FROM C# WRAPPER
+    SET @MaKhachHang = COALESCE(@MaKhachHang, '');
+    SET @ObjectName = COALESCE(@ObjectName, '');
+    SET @EmployeeID = COALESCE(@EmployeeID, '');
+    SET @TenNhanVien = COALESCE(@TenNhanVien, '');
+    SET @ManagerID = COALESCE(@ManagerID, '');
+    SET @BranchID = COALESCE(@BranchID, '');
+    SET @CeoID = COALESCE(@CeoID, '');
+    SET @TenSanPham = COALESCE(@TenSanPham, '');
+    SET @LoaiBaoCao = COALESCE(@LoaiBaoCao, 'TatCa');
+
     DECLARE @BC TABLE (EmployeeID VARCHAR(50), EmployeeName NVARCHAR(200), ManagerID VARCHAR(50), BranchID VARCHAR(50), DoanhSo MONEY);
     DECLARE @BC2 TABLE (ObjectID VARCHAR(50), ObjectName NVARCHAR(200), DoanhSo MONEY);
     DECLARE @BC3 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(200), SoLuong FLOAT, DoanhSo MONEY);
@@ -64,22 +92,86 @@ BEGIN
         SET @EmployeeID = ''
     END
 
-    -- 3. Lấy thông tin quyền hạn của User
-    DECLARE @SYSBranchID    VARCHAR(50) = ''
-    DECLARE @SYSCeoID       VARCHAR(50) = ''
-    DECLARE @SYSManagerID   VARCHAR(50) = ''
-    DECLARE @SYSEmployeeID  VARCHAR(50) = ''
-    DECLARE @IsManager      BIT         = 0
-    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh
+    DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
+    DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
+    DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
+    DECLARE @IsManager       BIT         = 0
+    DECLARE @SYSUserGroupID VARCHAR(50)  = ''
 
-    SELECT
-        @SYSBranchID    = COALESCE(BranchID, ''),
-        @SYSCeoID       = COALESCE(CeoID, ''),
-        @SYSManagerID   = COALESCE(ManagerID, ''),
-        @SYSEmployeeID  = COALESCE(EmployeeID, ''),
-        @IsManager      = COALESCE(Manager, 0),
-        @SYSUserGroupID = COALESCE(UserGroupID, '')
-    FROM SY_User WHERE UserName = @Username OR HoTen = @Username
+    -- Ưu tiên tìm theo UserName trước
+    IF NULLIF(@Username, '') IS NOT NULL
+    BEGIN
+        SELECT TOP 1
+            @SYS_BranchID    = COALESCE(BranchID, ''),
+            @SYS_CeoID       = COALESCE(CeoID, ''),
+            @SYS_ManagerID   = COALESCE(ManagerID, ''),
+            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
+            @IsManager       = COALESCE(Manager, 0),
+            @SYSUserGroupID = COALESCE(UserGroupID, '')
+        FROM SY_User 
+        WHERE (UserName = @Username OR HoTen = @Username) AND COALESCE(Disable, 0) = 0
+    END
+    -- Nếu không có Username nhưng có mã EmployeeID, tra cứu ngược lại từ SY_User
+    ELSE IF NULLIF(@SYS_EmployeeID, '') IS NOT NULL OR NULLIF(@EmployeeID, '') IS NOT NULL
+    BEGIN
+        DECLARE @EmpLookup VARCHAR(50) = COALESCE(NULLIF(@SYS_EmployeeID, ''), @EmployeeID)
+        SELECT TOP 1
+            @Username        = UserName,
+            @SYS_BranchID    = COALESCE(BranchID, ''),
+            @SYS_CeoID       = COALESCE(CeoID, ''),
+            @SYS_ManagerID   = COALESCE(ManagerID, ''),
+            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
+            @IsManager       = COALESCE(Manager, 0),
+            @SYSUserGroupID  = COALESCE(UserGroupID, '')
+        FROM SY_User 
+        WHERE EmployeeID = @EmpLookup AND COALESCE(Disable, 0) = 0
+        ORDER BY Manager DESC
+    END
+
+    -- =========================================================
+    -- SMART FALLBACK CHO BÁO CÁO MẶC ĐỊNH (TatCa)
+    -- Nếu là Admin hoặc Manager -> Mặc định xem danh sách Nhân Viên
+    -- Nếu là Sale/Nhân viên thường -> Mặc định xem danh sách Khách Hàng
+    -- =========================================================
+    IF @LoaiBaoCao = 'TatCa'
+    BEGIN
+        IF @SYSUserGroupID = 'Admin' OR @IsManager = 1
+            SET @LoaiBaoCao = 'NhanVien'
+        ELSE
+            SET @LoaiBaoCao = 'KhachHang'
+    END
+
+    -- =========================================================
+    -- ĐẶC CÁCH CHO WEB DASHBOARD 
+    -- Trả về đúng format ngày tháng để vẽ Biểu Đồ và Tính Tổng
+    -- =========================================================
+    IF NULLIF(@User, '') IS NOT NULL OR @FromDate IS NOT NULL
+    BEGIN
+        SELECT 
+            DAY(DocumentDate) AS NgayBan,
+            CAST(DocumentDate AS DATE) AS Ngay,
+            SUM(Amount) AS Amount,
+            FORMAT(SUM(Amount), '#,##0') AS [Doanh Số]
+        FROM AR_OrderAndReturnView
+        WHERE CAST(DocumentDate AS DATE) BETWEEN @TuNgay AND @DenNgay
+          AND (
+              @SYSUserGroupID = 'Admin'
+              OR EmployeeID = @SYS_EmployeeID
+              OR ManagerID = @SYS_EmployeeID
+              OR CeoID = @SYS_EmployeeID
+          )
+          AND (@EmployeeID = '' OR EmployeeID = @EmployeeID)
+          AND (@ManagerID = '' OR ManagerID = @ManagerID)
+          AND (@BranchID = '' OR BranchID = @BranchID)
+          AND (@CeoID = '' OR CeoID = @CeoID)
+          AND StatusID NOT IN (-2, -1, 0)
+        GROUP BY DAY(DocumentDate), CAST(DocumentDate AS DATE)
+        ORDER BY CAST(DocumentDate AS DATE)
+        
+        RETURN;
+    END
 
     -------------------------------------------------
     -- Báo Cáo Nhân Viên
@@ -98,9 +190,9 @@ BEGIN
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (
                 @SYSUserGroupID = 'Admin'
-                OR A.EmployeeID = @SYSEmployeeID
-                OR A.ManagerID = @SYSEmployeeID
-                OR A.CeoID = @SYSEmployeeID
+                OR A.EmployeeID = @SYS_EmployeeID
+                OR A.ManagerID = @SYS_EmployeeID
+                OR A.CeoID = @SYS_EmployeeID
             )
         GROUP BY A.EmployeeID, A.EmployeeName
 
@@ -133,9 +225,9 @@ BEGIN
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (
                 @SYSUserGroupID = 'Admin'
-                OR A.EmployeeID = @SYSEmployeeID
-                OR A.ManagerID = @SYSEmployeeID
-                OR A.CeoID = @SYSEmployeeID
+                OR A.EmployeeID = @SYS_EmployeeID
+                OR A.ManagerID = @SYS_EmployeeID
+                OR A.CeoID = @SYS_EmployeeID
             )
         GROUP BY A.ObjectID, A.ObjectName
 
@@ -143,7 +235,8 @@ BEGIN
         BEGIN
             SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, ObjectName) AS STT, 
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
-                ObjectID AS [Mã KH], ObjectName AS [Tên Khách Hàng], FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+                ObjectID AS [Mã KH], ObjectName AS [Tên Khách Hàng], 
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
             FROM @BC2 ORDER BY DoanhSo DESC
             RETURN;
         END
@@ -169,19 +262,21 @@ BEGIN
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (
                 @SYSUserGroupID = 'Admin'
-                OR A.EmployeeID = @SYSEmployeeID
-                OR A.ManagerID = @SYSEmployeeID
-                OR A.CeoID = @SYSEmployeeID
+                OR A.EmployeeID = @SYS_EmployeeID
+                OR A.ManagerID = @SYS_EmployeeID
+                OR A.CeoID = @SYS_EmployeeID
             )
             AND ISNULL(D.isKM, 0) = 0
         GROUP BY B.ItemID, B.ItemName
 
         IF @LoaiBaoCao = 'SanPham'
         BEGIN
-            SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY SoLuong DESC, ItemName) AS STT, 
+            SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, ItemName) AS STT, 
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
-                ItemID AS [Mã SP], ItemName AS [Tên Sản Phẩm], SoLuong AS [Số Lượng], FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
-            FROM @BC3 ORDER BY SoLuong DESC
+                ItemID AS [Mã SP], ItemName AS [Tên Sản Phẩm], 
+                FORMAT(SoLuong, '#,##0.##') AS [Số Lượng], 
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+            FROM @BC3 ORDER BY DoanhSo DESC
             RETURN;
         END
     END

@@ -1,16 +1,77 @@
+/*
+ ═══════════════════════════════════════════════════════════════
+  API_GoiYDonHang_AI — Gợi ý đơn hàng thông minh
+  ─────────────────────────────────────────────────────────────
+  [2026-05-20] FIX: Sau khi chạy script này, cần chạy thêm:
+
+    UPDATE dbo.API_Field
+    SET IsSystemParam = 1
+    WHERE ApiID = (SELECT ApiID FROM dbo.API_Definition WHERE StoredProcedure = 'API_GoiYDonHang_AI')
+      AND FieldCode IN ('@SYSBranchID', '@SYSCeoID', '@SYSManagerID', '@SYSEmployeeID', '@User');
+
+    UPDATE af
+    SET af.IsVisible = 0, af.IsEditable = 0
+    FROM dbo.API_Action_Field af
+    JOIN dbo.API_Field f ON f.FieldID = af.FieldID
+    WHERE f.ApiID = (SELECT ApiID FROM dbo.API_Definition WHERE StoredProcedure = 'API_GoiYDonHang_AI')
+      AND f.FieldCode IN ('@SYSBranchID', '@SYSCeoID', '@SYSManagerID', '@SYSEmployeeID', '@User');
+
+  Hoặc đơn giản chạy lại AutoBootstrap:
+    EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
+ ═══════════════════════════════════════════════════════════════
+*/
 IF OBJECT_ID('API_GoiYDonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonHang_AI;
 GO
 
 CREATE PROCEDURE API_GoiYDonHang_AI
-    @Username   VARCHAR(50) = '',
-    @MaKhachHang  VARCHAR(50) = '',
-    @TopN       INT         = 10
+    @Username     VARCHAR(50)  = '',
+    @User         VARCHAR(50)  = '',         -- Dashboard/Chatbot alias
+    @MaKhachHang  VARCHAR(50)  = '',         -- Original parameter name
+    @ObjectID     VARCHAR(50)  = '',         -- AI Scenarios Guide / Frontend alias
+    @TopN         INT          = 10,
+    -- Context parameters injected automatically by .NET server from claims
+    @SYSBranchID  VARCHAR(50)  = '',
+    @SYSCeoID     VARCHAR(50)  = '',
+    @SYSManagerID VARCHAR(50)  = '',
+    @SYSEmployeeID VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON
 
-    -- ═══ 1. Validate User ═══
-    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    -- ═══ 0. Mapping Dashboard/Frontend Alias ═══
+    IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+    IF NULLIF(@ObjectID, '') IS NOT NULL SET @MaKhachHang = @ObjectID;
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
+
+    -- ═══ 1. Lấy quyền user thực tế & Fallback ═══
+    DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
+    DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
+    DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
+
+    IF NULLIF(@Username, '') IS NOT NULL
+    BEGIN
+        SELECT
+            @SYS_BranchID    = ISNULL(BranchID, ''),
+            @SYS_CeoID       = ISNULL(CeoID, ''),
+            @SYS_ManagerID   = ISNULL(ManagerID, ''),
+            @SYS_EmployeeID  = ISNULL(EmployeeID, '')
+        FROM SY_User 
+        WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    END
+    ELSE IF NULLIF(@SYS_EmployeeID, '') IS NOT NULL
+    BEGIN
+        SELECT TOP 1
+            @Username        = UserName,
+            @SYS_BranchID    = ISNULL(BranchID, ''),
+            @SYS_CeoID       = ISNULL(CeoID, ''),
+            @SYS_ManagerID   = ISNULL(ManagerID, '')
+        FROM SY_User 
+        WHERE EmployeeID = @SYS_EmployeeID AND COALESCE(Disable, 0) = 0
+    END
+
+    -- ═══ 2. Validate User ═══
+    IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
         RETURN
@@ -21,10 +82,6 @@ BEGIN
         SELECT 'N/A' AS [Mã SP], N'Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
         RETURN;
     END
-
-    -- ═══ 2. Phân quyền ═══
-    DECLARE @SYSBranchID   VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
 
     -- ═══════════════════════════════════════════════════
     -- KHÔNG TRUYỀN khách hàng (khachhang) → Top sản phẩm bán chạy nhất
@@ -42,7 +99,7 @@ BEGIN
         JOIN CF_ItemTbl CF         ON CF.ItemID    = D.ItemID
         WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
           AND ISNULL(I.StatusID, 0) != 10
-          AND (@SYSBranchID  = '' OR I.BranchID  = @SYSBranchID)
+          AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
         GROUP BY D.ItemID, CF.ItemName
         ORDER BY [Doanh số] DESC
         RETURN
@@ -124,16 +181,21 @@ BEGIN
         CK.ChuKyTrungBinh                               AS [ChuKyNgay],
         CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
              ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [TonKho],
+        CASE 
+            WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Quá hạn'
+            WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
+            ELSE N'Ổn định'
+        END                                             AS [TrangThai],
         CONCAT(
             CASE 
                 WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Quá hạn ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
-                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'THỜI ĐIỂM VÀNG'
+                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
                 ELSE N'Ổn định'
             END,
             CASE WHEN TT.ItemID IS NOT NULL THEN N' | Trọng tâm' ELSE '' END,
             CASE WHEN MV.ItemID IS NOT NULL THEN N' | Mùa vụ' ELSE '' END,
             CASE WHEN KM.ItemID IS NOT NULL THEN N' | Khuyến mãi' ELSE '' END
-        )                                               AS [TrangThai]
+        )                                               AS [ChiTiet]
     FROM #LichSu L
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID

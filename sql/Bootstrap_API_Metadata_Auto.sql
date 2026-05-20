@@ -118,11 +118,12 @@ BEGIN
     ('DoanhSo','MONEY'), ('TongNo','MONEY'), ('TonKho','MONEY'), ('DonGia','MONEY'), ('SoTien','MONEY'), 
     ('TongTien','MONEY'), ('DoanhThu','MONEY'), ('GiaBan','MONEY'), ('TongTienNoThucTe','MONEY'), ('TichLuyDatDuoc','MONEY'),
     ('SoDienThoai','PHONE'), ('DienThoai','PHONE'), ('Phone','PHONE'), ('SDT','PHONE'), ('SĐT', 'PHONE'),
-    ('Ngay','TREND'), ('NgayChungTu','TREND'), ('ThoiGian','TREND'), ('LoiNhacAI','TREND'), ('NgayGiao','TREND'),
+    ('Ngay','TREND'), ('NgayChungTu','TREND'), ('ThoiGian','TREND'), ('NgayGiao','TREND'),
     ('TyLe','PERCENT'), ('TangTruong','PERCENT'), ('PhanTram','PERCENT'), ('HoanThanh','PERCENT'), ('Percentage','PERCENT'),
     ('MucTieu','TARGET'), ('Target','TARGET'), ('DinhMuc','TARGET'), ('ChiTieu','TARGET'),
     ('SoLuong','COUNT'), ('SoPhanQua','COUNT'), ('Count','COUNT'), ('TotalRows','COUNT'),
-    ('_debug_llm','HIDDEN'), ('JSON_F52E2B61-18A1-11d1-B105-00805F49916B','HIDDEN');
+    ('_debug_llm','HIDDEN'), ('JSON_F52E2B61-18A1-11d1-B105-00805F49916B','HIDDEN'),
+    ('DoanhSoDaDat','HIDDEN'), ('MucTieuTiepTheo','HIDDEN'), ('SoTienConThieu','HIDDEN'), ('LoiNhacAI','HIDDEN');
 END
 GO
 

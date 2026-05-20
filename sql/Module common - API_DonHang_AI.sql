@@ -2,29 +2,54 @@ IF OBJECT_ID('API_DonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_DonHang_AI;
 GO
 
 CREATE PROCEDURE [dbo].[API_DonHang_AI]
-   @Username    VARCHAR(50)   = '',
-   @TuNgay    DATETIME      = NULL,
+   @Username     VARCHAR(50)   = '',
+   @User         VARCHAR(50)   = '',         -- Dashboard/Frontend alias
+   @TuNgay       DATETIME      = NULL,
    @DenNgay      DATETIME      = NULL,
-   @StatusID    INT           = NULL,
-   @StatusName  NVARCHAR(50)  = '',
-   @EmployeeID  VARCHAR(50)   = '',
-   @MaKhachHang   VARCHAR(50)   = '',
-   @timkiem  NVARCHAR(50)  = '',
-   @TopN        INT           = 10
+   @FromDate     DATETIME      = NULL,       -- Dashboard/Frontend alias
+   @ToDate       DATETIME      = NULL,       -- Dashboard/Frontend alias
+   @StatusID     INT           = NULL,
+   @StatusName   NVARCHAR(50)  = '',
+   @EmployeeID   VARCHAR(50)   = '',
+   @MaKhachHang  VARCHAR(50)   = '',         -- Chatbot parameter
+   @ObjectID     VARCHAR(50)   = '',         -- Frontend parameter alias
+   @timkiem      NVARCHAR(50)  = '',         -- Chatbot parameter
+   @SearchText   NVARCHAR(50)  = '',         -- Frontend parameter alias
+   @BranchID     VARCHAR(50)   = '',         -- Frontend parameter alias
+   @TopN         INT           = 10,
+   @page         INT           = 1,          -- Pagination: sent by .NET server, handled server-side
+   @limit        INT           = 500,        -- Pagination: sent by .NET server, used as TopN cap
+   -- Context parameters injected automatically by .NET server from claims
+   @SYSBranchID  VARCHAR(50)   = '',
+   @SYSCeoID     VARCHAR(50)   = '',
+   @SYSManagerID VARCHAR(50)   = '',
+   @SYSEmployeeID VARCHAR(50)  = ''
 AS
 BEGIN
    SET NOCOUNT ON
    
-   -- 1. Validate User
-   IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+   -- 0. Mapping Dashboard/Frontend Alias
+   IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+   IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
+   IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
+   IF NULLIF(@ObjectID, '') IS NOT NULL SET @MaKhachHang = @ObjectID;
+   IF NULLIF(@SearchText, '') IS NOT NULL SET @timkiem = @SearchText;
+   -- @limit từ web/server override @TopN (max 5000 để tránh quá tải)
+   IF @limit > 0 AND @limit <= 5000 SET @TopN = @limit;
+   
+   -- 1. Validate User (Skip strict validation if username not provided yet, fallback to employee id resolution)
+   IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
    BEGIN
        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
        RETURN
    END
 
-   -- 2. Defaults
+   -- 2. Defaults & Normalize Bounds
    IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
+   
+   SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
+   SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
    
    -- CLEAN AI EXTRACTED BRACKETS
    IF @EmployeeID LIKE '%\[%\]%' ESCAPE '\'
@@ -59,53 +84,107 @@ BEGIN
        WHERE StatusName LIKE N'%' + @StatusName + '%'
    END
 
-   -- 4. Lấy quyền user
-   DECLARE @SYSBranchID    VARCHAR(50) = ''
-   DECLARE @SYSCeoID       VARCHAR(50) = ''
-   DECLARE @SYSManagerID   VARCHAR(50) = ''
-   DECLARE @SYSEmployeeID  VARCHAR(50) = ''
-   DECLARE @IsManager      BIT         = 0
+   -- 4. Lấy quyền user (Hỗ trợ định danh thông qua nhiều nguồn: @Username, @User, @SYSEmployeeID, @EmployeeID)
+   DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+   DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
+   DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
+   DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
+   DECLARE @IsManager       BIT         = 0
+   DECLARE @SYSUserGroupID  VARCHAR(50) = ''
 
-   SELECT
-       @SYSBranchID   = ISNULL(BranchID, ''),
-       @SYSCeoID      = ISNULL(CeoID, ''),
-       @SYSManagerID  = ISNULL(ManagerID, ''),
-       @SYSEmployeeID = ISNULL(EmployeeID, ''),
-       @IsManager     = ISNULL(Manager, 0)
-   FROM SY_User WHERE UserName = @Username
+   -- Ưu tiên tìm theo UserName trước
+   IF NULLIF(@Username, '') IS NOT NULL
+   BEGIN
+       SELECT
+           @SYS_BranchID    = ISNULL(BranchID, ''),
+           @SYS_CeoID       = ISNULL(CeoID, ''),
+           @SYS_ManagerID   = ISNULL(ManagerID, ''),
+           @SYS_EmployeeID  = ISNULL(EmployeeID, ''),
+           @IsManager       = ISNULL(Manager, 0),
+           @SYSUserGroupID  = ISNULL(UserGroupID, '')
+       FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+   END
+   -- Nếu không có Username nhưng có mã EmployeeID, tra cứu ngược lại từ SY_User
+   ELSE IF NULLIF(@SYS_EmployeeID, '') IS NOT NULL OR NULLIF(@EmployeeID, '') IS NOT NULL
+   BEGIN
+       DECLARE @EmpLookup VARCHAR(50) = COALESCE(NULLIF(@SYS_EmployeeID, ''), @EmployeeID)
+       SELECT TOP 1
+           @Username        = UserName,
+           @SYS_BranchID    = ISNULL(BranchID, ''),
+           @SYS_CeoID       = ISNULL(CeoID, ''),
+           @SYS_ManagerID   = ISNULL(ManagerID, ''),
+           @SYS_EmployeeID  = ISNULL(EmployeeID, ''),
+           @IsManager       = ISNULL(Manager, 0),
+           @SYSUserGroupID  = ISNULL(UserGroupID, '')
+       FROM SY_User WHERE EmployeeID = @EmpLookup AND COALESCE(Disable, 0) = 0
+       ORDER BY Manager DESC
+   END
+
+   -- Áp dụng phân quyền Row-Level Security (RLS) thông minh
+   IF UPPER(@SYSUserGroupID) = 'ADMIN'
+   BEGIN
+       SET @SYS_BranchID = ''
+       SET @SYS_CeoID = ''
+       SET @SYS_ManagerID = ''
+       SET @SYS_EmployeeID = ''
+       SET @EmployeeID = ''
+       SET @BranchID = ''
+   END
+   ELSE IF @IsManager = 1
+   BEGIN
+       -- Nếu là Quản lý: Cho phép xem toàn bộ nhân viên cấp dưới trực thuộc hoặc chính mình.
+       -- Nếu tham số @EmployeeID là mã của chính quản lý hoặc để trống thì xóa lọc @EmployeeID để xem tất cả nhân viên.
+       IF @EmployeeID = @SYS_EmployeeID OR @EmployeeID = ''
+       BEGIN
+           SET @EmployeeID = ''
+       END
+   END
+   ELSE
+   BEGIN
+       -- Nếu là Nhân viên thường: Chỉ được phép xem đơn hàng của chính mình.
+       SET @EmployeeID = @SYS_EmployeeID
+   END
 
    -------------------------------------------------
    -- 5. Truy vấn danh sách đơn hàng
    -------------------------------------------------
-   SELECT TOP (@TopN)
-       ROW_NUMBER() OVER (ORDER BY A.DateCreate DESC, A.DocumentID DESC) AS STT,
-       A.DocumentID,
-       A.DocumentDate,
-       A.DeliverDate,
-       A.ObjectID,
-       O.ObjectName,
-       O.Phone AS CustomerPhone,
-       A.EmployeeID,
-       E.ObjectName AS EmployeeName,
-       A.StatusID,
-       S.StatusName,
-       A.BaseTotal,
-       A.DepositAmount,
-       A.Notes,
-       A.DateCreate
+    SELECT TOP (@TopN)
+        ROW_NUMBER() OVER (ORDER BY A.DateCreate DESC, A.DocumentID DESC) AS STT,
+        A.DocumentID,
+        A.DocumentDate,
+        A.DeliverDate,
+        A.ObjectID,
+        O.ObjectName,
+        O.Phone AS CustomerPhone,
+        A.EmployeeID,
+        E.ObjectName AS EmployeeName,
+        A.StatusID,
+        S.StatusName,
+        A.BaseTotal,
+        A.DepositAmount,
+        A.Notes,
+        A.DateCreate,
+        (SELECT SUM(COALESCE(DiemTichLuy, 0)) FROM AR_OrderDetailTbl X WHERE X.DocumentID = A.DocumentID) AS DiemTichLuy
    FROM dbo.AR_OrderTbl A
    LEFT JOIN dbo.CF_ObjectTbl O ON O.ObjectID = A.ObjectID
    LEFT JOIN dbo.CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
    LEFT JOIN dbo.AR_OrderStatusTbl S ON S.StatusID = A.StatusID
-   WHERE CAST(A.DocumentDate AS DATE) BETWEEN @TuNgay AND @DenNgay
+   WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
        AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-       -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ
-       AND (ISNULL(@SYSBranchID, '')   = '' OR ISNULL(A.BranchID, '') = @SYSBranchID)
-       AND (ISNULL(@SYSCeoID, '')      = '' OR ISNULL(A.CeoID, '')    = @SYSCeoID)
-       AND (ISNULL(@SYSManagerID, '')  = '' OR ISNULL(A.ManagerID, '') = @SYSManagerID)
-       AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID           OR @IsManager = 1)
+       AND (@BranchID = '' OR A.BranchID = @BranchID)
+       -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ downline, và bypass hoàn toàn bộ lọc cho Admin
+       AND (
+           UPPER(@SYSUserGroupID) = 'ADMIN'
+           OR (
+               (ISNULL(@SYS_BranchID, '') = '' OR ISNULL(A.BranchID, '') = @SYS_BranchID)
+               AND (
+                   @IsManager = 1 AND (A.ManagerID = @SYS_EmployeeID OR A.EmployeeID = @SYS_EmployeeID)
+                   OR @IsManager = 0 AND (A.EmployeeID = @SYS_EmployeeID OR ISNULL(@SYS_EmployeeID, '') = '')
+               )
+           )
+       )
        AND (@timkiem = ''
             OR A.DocumentID LIKE '%' + @timkiem + '%'
             OR O.ObjectName LIKE N'%' + @timkiem + '%'
