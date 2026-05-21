@@ -1381,6 +1381,27 @@
 
 
         try {
+            // Auto-detect and normalize form actions (e.g. @lap_don_hang)
+            if (res && res.apiCode === '@lap_don_hang') {
+                if (!res.action) res.action = 'ADD';
+                
+                // If items are not present, extract them from user query
+                if (!res.items || res.items.length === 0) {
+                    var lastUsrMsg = chatHistory.slice().reverse().find(function (m) { return m.role === 'user'; });
+                    var queryText = lastUsrMsg ? lastUsrMsg.content : '';
+                    res.items = _extractCartItemsFromText(queryText);
+                }
+
+                // If the panel is not open, open it first!
+                if (window.ApiEngine) {
+                    var activeApi = window.ApiEngine.getActiveApi ? window.ApiEngine.getActiveApi() : null;
+                    if (!activeApi || activeApi.apiCode !== res.apiCode) {
+                        window.ApiEngine.selectApi(res.apiCode, res);
+                        if (res.message) _addMessage('ai', res.message);
+                        return;
+                    }
+                }
+            }
 
             // -- Format mới từ K_SieuLuong: { status, message, data:[], count, uiTemplate, intentParams } --
 
@@ -1617,6 +1638,57 @@
 
         return String(v).replace(/[\s\-\.]/g, '');
 
+    }
+
+
+
+    function _extractCartItemsFromText(text) {
+        if (!text) return [];
+        var items = [];
+        // Split by comma, "và", "cộng", "+"
+        var segments = text.split(/,|và|cộng|\+/i);
+        segments.forEach(function(seg) {
+            seg = seg.trim();
+            if (!seg) return;
+            
+            // Strip leading action prefixes
+            seg = seg.replace(/^(lên đơn|đặt đơn|đặt|mua|thêm|bán|lấy|cần|giúp|hộ)\s+/i, '');
+            
+            // Find any number in the segment
+            var numMatch = seg.match(/(\d+(?:\.\d+)?)/);
+            if (numMatch) {
+                var qty = parseFloat(numMatch[1]);
+                var numIdx = seg.indexOf(numMatch[1]);
+                
+                var afterPart = seg.substring(numIdx + numMatch[1].length).trim();
+                var beforePart = seg.substring(0, numIdx).trim();
+                
+                // Clean unit from afterPart
+                var afterClean = afterPart.replace(/^(hộp|chai|vỉ|ống|gói|viên|lon|tuýp|cái|chiếc|pcs|lọ|thùng|hộp thuốc|thuốc)\s+/i, '');
+                
+                var namePart = '';
+                if (afterClean.replace(/[^a-zA-Z0-9]/g, '').length >= 3) {
+                    namePart = afterClean;
+                } else {
+                    namePart = beforePart;
+                }
+                
+                // Clean up namePart (remove common words)
+                var cleanKeyword = namePart
+                    .replace(/^(hộp|chai|vỉ|ống|gói|viên|lon|tuýp|cái|chiếc|pcs|lọ|thùng|hộp thuốc|thuốc)\s+/i, '')
+                    .replace(/\s+(hộp|chai|vỉ|ống|gói|viên|lon|tuýp|cái|chiếc|pcs|lọ|thùng)$/i, '')
+                    .replace(/^(lên đơn|đặt|thêm|mua|lấy|cần)\s+/i, '')
+                    .replace(/\s+(cho|cho khách|khách hàng|cho nhà thuốc|cho quầy thuốc|nhà thuốc|quầy thuốc|đại lý).*$/i, '')
+                    .trim();
+                
+                if (cleanKeyword && cleanKeyword.length >= 2) {
+                    // Capitalize first letter of keyword
+                    cleanKeyword = cleanKeyword.charAt(0).toUpperCase() + cleanKeyword.slice(1);
+                    items.push({ keyword: cleanKeyword, qty: qty });
+                }
+            }
+        });
+        return items;
     }
 
 

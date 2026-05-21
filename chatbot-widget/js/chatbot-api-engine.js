@@ -2277,7 +2277,7 @@
 
     // ── API Selected ──────────────────────────────────────────────────
 
-    function _onApiSelected(apiCode) {
+    function _onApiSelected(apiCode, pendingUpdate) {
 
         var found = _apiList.find(function (a) { return a.ApiCode === apiCode; });
 
@@ -2288,7 +2288,7 @@
 
 
 
-        _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null };
+        _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null, pendingUpdate: pendingUpdate };
 
         // Keep API tag state but do not leave visible '#' text: store on input dataset
 
@@ -2533,6 +2533,11 @@
 
 
         requestAnimationFrame(function () { _panelEl.classList.add('active'); });
+
+        if (_activeApi && _activeApi.pendingUpdate) {
+            window.ApiEngine.applyFormUpdate(_activeApi.pendingUpdate);
+            delete _activeApi.pendingUpdate;
+        }
 
         setTimeout(function () {
 
@@ -4661,6 +4666,33 @@
                 if (btn) btn.click();
                 return;
             }
+
+            // Autofill regular fields from res.params or res.intentParams
+            var paramsToFill = Object.assign({}, res.intentParams || {}, res.params || {});
+            
+            // Map common aliases
+            if (paramsToFill['@MaKhachHang'] && !paramsToFill['@ObjectID']) {
+                paramsToFill['@ObjectID'] = paramsToFill['@MaKhachHang'];
+            }
+
+            Object.keys(paramsToFill).forEach(function(k) {
+                var cleanK = k.replace('@', '').toLowerCase();
+                var el = document.getElementById('ae-f-' + cleanK) || 
+                         document.querySelector('[name="' + k + '"]') || 
+                         document.querySelector('[name="' + k.replace('@', '') + '"]');
+                if (el) {
+                    var val = paramsToFill[k];
+                    if (val !== null && val !== undefined) {
+                        el.value = val;
+                        var txtEl = document.getElementById(el.id + '_txt');
+                        if (txtEl) {
+                            txtEl.value = val;
+                        }
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            });
             
             if (res.items && res.items.length > 0) {
                 var grid = _panelEl ? _panelEl.querySelector('.ae-datagrid-field') : document.querySelector('.ae-datagrid-field');
