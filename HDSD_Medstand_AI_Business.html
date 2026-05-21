@@ -404,6 +404,7 @@
         <button class="ntab" onclick="gp('guide')" id="nt-guide">Huong dan</button>
         <button class="ntab" onclick="gp('rules')" id="nt-rules">Luu y</button>
         <button class="ntab" onclick="gp('faq')" id="nt-faq">Hoi dap</button>
+        <button class="ntab" onclick="gp('test')" id="nt-test" style="border: 1px solid var(--danger); color: var(--danger); font-weight: bold; border-radius: 6px;">Kich ban test (7 Acc)</button>
     </div>
     <div class="nav-right">
         <button class="nav-btn" onclick="window.print()">In / Xuat PDF</button>
@@ -420,6 +421,7 @@
             <button class="sb-link" onclick="gp('guide')" id="sl-guide"><span class="sb-dot dot-purple"></span>Huong dan su dung</button>
             <button class="sb-link" onclick="gp('rules')" id="sl-rules"><span class="sb-dot dot-warn"></span>Luu y va quy tac</button>
             <button class="sb-link" onclick="gp('faq')" id="sl-faq"><span class="sb-dot dot-cyan"></span>Hoi dap thuong gap</button>
+            <button class="sb-link" onclick="gp('test')" id="sl-test" style="color: var(--danger); font-weight: bold;"><span class="sb-dot dot-red"></span>Kich ban UAT (7 Acc)</button>
         </div>
         <div class="sb-section">
             <div class="sb-label">Danh sach 19 tinh nang</div>
@@ -667,6 +669,90 @@
                 </div>
             </div>
         </section>
+
+        </section>
+
+        <!-- ══ TEST SCENARIOS PAGE (UAT) ══ -->
+        <section class="page" id="page-test">
+            <div class="cover-band" style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);">
+                <div class="cover-eyebrow">Nghiem thu he thong · UAT testing</div>
+                <div class="cover-title">Kich Ban Chat Kiem Thu Cho 7 Tai Khoan</div>
+                <div class="cover-sub">Click chon mot trong 7 tai khoan duoi day. He thong se tu dong hien thi 19 cau chat mau da duoc ca nhan hoa chinh xac theo phan quyen va ten khach hang cua ban.</div>
+            </div>
+
+            <!-- Quick Account Selector -->
+            <div class="sec-h">1. Chon tai khoan dang nhap</div>
+            <div class="sec-lead">Bam chon nhan su dang dung de tai nhanh bo cau hoi kiem thu thich hop:</div>
+            
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:10px; margin-bottom:24px;">
+                <button class="nav-btn" onclick="selectTestUser('QLBH013.MED')" id="btn-user-QLBH013.MED" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Mai Anh Tuan (MB)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLBH013.MED</div>
+                    <div style="font-size:11px; color:var(--success); font-weight:600; margin-top:4px;">Mien Bac · QLBH</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLBH016.MED')" id="btn-user-QLBH016.MED" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Tran Van Huong (MB)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLBH016.MED</div>
+                    <div style="font-size:11px; color:var(--success); font-weight:600; margin-top:4px;">Mien Bac · QLBH</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLBH005.MED')" id="btn-user-QLBH005.MED" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Nguyen The Anh (MT)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLBH005.MED</div>
+                    <div style="font-size:11px; color:var(--purple); font-weight:600; margin-top:4px;">Mien Trung · QLBH</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLBH010.MED')" id="btn-user-QLBH010.MED" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Nguyen Van Viet Anh (MT)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLBH010.MED</div>
+                    <div style="font-size:11px; color:var(--purple); font-weight:600; margin-top:4px;">Mien Trung · QLBH</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLMN2')" id="btn-user-QLMN2" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Tran Van Luan (MN)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLMN2</div>
+                    <div style="font-size:11px; color:var(--cyan); font-weight:600; margin-top:4px;">Mien Nam · QLMN</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLMD1')" id="btn-user-QLMD1" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Nguyen Van Thai (MN)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLMD1</div>
+                    <div style="font-size:11px; color:var(--cyan); font-weight:600; margin-top:4px;">Mien Nam · QLMD (Moi)</div>
+                </button>
+                <button class="nav-btn" onclick="selectTestUser('QLBH024.MED')" id="btn-user-QLBH024.MED" style="text-align:left; padding:12px; border-radius:9px;">
+                    <div style="font-weight:700; color:var(--primary); font-size:13px;">Ngo Duc Hung (MN)</div>
+                    <div style="font-size:11px; color:var(--text3); margin-top:2px;">User: QLBH024.MED</div>
+                    <div style="font-size:11px; color:var(--cyan); font-weight:600; margin-top:4px;">Mien Nam · QLBH</div>
+                </button>
+            </div>
+
+            <!-- Active context -->
+            <div class="card" style="background:var(--primary-mid); border-color:#bfdbfe;">
+                <div style="display:flex; flex-wrap:wrap; gap:16px 24px; font-size:13px;">
+                    <div><strong>Dang chon:</strong> <span id="lbl-fullname" style="color:var(--primary); font-weight:700;">Mai Anh Tuan</span></div>
+                    <div><strong>Ten dang nhap:</strong> <span id="lbl-username" style="font-family:monospace; font-weight:600;">QLBH013.MED</span></div>
+                    <div><strong>Mat khau:</strong> <span style="font-family:monospace; font-weight:600;">123456</span></div>
+                    <div><strong>Vung hoat dong:</strong> <span id="lbl-region" style="font-weight:600; color:var(--success);">Mien Bac</span></div>
+                    <div><strong>Khach hang tieu bieu:</strong> <span id="lbl-customer" style="font-weight:600; color:var(--purple);">Quay Thuoc Thu Thuy (HYA107)</span></div>
+                </div>
+            </div>
+
+            <!-- Prompts list -->
+            <div class="sec-h">2. Bo cau hoi chat mau (Copy & Paste)</div>
+            <div class="sec-lead">Sao chep cau hoi phia duoi va paste truc tiep vao cua so Tro ly AI de xem ket qua.</div>
+
+            <div class="card" style="padding:0; overflow:hidden;">
+                <table class="ref-table" style="font-size:12.5px;">
+                    <thead>
+                        <tr>
+                            <th style="width:50px; text-align:center;">STT</th>
+                            <th style="width:250px;">Tinh nang dang test</th>
+                            <th>Noi dung cau chat mau (Copy & Paste)</th>
+                            <th style="width:110px; text-align:center;">Hanh dong</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-scenarios-body">
+                        <!-- Dynamic rows loaded by JS -->
+                    </tbody>
+                </table>
+            </div>
+
 
         <!-- ══ FLOW ══ -->
         <section class="page" id="page-flow">
@@ -1240,10 +1326,13 @@
 function gp(name) {
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
-    ['overview','flow','guide','rules','faq'].forEach(p => {
+    ['overview','flow','guide','rules','faq','test'].forEach(p => {
         document.getElementById('nt-' + p)?.classList.toggle('active', p === name);
         document.getElementById('sl-' + p)?.classList.toggle('active', p === name);
     });
+    if (name === 'test') {
+        selectTestUser('QLBH013.MED');
+    }
 }
 
 // ─── HOWTO ACCORDION ──────────────────────────────────
@@ -1255,6 +1344,303 @@ function toggleHowto(head) {
 function toggleFaq(q) {
     q.closest('.faq-item').classList.toggle('open');
 }
+
+// ─── INTERACTIVE UAT SCENARIOS DATA ───────────────────
+const uatUsersData = {
+    "QLBH013.MED": {
+        fullname: "Mai Anh Tuan (MB)",
+        username: "QLBH013.MED",
+        region: "Mien Bac",
+        customer: "Quay Thuoc Thu Thuy (HYA107)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Doanh so cua toi thang nay the nao?" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Doanh so cua Tran Van Luan vung Mien Nam the nao?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Tra cuu danh sach don hang gan day cua toi" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 5 hop Antrinano cho Quay Thuoc Thu Thuy" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Goi y don hang cho Quay Thuoc Thu Thuy" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Goi y ban them upsell cho Quay Thuoc Thu Thuy" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Thong tin chi tiet ve san pham Antrinano" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Tong cong no khach hang trong vung cua toi la bao nhieu?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Chi tiet hoa don chua thanh toan cua Quay Thuoc Thu Thuy" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Tim kiem hoa don gan day cua Quay Thuoc Thu Thuy" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Diem tich luy hien tai cua Quay Thuoc Thu Thuy la bao nhieu?" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Xem tuyen ban hang cua toi hom nay" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Goi y thuoc thay the bo tro khi ban Amoxicillin va Vitamin C" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "He thong co de xuat chuong trinh khuyen mai nao dang chay khong?" },
+            { stt: "15", name: "San pham trong tam thang", text: "Danh sach cac san pham trong tam can push trong thang nay" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Xem danh muc cac nhom san pham cua cong ty" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Cham diem tin nhiem khach hang Quay Thuoc Thu Thuy" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Kiem tra ton kho cua san pham Antrinano" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Bat dau bai khao sat cho Quay Thuoc Thu Thuy" }
+        ]
+    },
+    "QLBH016.MED": {
+        fullname: "Tran Van Huong (MB)",
+        username: "QLBH016.MED",
+        region: "Mien Bac",
+        customer: "Quay Thuoc Thu Thuy (HYA107)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Doanh so ban hang cua toi trong thang nay?" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Cho toi xem doanh so cua Nguyen Van Viet Anh?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Danh sach don hang kiem thu cua toi?" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 3 hop Antrinano cho Quay Thuoc Thu Thuy" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Khach hang Quay Thuoc Thu Thuy nen mua them gi?" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Goi y upsell cho Quay Thuoc Thu Thuy dat moc qua?" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Cong dung va gia ban cua Antrinano?" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Khach hang nao dang no vung toi nhieu nhat?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Chi tiet cac khoan no cua Quay Thuoc Thu Thuy?" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Hoa don gan day cua Quay Thuoc Thu Thuy?" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Kiem tra diem thuong cua Quay Thuoc Thu Thuy?" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Goi y tuyen ban hang va dia chi hom nay cua toi?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Khach mua Amoxicillin, Vitamin C thi can kem theo men vi sinh gi?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Khuyen mai hot dang ap dung cho cac SKU trong thang nay?" },
+            { stt: "15", name: "San pham trong tam thang", text: "San pham nao duoc BGD uu tien trong thang 5/2026?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Danh sach phan loai danh muc duoc?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Phan hang va uy tin thanh toan cua Quay Thuoc Thu Thuy?" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Antrinano con bao nhieu hop trong kho?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Khao sat y kien khach hang Quay Thuoc Thu Thuy?" }
+        ]
+    },
+    "QLBH005.MED": {
+        fullname: "Nguyen The Anh (MT)",
+        username: "QLBH005.MED",
+        region: "Mien Trung",
+        customer: "Nha Thuoc Le Hung 2 (DNA014)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Doanh so ca nhan cua toi trong thang nay la bao nhieu?" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Cho toi xem doanh so cua Mai Anh Tuan ngoai mien Bac?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Xem lich su cac don hang gan nhat cua toi" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 5 hop Argelomag cho Nha Thuoc Le Hung 2" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Goi y dat hang tu dong cho Nha Thuoc Le Hung 2" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Goi y upsell thuc day mua hang cho Nha Thuoc Le Hung 2" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Cong dung, chi dinh va gia cua thuoc Argelomag?" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Liet ke cong no tat ca khach hang o khu vuc Mien Trung?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Chi tiet hoa don chua thanh toan cua Nha Thuoc Le Hung 2" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Tra cuu hoa don gan day nhat cua Nha Thuoc Le Hung 2" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Nha Thuoc Le Hung 2 tich luy duoc bao nhieu diem thuong?" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Hom nay toi can di tham nhung nha thuoc nao trong tuyen?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Tu van men vi sinh kem theo khi nguoi dung dung khang sinh Amoxicillin?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Liet ke chinh sach va chuong trinh khuyen mai moi nhat?" },
+            { stt: "15", name: "San pham trong tam thang", text: "San pham chu luc can thuc day ban hang thang nay la gi?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Liet ke danh muc san pham dang ban cua cong ty?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Xep hang va cham diem uy tin no cua Nha Thuoc Le Hung 2" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Kiem tra ton kho san pham Argelomag con lai?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Mo form khao sat dich vu cho Nha Thuoc Le Hung 2" }
+        ]
+    },
+    "QLBH010.MED": {
+        fullname: "Nguyen Van Viet Anh (MT)",
+        username: "QLBH010.MED",
+        region: "Mien Trung",
+        customer: "Nha Thuoc Le Hung 2 (DNA014)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Doanh so ban hang cua nhom mien Trung thang nay?" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Doanh so vung Mien Nam thang nay cua Tran Van Luan?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Liet ke cac don hang dang cho duyet hoac da giao vung MT" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 10 hop Argelomag cho Nha Thuoc Le Hung 2" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Nha Thuoc Le Hung 2 hay nhap mat hang nao, goi y lay them?" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Tu van ban upsell them hang cho Nha Thuoc Le Hung 2" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Tra cuu san pham Argelomag ke don nhu nao?" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Nha thuoc nao co cong no tre han cao nhat mien Trung?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Nha Thuoc Le Hung 2 con ton dong bao nhieu hoa đơn?" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Lich su hoa don ban ra cho Nha Thuoc Le Hung 2?" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Tra diem khuyen mai tich luy cua Nha Thuoc Le Hung 2?" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Tuyen vieng tham di chuyen hom nay cua nhan vien toi?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Ke don thay the / kem men tieu hoa khi dung khang sinh?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Khuyen mai cua hang dang ap dung cho dai ly mien Trung?" },
+            { stt: "15", name: "San pham trong tam thang", text: "Danh sach SKU duoc BGĐ yeu cau tap trung push thang nay?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Xem danh muc cac loai khach hang va san pham?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Tinh trang tin nhiem va chi so no cua Nha Thuoc Le Hung 2?" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Argelomag con ton bao nhieu o cac kho Mien Trung?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Bat dau khao sat muc do hai long cua Nha Thuoc Le Hung 2" }
+        ]
+    },
+    "QLMN2": {
+        fullname: "Tran Van Luan (MN)",
+        username: "QLMN2",
+        region: "Mien Nam",
+        customer: "Nha Thuoc Le Hung 2 (DNA014)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Xem doanh so vung Mien Nam cua toi thang nay" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Doanh so vung mien Bac cua Mai Anh Tuan hom nay?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Tra cuu don hang gan day cua vung Mien Nam" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 5 hop Topalpha cho Nha Thuoc Le Hung 2" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Goi y san pham nha thuoc Nha Thuoc Le Hung 2 can mua?" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Goi y chao combo upsell cho Nha Thuoc Le Hung 2" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Thanh phan, tac dung phu va huong dan dung cua Topalpha?" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Khu vuc Mien Nam dang no tat ca bao nhieu tien?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Nha Thuoc Le Hung 2 con cac hoa don cong no nao chua tra?" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Tim hoa don cua Nha Thuoc Le Hung 2" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Diem tich luy dat duoc cua Nha Thuoc Le Hung 2 la?" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Xem tuyen di chuyen ban hang hom nay cua nhan vien?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Don thuoc trieu chung: dung Vitamin C va Amoxicillin thi can ban kem men gi?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Chuong trinh giam gia/chiet khau dang chay o Mien Nam?" },
+            { stt: "15", name: "San pham trong tam thang", text: "Xem danh muc SKU trong tam duoc chi dinh thang nay?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Tra cuu danh muc san pham dang cap nhat?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Bao cao cham diem va nguy co roi di cua Nha Thuoc Le Hung 2?" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Kiem tra so luong Topalpha con trong kho?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Khao sat y kien khach hang Nha Thuoc Le Hung 2" }
+        ]
+    },
+    "QLMD1": {
+        fullname: "Nguyen Van Thai (MN - Moi)",
+        username: "QLMD1",
+        region: "Mien Nam",
+        customer: "Nha Thuoc Le Hung 2 (DNA014)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Xem bao cao doanh so ca nhan cua toi thang nay" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Doanh so vung mien Trung cua Nguyen Van Viet Anh?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Danh sach don hang toi da len tu truoc toi gio" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 5 hop Topalpha cho Nha Thuoc Le Hung 2" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Goi y don hang thich hop cho Nha Thuoc Le Hung 2" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Goi y ban upsell gia tri don cho Nha Thuoc Le Hung 2" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Thong tin chi tiet ve gia, hop quy cach cua Topalpha" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Tong cong no cac nha thuoc mien Nam toi quan ly" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Xem no dong cac dot hoa don cua Nha Thuoc Le Hung 2" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Lich su cac chung tu hoa don xuat ban cho Nha Thuoc Le Hung 2" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Diem thuong tich luy chuong trinh cua Nha Thuoc Le Hung 2" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Tuyen ban hang cua toi hom nay co nhung diem nao?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Ban khang sinh Amoxicillin co kem theo Vitamin C va men vi sinh khong?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Co chuong trinh uu dai hoac xar hang combo nao khong?" },
+            { stt: "15", name: "San pham trong tam thang", text: "Danh sach san pham trong tam thang 5/2026 can day manh?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Cac nhom phan loai mat hang dang phat hanh?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Bao cao cham diem RFM-C va canh bao tin nhiem Nha Thuoc Le Hung 2?" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Topalpha con hang giao khong, check kho Mien Nam?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Mo form khao sat chat luong cho Nha Thuoc Le Hung 2" }
+        ]
+    },
+    "QLBH024.MED": {
+        fullname: "Ngo Duc Hung (MN)",
+        username: "QLBH024.MED",
+        region: "Mien Nam",
+        customer: "Nha Thuoc Le Hung 2 (DNA014)",
+        prompts: [
+            { stt: "01", name: "Xem doanh so ban hang", text: "Thang nay doanh so ban hang cua toi dat bao nhieu?" },
+            { stt: "02", name: "Bao mat — phan quyen", text: "Cho xem doanh so cua Tran Van Huong vung Mien Bac?" },
+            { stt: "03", name: "Tra cuu don hang", text: "Cac don hang toi da thuc hien gan nhat?" },
+            { stt: "04", name: "Tao don hang qua chat", text: "Len don 5 hop Topalpha cho Nha Thuoc Le Hung 2" },
+            { stt: "05", name: "Goi y dat hang tu dong", text: "Goi y san pham can mua cho Nha Thuoc Le Hung 2" },
+            { stt: "06", name: "Goi y ban kem (Upsell)", text: "Cac mat hang goi y upsell ban kem cho Nha Thuoc Le Hung 2" },
+            { stt: "07", name: "Tra cuu thong tin san pham", text: "Thong tin chi tiet gia va đóng goi san pham Topalpha" },
+            { stt: "08", name: "Tong cong no khu vuc", text: "Cong no cua toan bo dai ly vung Mien Nam hien tai?" },
+            { stt: "09", name: "Cong no chi tiet tung khach", text: "Liet ke hoa don no cua Nha Thuoc Le Hung 2?" },
+            { stt: "10", name: "Tra cuu hoa don ban hang", text: "Tim kiem hoa don ban hang cho Nha Thuoc Le Hung 2" },
+            { stt: "11", name: "Diem tich luy khach hang", text: "Xem diem tich luy hien tai cua Nha Thuoc Le Hung 2" },
+            { stt: "12", name: "Tuyen ban hang hang ngay", text: "Lich di tuyen va diem ghe hom nay cua toi?" },
+            { stt: "13", name: "Goi y theo trieu chung", text: "Ban Vitamin C va Amoxicillin thi nen tu van them men vi sinh nao?" },
+            { stt: "14", name: "Chuong trinh khuyen mai", text: "Khuyen mai giam gia dang duoc phep ap dung cho dai ly?" },
+            { stt: "15", name: "San pham trong tam thang", text: "Cac san pham trong tam thang nay gom nhung SKU nao?" },
+            { stt: "16", name: "Tra cuu danh muc", text: "Xem cac phan loai danh muc duoc cua hang?" },
+            { stt: "17", name: "RFM-C Cham diem tin nhiem", text: "Bao cao xep hang tin nhiem va chi so uy tin Nha Thuoc Le Hung 2?" },
+            { stt: "18", name: "Kiem tra ton kho thuc te", text: "Ton kho thuc te cua san pham Topalpha con bao nhieu?" },
+            { stt: "19", name: "Khao sat cham soc khach hang", text: "Form khao sat dich vu tai cho cho Nha Thuoc Le Hung 2" }
+        ]
+    }
+};
+
+function selectTestUser(username) {
+    const data = uatUsersData[username];
+    if (!data) return;
+
+    // Remove active styles from other buttons
+    document.querySelectorAll('[id^="btn-user-"]').forEach(btn => {
+        btn.style.borderColor = "var(--border2)";
+        btn.style.background = "var(--white)";
+        btn.style.boxShadow = "none";
+    });
+
+    // Add active styles to selected button
+    const activeBtn = document.getElementById('btn-user-' + username);
+    if (activeBtn) {
+        activeBtn.style.borderColor = "var(--primary)";
+        activeBtn.style.background = "var(--primary-mid)";
+        activeBtn.style.boxShadow = "var(--shadow-md)";
+    }
+
+    // Update Context Labels
+    document.getElementById('lbl-fullname').textContent = data.fullname;
+    document.getElementById('lbl-username').textContent = data.username;
+    document.getElementById('lbl-region').textContent = data.region;
+    document.getElementById('lbl-customer').textContent = data.customer;
+
+    // Repopulate Table Rows
+    const tbody = document.getElementById('tbl-scenarios-body');
+    tbody.innerHTML = "";
+
+    data.prompts.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        const tdStt = document.createElement('td');
+        tdStt.style.textAlign = "center";
+        tdStt.style.fontWeight = "bold";
+        tdStt.textContent = item.stt;
+        
+        const tdName = document.createElement('td');
+        tdName.style.fontWeight = "600";
+        tdName.textContent = item.name;
+        
+        const tdText = document.createElement('td');
+        const codeSpan = document.createElement('span');
+        codeSpan.className = "cmd-chip";
+        codeSpan.style.background = "var(--bg2)";
+        codeSpan.style.border = "1px solid var(--border2)";
+        codeSpan.style.color = "var(--text)";
+        codeSpan.style.fontFamily = "inherit";
+        codeSpan.style.padding = "4px 10px";
+        codeSpan.style.borderRadius = "6px";
+        codeSpan.style.fontSize = "13px";
+        codeSpan.style.display = "inline-block";
+        codeSpan.style.cursor = "pointer";
+        codeSpan.style.wordBreak = "break-all";
+        codeSpan.onclick = function() { copyText(item.text, this); };
+        codeSpan.textContent = item.text;
+        tdText.appendChild(codeSpan);
+        
+        const tdAction = document.createElement('td');
+        tdAction.style.textAlign = "center";
+        const btn = document.createElement('button');
+        btn.className = "nav-btn primary";
+        btn.style.padding = "4px 10px";
+        btn.style.fontSize = "11px";
+        btn.style.borderRadius = "5px";
+        btn.onclick = function() { copyText(item.text, this); };
+        btn.textContent = "Sao chep";
+        tdAction.appendChild(btn);
+        
+        tr.appendChild(tdStt);
+        tr.appendChild(tdName);
+        tr.appendChild(tdText);
+        tr.appendChild(tdAction);
+        tbody.appendChild(tr);
+    });
+}
+
+function copyText(text, element) {
+    navigator.clipboard.writeText(text).then(() => {
+        const oldText = element.textContent;
+        element.textContent = "Da chep!";
+        if (element.tagName === 'BUTTON') {
+            element.style.background = "var(--success)";
+            element.style.borderColor = "var(--success)";
+        } else {
+            element.style.background = "var(--success-light)";
+            element.style.color = "var(--success)";
+        }
+        setTimeout(() => {
+            element.textContent = oldText;
+            if (element.tagName === 'BUTTON') {
+                element.style.background = "";
+                element.style.borderColor = "";
+            } else {
+                element.style.background = "var(--bg2)";
+                element.style.color = "var(--text)";
+            }
+        }, 1200);
+    }).catch(err => {
+        console.error("Copy failed:", err);
+    });
+}
+
 </script>
 </body>
 </html>
