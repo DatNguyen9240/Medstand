@@ -11,7 +11,8 @@
 | Tham số chung | Mô tả |
 |---|---|
 | `@Username` | Tên đăng nhập của người dùng (Sale/Manager/CEO) — **BẮT BUỘC** |
-| `@ObjectID` | Mã khách hàng (lấy từ CF_ObjectTbl.ObjectID) — Tùy chọn |
+| `@MaKhachHang` | Mã khách hàng (lấy từ CF_ObjectTbl.ObjectID) — Tùy chọn |
+| `@timkiem` | Từ khóa tìm kiếm dạng chuỗi hoặc triệu chứng — Tùy chọn |
 | `@TopN` | Số kết quả trả về tối đa |
 
 ---
@@ -23,21 +24,21 @@
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `@Username` | VARCHAR(50) | '' | **BẮT BUỘC** |
-| `@ObjectID` | VARCHAR(50) | '' | Mã khách hàng. Để trống = xem hàng bán chạy toàn chi nhánh |
+| `@MaKhachHang` | VARCHAR(50) | '' | Mã khách hàng. Để trống = xem hàng bán chạy toàn chi nhánh |
 | `@TopN` | INT | 10 | Số sản phẩm gợi ý tối đa |
 
 ### Kịch bản 1.1 — Hôm nay nên bán gì cho khách X?
 ```
 Người dùng hỏi:
-- "Hôm nay nên bán gì cho khách HB106?"
-- "Gợi ý đơn hàng cho NT Phúc Khang"
+- "Hôm nay nên bán gì cho khách HYA107?"
+- "Gợi ý đơn hàng cho NT Thu Thuỷ"
 - "Khách [TÊN/MÃ] nên mua gì?"
 
 → AI gọi:
 EXEC API_GoiYDonHang_AI
-    @Username = '{username}',
-    @ObjectID = '{objectID}',
-    @TopN     = 10
+    @Username    = '{username}',
+    @MaKhachHang = '{maKhachHang}',
+    @TopN        = 10
 ```
 
 ### Kịch bản 1.2 — Hàng bán chạy nhất hôm nay (không có khách cụ thể)
@@ -49,9 +50,9 @@ Người dùng hỏi:
 
 → AI gọi:
 EXEC API_GoiYDonHang_AI
-    @Username = '{username}',
-    @ObjectID = '',
-    @TopN     = 10
+    @Username    = '{username}',
+    @MaKhachHang = '',
+    @TopN        = 10
 ```
 
 ### Kết quả trả về
@@ -69,8 +70,9 @@ EXEC API_GoiYDonHang_AI
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `@Username` | VARCHAR(50) | '' | **BẮT BUỘC** |
-| `@ObjectID` | VARCHAR(50) | '' | Để trống = xem tuyến tổng. Có = xem 1 khách cụ thể |
+| `@MaKhachHang` | VARCHAR(50) | '' | Để trống = xem tuyến tổng. Có = xem 1 khách cụ thể |
 | `@SoNgayVangMat` | INT | 45 | Ngưỡng "khách mất tích" (mặc định 45 ngày) |
+| `@NgayBaoDong` | INT | 7 | Cảnh báo trước bao nhiêu ngày |
 | `@TopN` | INT | 8 | Top khách nên ghé hôm nay |
 
 ### Kịch bản 2.1 — Hôm nay nên ghé khách nào?
@@ -84,22 +86,23 @@ Người dùng hỏi:
 → AI gọi:
 EXEC API_TuyenBanHang_AI
     @Username      = '{username}',
-    @ObjectID      = '',
+    @MaKhachHang   = '',
     @SoNgayVangMat = 45,
+    @NgayBaoDong   = 7,
     @TopN          = 8
 ```
 
 ### Kịch bản 2.2 — Kiểm tra tình trạng 1 khách cụ thể
 ```
 Người dùng hỏi:
-- "Khách HB106 có cần ghé không?"
-- "Tình trạng nhà thuốc Minh Châu"
+- "Khách HYA107 có cần ghé không?"
+- "Tình trạng nhà thuốc Thu Thuỷ"
 - "Khách [MÃ] còn hàng không?"
 
 → AI gọi:
 EXEC API_TuyenBanHang_AI
-    @Username = '{username}',
-    @ObjectID = '{objectID}'
+    @Username    = '{username}',
+    @MaKhachHang = '{maKhachHang}'
 ```
 
 ### Kịch bản 2.3 — Cảnh báo khách lâu chưa mua
@@ -112,7 +115,7 @@ Người dùng hỏi:
 → AI gọi: (kết quả bảng 2 của SP)
 EXEC API_TuyenBanHang_AI
     @Username      = '{username}',
-    @ObjectID      = '',
+    @MaKhachHang   = '',
     @SoNgayVangMat = 45
 ```
 
@@ -122,15 +125,19 @@ EXEC API_TuyenBanHang_AI
 
 ---
 
-## MODULE 3 — AI CHẤM ĐIỂM KHÁCH HÀNG
+## MODULE 3 — AI CHẤM ĐIỂM KHÁCH HÀNG (RFM-C)
 **Stored Procedure:** `API_ChamDiemKH_AI`
 
 ### Tham số
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `@Username` | VARCHAR(50) | '' | **BẮT BUỘC** |
-| `@ObjectID` | VARCHAR(50) | '' | Để trống = danh sách. Có = chi tiết 1 khách |
+| `@MaKhachHang` | VARCHAR(50) | '' | Để trống = danh sách. Có = chi tiết 1 khách |
 | `@NhomFilter` | VARCHAR(5) | '' | Lọc theo nhóm: 'A', 'B', 'C' hoặc '' = tất cả |
+| `@W_Recency` | DECIMAL(18,2) | 30.0 | Trọng số thời gian mua gần đây (30%) |
+| `@W_Frequency` | DECIMAL(18,2) | 25.0 | Trọng số tần suất mua (25%) |
+| `@W_Monetary` | DECIMAL(18,2) | 35.0 | Trọng số giá trị mua (35%) |
+| `@W_Consumption` | DECIMAL(18,2) | 10.0 | Trọng số tiêu thụ sản phẩm (10%) |
 
 ### Kịch bản 3.1 — Xem toàn bộ phân loại khách hàng
 ```
@@ -141,9 +148,13 @@ Người dùng hỏi:
 
 → AI gọi:
 EXEC API_ChamDiemKH_AI
-    @Username    = '{username}',
-    @ObjectID    = '',
-    @NhomFilter  = ''
+    @Username       = '{username}',
+    @MaKhachHang    = '',
+    @NhomFilter     = '',
+    @W_Recency      = 30.0,
+    @W_Frequency    = 25.0,
+    @W_Monetary     = 35.0,
+    @W_Consumption  = 10.0
 ```
 
 ### Kịch bản 3.2 — Chỉ xem khách VIP (nhóm A)
@@ -172,19 +183,6 @@ EXEC API_ChamDiemKH_AI
     @NhomFilter = 'C'
 ```
 
-### Kịch bản 3.4 — Kiểm tra tình trạng 1 khách
-```
-Người dùng hỏi:
-- "Khách HB106 thuộc nhóm nào?"
-- "Cho tôi xem điểm của NT Minh Châu"
-- "Xu hướng mua của khách [MÃ] thế nào?"
-
-→ AI gọi:
-EXEC API_ChamDiemKH_AI
-    @Username = '{username}',
-    @ObjectID = '{objectID}'
-```
-
 ### Kết quả trả về
 - `Nhom` — A / B / C
 - `PhanLoai` — ⭐ VIP / 🟢 Ổn định / 🔴 Nguy cơ
@@ -201,45 +199,29 @@ EXEC API_ChamDiemKH_AI
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `@Username` | VARCHAR(50) | '' | **BẮT BUỘC** |
-| `@ObjectID` | VARCHAR(50) | '' | Để trống = danh sách khách sắp đạt thưởng |
-| `@MucTieu` | FLOAT | 10000000 | Mức tích lũy để nhận thưởng (10 triệu) |
-| `@ProgramID` | VARCHAR(50) | '' | Để trống = lấy chương trình mới nhất tự động |
-| `@FromDate` | DATETIME | NULL | Để NULL = lấy từ chương trình |
-| `@ToDate` | DATETIME | NULL | Để NULL = lấy từ chương trình |
-| `@ItemIDs` | VARCHAR(500) | '' | Để trống = lấy SP trọng tâm từ chương trình |
+| `@MaKhachHang` | VARCHAR(50) | '' | Để trống = danh sách khách sắp đạt thưởng |
+| `@ProgramID` | VARCHAR(50) | '' | Để trống = lấy chương trình mới nhất tự động (`CTTT202603`) |
+| `@TuNgay` | DATETIME | NULL | Từ ngày |
+| `@DenNgay` | DATETIME | NULL | Đến ngày |
+| `@ItemIDs` | VARCHAR(500) | '' | Danh sách mã sản phẩm phân cách bằng dấu phẩy |
 
 ### Kịch bản 4.1 — Xem tích lũy của 1 khách cụ thể
 ```
 Người dùng hỏi:
-- "Khách HB106 tích lũy được bao nhiêu rồi?"
-- "NT Phúc Khang còn thiếu bao nhiêu để nhận thưởng?"
+- "Khách HYA107 tích lũy được bao nhiêu rồi?"
+- "NT Thu Thuỷ còn thiếu bao nhiêu để nhận thưởng?"
 - "Tình trạng tích lũy của khách [MÃ]"
 
 → AI gọi:
 EXEC API_TichLuy_AI
-    @Username = '{username}',
-    @ObjectID = '{objectID}',
-    @MucTieu  = 10000000
-```
-
-### Kịch bản 4.2 — Danh sách khách sắp đạt thưởng (cho Quản lý)
-```
-Người dùng hỏi:
-- "Khách nào sắp đạt thưởng tháng này?"
-- "Danh sách khách có khả năng đạt tích lũy"
-- "Tôi cần thúc đẩy khách nào để đạt chương trình?"
-
-→ AI gọi:
-EXEC API_TichLuy_AI
-    @Username = '{username}',
-    @ObjectID = '',
-    @MucTieu  = 10000000
+    @Username    = '{username}',
+    @MaKhachHang = '{maKhachHang}'
 ```
 
 ### Kết quả trả về
 - **Bảng 0:** Thông tin chương trình (`TenChuongTrinh`, `FromDate`, `ToDate`)
 - **Bảng 1:** Tình trạng tích lũy (`TichLuyDatDuoc`, `SoQuaDaDat`, `ConThieuChoQuaTiep`, `TrangThaiAI`)
-- **Bảng 2:** Gợi ý bán thêm SP trọng tâm còn kho (chỉ khi có `@ObjectID`)
+- **Bảng 2:** Gợi ý bán thêm sản phẩm trọng tâm còn tồn trong kho (chỉ hiển thị khi có `@MaKhachHang`)
 
 ---
 
@@ -250,62 +232,42 @@ EXEC API_TichLuy_AI
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
 | `@Username` | VARCHAR(50) | '' | **BẮT BUỘC** |
-| `@ObjectID` | VARCHAR(50) | '' | Mã khách (để tính doanh số thiếu bao nhiêu) |
-| `@MucTarget` | FLOAT | 10000000 | Mức doanh số để đạt chiết khấu/thưởng |
-| `@SearchKey` | NVARCHAR(50) | '' | Từ khóa tìm kiếm theo triệu chứng: 'ho', 'sốt', 'đau đầu'... |
+| `@MaKhachHang` | VARCHAR(50) | '' | Mã khách (để tính doanh số thiếu bao nhiêu) |
+| `@timkiem` | NVARCHAR(50) | '' | Từ khóa tìm kiếm theo triệu chứng: 'mất ngủ', 'ho', 'sốt', 'đau đầu'... |
 | `@TopN` | INT | 10 | Số SP gợi ý tối đa |
 
 ### Kịch bản 5.1 — Tìm sản phẩm theo triệu chứng (AI Google)
 ```
 Người dùng hỏi:
 - "Khách ho lâu ngày bán gì?"
-- "Thuốc cho người bị sốt?"
+- "Thuốc cho người bị mất ngủ?"
 - "Sản phẩm trị đau đầu của mình?"
-- "Bổ thần kinh có gì?"
 
 → Trích xuất từ khóa triệu chứng → AI gọi:
 EXEC API_UpsellGoiY_AI
-    @Username  = '{username}',
-    @SearchKey = N'{tu_khoa}',   -- Ví dụ: N'ho', N'sốt', N'đau đầu'
-    @TopN      = 10
+    @Username    = '{username}',
+    @MaKhachHang = '',
+    @timkiem     = N'{từ khoá}',   -- Ví dụ: N'mất ngủ', N'ho'
+    @TopN        = 10
 ```
 
 ### Kịch bản 5.2 — Gợi ý bán thêm để khách đạt mức thưởng/chiết khấu
 ```
 Người dùng hỏi:
-- "Khách HB106 thiếu bao nhiêu để được chiết khấu?"
-- "Nên bán thêm gì cho NT Minh Châu để đạt 10 triệu?"
-- "Combo gợi ý cho khách [MÃ] để chốt đơn"
+- "Khách HYA107 thiếu bao nhiêu để được chiết khấu?"
+- "Nên bán thêm gì cho NT Thu Thuỷ để đạt mốc tiếp theo?"
 
 → AI gọi:
 EXEC API_UpsellGoiY_AI
-    @Username  = '{username}',
-    @ObjectID  = '{objectID}',
-    @MucTarget = 10000000,
-    @TopN      = 10
-```
-
-### Kịch bản 5.3 — Kết hợp cả 2 (Triệu chứng + Upsell)
-```
-Người dùng hỏi:
-- "Khách HB106 đang hỏi thuốc ho, nên bán gì và còn thiếu bao nhiêu?"
-
-→ AI gọi:
-EXEC API_UpsellGoiY_AI
-    @Username  = '{username}',
-    @ObjectID  = '{objectID}',
-    @MucTarget = 10000000,
-    @SearchKey = N'ho',
-    @TopN      = 10
+    @Username    = '{username}',
+    @MaKhachHang = '{maKhachHang}',
+    @timkiem     = '',
+    @TopN        = 10
 ```
 
 ### Kết quả trả về
 - **Bảng 1:** Doanh số (`DoanhSoDaDat`, `SoTienConThieu`, `LoiNhacAI`)
 - **Bảng 2:** Gợi ý SP (`GiaBan`, `TonKho`, `PriorityScore`, `LyDoGoiY`)
-  - `🔍 Triệu chứng: {từ khóa} | ✅ Còn hàng`
-  - `🔍 Triệu chứng: {từ khóa} | ⚠️ Hết hàng - Cần đặt thêm`
-  - `🎁 Combo: Hàng khách quen`
-  - `🎁 Combo: Hàng bán chạy`
 
 ---
 
@@ -323,8 +285,6 @@ Người dùng hỏi:
 - "Sản phẩm nào nên chạy combo?"
 - "Hàng nào cần xả vì cận date?"
 - "Tồn kho nào đang bán chậm?"
-- "CEO cần biết hàng nào cần khuyến mãi?"
-- "Phân tích hàng tồn để ra chiến lược"
 
 → AI gọi:
 EXEC API_DeXuatKhuyenMai_AI
@@ -340,70 +300,143 @@ EXEC API_DeXuatKhuyenMai_AI
 
 ---
 
-## MODULE 7 — AI NHẬN DIỆN ĐƠN THUỐC TỪ ẢNH
+## MODULE 8 — AI GỢI Ý ĐƠN THUỐC & BÁN CHÉO
 **Stored Procedure:** `API_GoiYDonThuoc_AI`
 
 ### Tham số
 | Tham số | Kiểu | Mặc định | Mô tả |
 |---|---|---|---|
-| `@Keyword` | NVARCHAR(500) | '' | Danh sách tên thuốc từ đơn (cách nhau bằng dấu phẩy hoặc chấm phẩy) |
+| `@Username` | VARCHAR(50) | '' | Tên đăng nhập |
+| `@timkiem` | NVARCHAR(500) | '' | Danh sách tên thuốc từ đơn hoặc triệu chứng (phân cách bằng dấu phẩy) |
 
-### Kịch bản 7.1 — Tìm sản phẩm thay thế từ đơn thuốc
+### Kịch bản 8.1 — Tìm sản phẩm thay thế từ đơn thuốc
 ```
 Người dùng hỏi / chụp ảnh đơn thuốc có:
-- "Amoxicillin, Paracetamol, Vitamin C"
+- "Amoxicillin, Vitamin C"
 - "Đơn có Cefu 500, Bromhexin"
-- "Khách đang dùng Augmentin, có thay thế gì không?"
 
 → OCR bóc tách tên thuốc → AI gọi:
 EXEC API_GoiYDonThuoc_AI
-    @Keyword = N'Amoxicillin, Paracetamol, Vitamin C'
-```
-
-### Kịch bản 7.2 — Cảnh báo bán chéo tự động
-```
-Logic tự động trong SP:
-- Phát hiện từ khóa kháng sinh (Amox, Cefu, Kháng sinh...)
-  → Tự động gợi ý Men vi sinh
-  → Hiển thị: ⚠️ AI CẢNH BÁO: Đơn có Kháng sinh → Tư vấn thêm Men vi sinh!
-
-- Không có kháng sinh:
-  → Gợi ý sản phẩm tăng đề kháng (Vitamin, Canxi, Sâm...)
-  → Hiển thị: 💡 GỢI Ý BÁN THÊM: Sản phẩm tăng đề kháng hỗ trợ phục hồi nhanh
+    @Username = '{username}',
+    @timkiem  = N'Amoxicillin, Vitamin C'
 ```
 
 ### Kết quả trả về
-- **Bảng 1:** SP Medstand thay thế (`ItemID`, `ItemName`, `Unit`, `LyDoGoiY`)
-- **Bảng 2:** Cảnh báo bán chéo (`ItemID`, `ItemName`, `CanhBaoAI`)
+- `ItemID` — Mã sản phẩm
+- `ItemName` — Tên sản phẩm Medstand thay thế
+- `Unit` — Đơn vị tính
+- `CanhBaoAI` — Gợi ý bán kèm hoặc cảnh báo tương tác tự động từ hệ thống
 
 ---
 
-## BẢNG TRA CỨU NHANH — AI ROUTING
+## MODULE 10 — AI SẢN PHẨM TRỌNG TÂM THÁNG
+**Stored Procedure:** `API_SanPhamTrongTam_AI`
 
-| Câu hỏi người dùng | Module | API cần gọi |
-|---|---|---|
-| "Hôm nay bán gì cho khách X?" | Module 1 | `API_GoiYDonHang_AI` + @ObjectID |
-| "Hàng bán chạy nhất hôm nay?" | Module 1 | `API_GoiYDonHang_AI` không @ObjectID |
-| "Hôm nay ghé khách nào?" | Module 2 | `API_TuyenBanHang_AI` không @ObjectID |
-| "Khách nào lâu chưa mua?" | Module 2 | `API_TuyenBanHang_AI` không @ObjectID |
-| "Khách X có nên ghé không?" | Module 2 | `API_TuyenBanHang_AI` + @ObjectID |
-| "Khách VIP của tôi là ai?" | Module 3 | `API_ChamDiemKH_AI` @NhomFilter='A' |
-| "Khách nào sắp nghỉ mua?" | Module 3 | `API_ChamDiemKH_AI` @NhomFilter='C' |
-| "Phân loại khách hàng" | Module 3 | `API_ChamDiemKH_AI` không filter |
-| "Khách X tích lũy bao nhiêu?" | Module 4 | `API_TichLuy_AI` + @ObjectID |
-| "Ai sắp đạt thưởng tháng này?" | Module 4 | `API_TichLuy_AI` không @ObjectID |
-| "Thuốc ho / sốt / đau bán gì?" | Module 5 | `API_UpsellGoiY_AI` + @SearchKey |
-| "Bán thêm gì cho khách X?" | Module 5 | `API_UpsellGoiY_AI` + @ObjectID |
-| "Hàng nào cần xả? Chạy combo?" | Module 6 | `API_DeXuatKhuyenMai_AI` |
-| "Đơn thuốc này thay thế gì?" | Module 7 | `API_GoiYDonThuoc_AI` + @Keyword |
-| "Kháng sinh → bán thêm gì?" | Module 7 | `API_GoiYDonThuoc_AI` + @Keyword |
+### Tham số
+| Tham số | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `@Username` | VARCHAR(50) | **BẮT BUỘC** | Tên đăng nhập |
+| `@MaKhachHang` | VARCHAR(50) | '' | Mã khách hàng cần theo dõi tích lũy sản phẩm trọng tâm |
+| `@TopN` | INT | 500 | Số lượng sản phẩm trọng tâm tối đa hiển thị |
+
+### Kịch bản 10.1 — Xem danh sách sản phẩm trọng tâm tháng này
+```
+Người dùng hỏi:
+- "Sản phẩm trọng tâm tháng này gồm những gì?"
+- "Tháng này BGĐ chỉ định bán sản phẩm nào?"
+
+→ AI gọi:
+EXEC API_SanPhamTrongTam_AI
+    @Username    = '{username}',
+    @MaKhachHang = '',
+    @TopN        = 10
+```
+
+### Kịch bản 10.2 — Xem lộ trình quà tặng sản phẩm trọng tâm của khách hàng
+```
+Người dùng hỏi:
+- "Lộ trình sản phẩm trọng tâm của khách HYA107?"
+- "Quầy Thuốc Thu Thuỷ tích luỹ được bao nhiêu hàng trọng tâm rồi?"
+
+→ AI gọi:
+EXEC API_SanPhamTrongTam_AI
+    @Username    = '{username}',
+    @MaKhachHang = 'HYA107',
+    @TopN        = 10
+```
+
+### Kết quả trả về
+- **Bảng 1: Lộ trình quà tặng** (`Chương Trình`, `Từ Ngày`, `Đến Ngày`, `Mã Khách`, `Doanh Số Hiện Tại`, `Mốc Kế Tiếp`, `Còn Thiếu`, `Quà Kế Tiếp`, `Thang Quà Tặng Toàn Bộ`)
+- **Bảng 2: Danh sách sản phẩm trọng tâm** (`Mã sp`, `Sản Phẩm`, `ĐVT`, `Tồn Kho`, `Giá Bán`)
+
+---
+
+## MODULE 11 — AI TRA CỨU SẢN PHẨM & KIỂM TRA TỒN KHO
+**Stored Procedures:** `API_TraCuuSanPham_AI` & `API_DanhSachTonKho_AI`
+
+### Kịch bản 11.1 — Tra cứu thông tin sản phẩm
+```
+Người dùng hỏi: "Thông tin sản phẩm Antrinano?"
+→ AI gọi:
+EXEC API_TraCuuSanPham_AI
+    @Username = '{username}',
+    @timkiem  = N'Antrinano',
+    @TopN     = 5
+```
+
+### Kịch bản 11.2 — Kiểm tra số lượng tồn kho của 1 sản phẩm
+```
+Người dùng hỏi: "Tồn kho của sản phẩm A003?"
+→ AI gọi:
+EXEC API_DanhSachTonKho_AI
+    @Username   = '{username}',
+    @ItemID     = 'A003',
+    @TenSanPham = '',
+    @timkiem    = ''
+```
+
+---
+
+## MODULE 12 — AI KHẢO SÁT CHĂM SÓC KHÁCH HÀNG
+**Stored Procedures:** `API_BatDauBaiKhaoSat`, `API_ChiTietBaiKhaoSat`, `API_NopBaiKhaoSat`, `API_LichSuBaiKhaoSat`
+
+### Kịch bản 12.1 — Bắt đầu bài khảo sát cho nhân viên
+```
+→ AI gọi khi người dùng muốn thực hiện khảo sát hoặc trả lời câu hỏi chuyên môn:
+EXEC API_BatDauBaiKhaoSat
+    @User = '{username}',
+    @Title = N'Bài khảo sát sản phẩm mới'
+```
+
+---
+
+## BẢNG TRA CỨU NHANH — AI ROUTING (V38 CHUẨN XÁC)
+
+| Câu hỏi người dùng | Module | API cần gọi | Tham số chính |
+|---|---|---|---|
+| "Hôm nay bán gì cho khách X?" | Module 1 | `API_GoiYDonHang_AI` | `@Username`, `@MaKhachHang` |
+| "Hàng bán chạy nhất hôm nay?" | Module 1 | `API_GoiYDonHang_AI` | `@Username`, `@MaKhachHang=''` |
+| "Hôm nay ghé khách nào?" | Module 2 | `API_TuyenBanHang_AI` | `@Username`, `@MaKhachHang=''` |
+| "Khách nào lâu chưa mua?" | Module 2 | `API_TuyenBanHang_AI` | `@Username`, `@SoNgayVangMat=45` |
+| "Khách X có nên ghé không?" | Module 2 | `API_TuyenBanHang_AI` | `@Username`, `@MaKhachHang` |
+| "Khách VIP của tôi là ai?" | Module 3 | `API_ChamDiemKH_AI` | `@Username`, `@NhomFilter='A'` |
+| "Khách nào sắp nghỉ mua?" | Module 3 | `API_ChamDiemKH_AI` | `@Username`, `@NhomFilter='C'` |
+| "Phân loại khách hàng" | Module 3 | `API_ChamDiemKH_AI` | `@Username`, `@MaKhachHang=''` |
+| "Khách X tích lũy bao nhiêu?" | Module 4 | `API_TichLuy_AI` | `@Username`, `@MaKhachHang` |
+| "Thuốc ho / sốt / đau bán gì?" | Module 5 | `API_UpsellGoiY_AI` | `@Username`, `@timkiem` |
+| "Bán thêm gì cho khách X?" | Module 5 | `API_UpsellGoiY_AI` | `@Username`, `@MaKhachHang` |
+| "Hàng nào cần xả? Chạy combo?" | Module 6 | `API_DeXuatKhuyenMai_AI` | `@Username` |
+| "Đơn thuốc này thay thế gì?" | Module 8 | `API_GoiYDonThuoc_AI` | `@Username`, `@timkiem` |
+| "Sản phẩm trọng tâm tháng này?" | Module 10 | `API_SanPhamTrongTam_AI` | `@Username`, `@MaKhachHang=''` |
+| "Lộ trình sản phẩm trọng tâm khách X?"| Module 10 | `API_SanPhamTrongTam_AI` | `@Username`, `@MaKhachHang` |
+| "Thông tin sản phẩm X?" | Module 11 | `API_TraCuuSanPham_AI` | `@Username`, `@timkiem` |
+| "Kiểm tra tồn kho sản phẩm X?" | Module 11 | `API_DanhSachTonKho_AI` | `@Username`, `@ItemID` hoặc `@TenSanPham` |
 
 ---
 
 ## LƯU Ý QUAN TRỌNG CHO AI
 
-1. **`@Username` luôn BẮT BUỘC** — không có Username thì không gọi được API nào.
-2. **Quyền hệ thống tự động:** SP đọc `BranchID`, `CeoID`, `ManagerID` từ `SY_User` để tự lọc dữ liệu đúng phạm vi của người dùng đó — AI không cần truyền thêm.
-3. **Trích xuất từ khóa triệu chứng:** Với Module 5 kịch bản tìm kiếm, AI cần bóc tách từ khóa từ câu hỏi trước khi truyền vào `@SearchKey` (ví dụ: "khách ho lâu ngày" → `@SearchKey = N'ho'`).
-4. **Trích xuất tên thuốc từ ảnh:** Với Module 7, hệ thống OCR cần bóc tách tên thuốc trước, sau đó ghép thành chuỗi phân cách bằng dấu phẩy truyền vào `@Keyword`.
-5. **Hiệu năng:** Tất cả SP đều dùng bảng tạm (`#`) nên tự động dọn dẹp sau khi chạy xong.
+1. **`@Username` luôn BẮT BUỘC** — tất cả stored procedures đều yêu cầu tài khoản người dùng để phân quyền tự động theo BranchID.
+2. **Tham số khách hàng là `@MaKhachHang`** — không sử dụng `@ObjectID` trong câu truy vấn SQL vì tất cả thủ tục mới đã chuẩn hóa tham số thành `@MaKhachHang` để tránh nhầm lẫn.
+3. **Từ khóa tìm kiếm là `@timkiem`** — không dùng `@SearchKey` hay `@Keyword` cho Module 5 và Module 8.
+4. **Hiệu năng & Phân quyền:** Quyền hạn tự động kế thừa từ tài khoản hệ thống (không hiển thị chéo dữ liệu vùng MB/MT/MN).

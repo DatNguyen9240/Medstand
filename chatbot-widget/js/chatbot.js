@@ -14,7 +14,7 @@
 
     var CACHE_KEY = 'ai_chat_history';
 
-    var CACHE_TTL = 0 //24 * 60 * 60 * 1000; // 24 gi
+    var CACHE_TTL = 8 * 60 * 60 * 1000; // 8 giờ — chat history lưu qua lại trang
 
     var USER_PHRASES_KEY = 'ai_user_phrases';
 
@@ -2621,6 +2621,26 @@
 
     function _buildInlineTable(rows, keys) {
 
+        // Ẩn các cột nội bộ không nên hiển thị cho user
+        var HIDDEN_COLS = [
+            'datasourcevalue', 'DataSourceValue', 'datasource_value',
+            'extradata', 'ExtraData', 'extra_data',
+            'icon', 'Icon', 'ICON',
+            'isactive', 'IsActive', 'is_active',
+            'orderindex', 'OrderIndex',
+            'metadata_uitemplate',
+            'branchid', 'BranchID',
+            'managerid', 'ManagerID',
+            'maxfromdate', 'MaxFromDate',
+            'doanhsochinhanh', 'DoanhSoChiNhanh',
+            'statusbackcolor', 'StatusBackColor',
+            'msg', 'Msg', 'msgtype', 'MsgType',
+            'objectid', 'ObjectID'
+        ];
+        keys = keys.filter(function (k) {
+            return HIDDEN_COLS.indexOf(k) === -1 && HIDDEN_COLS.indexOf(k.toLowerCase()) === -1;
+        });
+
         var tbodyId = 'ai-inline-tbody-v' + _modalIdCounter;
 
         var html = '';
@@ -2711,7 +2731,13 @@
 
         html += '<table class="ai-table"><thead><tr>';
 
-        keys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
+        if (keys.length > 5) {
+            html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
+            var primaryKeys = keys.slice(0, 5);
+            primaryKeys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
+        } else {
+            keys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
+        }
 
         html += '</tr></thead>';
 
@@ -2747,19 +2773,41 @@
 
         var html = '';
 
+        var isSplit = keys.length > 5;
+        var colSpan = isSplit ? 6 : keys.length;
+        var primaryKeys = isSplit ? keys.slice(0, 5) : keys;
+        var secondaryKeys = isSplit ? keys.slice(5) : [];
+
         for (var i = 0; i < shown; i++) {
 
             html += '<tr>';
 
-            keys.forEach(function (k) { html += '<td>' + _esc(_fmtCellVal(filteredRows[i][k])) + '</td>'; });
+            if (isSplit) {
+                html += '<td style="width: 32px; text-align: center; cursor: pointer;" class="ai-row-toggle">▶</td>';
+            }
+
+            primaryKeys.forEach(function (k) { html += '<td>' + _esc(_fmtCellVal(filteredRows[i][k])) + '</td>'; });
 
             html += '</tr>';
+
+            if (isSplit) {
+                html += '<tr class="ai-table-detail-row" style="display: none;"><td colspan="' + colSpan + '">';
+                html += '<div class="ai-table-detail-grid">';
+                secondaryKeys.forEach(function (k) {
+                    html += '<div class="ai-table-detail-item">';
+                    html += '  <div class="ai-table-detail-label">' + _esc(k) + '</div>';
+                    html += '  <div class="ai-table-detail-value">' + _esc(_fmtCellVal(filteredRows[i][k])) + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                html += '</td></tr>';
+            }
 
         }
 
         if (filteredRows.length > MAX) {
 
-            html += '<tr><td colspan="' + keys.length + '" style="text-align:center;opacity:0.6;font-style:italic">... và ' + (filteredRows.length - MAX) + ' dòng khác</td></tr>';
+            html += '<tr><td colspan="' + colSpan + '" style="text-align:center;opacity:0.6;font-style:italic">... và ' + (filteredRows.length - MAX) + ' dòng khác</td></tr>';
 
         }
 
@@ -2832,6 +2880,20 @@
     // ── Click delegation cho accordion + modal + action bar ────────
 
     $messages.addEventListener('click', function (e) {
+
+        // Table row detail toggle
+        var rowToggle = e.target.closest('.ai-row-toggle');
+        if (rowToggle) {
+            var tr = rowToggle.closest('tr');
+            var nextTr = tr ? tr.nextElementSibling : null;
+            if (nextTr && nextTr.classList.contains('ai-table-detail-row')) {
+                var isHidden = nextTr.style.display === 'none';
+                nextTr.style.display = isHidden ? '' : 'none';
+                rowToggle.textContent = isHidden ? '▼' : '▶';
+                tr.classList.toggle('expanded', isHidden);
+            }
+            return;
+        }
 
         // Accordion expand
 

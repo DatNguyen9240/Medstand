@@ -22,11 +22,48 @@ BEGIN
     DECLARE @ProgramInfo TABLE (DocumentID VARCHAR(50), TenChuongTrinh NVARCHAR(200), FromDate DATETIME, ToDate DATETIME)
     INSERT INTO @ProgramInfo SELECT DocumentID, Memo, FromDate, ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID;
 
+    -- Lấy thông tin từ ngày, đến ngày của chương trình
+    DECLARE @TuNgay DATETIME, @DenNgay DATETIME
+    SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+
+    -- Lấy BranchID của User để phân quyền
+    DECLARE @SYSBranchID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+
+    -- Danh sách sản phẩm trọng tâm
+    SELECT DISTINCT ItemID INTO #TrongTam FROM AR_SanPhamTrongTamDetailTbl WHERE DocumentID = @ProgramID
+
+    -- Tính tổng mua từ hóa đơn và đơn hàng nháp (StatusID != 10)
+    DECLARE @TongHoaDon DECIMAL(18,2) = 0
+    SELECT @TongHoaDon = ISNULL(SUM(I.TotalAmount), 0)
+    FROM (
+        SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.ItemID, D.TotalAmount
+        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        UNION ALL
+        SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.ItemID, D.TotalAmount
+        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+    ) I
+    JOIN #TrongTam T ON I.ItemID = T.ItemID
+    WHERE I.ObjectID = @MaKhachHang
+      AND I.DocumentDate BETWEEN @TuNgay AND @DenNgay 
+      AND ISNULL(I.StatusID, 0) != 10
+      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+
+    -- Tính tổng trả hàng trọng tâm
+    DECLARE @TongTraHang DECIMAL(18,2) = 0
+    SELECT @TongTraHang = ISNULL(SUM(D.TotalAmount), 0)
+    FROM AR_ReturnTbl R 
+    JOIN AR_ReturnDetailTbl D ON R.DocumentID = D.DocumentID
+    JOIN #TrongTam T ON D.ItemID = T.ItemID
+    WHERE R.ObjectID = @MaKhachHang
+      AND R.DocumentDate BETWEEN @TuNgay AND @DenNgay 
+      AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
+
+    -- Doanh số tích lũy thực tế
     DECLARE @CurrentSales BIGINT = 0;
-    SELECT @CurrentSales = CAST(ISNULL(SUM(AmountTotal), 0) AS BIGINT)
-    FROM AR_InvoiceTbl
-    WHERE ObjectID = @MaKhachHang AND StatusID <> 10
-      AND MONTH(DocumentDate) = MONTH(GETDATE()) AND YEAR(DocumentDate) = YEAR(GETDATE());
+    SET @CurrentSales = CAST(ISNULL(@TongHoaDon - @TongTraHang, 0) AS BIGINT)
+
+    DROP TABLE #TrongTam;
 
     -- Nén thang quà tặng thành chuỗi mũi tên trực quan
     DECLARE @GiftLadder NVARCHAR(MAX) = ''

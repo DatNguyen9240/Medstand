@@ -96,7 +96,9 @@
 
         META_URL: _n8n + '/webhook/api-get-system-meta',
 
-        CACHE_TTL: 10 * 60 * 1000,
+        // W2 FIX: Giảm từ 10 phút → 2 phút để API mới phản ánh nhanh hơn
+        // Dùng ApiEngine.invalidateCache() để force refresh ngay lập tức
+        CACHE_TTL: 2 * 60 * 1000,
 
         CACHE_KEY: 'api_engine_v3_list',
 
@@ -3783,10 +3785,7 @@
 
 
         var uKey = CFG.SYS_PARAMS.USERNAME;
-
         if (!params[uKey]) params[uKey] = _user();
-
-
 
         if (_activeApi.execType === 'CART' && (_activeApi.apiCode === '@lap_don_hang')) {
             var payloadStr = encodeURIComponent(JSON.stringify(params));
@@ -3795,11 +3794,9 @@
         }
 
         // Cứu cnh: Đảm bảo tham số Ngy lun được gn tự động nếu người dòng chỉ nhập keyword hoặc thiếu config
-
         var cfgContext = _activeApi.config || (_activeApi.apiConfig ? _activeApi.apiConfig : null);
 
         if (!cfgContext && window.ApiEngine && window.ApiEngine.CatalogConfig) {
-
             var tKey = (_activeApi.ApiCode || _activeApi.apiCode || _chatApiCode || '').replace(/^@/, '');
 
             var matchingConf = window.ApiEngine.CatalogConfig.filter(function(x) { return x.ApiCode.replace(/^@/, '') === tKey; })[0];
@@ -3936,37 +3933,26 @@
 
 
 
-        // Tạo chuỗi hiển thị: chỉ hiện cc field c gi trị
-
+        // Tạo chuỗi hiển thị: chỉ hiện field người dùng nhập thực sự
+        // Lọc: @Username, date macros [THIS_MONTH_START], giá trị rỗng
         var ps = Object.keys(params)
-
             .filter(function (k) {
-
                 var uKey = CFG.SYS_PARAMS.USERNAME;
-
                 var iKey = CFG.SYS_PARAMS.ITEM_LIST;
-
-                return k !== uKey && k !== iKey && params[k] !== "" && params[k] !== null;
-
+                var val = String(params[k] === null ? '' : params[k]);
+                if (k === uKey || k === iKey) return false;
+                if (val === '' || val === 'null') return false;
+                if (/^\[.+\]$/.test(val)) return false; // Date macros nội bộ
+                return true;
             })
-
             .map(function (k) {
-
-                // Tìm label của field để hiển thị cho thn thiện
-
                 var f = cfgFilters.find(function (x) { return x.FieldCode === k; });
-
                 var label = f ? f.FieldName : k.replace('@', '');
-
                 return label + ': ' + params[k];
-
             })
-
             .join(' | ');
 
-
-
-        _cbMsg && _cbMsg('user', dispName + (ps ? '\n' + ps : ''));
+        _cbMsg && _cbMsg('user', dispName + (ps ? ' — ' + ps : ''));
 
         _cbShow && _cbShow();
 
@@ -5014,10 +5000,20 @@
         getFieldByRole: _getFieldByRole,
 
         getFieldsByRole: _getFieldsByRole,
-        // Cho php project-specific renderer gọi datasource qua n8n
+        // Cho php project-specific renderer goi datasource qua n8n
         loadDataSource: _loadDataSource,
         selectApi: _onApiSelected,
-        hideMenu: _menuHide
+        hideMenu: _menuHide,
+
+        // W2 FIX: Force refresh danh sach API (xoa cache sessionStorage)
+        // Dung tu console: ApiEngine.invalidateCache()
+        // Hoac goi sau khi them API moi ben BE
+        invalidateCache: function () {
+            try { sessionStorage.removeItem(CFG.CACHE_KEY); } catch(e) {}
+            _apiList = [];
+            _loadList(null);
+            console.log('[ApiEngine] Cache invalidated — danh sach API se duoc tai lai.');
+        }
     };
 
 })();

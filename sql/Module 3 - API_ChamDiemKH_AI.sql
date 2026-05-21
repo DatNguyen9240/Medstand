@@ -12,13 +12,22 @@ CREATE PROCEDURE API_ChamDiemKH_AI
     @MaKhachHang   VARCHAR(50) = '',
     @NhomFilter    VARCHAR(50) = '',
     -- Trọng số RFM-C (CEO tùy chỉnh, mặc định cân bằng 4 chiều)
-    @W_Recency     DECIMAL(3,2) = 0.25,  -- Trọng số Recency
-    @W_Frequency   DECIMAL(3,2) = 0.25,  -- Trọng số Frequency
-    @W_Monetary    DECIMAL(3,2) = 0.30,  -- Trọng số Monetary (ưu tiên hơn 1 chút)
-    @W_Consumption DECIMAL(3,2) = 0.20   -- Trọng số Consumption
+    @W_Recency     DECIMAL(18,2) = 0.25,  -- Trọng số Recency
+    @W_Frequency   DECIMAL(18,2) = 0.25,  -- Trọng số Frequency
+    @W_Monetary    DECIMAL(18,2) = 0.30,  -- Trọng số Monetary (ưu tiên hơn 1 chút)
+    @W_Consumption DECIMAL(18,2) = 0.20   -- Trọng số Consumption
 AS
 BEGIN
     SET NOCOUNT ON
+
+    -- Tự động chuẩn hóa nếu người dùng truyền trọng số dạng % (ví dụ: 30.0 thay vì 0.3)
+    IF @W_Recency > 1.0 OR @W_Frequency > 1.0 OR @W_Monetary > 1.0 OR @W_Consumption > 1.0
+    BEGIN
+        SET @W_Recency = @W_Recency / 100.0
+        SET @W_Frequency = @W_Frequency / 100.0
+        SET @W_Monetary = @W_Monetary / 100.0
+        SET @W_Consumption = @W_Consumption / 100.0
+    END
 
     -- 0. Kiểm tra quyền
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
