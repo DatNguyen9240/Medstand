@@ -47,7 +47,7 @@ BEGIN TRY
     SELECT 
         O.DocumentID, 
         O.DocumentDate, -- Khớp chính xác ngày lập đơn thật trong quá khứ để Dashboard vẽ biểu đồ doanh số đúng thời điểm
-        ISNULL(NULLIF(O.EmployeeID, ''), TE.EmpID) AS EmployeeID, -- Đảm bảo luôn có EmployeeID
+        O.EmployeeID,   -- Giữ nguyên EmployeeID của nhân viên kinh doanh thực tế lập đơn
         O.ManagerID, 
         O.CeoID, 
         O.ObjectID, 
@@ -57,11 +57,6 @@ BEGIN TRY
         GETDATE() AS DateCreate, 
         O.BaseTotal
     FROM AR_OrderTbl O
-    INNER JOIN @TargetEmployees TE ON (
-        O.EmployeeID = TE.EmpID 
-        OR O.UserCreate = TE.UserName 
-        OR O.UserCreate = TE.EmpID
-    )
     LEFT JOIN AR_InvoiceTbl I ON O.DocumentID = I.DocumentID
     WHERE I.DocumentID IS NULL; -- Chỉ đồng bộ những đơn chưa từng lập hóa đơn
 
@@ -85,11 +80,6 @@ BEGIN TRY
         @IncomeAccID AS IncomeAccID
     FROM AR_OrderDetailTbl OD
     INNER JOIN AR_OrderTbl O ON OD.DocumentID = O.DocumentID
-    INNER JOIN @TargetEmployees TE ON (
-        O.EmployeeID = TE.EmpID 
-        OR O.UserCreate = TE.UserName 
-        OR O.UserCreate = TE.EmpID
-    )
     LEFT JOIN AR_InvoiceDetailTbl ID ON OD.DocumentID = ID.DocumentID
     WHERE ID.DocumentID IS NULL; -- Chỉ lấy chi tiết của những đơn hàng chưa có chi tiết hóa đơn
 

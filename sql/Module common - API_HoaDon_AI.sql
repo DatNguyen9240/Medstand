@@ -27,13 +27,15 @@ BEGIN
     DECLARE @SYSManagerID   VARCHAR(50) = ''
     DECLARE @SYSEmployeeID  VARCHAR(50) = ''
     DECLARE @IsManager      BIT         = 0
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
 
     SELECT
         @SYSBranchID   = ISNULL(BranchID, ''),
         @SYSCeoID      = ISNULL(CeoID, ''),
         @SYSManagerID  = ISNULL(ManagerID, ''),
         @SYSEmployeeID = ISNULL(EmployeeID, ''),
-        @IsManager     = ISNULL(Manager, 0)
+        @IsManager     = ISNULL(Manager, 0),
+        @SYSUserGroupID = ISNULL(UserGroupID, '')
     FROM SY_User WHERE UserName = @Username
 
     -------------------------------------------------
@@ -59,11 +61,18 @@ BEGIN
            OR O.ObjectName LIKE N'%' + @timkiem + '%'  
            OR O.Address LIKE N'%' + @timkiem + '%' 
            OR O.Phone LIKE '%' + @timkiem + '%')
-      -- Phân quyền mượt: Cho phép AI (demo/admin) xem toàn bộ
-      AND (ISNULL(@SYSBranchID, '')   = '' OR A.BranchID = @SYSBranchID)
-      AND (ISNULL(@SYSCeoID, '')      = '' OR A.CeoID = @SYSCeoID)
-      AND (ISNULL(@SYSManagerID, '')  = '' OR A.ManagerID = @SYSManagerID)
-      AND (ISNULL(@SYSEmployeeID, '') = '' OR A.EmployeeID = @SYSEmployeeID OR @IsManager = 1)
+      -- Phân quyền mượt: Cho phép xem dữ liệu theo sơ đồ tổ chức (Admin -> CEO -> Manager -> Nhân viên)
+      AND (
+          UPPER(@SYSUserGroupID) = 'ADMIN'
+          OR (
+              (ISNULL(@SYSBranchID, '') = '' OR ISNULL(A.BranchID, '') = @SYSBranchID)
+              AND (
+                  A.EmployeeID = @SYSEmployeeID
+                  OR A.ManagerID = @SYSEmployeeID
+                  OR A.CeoID = @SYSEmployeeID
+              )
+          )
+      )
 
     -------------------------------------------------
     -- 5. Kết quả Output
