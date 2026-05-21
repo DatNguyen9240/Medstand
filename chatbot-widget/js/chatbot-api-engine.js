@@ -4683,13 +4683,53 @@
                 if (el) {
                     var val = paramsToFill[k];
                     if (val !== null && val !== undefined) {
-                        el.value = val;
                         var txtEl = document.getElementById(el.id + '_txt');
-                        if (txtEl) {
-                            txtEl.value = val;
+                        var wrap = el.closest('.ae-combo');
+                        if (wrap && txtEl) {
+                            // Smart combobox live-lookup
+                            var dsType = wrap.getAttribute('data-ds-type');
+                            var dsVal = wrap.getAttribute('data-ds-val');
+                            (function(hiddenEl, textEl, keyword) {
+                                _loadDataSource(dsType, dsVal, keyword, function(rows) {
+                                    if (rows && rows.length > 0) {
+                                        var r = rows[0];
+                                        var keys = Object.keys(r).filter(function(keyCol) { return keyCol.toUpperCase() !== 'STT'; });
+                                        var vKey = keys.find(function(keyCol) { 
+                                            var kl = keyCol.toLowerCase(); 
+                                            return kl === 'id' || kl.indexOf('id') > -1 || kl.indexOf('ma') === 0 || kl.indexOf('mã') === 0; 
+                                        }) || (keys.length > 0 ? keys[0] : null);
+                                        
+                                        var lKey = keys.find(function(keyCol) { 
+                                            var kl = keyCol.toLowerCase(); 
+                                            return (kl.indexOf('ten') === 0 || kl.indexOf('tên') === 0 || kl.indexOf('name') > -1) && keyCol !== vKey; 
+                                        });
+                                        if (!lKey && keys.length > 1) {
+                                            lKey = keys.find(function(keyCol) { return keyCol !== vKey; });
+                                        }
+                                        if (!lKey) lKey = vKey;
+                                        
+                                        var realVal = vKey ? r[vKey] : '';
+                                        var realLbl = lKey ? r[lKey] : realVal;
+                                        
+                                        hiddenEl.value = realVal;
+                                        textEl.value = realLbl;
+                                        hiddenEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                        hiddenEl.dispatchEvent(new Event('change', { bubbles: true }));
+                                    } else {
+                                        hiddenEl.value = keyword;
+                                        textEl.value = keyword;
+                                        hiddenEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                    }
+                                });
+                            })(el, txtEl, val);
+                        } else {
+                            el.value = val;
+                            if (txtEl) {
+                                txtEl.value = val;
+                            }
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                            el.dispatchEvent(new Event('change', { bubbles: true }));
                         }
-                        el.dispatchEvent(new Event('input', { bubbles: true }));
-                        el.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                 }
             });
@@ -4717,12 +4757,73 @@
                         var inName = targetRow.querySelector('.ae-combo-txt');
                         var inQty = targetRow.querySelector('.ae-dg-qty');
                         var inVal = targetRow.querySelector('.ae-dg-val[data-col="ItemID"]');
-                        if (inName) inName.value = it.keyword;
-                        if (inVal) inVal.value = it.keyword;
+                        
                         if (inQty) {
                             inQty.value = parseFloat(it.qty) || 1;
-                            // trigger input change to calc prices
                             inQty.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        
+                        var wrap = inName ? inName.closest('.ae-combo') : null;
+                        if (wrap && inVal) {
+                            var dsType = wrap.getAttribute('data-ds-type');
+                            var dsVal = wrap.getAttribute('data-ds-val');
+                            (function(hiddenEl, textEl, gridRow, keyword) {
+                                _loadDataSource(dsType, dsVal, keyword, function(rows) {
+                                    if (rows && rows.length > 0) {
+                                        var r = rows[0];
+                                        var keys = Object.keys(r).filter(function(keyCol) { return keyCol.toUpperCase() !== 'STT'; });
+                                        var vKey = keys.find(function(keyCol) { 
+                                            var kl = keyCol.toLowerCase(); 
+                                            return kl === 'id' || kl.indexOf('id') > -1 || kl.indexOf('ma') === 0 || kl.indexOf('mã') === 0; 
+                                        }) || (keys.length > 0 ? keys[0] : null);
+                                        
+                                        var lKey = keys.find(function(keyCol) { 
+                                            var kl = keyCol.toLowerCase(); 
+                                            return (kl.indexOf('ten') === 0 || kl.indexOf('tên') === 0 || kl.indexOf('name') > -1) && keyCol !== vKey; 
+                                        });
+                                        if (!lKey && keys.length > 1) {
+                                            lKey = keys.find(function(keyCol) { return keyCol !== vKey; });
+                                        }
+                                        if (!lKey) lKey = vKey;
+                                        
+                                        var realVal = vKey ? r[vKey] : '';
+                                        var realLbl = lKey ? r[lKey] : realVal;
+                                        
+                                        hiddenEl.value = realVal;
+                                        textEl.value = realLbl;
+                                        hiddenEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                        hiddenEl.dispatchEvent(new Event('change', { bubbles: true }));
+                                        
+                                        // Also lookup price if column exists!
+                                        var priceInp = gridRow.querySelector('.ae-dg-price');
+                                        var priceVal = null;
+                                        for (var i = 2; i < keys.length; i++) {
+                                            var col = keys[i];
+                                            if (col.toLowerCase().indexOf('gi') > -1 || col.toLowerCase().indexOf('price') > -1 || col.toLowerCase().indexOf('tiền') > -1) {
+                                                priceVal = r[col];
+                                                break;
+                                            }
+                                        }
+                                        if (priceInp && priceVal !== null && priceVal !== undefined) {
+                                            priceInp.value = priceVal;
+                                            var gridId = gridRow.closest('.ae-datagrid-field') ? gridRow.closest('.ae-datagrid-field').id : null;
+                                            if (gridId && typeof _calcDataGrid === 'function') {
+                                                _calcDataGrid(gridId);
+                                            }
+                                        }
+                                    } else {
+                                        hiddenEl.value = keyword;
+                                        textEl.value = keyword;
+                                        hiddenEl.dispatchEvent(new Event('input', { bubbles: true }));
+                                    }
+                                });
+                            })(inVal, inName, targetRow, it.keyword);
+                        } else {
+                            if (inName) inName.value = it.keyword;
+                            if (inVal) {
+                                inVal.value = it.keyword;
+                                inVal.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
                         }
                     }
                 });
