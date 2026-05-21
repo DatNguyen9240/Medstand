@@ -34,6 +34,30 @@
 
 
 
+    // Get logged in username dynamically
+
+    function _user() {
+
+        try {
+
+            var authRaw = localStorage.getItem('auth_user') || localStorage.getItem('currentUser');
+
+            if (authRaw) {
+
+                var p = JSON.parse(authRaw);
+
+                return p.UserName || p.Username || p.username || p.sub || p.Name || p.id || '';
+
+            }
+
+        } catch (e) {}
+
+        return '';
+
+    }
+
+
+
     // Get auth token from cookie
 
     function _getToken() {
@@ -50,7 +74,9 @@
 
     function _getSessionId() {
 
-        var key = 'ai_chat_session_id';
+        var uname = _user();
+
+        var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
 
         var sid = sessionStorage.getItem(key);
 
@@ -72,7 +98,9 @@
 
     function _getSessionKey() {
 
-        return CACHE_KEY;
+        var uname = _user();
+
+        return CACHE_KEY + (uname ? '_' + uname.toLowerCase() : '');
 
     }
 
@@ -89,9 +117,17 @@
             var data = JSON.parse(raw);
 
             if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
+
                 localStorage.removeItem(_getSessionKey());
-                sessionStorage.removeItem('ai_chat_session_id'); // Clear backend memory
+
+                var uname = _user();
+
+                var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+
+                sessionStorage.removeItem(key); // Clear backend memory
+
                 return [];
+
             }
 
             return data.messages || [];
@@ -1429,7 +1465,27 @@
 
 
                 if (cleanData.length === 0) {
-                    _addMessage('ai', res.message || 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️');
+                    var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1);
+                    var warnMsg = 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️';
+                    if (isSuccessMsg || !res.message) {
+                        warnMsg = 'Không tìm thấy dữ liệu hoặc tài khoản của bạn không có quyền truy cập thông tin chéo vùng miền (Miền Bắc/Trung/Nam).';
+                    } else {
+                        warnMsg = res.message;
+                    }
+                    
+                    var warningCardHtml = 
+                        '<div class="ai-sales-debt-card" style="border: 1px solid rgba(245, 158, 11, 0.25); border-left: 5px solid #f59e0b; background: rgba(245, 158, 11, 0.03); padding: 15px; border-radius: 12px; margin-top: 8px; backdrop-filter: blur(8px); animation: ai-inline-fadein 0.3s ease;">'
+                        + '<div style="display: flex; gap: 12px; align-items: flex-start;">'
+                        + '<span style="font-size: 22px; line-height: 1;">⚠️</span>'
+                        + '<div>'
+                        + '<div style="font-weight: 700; font-size: 14px; color: #d97706; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Thông báo hệ thống</div>'
+                        + '<div style="font-size: 13px; color: var(--ai-text-main, #334155); line-height: 1.5;">'
+                        + _esc(warnMsg)
+                        + '</div>'
+                        + '</div>'
+                        + '</div>'
+                        + '</div>';
+                    _addHtmlMessage(warningCardHtml, '⚠️ Không tìm thấy dữ liệu');
                     return;
                 }
 
@@ -4512,7 +4568,9 @@
         if (!chatHistory.length) return;
         chatHistory = [];
         _clearCache();
-        sessionStorage.removeItem('ai_chat_session_id'); // Clear backend memory too
+        var uname = _user();
+        var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+        sessionStorage.removeItem(key); // Clear backend memory too
         $messages.innerHTML = '';
         $welcome.style.display = '';
 
