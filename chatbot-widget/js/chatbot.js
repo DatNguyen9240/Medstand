@@ -2597,15 +2597,29 @@
         var HIGH_PRIORITY = [
             'itemname', 'title', 'name', 'customername', 'custname',
             'canhbaoai', 'canh_bao_ai', 'trend', 'percent',
-            'money', 'amount', 'price', 'quantity'
+            'money', 'amount', 'price', 'quantity',
+            // Vietnamese normalized equivalents
+            'tennv', 'tenkh', 'tensanpham', 'tenkhachhang', 'tendoitac',
+            'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
+            'xuhuong', 'trangthai', 'tiendo', 'muctieu'
         ];
         
         var primary = [];
         var secondary = [];
         
         keys.forEach(function (k) {
-            var lower = k.toLowerCase().replace(/_/g, '');
-            if (HIGH_PRIORITY.indexOf(lower) !== -1) {
+            var lower = k.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
+            // Convert Vietnamese to unsigned/diacritic-free lowercase for smart matching
+            var normalized = lower
+                .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a')
+                .replace(/[èéẹẻẽêềếệểễ]/g, 'e')
+                .replace(/[ìíịỉĩ]/g, 'i')
+                .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o')
+                .replace(/[ùúụủũưừứựửữ]/g, 'u')
+                .replace(/[ỳýỵỷỹ]/g, 'y')
+                .replace(/đ/g, 'd');
+
+            if (HIGH_PRIORITY.indexOf(normalized) !== -1 || HIGH_PRIORITY.indexOf(lower) !== -1) {
                 primary.push(k);
             } else {
                 secondary.push(k);
