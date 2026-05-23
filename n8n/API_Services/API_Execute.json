@@ -206,7 +206,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://medtest.bms79.com/api/API_UserInfo",
+        "url": "https://medtest.bms7.net/api/API_UserInfo",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [

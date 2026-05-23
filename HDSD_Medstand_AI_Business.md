@@ -8,7 +8,7 @@
 ## PHẦN 1: THÔNG TIN CHUNG
 
 ### 1.1 Giới thiệu mục đích
-Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích hợp trên hệ thống medtest.bms79.com). Trợ lý AI Medstand giúp đội ngũ kinh doanh tra cứu dữ liệu doanh số, tồn kho, công nợ, gợi ý bán hàng và lên đơn hàng nhanh chóng bằng ngôn ngữ tự nhiên thông qua cửa sổ chat tương tự như Zalo/Viber.
+Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích hợp trên hệ thống medtest.bms7.net). Trợ lý AI Medstand giúp đội ngũ kinh doanh tra cứu dữ liệu doanh số, tồn kho, công nợ, gợi ý bán hàng và lên đơn hàng nhanh chóng bằng ngôn ngữ tự nhiên thông qua cửa sổ chat tương tự như Zalo/Viber.
 
 ### 1.2 Đối tượng sử dụng
 - **Trình dược viên (Sales)**: Tra cứu doanh số cá nhân, gợi ý đặt hàng, kiểm tra tồn kho, lập đơn hàng mới trực tiếp qua chat.
@@ -22,7 +22,7 @@ Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích h
 Để bắt đầu sử dụng hệ thống Trợ lý AI, người dùng cần chuẩn bị:
 1. **Thiết bị**: Điện thoại thông minh (Android/iPhone) hoặc máy tính có kết nối Internet.
 2. **Trình duyệt**: Khuyến nghị sử dụng **Google Chrome** hoặc **Safari** để có trải nghiệm hiển thị mượt mà nhất.
-3. **Địa chỉ truy cập**: Vào website `https://medtest.bms79.com`.
+3. **Địa chỉ truy cập**: Vào website `https://medtest.bms7.net`.
 4. **Tài khoản đăng nhập**: Sử dụng tên đăng nhập và mật khẩu nội bộ do bộ phận IT cung cấp (Tham khảo danh sách tài khoản kiểm thử UAT ở phần dưới).
 
 *Lưu ý bảo mật*: Hệ thống tự động phân quyền dữ liệu theo phạm vi phụ trách của từng tài khoản đăng nhập. Nhân sự miền nào chỉ xem được dữ liệu miền đó, tuyệt đối bảo mật thông tin.
@@ -83,7 +83,7 @@ Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán
   *Khắc phục*: Được. Sau khi tạo đơn qua AI, đơn sẽ ở trạng thái "Chờ duyệt". Bạn hãy liên hệ ngay với Quản lý vùng của mình để yêu cầu từ chối duyệt/hủy đơn hàng đó trên hệ thống trước khi kho xuất hàng.
 
 - **Vấn đề 4: AI phản hồi chậm hoặc không gửi được tin nhắn**
-  *Khắc phục*: Kiểm tra lại kết nối mạng 3G/4G/Wifi trên điện thoại của bạn. Nếu mạng ổn định, hãy thử F5 (làm mới) lại trang web medtest.bms79.com và đăng nhập lại.
+  *Khắc phục*: Kiểm tra lại kết nối mạng 3G/4G/Wifi trên điện thoại của bạn. Nếu mạng ổn định, hãy thử F5 (làm mới) lại trang web medtest.bms7.net và đăng nhập lại.
 
 ---
 

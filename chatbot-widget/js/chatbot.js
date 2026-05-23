@@ -1832,14 +1832,38 @@
         function findKey(targets) {
 
             for (var i = 0; i < targets.length; i++) {
-
                 var idx = lowerKeys.indexOf(targets[i]);
-
                 if (idx !== -1) return { key: keys[idx], val: row[keys[idx]] };
-
             }
+            return null;
+        }
 
-            retu    function _fmtCellVal(v) {
+        if (role === 'TITLE' || role === 'NAME') {
+            return findKey(['ten', 'name', 'title', 'label', 'hoten', 'tensanpham', 'tenkhachhang', 'tennhanvien', 'diengiai', 'dien_giai', 'mota', 'mo_ta']);
+        }
+        if (role === 'MONEY' || role === 'VALUE' || role === 'AMOUNT') {
+            return findKey(['money', 'value', 'amount', 'sotien', 'so_tien', 'thanhtien', 'thanh_tien', 'tongtien', 'tong_tien', 'doanhthu', 'doanh_thu', 'duyet', 'no', 'congno', 'cong_no']);
+        }
+        if (role === 'COUNT' || role === 'QTY') {
+            return findKey(['count', 'qty', 'quantity', 'soluong', 'so_luong', 'sohd', 'so_hd', 'hoadon', 'hoa_don']);
+        }
+        if (role === 'TREND' || role === 'DATE') {
+            return findKey(['trend', 'date', 'ngay', 'ngayhd', 'ngay_hd', 'documentdate', 'ngay_lap', 'ngaylap', 'timeline']);
+        }
+        if (role === 'BADGE' || role === 'STATUS') {
+            return findKey(['badge', 'status', 'trangthai', 'trang_thai', 'qua', 'quatang', 'qua_tang', 'statusname', 'phanhang', 'phan_hang']);
+        }
+        if (role === 'ID' || role === 'CODE') {
+            return findKey(['id', 'code', 'ma', 'makhachhang', 'ma_khachhang', 'masanpham', 'ma_sanpham', 'manhanvien', 'ma_nhanvien', 'documentid', 'mahd', 'ma_hd']);
+        }
+        if (role === 'PERCENT' || role === 'PERCENTAGE') {
+            return findKey(['percent', 'percentage', 'tile', 'ti_le', 'phantram', 'phan_tram']);
+        }
+
+        return findKey([role.toLowerCase()]);
+    }
+
+    function _fmtCellVal(v) {
 
         if (v === null || v === undefined) return '';
 
