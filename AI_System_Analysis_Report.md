@@ -7,7 +7,7 @@
 
 Hệ thống **Medstand AI** là một giải pháp chuyển đổi số toàn diện, tích hợp trí tuệ nhân tạo (AI/NLP) trực tiếp vào tầng cơ sở dữ liệu doanh nghiệp thông qua trung gian điều phối n8n. Hệ thống được thiết kế để giải quyết bài toán tối ưu doanh thu, chăm sóc khách hàng và quản lý chuỗi cung ứng dược phẩm theo thời gian thực.
 
-Dựa trên kết quả UAT thực tế chạy qua bộ kịch bản tự động (`test_all_19_features.py`) trên máy chủ `medtest.bms7.net`, toàn bộ **19 tính năng cốt lõi đều đạt kết quả PASS (Code = 0)**. Bài báo cáo này phân tích sâu sắc cấu trúc kỹ thuật (Architecture), mô hình toán học (Data Modeling), cơ chế bảo mật phân quyền dữ liệu (RLS), tối ưu hiệu năng băng thông và trải nghiệm người dùng di động (Mobile UI/UX).
+Dựa trên kết quả UAT thực tế chạy qua bộ kịch bản tự động (`test_all_19_features.py`) trên máy chủ `medtest.bms79.com`, toàn bộ **19 tính năng cốt lõi đều đạt kết quả PASS (Code = 0)**. Bài báo cáo này phân tích sâu sắc cấu trúc kỹ thuật (Architecture), mô hình toán học (Data Modeling), cơ chế bảo mật phân quyền dữ liệu (RLS), tối ưu hiệu năng băng thông và trải nghiệm người dùng di động (Mobile UI/UX).
 
 ---
 
