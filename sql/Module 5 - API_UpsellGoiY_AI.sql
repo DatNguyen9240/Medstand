@@ -12,6 +12,9 @@ AS
 BEGIN
     SET NOCOUNT ON
 
+    -- Defend against NULL or non-positive bounds passed by web server binders
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
+
     -- ═══ Validate User ═══
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN

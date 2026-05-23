@@ -10,6 +10,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- Defend against NULL or non-positive bounds passed by web server binders
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 500;
+
 
     -- 1. Xác định chương trình đang hoạt động
     DECLARE @ProgramID VARCHAR(50) = ''

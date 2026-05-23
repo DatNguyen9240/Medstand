@@ -11,7 +11,9 @@ CREATE PROCEDURE API_TuyenBanHang_AI
 AS
 BEGIN
     SET NOCOUNT ON
-   
+    -- Defend against NULL or non-positive bounds passed by web server binders
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 8;
+
     -- 1. KIỂM TRA MÃ KHÁCH HÀNG HỢP LỆ (Nếu có truyền vào)
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN

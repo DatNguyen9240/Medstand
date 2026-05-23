@@ -34,8 +34,12 @@ BEGIN
    IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
    IF NULLIF(@ObjectID, '') IS NOT NULL SET @MaKhachHang = @ObjectID;
    IF NULLIF(@SearchText, '') IS NOT NULL SET @timkiem = @SearchText;
+   
+   -- Defend against NULL or non-positive bounds passed by web server model binders
+   IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
+   
    -- @limit từ web/server override @TopN (max 5000 để tránh quá tải)
-   IF @limit > 0 AND @limit <= 5000 SET @TopN = @limit;
+   IF @limit IS NOT NULL AND @limit > 0 AND @limit <= 5000 SET @TopN = @limit;
    
    -- 1. Validate User (Skip strict validation if username not provided yet, fallback to employee id resolution)
    IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
@@ -174,17 +178,18 @@ BEGIN
        AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
        AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
        AND (@BranchID = '' OR A.BranchID = @BranchID)
-       -- Phân quyền mượt: Cho phép Quản lý (Manager=1) xem toàn bộ downline, và bypass hoàn toàn bộ lọc cho Admin
-       AND (
-           UPPER(@SYSUserGroupID) = 'ADMIN'
-           OR (
-               (ISNULL(@SYS_BranchID, '') = '' OR ISNULL(A.BranchID, '') = @SYS_BranchID)
-               AND (
-                   @IsManager = 1 AND (A.ManagerID = @SYS_EmployeeID OR A.EmployeeID = @SYS_EmployeeID)
-                   OR @IsManager = 0 AND (A.EmployeeID = @SYS_EmployeeID OR ISNULL(@SYS_EmployeeID, '') = '')
-               )
-           )
-       )
+        -- Phân quyền mượt: Cho phép xem dữ liệu theo sơ đồ tổ chức (Admin -> CEO -> Manager -> Nhân viên)
+        AND (
+            UPPER(@SYSUserGroupID) = 'ADMIN'
+            OR (
+                (ISNULL(@SYS_BranchID, '') = '' OR ISNULL(A.BranchID, '') = @SYS_BranchID)
+                AND (
+                    A.EmployeeID = @SYS_EmployeeID
+                    OR A.ManagerID = @SYS_EmployeeID
+                    OR A.CeoID = @SYS_EmployeeID
+                )
+            )
+        )
        AND (@timkiem = ''
             OR A.DocumentID LIKE '%' + @timkiem + '%'
             OR O.ObjectName LIKE N'%' + @timkiem + '%'
