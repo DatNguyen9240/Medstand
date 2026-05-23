@@ -20,19 +20,19 @@ $(function() {
   // Handle Drag & Drop
   $dropzone.on('dragover', function(e) {
     e.preventDefault();
-    $dropzone.css('border-color', 'var(--color-primary)');
-    $dropzone.css('background', 'rgba(59, 130, 246, 0.05)');
+    $dropzone.css('border-color', '#000000');
+    $dropzone.css('background', 'rgba(0, 0, 0, 0.03)');
   });
 
   $dropzone.on('dragleave', function(e) {
     e.preventDefault();
-    $dropzone.css('border-color', 'rgb(148, 163, 184)');
+    $dropzone.css('border-color', 'var(--color-border)');
     $dropzone.css('background', 'transparent');
   });
 
   $dropzone.on('drop', function(e) {
     e.preventDefault();
-    $dropzone.css('border-color', 'rgb(148, 163, 184)');
+    $dropzone.css('border-color', 'var(--color-border)');
     $dropzone.css('background', 'transparent');
     
     const files = e.originalEvent.dataTransfer.files;
@@ -83,7 +83,13 @@ $(function() {
     e.preventDefault();
     
     if (!currentFile) {
-      Alert.show('Vui lòng chọn một file dữ liệu để tải lên', 'error');
+      Alert.error('Vui lòng chọn một file dữ liệu để tải lên');
+      return;
+    }
+
+    // Cảnh báo xác nhận trước khi đồng bộ lên AI sử dụng SweetAlert2
+    const isConfirmed = await Alert.confirm("Bạn có chắc chắn muốn đồng bộ tài liệu này lên hệ thống AI không? Dữ liệu cũ của tài liệu này (nếu có) sẽ được tự động cập nhật mới.", "Đồng bộ Tri thức");
+    if (!isConfirmed) {
       return;
     }
 
@@ -110,13 +116,16 @@ $(function() {
         
         const response = await fetch(webhookUrl, {
           method: 'POST',
+          headers: {
+            'x-admin-key': 'Medstand@Admin2026'
+          },
           body: formData
         });
 
         const result = await response.json();
         
         if (response.ok && result && result.status !== "error") {
-          Alert.show('Đã cập nhật hệ tri thức AI thành công!', 'success');
+          Alert.success('Đã cập nhật hệ tri thức AI thành công!');
           setTimeout(() => {
             $btnRemove.click();
             $('#rag-title').val('');
@@ -127,9 +136,9 @@ $(function() {
         }
       } catch (err) {
         console.error('Upload Error:', err);
-        Alert.show('Tải lên thất bại: ' + err.message, 'error');
+        Alert.error('Tải lên thất bại: ' + err.message);
       } finally {
-        $btnSubmit.prop('disabled', false).html('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Bơm vào não AI');
+        $btnSubmit.prop('disabled', false).html('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Đồng bộ Tri thức lên AI');
       }
     };
 
@@ -157,8 +166,8 @@ $(function() {
                   var newF = new File([b], f.name.replace(/\.[^/.]+$/, "") + ".csv", {type: "text/csv"});
                   doUpload(newF);
               } catch(err) {
-                  Alert.show('Tải lên thất bại: Xin lỗi, định dạng file Excel quá cũ hoặc có mật khẩu bảo vệ', 'error');
-                  $btnSubmit.prop('disabled', false).html('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Bơm vào não AI');
+                  Alert.error('Tải lên thất bại: Xin lỗi, định dạng file Excel quá cũ hoặc có mật khẩu bảo vệ');
+                  $btnSubmit.prop('disabled', false).html('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Đồng bộ Tri thức lên AI');
               }
           };
           r.readAsArrayBuffer(f);

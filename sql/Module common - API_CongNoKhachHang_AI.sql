@@ -21,44 +21,55 @@ BEGIN
 
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
-   DECLARE @BanLanhDao BIT
-   SELECT @BanLanhDao = COALESCE(Manager, 0) FROM dbo.SY_User WHERE UserName = @Username
-   IF @MaKhachHang = '' OR @MaKhachHang IS NULL
-   BEGIN
-       -- Dùng bảng tạm để tổng hợp trước, tránh query view nhiều lần
-       DECLARE @CongNo TABLE (ObjectID VARCHAR(50), TongNo MONEY)
-       INSERT INTO @CongNo
-       SELECT ObjectID, SUM(Amount) AS TongNo
-       FROM vCongNoBanHang
-       WHERE DocumentDate <= @DenNgay
-       GROUP BY ObjectID
-       HAVING SUM(Amount) > 0
-       SELECT TOP 20
-           O.ObjectName AS TenKH,
-           C.TongNo,
-           C.ObjectID AS MaKH
-       FROM @CongNo C
-       LEFT JOIN CF_ObjectTbl O ON C.ObjectID = O.ObjectID
-       WHERE (
-           @BanLanhDao = 1
-           OR C.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
-       )
-       ORDER BY C.TongNo DESC
-       
-       RETURN
-   END
-   SELECT
-       O.ObjectName,
-       SUM(A.DebitAmount - A.CreditAmount) AS TongNo,
-       A.ObjectID
-   FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
-   LEFT JOIN dbo.CF_ObjectTbl O ON A.ObjectID = O.ObjectID
-   WHERE A.ObjectID = @MaKhachHang
-     AND (
-         @BanLanhDao = 1
-         OR A.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
-     )
-   GROUP BY A.ObjectID, O.ObjectName
+    DECLARE @SYS_BranchID   VARCHAR(50) = ''
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+
+    SELECT 
+        @SYS_BranchID   = COALESCE(BranchID, ''),
+        @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM dbo.SY_User 
+    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    IF @MaKhachHang = '' OR @MaKhachHang IS NULL
+    BEGIN
+        -- Dùng bảng tạm để tổng hợp trước, tránh query view nhiều lần
+        DECLARE @CongNo TABLE (ObjectID VARCHAR(50), TongNo MONEY)
+        INSERT INTO @CongNo
+        SELECT ObjectID, SUM(Amount) AS TongNo
+        FROM vCongNoBanHang
+        WHERE DocumentDate <= @DenNgay
+        GROUP BY ObjectID
+        HAVING SUM(Amount) > 0
+        SELECT TOP 20
+            O.ObjectName AS TenKH,
+            C.TongNo,
+            C.ObjectID AS MaKH
+        FROM @CongNo C
+        LEFT JOIN CF_ObjectTbl O ON C.ObjectID = O.ObjectID
+        WHERE (
+            UPPER(@SYSUserGroupID) = 'ADMIN'
+            OR (
+                (ISNULL(@SYS_BranchID, '') = '' OR O.BranchID = @SYS_BranchID)
+                AND C.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+            )
+        )
+        ORDER BY C.TongNo DESC
+        
+        RETURN
+    END
+    SELECT
+        O.ObjectName,
+        SUM(A.DebitAmount - A.CreditAmount) AS TongNo,
+        A.ObjectID
+    FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
+    LEFT JOIN dbo.CF_ObjectTbl O ON A.ObjectID = O.ObjectID
+    WHERE A.ObjectID = @MaKhachHang
+      AND (
+          UPPER(@SYSUserGroupID) = 'ADMIN'
+          OR (
+              (ISNULL(@SYS_BranchID, '') = '' OR O.BranchID = @SYS_BranchID)
+              AND A.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+          )
+      )
+    GROUP BY A.ObjectID, O.ObjectName
 END
-
-

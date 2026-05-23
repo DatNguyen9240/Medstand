@@ -1,3 +1,6 @@
+USE medtest;
+GO
+
 IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
 GO
 CREATE PROCEDURE API_GoiYDonThuoc_AI
@@ -8,6 +11,10 @@ BEGIN
     SET NOCOUNT ON;
     SET ANSI_WARNINGS OFF;
    
+    -- Chuẩn hóa các liên từ nối tiếng Việt thành dấu phẩy đề phòng n8n chưa xử lý
+    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng với ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
+    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' với ', ','), N' Với ', ','), N' & ', ','), N' + ', ',');
+
     DECLARE @Keys TABLE (TuKhoa NVARCHAR(100));
     INSERT INTO @Keys (TuKhoa)
     SELECT CAST(value AS NVARCHAR(100))

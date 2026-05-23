@@ -1839,69 +1839,7 @@
 
             }
 
-            return null;
-
-        }
-
-
-
-        if (role === 'TITLE') {
-
-            return findKey(['itemname', 'objectname', 'tendoitac', 'tenkhachhang', 'tencuahang', 'employeename', 'name', 'fullname', 'hoten', 'ten', 'title', 'tieu_de', 'diengiai', 'noidung', 'ghichu']);
-
-        }
-
-        if (role === 'ID') {
-
-            return findKey(['itemid', 'objectid', 'employeeid', 'makhachhang', 'code', 'ma', 'id', 'docno', 'documentid', 'macode', 'mahd', 'khachhang', 'sanpham', 'nhanvien', 'khohang']);
-
-        }
-
-        if (role === 'BADGE') {
-
-            return findKey(['phanloai', 'nhom', 'trangthai', 'status', 'loai', 'badge']);
-
-        }
-
-        if (role === 'MONEY') {
-
-            return findKey(['doanhso', 'tongtien', 'tongno', 'doanhthu', 'tonkho', 'dongia', 'sotien', 'tien']);
-
-        }
-
-        if (role === 'TREND') {
-
-            return findKey(['ngay', 'date', 'thoigian', 'trend', 'loinhacai', 'loinhac']);
-
-        }
-
-        if (role === 'COUNT') {
-
-            return findKey(['tongsohoadon', 'sohd', 'soluong', 'count']);
-
-        }
-
-        if (role === 'PERCENT') {
-
-            return findKey(['hoanthanh', 'tyle', 'percent', 'percentage']);
-
-        }
-
-        if (role === 'TARGET') {
-
-            return findKey(['muctieu', 'target']);
-
-        }
-
-
-
-        return null;
-
-    }
-
-
-
-    function _fmtCellVal(v) {
+            retu    function _fmtCellVal(v) {
 
         if (v === null || v === undefined) return '';
 
@@ -1959,13 +1897,11 @@
 
     /**
 
-     * Renderer ỘNG 100%: Tự động nhận diện Role từ Metadata
+     * Renderer ĐỘNG 100%: Tự động nhận diện Role từ Metadata
 
      * @param {Array}  rows      - mảng data từ API
 
-     * @param {string} headerMsg - tiêu đ kết quả
-
-     * @param {string} apiCode   - mã API (được dùng bởi sub-renderer khác)
+     * @param {string} apiCode   - mã API
 
      * @param {Object} meta      - { uiTemplate, fieldRoles, khCode } từ ApiEngine
 
@@ -1983,97 +1919,19 @@
 
         html += '<div class="ai-inline-container" id="' + viewId + '">';
 
-        html += '<div class="ai-view-cards" style="display:none">';
+        html += '<div class="ai-view-table" style="display: block;">';
 
-        html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
+        html += _buildInlineTable(rows, keys, apiCode);
 
+        html += '</div>';
 
-
-        var MAX_CARDS = 30;
-
-        rows.forEach(function (row, idx) {
-
-            if (idx === MAX_CARDS) {
-
-                html += '</div>';
-
-                html += '<details style="margin-top:10px;">';
-
-                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:var(--color-primary); font-weight:bold; background:rgba(var(--color-primary-rgb), 0.1); border-radius:8px; margin-bottom:10px; list-style:none;"> Xem thêm ' + (rows.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + rows.length + ')</summary>';
-
-                html += '<div class="ai-card-list ' + (rows.length > 5 ? 'accordion' : '') + '">';
-
-            }
-
-            var titleF = _pickField(row, 'TITLE');
-
-            var idF = _pickField(row, 'ID');
-
-            var badgeF = _pickField(row, 'BADGE');
-
-            var moneyF = _pickField(row, 'MONEY');
-
-            var trendF = _pickField(row, 'TREND');
+        html += '</div>'; // ai-inline-container
 
 
 
-            var usedKeys = [];
+        return html;
 
-            if (titleF) usedKeys.push(titleF.key);
-
-            if (idF) usedKeys.push(idF.key);
-
-            if (badgeF) usedKeys.push(badgeF.key);
-
-
-
-            html += '<div class="ai-card">';
-
-            html += '<div class="ai-card-header">';
-
-            if (titleF) {
-
-                html += '<div class="ai-card-title">' + _esc(String(titleF.val)) + '</div>';
-
-            } else {
-
-                html += '<div class="ai-card-title">Mục ' + (idx + 1) + '</div>';
-
-            }
-
-            html += '<div class="ai-card-meta">';
-
-            if (idF) html += '<span class="ai-card-id">' + _esc(String(idF.val)) + '</span>';
-
-            if (badgeF) html += '<span class="ai-badge ' + _badgeClass(badgeF.val) + '">' + _esc(String(badgeF.val)) + '</span>';
-
-            html += '</div>';
-
-            html += '</div>'; // header
-
-
-
-            html += '<div class="ai-card-body">';
-
-            if (moneyF) {
-
-                html += '<div class="ai-card-money">' + _esc(moneyF.key) + ': <strong>' + _fmtCellVal(moneyF.val) + '</strong></div>';
-
-                usedKeys.push(moneyF.key);
-
-            }
-
-            if (trendF) {
-
-                var tv = String(trendF.val);
-
-                var trendCls = (tv.indexOf('-') !== -1 || tv.indexOf('giảm') !== -1) ? 'ai-trend-down' : 'ai-trend-up';
-
-                html += '<div class="ai-card-trend ' + trendCls + '">📈 ' + _esc(trendF.key) + ': ' + _esc(tv) + '</div>';
-
-                usedKeys.push(trendF.key);
-
-            }
+    }}
 
 
 
@@ -2688,7 +2546,7 @@
 
 
 
-            // Action bar (gi / zalo) - use first row for triggers
+            // Action bar (g i / zalo) - use first row for triggers
 
             html += _buildActionBar(grp.rows[0], apiCode);
 
@@ -2725,7 +2583,7 @@
 
     // ── Registry Registration ─────────────────────────────────────
 
-    // CORE renderers — hoạt động cho mi project
+    // CORE renderers — hoạt động cho m i project
 
     _UI_RENDERERS['DEFAULT'] = _renderCardView;
 
@@ -2735,7 +2593,89 @@
 
     // ── Inline Toggle & Modal table helpers ─────────────────────────
 
+    function _getFriendlyHeader(key) {
+        var dict = {
+            'itemid': 'Mã SP',
+            'itemname': 'Sản phẩm',
+            'unit': 'ĐVT',
+            'canhbaoai': 'Gợi ý AI',
+            'canh_bao_ai': 'Gợi ý AI',
+            'price': 'Đơn giá',
+            'quantity': 'Số lượng',
+            'amount': 'Thành tiền',
+            'money': 'Số tiền',
+            'customername': 'Khách hàng',
+            'custname': 'Khách hàng',
+            'date': 'Ngày',
+            'status': 'Trạng thái',
+            'trend': 'Xu hướng',
+            'percent': 'Tiến độ',
+            'target': 'Mục tiêu',
+            'title': 'Tiêu đề',
+            'id': 'Mã',
+            'name': 'Tên',
+            'phone': 'Số ĐT',
+            'address': 'Địa chỉ',
+            'username': 'Tài khoản'
+        };
+        var lower = key.toLowerCase().replace(/_/g, '');
+        return dict[lower] || key;
+    }
 
+    function _splitKeysSmart(keys, forceShowAll) {
+        if (forceShowAll || keys.length <= 5) {
+            return {
+                primary: keys,
+                secondary: []
+            };
+        }
+
+        var HIGH_PRIORITY = [
+            'itemname', 'title', 'name', 'customername', 'custname',
+            'canhbaoai', 'canh_bao_ai', 'trend', 'percent',
+            'money', 'amount', 'price', 'quantity'
+        ];
+        
+        var primary = [];
+        var secondary = [];
+        
+        keys.forEach(function (k) {
+            var lower = k.toLowerCase().replace(/_/g, '');
+            if (HIGH_PRIORITY.indexOf(lower) !== -1) {
+                primary.push(k);
+            } else {
+                secondary.push(k);
+            }
+        });
+        
+        if (primary.length === 0 && keys.length > 0) {
+            primary.push(keys[0]);
+            secondary = keys.slice(1);
+        }
+        
+        var MAX_PRIMARY = 3;
+        if (primary.length > MAX_PRIMARY) {
+            var extra = primary.slice(MAX_PRIMARY);
+            primary = primary.slice(0, MAX_PRIMARY);
+            secondary = extra.concat(secondary);
+        }
+        
+        return {
+            primary: primary,
+            secondary: secondary
+        };
+    }
+
+    function _isNumCol(k) {
+        var lowerK = String(k || '').toLowerCase().replace(/_/g, '');
+        var numKeywords = ['doanhso', 'doanhthu', 'soluong', 'tonkho', 'tien', 'gia', 'chietkhau', 'thanhtien', 'dongia', 'amount', 'qty', 'price', 'revenue', 'sales', 'total', 'discount', 'sum', 'val'];
+        for (var i = 0; i < numKeywords.length; i++) {
+            if (lowerK.indexOf(numKeywords[i]) !== -1) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     /**
 
@@ -2765,9 +2705,19 @@
             'msg', 'Msg', 'msgtype', 'MsgType',
             'objectid', 'ObjectID'
         ];
-        keys = keys.filter(function (k) {
-            return HIDDEN_COLS.indexOf(k) === -1 && HIDDEN_COLS.indexOf(k.toLowerCase()) === -1;
+        
+        // Phát hiện cờ ép hiển thị toàn bộ cột từ SQL trả về (ví dụ cột 'showallcols' hoặc 'fulltable' hoặc 'showall')
+        var forceShowAll = false;
+        var filteredKeys = [];
+        keys.forEach(function (k) {
+            var lowerK = k.toLowerCase().replace(/_/g, '');
+            if (lowerK === 'showallcols' || lowerK === 'fulltable' || lowerK === 'showall') {
+                forceShowAll = true;
+            } else if (HIDDEN_COLS.indexOf(k) === -1 && HIDDEN_COLS.indexOf(k.toLowerCase()) === -1) {
+                filteredKeys.push(k);
+            }
         });
+        keys = filteredKeys;
 
         var tbodyId = 'ai-inline-tbody-v' + _modalIdCounter;
 
@@ -2787,7 +2737,7 @@
 
             if (keys.indexOf(bk) !== -1) {
 
-                // ếm distinct values
+                //  ếm distinct values
 
                 rows.forEach(function (r) {
 
@@ -2797,7 +2747,7 @@
 
                 });
 
-                // Chỉ dùng nếu có ≥ 2 giá trị khác nhau và ≤ 6 loại (để chip không quá nhiu)
+                // Chỉ dùng nếu có ≥ 2 giá trị khác nhau và ≤ 6 loại (để chip không quá nhi u)
 
                 var bvKeys = Object.keys(badgeValues);
 
@@ -2827,7 +2777,7 @@
 
             Object.keys(badgeValues).sort().forEach(function (v) {
 
-                var icon = (v === 'A' || v.toUpperCase() === 'VIP') ? ' ' :
+                var icon = (v === 'A' || v.toUpperCase() === 'VIP') ? '  ' :
 
                     (v === 'B') ? '🔵 ' :
 
@@ -2845,7 +2795,7 @@
 
         html += '<div class="ai-sales-filter-bar ai-inline-filter">'
 
-            + '<input class="ai-sales-filter-input" type="search" placeholder=" Tìm nhanh trong kết quả..." autocomplete="off" />'
+            + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
 
             + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
 
@@ -2859,17 +2809,22 @@
 
         html += '<table class="ai-table"><thead><tr>';
 
-        if (keys.length > 5) {
+        var split = _splitKeysSmart(keys, forceShowAll);
+        var primaryKeys = split.primary;
+        var secondaryKeys = split.secondary;
+        var hasDetails = secondaryKeys.length > 0;
+
+        if (hasDetails) {
             html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
-            var primaryKeys = keys.slice(0, 5);
-            primaryKeys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
-        } else {
-            keys.forEach(function (k) { html += '<th>' + _esc(k) + '</th>'; });
         }
+        primaryKeys.forEach(function (k) { 
+            var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
+            html += '<th' + thClass + '>' + _esc(_getFriendlyHeader(k)) + '</th>'; 
+        });
 
         html += '</tr></thead>';
 
-        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys) + '</tbody>';
+        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys, forceShowAll) + '</tbody>';
 
         html += '</table></div>';
 
@@ -2877,7 +2832,7 @@
 
         // Lưu data vào cache để filter handler dùng
 
-        _modalDataCache[tbodyId] = { rows: rows, keys: keys, badgeKey: badgeKeyFound };
+        _modalDataCache[tbodyId] = { rows: rows, keys: keys, badgeKey: badgeKeyFound, forceShowAll: forceShowAll };
 
 
 
@@ -2889,11 +2844,7 @@
 
 
 
-    /** Render chỉ phần <tbody> (tách riêng để re-render khi filter) */
-
-
-
-    function _renderTableBody(filteredRows, keys) {
+    function _renderTableBody(filteredRows, keys, forceShowAll) {
 
         var MAX = 50;
 
@@ -2901,29 +2852,43 @@
 
         var html = '';
 
-        var isSplit = keys.length > 5;
-        var colSpan = isSplit ? 6 : keys.length;
-        var primaryKeys = isSplit ? keys.slice(0, 5) : keys;
-        var secondaryKeys = isSplit ? keys.slice(5) : [];
+        var split = _splitKeysSmart(keys, forceShowAll);
+        var primaryKeys = split.primary;
+        var secondaryKeys = split.secondary;
+        var hasDetails = secondaryKeys.length > 0;
+        var colSpan = primaryKeys.length + (hasDetails ? 1 : 0);
 
         for (var i = 0; i < shown; i++) {
 
             html += '<tr>';
 
-            if (isSplit) {
+            if (hasDetails) {
                 html += '<td style="width: 32px; text-align: center; cursor: pointer;" class="ai-row-toggle">▶</td>';
             }
 
-            primaryKeys.forEach(function (k) { html += '<td>' + _esc(_fmtCellVal(filteredRows[i][k])) + '</td>'; });
+            primaryKeys.forEach(function (k) {
+                var val = filteredRows[i][k];
+                var cellHtml = '';
+                var lowerK = k.toLowerCase().replace(/_/g, '');
+                
+                if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
+                    cellHtml = '<span class="ai-badge-recommend">✨ ' + _esc(_fmtCellVal(val)) + '</span>';
+                } else {
+                    cellHtml = _esc(_fmtCellVal(val));
+                }
+                
+                var tdClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
+                html += '<td' + tdClass + '>' + cellHtml + '</td>';
+            });
 
             html += '</tr>';
 
-            if (isSplit) {
+            if (hasDetails) {
                 html += '<tr class="ai-table-detail-row" style="display: none;"><td colspan="' + colSpan + '">';
                 html += '<div class="ai-table-detail-grid">';
                 secondaryKeys.forEach(function (k) {
                     html += '<div class="ai-table-detail-item">';
-                    html += '  <div class="ai-table-detail-label">' + _esc(k) + '</div>';
+                    html += '  <div class="ai-table-detail-label">' + _esc(_getFriendlyHeader(k)) + '</div>';
                     html += '  <div class="ai-table-detail-value">' + _esc(_fmtCellVal(filteredRows[i][k])) + '</div>';
                     html += '</div>';
                 });
@@ -3009,7 +2974,23 @@
 
     $messages.addEventListener('click', function (e) {
 
-        // Table row detail toggle
+        // Table row detail toggle (Hỗ trợ click cả dòng cực nhạy trên Mobile)
+        var targetTr = e.target.closest('tr');
+        if (targetTr && !targetTr.classList.contains('ai-table-detail-row')) {
+            var rowToggle = targetTr.querySelector('.ai-row-toggle');
+            // Đảm bảo không trigger khi click vào thẻ link hoặc button hành động
+            if (rowToggle && !e.target.closest('a') && !e.target.closest('button') && !e.target.closest('.ai-row-toggle')) {
+                var nextTr = targetTr.nextElementSibling;
+                if (nextTr && nextTr.classList.contains('ai-table-detail-row')) {
+                    var isHidden = nextTr.style.display === 'none';
+                    nextTr.style.display = isHidden ? '' : 'none';
+                    rowToggle.textContent = isHidden ? '▼' : '▶';
+                    targetTr.classList.toggle('expanded', isHidden);
+                }
+                return;
+            }
+        }
+
         var rowToggle = e.target.closest('.ai-row-toggle');
         if (rowToggle) {
             var tr = rowToggle.closest('tr');

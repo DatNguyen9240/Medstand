@@ -16,7 +16,8 @@ BEGIN TRY
     ('MED0185', 'QLBH005.MED'), -- Nguyễn Thế Anh
     ('MED0096', 'QLBH010.MED'), -- Nguyễn Văn Việt Anh
     ('MED0134', 'QLMN2'),       -- Trần Văn Luân
-    ('QLBH024', 'QLBH024.MED'); -- Ngô Đức Hùng
+    ('QLBH024', 'QLBH024.MED'), -- Ngô Đức Hùng
+    ('QLMD1', 'QLMD1');         -- Nguyễn Văn Thái
 
     -- 2. Thiết lập cấu hình mặc định đề phòng dữ liệu đơn hàng thiếu thông tin kho/tài khoản
     DECLARE @DefaultStoreHouseID VARCHAR(50);

@@ -1,3 +1,6 @@
+USE medtest;
+GO
+
 IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
@@ -117,6 +120,10 @@ BEGIN
     -- ════════════════════════════════════════════════════
     -- BẢNG 2: GỢI Ý SẢN PHẨM (KỊCH BẢN CHIA NHÁNH BẰNG IF ELSE)
     -- ════════════════════════════════════════════════════
+
+    -- Chuẩn hóa các liên từ nối tiếng Việt thành khoảng trắng/dấu phẩy đề phòng n8n chưa xử lý
+    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng với ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
+    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' với ', ','), N' Với ', ','), N' & ', ','), N' + ', ',');
 
     -- Xử lý triệt để dấu câu và khoảng trắng dư thừa
     SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));

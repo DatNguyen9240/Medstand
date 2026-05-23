@@ -1,3 +1,6 @@
+USE medtest;
+GO
+
 /*
  ═══════════════════════════════════════════════════════════════
   API_GoiYDonHang_AI — Gợi ý đơn hàng thông minh

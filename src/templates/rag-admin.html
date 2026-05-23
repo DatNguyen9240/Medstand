@@ -1,62 +1,76 @@
-<header class="app-header">
-  <button type="button" class="btn-icon" aria-label="Quay lại" onclick="history.back()">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+<header class="app-header" style="background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 16px; display: flex; align-items: center; justify-content: space-between; height: 56px; sticky: top; z-index: 10;">
+  <button type="button" class="btn-icon" aria-label="Quay lại" onclick="history.back()" style="background: none; border: none; color: var(--color-text); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-sm); transition: background-color 0.2s;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
   </button>
-  <span class="header-title">Quản lý Tri thức RAG</span>
-  <div style="width:40px"></div>
+  <span class="header-title" style="font-weight: 600; font-size: var(--font-size-md); color: var(--color-text); letter-spacing: -0.01em;">Quản lý Tri thức RAG</span>
+  <div style="width:36px"></div>
 </header>
-<main class="app-main">
-  <div class="app-content" style="padding: 16px;">
+
+<main class="app-main" style="background: var(--color-background); min-height: calc(100vh - 56px);">
+  <div class="app-content" style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
     
-    <!-- Mô tả -->
-    <div style="padding: 16px; background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-md); margin-bottom: 24px;">
-      <h3 style="margin: 0 0 8px; font-size: var(--font-size-md); color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-        Cổng nạp dữ liệu cho AI
-      </h3>
-      <p style="margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted);">
-        Tải lên các tài liệu như Chính sách bán hàng, Khuyến mãi, hoặc Cẩm nang y khoa để AI Trợ lý làm cơ sở tư vấn. N8N sẽ tự động xoá khi hết hạn.
-      </p>
+    <!-- Sleek Minimalist Banner -->
+    <div style="padding: 16px; background: var(--color-surface); border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-start; box-shadow: var(--shadow-xs);">
+      <div style="color: var(--color-text); display: flex; align-items: center; justify-content: center; padding-top: 2px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      </div>
+      <div style="flex: 1;">
+        <h4 style="margin: 0 0 4px; font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text);">Cổng cập nhật tri thức AI</h4>
+        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); line-height: 1.5;">
+          Tải lên các tài liệu như: Chính sách bán hàng, Chương trình khuyến mại, Catalogue sản phẩm hoặc Quy định nội bộ để Trợ lý AI tự động học tập, làm cơ sở tư vấn nghiệp vụ cho đội ngũ kinh doanh.
+        </p>
+      </div>
     </div>
 
-    <!-- Form Upload -->
-    <form id="rag-upload-form" class="rag-form-card" style="background: var(--color-surface); padding: 20px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--color-border);">
+    <!-- Form Upload Card -->
+    <form id="rag-upload-form" class="rag-form-card" style="background: var(--color-surface); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--color-border);">
       
-      <!-- Upload Zone -->
-      <div class="upload-zone" id="rag-dropzone" style="border: 2px dashed rgb(148, 163, 184); padding: 32px 16px; text-align: center; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s; margin-bottom: 20px;">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:12px;opacity:0.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-        <h4 style="margin: 0 0 8px; font-weight: 500;">Chạm hoặc kéo thả file vào đây</h4>
-        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">Hỗ trợ: PDF, DOCX, XLSX (Tối đa 10MB)</p>
-        <input type="file" id="rag-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx" style="display: none;" />
+      <!-- Dropzone (Modern Slate Tech Style) -->
+      <div class="upload-zone" id="rag-dropzone" style="border: 2px dashed var(--color-border); padding: 40px 16px; text-align: center; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); margin-bottom: 24px; background: var(--color-background); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--color-surface); display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-border); box-shadow: var(--shadow-xs); margin-bottom: 4px; color: var(--color-text-muted);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+        </div>
+        <h4 style="margin: 0; font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text);">Chọn hoặc kéo thả tài liệu vào đây</h4>
+        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); opacity: 0.85;">Hỗ trợ: PDF, DOCX, XLSX, PNG, JPG (Tối đa 10MB)</p>
+        <input type="file" id="rag-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display: none;" />
       </div>
 
-      <div id="file-preview" style="display: none; padding: 12px; background: rgba(59, 130, 246, 0.05); border-radius: var(--radius-sm); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(59, 130, 246, 0.2);">
-        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-          <span id="file-name" style="font-weight: 500; font-size: var(--font-size-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">ten_file.pdf</span>
+      <!-- File Preview Pill -->
+      <div id="file-preview" style="display: none; padding: 12px 16px; background: var(--color-background); border-radius: var(--radius-md); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--color-border); animation: fadeIn 0.2s ease-out;">
+        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1; padding-right: 12px;">
+          <div style="color: var(--color-text); display: flex; align-items: center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          </div>
+          <span id="file-name" style="font-weight: 500; font-size: var(--font-size-sm); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">ten_file.pdf</span>
         </div>
-        <button type="button" id="btn-remove-file" style="background: none; border: none; color: var(--color-danger); cursor: pointer; padding: 4px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <button type="button" id="btn-remove-file" style="background: none; border: none; color: #dc2626; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.15s;" onmouseover="this.style.background='rgba(220, 38, 38, 0.1)';" onmouseout="this.style.background='none';">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
 
-      <!-- Tiêu đề -->
-      <div class="form-group" style="margin-bottom: 16px;">
-        <label for="rag-title" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: var(--font-size-sm);">Tên Tiêu Đề Mới</label>
-        <input type="text" id="rag-title" placeholder="Ví dụ: Chính sách bán hàng Tháng 5..." required style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font-family: inherit;">
+      <!-- Input Tiêu đề -->
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label for="rag-title" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">Tên tài liệu / Tiêu đề</label>
+        <input type="text" id="rag-title" placeholder="Ví dụ: Chính sách bán hàng Tháng 5..." required style="width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); font-family: inherit; font-size: var(--font-size-sm); color: var(--color-text); outline: none; transition: border-color 0.2s;">
       </div>
 
-      <!-- Ngày hết hạn -->
-      <div class="form-group" style="margin-bottom: 24px;">
-        <label for="rag-expiry" style="display: block; margin-bottom: 8px; font-weight: 500; font-size: var(--font-size-sm);">Ngày hết hạn hiệu lực (Tùy chọn)</label>
-        <input type="date" id="rag-expiry" style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); font-family: inherit;">
-        <p style="margin: 6px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted);">Nếu bỏ trống, tài liệu sẽ tồn tại vĩnh viễn.</p>
+      <!-- Input Ngày hết hạn -->
+      <div class="form-group" style="margin-bottom: 28px;">
+        <label for="rag-expiry" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">Ngày hết hạn hiệu lực (Tùy chọn)</label>
+        <input type="date" id="rag-expiry" style="width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); font-family: inherit; font-size: var(--font-size-sm); color: var(--color-text); outline: none; transition: border-color 0.2s;">
+        <p style="margin: 6px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); line-height: 1.4;">Nếu để trống, tài liệu này sẽ được lưu trữ vĩnh viễn trên kho tri thức AI.</p>
       </div>
 
-      <button type="submit" id="btn-submit-rag" class="btn-primary" style="width: 100%; padding: 14px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: 1rem; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-        Bơm vào não AI
+      <!-- Submit Button -->
+      <button type="submit" id="btn-submit-rag" class="btn-primary" style="width: 100%; padding: 14px; background: #000000; color: white; border: none; border-radius: var(--radius-md); font-weight: 600; font-size: var(--font-size-sm); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        Đồng bộ Tri thức lên AI
       </button>
+      
+      <!-- Sleek Footnote -->
+      <p style="margin: 12px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); text-align: center; line-height: 1.4; opacity: 0.8;">
+        * <strong>Chú thích:</strong> Quá trình xử lý và đồng bộ tri thức có thể mất từ 5-10 giây tùy thuộc vào dung lượng tài liệu. Vui lòng giữ nguyên trang cho đến khi nhận được thông báo thành công.
+      </p>
     </form>
 
   </div>

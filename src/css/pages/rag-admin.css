@@ -1,41 +1,74 @@
-/* CSS cho Màn hình Quản lý RAG */
+/* CSS cho Màn hình Quản lý RAG (Premium Minimalist Style) */
+
 .rag-form-card {
   max-width: 600px;
   margin: 0 auto;
+  transition: box-shadow 0.3s ease;
+}
+
+.upload-zone {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .upload-zone:hover {
-  background-color: rgba(59, 130, 246, 0.05);
-  border-color: var(--color-primary);
+  background-color: var(--color-background-hover) !important;
+  border-color: #000000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
 }
 
-.form-group label {
-  color: var(--color-text);
+.upload-zone:active {
+  transform: scale(0.995);
 }
 
 .form-group input {
-  color: var(--color-text);
-  outline: none;
+  transition: all 0.2s ease-in-out !important;
 }
 
 .form-group input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  border-color: #000000 !important;
+  background-color: var(--color-surface) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08) !important;
 }
 
-.btn-primary:active {
-  transform: scale(0.98);
+#btn-submit-rag {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-.btn-primary:disabled {
-  opacity: 0.7;
+
+#btn-submit-rag:hover {
+  background-color: #222222 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+#btn-submit-rag:active {
+  transform: translateY(0) scale(0.985);
+}
+
+#btn-submit-rag:disabled {
+  opacity: 0.6;
   cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 600px) {
   .rag-form-card {
-    border: none;
-    box-shadow: none;
-    padding: 10px;
-    background: transparent;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 12px 4px !important;
+    background: transparent !important;
   }
 }
