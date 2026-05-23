@@ -1955,66 +1955,6 @@
 
         return html;
 
-    }}
-
-
-
-            // Hiện các field còn lại
-
-            keys.forEach(function (k) {
-
-                if (usedKeys.indexOf(k) !== -1) return;
-
-                var val = row[k];
-
-                if (val === null || val === undefined || String(val).trim() === '') return;
-
-                html += '<div class="ai-card-row">';
-
-                html += '<span class="ai-card-label">' + _esc(k) + '</span>';
-
-                html += '<span class="ai-card-value">' + _esc(_fmtCellVal(val)) + '</span>';
-
-                html += '</div>';
-
-            });
-
-            html += '</div>'; // body
-
-            html += _buildActionBar(row, apiCode);
-
-            html += '</div>'; // card
-
-        });
-
-
-
-        html += '</div>'; // card-list
-
-        if (rows.length > MAX_CARDS) html += '</details>';
-
-        html += '</div>'; // ai-view-cards
-
-
-
-        // Nút toggle bảng
-
-        var toggleText = '📊 Xem dạng bảng';
-
-        html += '<button class="ai-table-btn ai-inline-toggle-btn" data-view-id="' + viewId + '" data-orig-text="' + _esc(toggleText) + '" style="display:none">' + toggleText + '</button>';
-
-        html += '<div class="ai-view-table">';
-
-        html += _buildInlineTable(rows, keys);
-
-        html += '</div>';
-
-        html += '</div>'; // ai-inline-container
-
-
-
-        return html;
-
     }
 
 
