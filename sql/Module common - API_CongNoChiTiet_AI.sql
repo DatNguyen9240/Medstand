@@ -1,5 +1,5 @@
 CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
-   @MaKhachHang  VARCHAR(50),
+   @MaKhachHang  NVARCHAR(100),
    @Username   VARCHAR(50),
    @DenNgay     DATETIME = NULL
 AS
@@ -17,18 +17,19 @@ BEGIN
    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
    BEGIN
        DECLARE @ResolvedID VARCHAR(50) = ''
-       DECLARE @CleanSearch VARCHAR(100) = REPLACE(REPLACE(@MaKhachHang, ' ', ''), N' ', '')
+       DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
 
        SELECT TOP 1 @ResolvedID = ObjectID 
        FROM dbo.CF_ObjectTbl 
-       WHERE (REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') COLLATE Latin1_General_CI_AI) LIKE ('%' + @CleanSearch + '%' COLLATE Latin1_General_CI_AI)
-          OR (ObjectID COLLATE Latin1_General_CI_AI) LIKE ('%' + @CleanSearch + '%' COLLATE Latin1_General_CI_AI)
+       WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+          OR ObjectID LIKE '%' + @CleanSearch + '%'
        ORDER BY 
            CASE WHEN ObjectID = @CleanSearch THEN 1
-                WHEN REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') = @CleanSearch THEN 2
-                WHEN REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') LIKE @CleanSearch + '%' THEN 3
+                WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
+                WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
                 ELSE 4
            END,
+           COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
            LEN(ObjectName) ASC;
 
        IF @ResolvedID <> ''

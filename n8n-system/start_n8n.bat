@@ -163,7 +163,7 @@ set "NGROK_URL="
 for /L %%i in (1,1,25) do (
     if "!NGROK_URL!"=="" (
         if exist "%CF_LOG%" (
-            for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "Get-Content '%CF_LOG%' | Select-String -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | ForEach-Object { $_.Matches.Value } | Select-Object -First 1" 2^>nul`) do (
+            for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "Get-Content '.logs\cf_tunnel.log' | Select-String -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | ForEach-Object { $_.Matches.Value } | Select-Object -First 1" 2^>nul`) do (
                 set "NGROK_URL=%%a"
             )
         )
@@ -182,7 +182,7 @@ set "N8N_WEBHOOK_TUNNEL_URL=!NGROK_URL!"
 
 :: Chi replace file neu tim thay de tranh bao loi bat thinh linh
 if not exist "%BASE_DIR%\..\env.js" goto SKIP_CF_TUNNEL
-powershell -NoProfile -Command "$f='%BASE_DIR%\..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace \"N8N_BASE: '.*?'\", \"N8N_BASE: '!NGROK_URL!'\" | Set-Content -Path $f -Encoding UTF8"
+powershell -NoProfile -Command "$f='..\env.js'; (Get-Content -Path $f -Encoding UTF8) -replace \"N8N_BASE: '.*?'\", \"N8N_BASE: '!NGROK_URL!'\" | Set-Content -Path $f -Encoding UTF8"
 echo [OK] Da cap nhat tu dong link vao env.js.
 
 :SKIP_CF_TUNNEL

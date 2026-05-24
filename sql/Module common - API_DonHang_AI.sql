@@ -11,7 +11,7 @@ CREATE PROCEDURE [dbo].[API_DonHang_AI]
    @StatusID     INT           = NULL,
    @StatusName   NVARCHAR(50)  = '',
    @EmployeeID   VARCHAR(50)   = '',
-   @MaKhachHang  VARCHAR(50)   = '',         -- Chatbot parameter
+   @MaKhachHang  NVARCHAR(100) = '',         -- Chatbot parameter
    @ObjectID     VARCHAR(50)   = '',         -- Frontend parameter alias
    @timkiem      NVARCHAR(50)  = '',         -- Chatbot parameter
    @SearchText   NVARCHAR(50)  = '',         -- Frontend parameter alias
@@ -77,6 +77,32 @@ BEGIN
    BEGIN
        SET @MaKhachHang = ''
    END
+
+   -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+   IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+   BEGIN
+       DECLARE @ResolvedID VARCHAR(50) = ''
+       DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+
+       SELECT TOP 1 @ResolvedID = ObjectID 
+       FROM dbo.CF_ObjectTbl 
+       WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+          OR ObjectID LIKE '%' + @CleanSearch + '%'
+       ORDER BY 
+           CASE WHEN ObjectID = @CleanSearch THEN 1
+                WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
+                WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                ELSE 4
+           END,
+           COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+           LEN(ObjectName) ASC;
+
+       IF @ResolvedID <> ''
+       BEGIN
+           SET @MaKhachHang = @ResolvedID
+       END
+   END
+
    IF @EmployeeID <> '' AND LEN(@EmployeeID) > 8 AND @EmployeeID NOT LIKE '%[0-9]%'
    BEGIN
        SET @EmployeeID = ''

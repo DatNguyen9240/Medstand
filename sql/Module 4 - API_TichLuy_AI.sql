@@ -3,7 +3,7 @@ GO
 
 CREATE PROCEDURE API_TichLuy_AI
    @Username   VARCHAR(50)   = '',
-   @MaKhachHang  VARCHAR(50)   = '',
+   @MaKhachHang  NVARCHAR(100) = '',
    @ProgramID  VARCHAR(50)   = '',
    @TuNgay   DATETIME      = NULL,
    @DenNgay     DATETIME      = NULL,
@@ -19,8 +19,33 @@ BEGIN
    END
 
 
-   DECLARE @SYSBranchID VARCHAR(50) = ''
-   SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = ''
+        DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+
+        SELECT TOP 1 @ResolvedID = ObjectID 
+        FROM dbo.CF_ObjectTbl 
+        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        ORDER BY 
+            CASE WHEN ObjectID = @CleanSearch THEN 1
+                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
+                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                 ELSE 4
+            END,
+            COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+            LEN(ObjectName) ASC;
+
+        IF @ResolvedID <> ''
+        BEGIN
+            SET @MaKhachHang = @ResolvedID
+        END
+    END
+
+    DECLARE @SYSBranchID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
 
 
    -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH

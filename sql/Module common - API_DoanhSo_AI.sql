@@ -9,7 +9,7 @@ CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
     @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
     @User         VARCHAR(50)    = '', -- Dashboard alias
-    @MaKhachHang  VARCHAR(50)    = '',
+    @MaKhachHang  NVARCHAR(100)   = '',
     @ObjectName   NVARCHAR(200)  = '',
     @EmployeeID   VARCHAR(50)    = '',
     @TenNhanVien  NVARCHAR(200)  = '',
@@ -69,8 +69,34 @@ BEGIN
     SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
     SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
 
+    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = ''
+        DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+
+        SELECT TOP 1 @ResolvedID = ObjectID 
+        FROM dbo.CF_ObjectTbl 
+        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        ORDER BY 
+            CASE WHEN ObjectID = @CleanSearch THEN 1
+                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
+                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                 ELSE 4
+            END,
+            COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+            LEN(ObjectName) ASC;
+
+        IF @ResolvedID <> ''
+        BEGIN
+            SET @MaKhachHang = @ResolvedID
+        END
+    END
+
     -- SMART AI ID ROUTING
     DECLARE @ExtractedID VARCHAR(50) = ''
+
 
     IF @TenNhanVien LIKE '%\[%\]%' ESCAPE '\'
     BEGIN
