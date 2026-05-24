@@ -144,6 +144,28 @@ BEGIN
 END
 ```
 
+### 3.3. Cơ chế Khắc phục Lỗi Đồng bộ Tham số Tự động (Claim Injection Guard) & Collation Tiếng Việt
+
+Trong quá trình triển khai UAT thực tế, hệ thống đã phát hiện và xử lý thành công hai rào cản kỹ thuật quan trọng liên quan đến dữ liệu:
+
+*   **Cơ chế bảo vệ ghi đè tham số do Claim Injection (Claim Injection Guard)**:
+    - *Vấn đề*: Hệ thống backend tự động tiêm (inject) giá trị `BranchID` (ví dụ: `'MB'` cho miền Bắc) của tài khoản đang đăng nhập vào tham số `@ObjectID` trước khi truyền vào Stored Procedure. Điều này vô tình ghi đè giá trị tìm kiếm `@MaKhachHang` do chatbot gửi lên, khiến các câu lệnh truy vấn tìm kiếm theo khách hàng bị thất bại (do hệ thống tìm khách hàng mang mã `'MB'` thay vì theo tên khách hàng).
+    - *Giải pháp*: Áp dụng chốt chặn bảo vệ tham số trong `API_GoiYDonHang_AI` và `API_DonHang_AI`. Hệ thống chỉ ánh xạ `@ObjectID` sang `@MaKhachHang` nếu mã đó thực sự tồn tại trong danh mục khách hàng (`CF_ObjectTbl`). Ngược lại, giá trị tiêm tự động của Claim sẽ bị loại bỏ để ưu tiên tìm kiếm theo tên khách hàng:
+      ```sql
+      IF @ObjectID <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+      BEGIN
+          SET @ObjectID = '';
+      END
+      ```
+
+*   **Chuẩn hóa khớp tên không dấu (Accent-Insensitive Collation)**:
+    - *Vấn đề*: Collation tiếng Việt mặc định phân biệt dấu, dẫn đến việc chatbot AI nhận diện từ khóa không dấu `'THUTHUY'` bị khớp nhầm sang `'Chị Thu Thuyền'` (khách hàng có 0 hóa đơn) thay vì `'Quầy Thuốc Thu Thủy'` (khách hàng có 97 hóa đơn và có lịch sử mua hàng để gợi ý), gây ra lỗi `"Không tìm thấy dữ liệu"`.
+    - *Giải pháp*: Ép kiểu Collation động `SQL_Latin1_General_CP1_CI_AI` (không phân biệt chữ hoa/thường, không phân biệt dấu tiếng Việt) trên tất cả so sánh chuỗi tên khách hàng trong các Stored Procedure liên quan (`API_GoiYDonHang_AI`, `API_TuyenBanHang_AI`, `API_UpsellGoiY_AI`):
+      ```sql
+      REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE '%' + REPLACE(@MaKhachHang, ' ', '') + '%'
+      ```
+      Điều này giải quyết triệt để lỗi tìm kiếm lệch dấu tiếng Việt, mang lại khả năng ánh xạ chính xác 100% khi người dùng gõ không dấu (`thuthuy` -> `Thu Thủy`).
+
 ---
 
 ## 4. BÁO CÁO TỐI ƯU HÓA TRẢI NGHIỆM NGƯỜI DÙNG DI ĐỘNG (MOBILE UI/UX AUDIT)

@@ -32,7 +32,13 @@ BEGIN
    IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
    IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
    IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
-   IF NULLIF(@ObjectID, '') IS NOT NULL SET @MaKhachHang = @ObjectID;
+   
+   -- ONLY map @ObjectID if it is a valid customer ID in the database to prevent auto-injected claims overriding MaKhachHang
+   IF NULLIF(@ObjectID, '') IS NOT NULL AND EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+   BEGIN
+       SET @MaKhachHang = @ObjectID;
+   END
+   
    IF NULLIF(@SearchText, '') IS NOT NULL SET @timkiem = @SearchText;
    
    -- Defend against NULL or non-positive bounds passed by web server model binders

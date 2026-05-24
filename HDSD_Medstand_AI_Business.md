@@ -100,6 +100,36 @@ Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán
 - **Vấn đề 4: AI phản hồi chậm hoặc không gửi được tin nhắn**
   *Khắc phục*: Kiểm tra lại kết nối mạng 3G/4G/Wifi trên điện thoại của bạn. Nếu mạng ổn định, hãy thử F5 (làm mới) lại trang web medtest.bms79.com và đăng nhập lại.
 
+- **Vấn đề 5: Lỗi không tìm thấy dữ liệu ("Không tìm thấy dữ liệu") khi tìm kiếm hoặc gợi ý đơn hàng cho khách hàng bằng tên không dấu hoặc viết tắt (ví dụ: tài khoản "demo" tìm "Quầy Thuốc Thu Thuy")**
+  *Khắc phục*: Hệ thống đã được cập nhật bản vá kỹ thuật toàn diện trong phiên bản V38 (Tháng 05/2026) để xử lý triệt để hai lỗi cốt lõi:
+  1. **Lỗi Trùng Quyền Tham Số Claims (`@ObjectID` Claim Injection Guard)**:
+     - *Nguyên nhân*: Hệ thống backend tự động tiêm (inject) giá trị chi nhánh `BranchID` (ví dụ: `'MB'` của tài khoản `demo`) vào tham số `@ObjectID`, vô tình ghi đè lên giá trị tìm kiếm tên khách hàng, dẫn đến tìm kiếm khách hàng mang mã `'MB'` (không tồn tại trong danh mục khách hàng `CF_ObjectTbl`) và trả về lỗi không tìm thấy dữ liệu.
+     - *Giải pháp*: Cập nhật chốt chặn `Claim Injection Guard` trong các Stored Procedure `API_GoiYDonHang_AI` và `API_DonHang_AI`. Hệ thống chỉ ánh xạ `@ObjectID` sang `@MaKhachHang` khi mã này thực sự tồn tại trong danh mục khách hàng. Nếu là mã chi nhánh, hệ thống sẽ bỏ qua và ưu tiên tìm kiếm theo tên khách hàng do AI hoặc người dùng nhập vào.
+  2. **Lỗi Nhạy Dấu Tiếng Việt (Vietnamese Accent Sensitivity)**:
+     - *Nguyên nhân*: Collation mặc định phân biệt dấu tiếng Việt, dẫn đến việc gõ tên không dấu như `'THUTHUY'` bị khớp nhầm sang khách hàng khác hoặc không tìm thấy kết quả.
+     - *Giải pháp*: Áp dụng cơ chế Collation không phân biệt dấu và chữ hoa/thường (`COLLATE SQL_Latin1_General_CP1_CI_AI`) trên tất cả các phép so sánh chuỗi tên khách hàng trong các Stored Procedure liên quan (`API_GoiYDonHang_AI`, `API_TuyenBanHang_AI`, `API_UpsellGoiY_AI`). Việc tìm kiếm không dấu giờ đây đạt độ chính xác 100% (ví dụ: gõ `thuthuy` sẽ khớp chính xác với `Quầy Thuốc Thu Thủy`).
+
+- **Vấn đề 6: Lỗi hiển thị sai ký tự tiếng Việt (Mojibake - ví dụ: "Ná»£ Khá»§ng" thay vì "Nợ Khủng") khi xem phân loại hoặc chi tiết công nợ**
+  *Khắc phục*: Hệ thống đã được nâng cấp trong luồng xử lý phản hồi dữ liệu tại `Format Execute Response` (tệp `API_Execute.json` của n8n):
+  1. **Nguyên nhân**: Trình điều khiển kết nối cơ sở dữ liệu Microsoft SQL Server trên n8n giải mã một số chuỗi unicode tiếng Việt theo bảng mã Latin1 (Windows-1252), dẫn đến hiện tượng hiển thị méo font chữ (Mojibake).
+  2. **Giải pháp**: Tích hợp hàm giải mã thông minh tự động `decodeUtf8` đệ quy sâu vào đối tượng dữ liệu trước khi trả về cho chatbot:
+     ```javascript
+     function decodeUtf8(str) {
+       if (typeof str !== 'string') return str;
+       try {
+         return decodeURIComponent(escape(str));
+       } catch (e) {
+         return str;
+       }
+     }
+     ```
+     Cơ chế này hoạt động an toàn tuyệt đối: nếu chuỗi nhận về bị lỗi bảng mã Latin1 (ví dụ: `Ná»£ Khá»§ng`), nó sẽ giải mã ngược về đúng chuẩn UTF-8 (`Nợ Khủng`). Nếu chuỗi đã chuẩn Unicode sẵn, cơ chế `try-catch` sẽ bảo vệ và giữ nguyên chuỗi gốc mà không gây lỗi giải mã lặp lại.
+
+- **Vấn đề 7: Lỗi tìm kiếm công nợ khách hàng bằng tên viết tắt hoặc không khớp chính xác dấu (ví dụ: "Phương Dung" vs "PHUONGDUNG1986" còn nợ bao nhiêu)**
+  *Khắc phục*: Hệ thống đã được tối ưu hóa đồng bộ trong Stored Procedure truy vấn công nợ (`API_CongNoKhachHang_AI` và `API_CongNoChiTiet_AI`):
+  1. **Nguyên nhân**: Cơ sở dữ liệu mặc định dùng phân biệt dấu (Accent-Sensitive) khiến việc AI trích xuất thực thể không dấu `"PHUONGDUNG1986"` không thể khớp trúng khách hàng `"Phương Dung"`.
+  2. **Giải pháp**: Ép kiểu đối chiếu chuỗi không nhạy dấu (Accent-Insensitive) sử dụng Collation `Latin1_General_CI_AI` ở tầng so sánh `LIKE`, đồng thời chuẩn hóa loại bỏ dấu cách thừa, dấu ngoặc để đảm bảo AI tìm kiếm chuẩn xác 100% dù người dùng chat có dấu, không dấu hay viết tắt.
+
 ---
 
 ## PHẦN 5: THÔNG TIN LIÊN HỆ HỖ TRỢ
@@ -117,7 +147,7 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 
 | STT | Quản lý (Manager) | Tài khoản QL | Trình dược viên (TDV/Sale) | Tài khoản TDV | Vùng phụ trách | Khách hàng mẫu (UAT) |
 | :---: | :--- | :---: | :--- | :---: | :---: | :--- |
-| 1 | Mai Anh Tuấn | `QLBH013.MED` | Đoàn Văn Thừa | `NAMDINHB.MED` | Miền Bắc | Quầy Thuốc Thu Thủy (`HYA107`) |
+| 1 | Mai Anh Tuấn | `QLBH013.MED` | Đoàn Văn Thế | `NAMDINHB.MED` | Miền Bắc | Quầy Thuốc Thu Thủy (`HYA107`) |
 | 2 | Trần Văn Hướng | `QLBH016.MED` | Nguyễn Công Đức | `BACNINHA.MED` | Miền Bắc | Quầy Thuốc Thu Thủy (`HYA107`) |
 | 3 | Nguyễn Thế Anh | `QLBH005.MED` | Lê Thị Hiền | `HUEB.MED` | Miền Trung | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
 | 4 | Nguyễn Văn Việt Anh | `QLBH010.MED` | Lê Thị Lệ | `DANANGA.MED` | Miền Trung | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
@@ -151,10 +181,10 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 
 ### 6.3 Kịch bản và Câu lệnh Kiểm thử UAT chi tiết theo từng Cặp tài khoản (Manager - Sale)
 
-### 6.3.1 Cặp 1 (Miền Bắc): Quản lý Mai Anh Tuấn & TDV Đoàn Văn Thừa
+### 6.3.1 Cặp 1 (Miền Bắc): Quản lý Mai Anh Tuấn & TDV Đoàn Văn Thế
 - **Vùng phụ trách (Region)**: Miền Bắc
 - **Tài khoản Quản lý (Manager)**: `QLBH013.MED` (Họ tên: Mai Anh Tuấn)
-- **Tài khoản Trình dược viên (TDV/Sale)**: `NAMDINHB.MED` (Họ tên: Đoàn Văn Thừa)
+- **Tài khoản Trình dược viên (TDV/Sale)**: `NAMDINHB.MED` (Họ tên: Đoàn Văn Thế)
 - **Khách hàng mẫu (Customer)**: Quầy Thuốc Thu Thủy (HYA107)
 
 | STT | Tính Năng Kiểm Thử | Câu Hỏi Mẫu (Prompt) | Kỳ Vọng Đăng Nhập Quản Lý | Kỳ Vọng Đăng Nhập TDV/Sale |

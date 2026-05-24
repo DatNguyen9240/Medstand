@@ -1486,8 +1486,29 @@
 
 
                 if (cleanData.length === 0) {
-                    var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1);
+                    var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1 || res.message.indexOf('ket qua') > -1);
                     var warnMsg = 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️';
+                    
+                    var isNoDebt = (res.apiCode === '@cong_no_chi_tiet' || (res.message && (res.message.indexOf('nợ') > -1 || res.message.indexOf('hóa đơn') > -1)));
+                    
+                    if (isNoDebt) {
+                        // Trả về thông báo siêu tích cực thay vì hiện khung Warning màu vàng
+                        var successCardHtml = 
+                            '<div class="ai-sales-debt-card" style="border: 1px solid rgba(16, 185, 129, 0.25); border-left: 5px solid #10b981; background: rgba(16, 185, 129, 0.03); padding: 15px; border-radius: 12px; margin-top: 8px; backdrop-filter: blur(8px); animation: ai-inline-fadein 0.3s ease;">'
+                            + '<div style="display: flex; gap: 12px; align-items: flex-start;">'
+                            + '<span style="font-size: 22px; line-height: 1;">✅</span>'
+                            + '<div>'
+                            + '<div style="font-weight: 700; font-size: 14px; color: #10b981; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Thông báo hệ thống</div>'
+                            + '<div style="font-size: 13px; color: var(--ai-text-main, #334155); line-height: 1.5;">'
+                            + 'Dạ tuyệt vời! Khách hàng này **hiện không có bất kỳ hóa đơn nợ nào**, Sếp hoàn toàn yên tâm nhé! 🎉'
+                            + '</div>'
+                            + '</div>'
+                            + '</div>'
+                            + '</div>';
+                        _addHtmlMessage(successCardHtml, '✅ Không có nợ');
+                        return;
+                    }
+                    
                     if (isSuccessMsg || !res.message) {
                         warnMsg = 'Không tìm thấy dữ liệu hoặc tài khoản của bạn không có quyền truy cập thông tin chéo vùng miền (Miền Bắc/Trung/Nam).';
                     } else {
@@ -2592,7 +2613,12 @@
             'customerphone': 'Số ĐT KH',
             'deliverdate': 'Ngày giao',
             'depositamount': 'Đặt cọc',
-            'diemtichluy': 'Tích lũy'
+            'diemtichluy': 'Tích lũy',
+            // Column translations for total debt report (API_CongNoKhachHang_AI)
+            'tenkh': 'Tên KH',
+            'tongno': 'Tổng nợ',
+            'makh': 'Mã KH',
+            'phanloai': 'Phân loại'
         };
         var lower = key.toLowerCase().replace(/_/g, '');
         return dict[lower] || key;
@@ -2718,43 +2744,24 @@
 
 
         // ── Phát hiện field phân loại (badge) để tạo filter chip động ──
-
         var badgeKeyFound = null;
-
         var badgeValues = {};
-
-        for (var bi = 0; bi < 'BADGE'.length; bi++) {
-
-            var bk = 'BADGE'[bi];
-
-            if (keys.indexOf(bk) !== -1) {
-
-                //  ếm distinct values
-
+        if (rows.length > 0) {
+            // Sử dụng hàm helper _pickField chuẩn để tìm cột có Role là BADGE (hoặc Phân loại)
+            var sampleBadge = _pickField(rows[0], 'BADGE');
+            if (sampleBadge) {
+                var bk = sampleBadge.key;
                 rows.forEach(function (r) {
-
                     var v = String(r[bk] || '').trim();
-
                     if (v) badgeValues[v] = (badgeValues[v] || 0) + 1;
-
                 });
-
-                // Chỉ dùng nếu có ≥ 2 giá trị khác nhau và ≤ 6 loại (để chip không quá nhi u)
-
                 var bvKeys = Object.keys(badgeValues);
-
                 if (bvKeys.length >= 2 && bvKeys.length <= 6) {
-
                     badgeKeyFound = bk;
-
-                    break;
-
+                } else {
+                    badgeValues = {};
                 }
-
-                badgeValues = {}; // reset nếu không phù hợp
-
             }
-
         }
 
 

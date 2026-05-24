@@ -2,24 +2,17 @@ IF OBJECT_ID('API_TuyenBanHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_TuyenBan
 GO
 
 CREATE PROCEDURE API_TuyenBanHang_AI
-    @Username      VARCHAR(50) = '',
-    @MaKhachHang   VARCHAR(50) = '',
-    @SoNgayVangMat INT        = 45,
-    @NgayBaoDong   INT        = 5,
-    @TopN          INT        = 8,
-    @NgayTarget    VARCHAR(20) = ''
+    @Username      VARCHAR(50)   = '',
+    @MaKhachHang   NVARCHAR(100) = '',
+    @SoNgayVangMat INT           = 45,
+    @NgayBaoDong   INT           = 5,
+    @TopN          INT           = 8,
+    @NgayTarget    VARCHAR(20)   = ''
 AS
 BEGIN
     SET NOCOUNT ON
     -- Defend against NULL or non-positive bounds passed by web server binders
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 8;
-
-    -- 1. KIỂM TRA MÃ KHÁCH HÀNG HỢP LỆ (Nếu có truyền vào)
-    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
-    BEGIN
-        SELECT 'N/A' AS ObjectID, N'Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
-        RETURN;
-    END
 
     -- 2. KIỂM TRA USER HỢP LỆ
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
@@ -58,6 +51,70 @@ BEGIN
         @SYSManagerID   = COALESCE(ManagerID, ''),
         @SYSUserGroupID = COALESCE(UserGroupID, '')
     FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    -- TỰ ĐỘNG KHẮC PHỤC TÊN KHÁCH HÀNG / ẢO GIÁC:
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = '';
+        
+        IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+        BEGIN
+            SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1);
+        END
+
+        IF EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+        BEGIN
+            SET @ResolvedID = @MaKhachHang;
+        END
+        ELSE
+        BEGIN
+            -- Ưu tiên tìm khách hàng cùng chi nhánh trước và có nhiều giao dịch nhất
+            SELECT TOP 1 @ResolvedID = O.ObjectID 
+            FROM CF_ObjectTbl O
+            LEFT JOIN (
+                SELECT ObjectID, COUNT(*) AS Cnt 
+                FROM AR_InvoiceTbl 
+                GROUP BY ObjectID
+            ) I ON O.ObjectID = I.ObjectID
+            WHERE (
+                O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+            )
+              AND (ISNULL(@SYSBranchID, '') = '' OR O.BranchID = @SYSBranchID)
+            ORDER BY ISNULL(I.Cnt, 0) DESC;
+              
+            -- Fallback tìm toàn quốc
+            IF @ResolvedID = ''
+            BEGIN
+                SELECT TOP 1 @ResolvedID = O.ObjectID 
+                FROM CF_ObjectTbl O
+                LEFT JOIN (
+                    SELECT ObjectID, COUNT(*) AS Cnt 
+                    FROM AR_InvoiceTbl 
+                    GROUP BY ObjectID
+                ) I ON O.ObjectID = I.ObjectID
+                WHERE (
+                    O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                )
+                ORDER BY ISNULL(I.Cnt, 0) DESC;
+            END
+        END
+
+        IF NULLIF(@ResolvedID, '') IS NOT NULL
+        BEGIN
+            SET @MaKhachHang = @ResolvedID;
+        END
+    END
+
+    -- 1. KIỂM TRA MÃ KHÁCH HÀNG HỢP LỆ (Nếu có truyền vào)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        SELECT 'N/A' AS ObjectID, N'Không tìm thấy mã khách hàng.' AS TenCuaHang, NULL AS Phone, 0 AS TichLuyDatDuoc, N'Vui lòng kiểm tra lại mã khách hàng.' AS TrangThaiAI;
+        RETURN;
+    END
 
     -- 5. LẤY LỊCH SỬ MUA HÀNG CUỐI (Lọc theo phân quyền chi nhánh/quản lý)
     SELECT

@@ -27,23 +27,29 @@ IF OBJECT_ID('API_GoiYDonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonHa
 GO
 
 CREATE PROCEDURE API_GoiYDonHang_AI
-    @Username     VARCHAR(50)  = '',
-    @User         VARCHAR(50)  = '',         -- Dashboard/Chatbot alias
-    @MaKhachHang  VARCHAR(50)  = '',         -- Original parameter name
-    @ObjectID     VARCHAR(50)  = '',         -- AI Scenarios Guide / Frontend alias
-    @TopN         INT          = 10,
+    @Username     VARCHAR(50)   = '',
+    @User         VARCHAR(50)   = '',         -- Dashboard/Chatbot alias
+    @MaKhachHang  NVARCHAR(100) = '',         -- Original parameter name
+    @ObjectID     NVARCHAR(100) = '',         -- AI Scenarios Guide / Frontend alias
+    @TopN         INT           = 10,
     -- Context parameters injected automatically by .NET server from claims
-    @SYSBranchID  VARCHAR(50)  = '',
-    @SYSCeoID     VARCHAR(50)  = '',
-    @SYSManagerID VARCHAR(50)  = '',
-    @SYSEmployeeID VARCHAR(50) = ''
+    @SYSBranchID  VARCHAR(50)   = '',
+    @SYSCeoID     VARCHAR(50)   = '',
+    @SYSManagerID VARCHAR(50)   = '',
+    @SYSEmployeeID VARCHAR(50)  = ''
 AS
 BEGIN
     SET NOCOUNT ON
 
     -- ═══ 0. Mapping Dashboard/Frontend Alias ═══
     IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
-    IF NULLIF(@ObjectID, '') IS NOT NULL SET @MaKhachHang = @ObjectID;
+    
+    -- ONLY map @ObjectID if it is a valid customer ID in the database to prevent auto-injected claims overriding MaKhachHang
+    IF NULLIF(@ObjectID, '') IS NOT NULL AND EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
+    BEGIN
+        SET @MaKhachHang = @ObjectID;
+    END
+    
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
 
     -- ═══ 1. Lấy quyền user thực tế & Fallback ═══
@@ -71,6 +77,73 @@ BEGIN
             @SYS_ManagerID   = ISNULL(ManagerID, '')
         FROM SY_User 
         WHERE EmployeeID = @SYS_EmployeeID AND COALESCE(Disable, 0) = 0
+    END
+
+    -- TỰ ĐỘNG KHẮC PHỤC ẢO GIÁC/TÊN KHÁCH HÀNG:
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = '';
+        DECLARE @OriginalInput NVARCHAR(100) = @MaKhachHang;
+        
+        IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+        BEGIN
+            SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1);
+        END
+
+        IF EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+        BEGIN
+            SET @ResolvedID = @MaKhachHang;
+        END
+        ELSE
+        BEGIN
+            -- Ưu tiên tìm khách hàng cùng chi nhánh/vùng và có nhiều giao dịch nhất (tránh đè code rác)
+            SELECT TOP 1 @ResolvedID = O.ObjectID 
+            FROM CF_ObjectTbl O
+            LEFT JOIN (
+                SELECT ObjectID, COUNT(*) AS Cnt 
+                FROM AR_InvoiceTbl 
+                GROUP BY ObjectID
+            ) I ON O.ObjectID = I.ObjectID
+            WHERE (
+                O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+            )
+              AND (ISNULL(@SYS_BranchID, '') = '' OR O.BranchID = @SYS_BranchID)
+            ORDER BY ISNULL(I.Cnt, 0) DESC;
+              
+            -- Fallback tìm toàn quốc
+            IF @ResolvedID = ''
+            BEGIN
+                SELECT TOP 1 @ResolvedID = O.ObjectID 
+                FROM CF_ObjectTbl O
+                LEFT JOIN (
+                    SELECT ObjectID, COUNT(*) AS Cnt 
+                    FROM AR_InvoiceTbl 
+                    GROUP BY ObjectID
+                ) I ON O.ObjectID = I.ObjectID
+                WHERE (
+                    O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                )
+                ORDER BY ISNULL(I.Cnt, 0) DESC;
+            END
+        END
+
+        IF NULLIF(@ResolvedID, '') IS NOT NULL
+        BEGIN
+            SET @MaKhachHang = @ResolvedID;
+        END
+
+        -- LOG FOR DEBUGGING
+        EXEC AI_WriteAuditLog
+            @Username     = @Username,
+            @ActionType   = 'DEBUG_RESOLUTION',
+            @TargetEntity = 'API_GoiYDonHang_AI',
+            @TargetID     = @MaKhachHang,
+            @TargetName   = @ResolvedID,
+            @ExtraInfo    = @OriginalInput;
     END
 
     -- ═══ 2. Validate User ═══

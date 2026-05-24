@@ -166,7 +166,7 @@ for /L %%i in (1,1,25) do (
                 set "NGROK_URL=%%a"
             )
         )
-        if "!NGROK_URL!"=="" timeout /t 1 /nobreak > nul
+        if "!NGROK_URL!"=="" ping -n 2 127.0.0.1 > nul
     )
 )
 

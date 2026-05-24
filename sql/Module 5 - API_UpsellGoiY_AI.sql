@@ -4,10 +4,10 @@ GO
 IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
 GO
 CREATE PROCEDURE API_UpsellGoiY_AI
-    @Username    VARCHAR(50)  = '',
-    @MaKhachHang   VARCHAR(50)  = '',
-    @timkiem   NVARCHAR(50) = '',      
-    @TopN        INT          = 10
+    @Username     VARCHAR(50)   = '',
+    @MaKhachHang  NVARCHAR(100) = '',
+    @timkiem      NVARCHAR(50)  = '',      
+    @TopN         INT           = 10
 AS
 BEGIN
     SET NOCOUNT ON
@@ -29,6 +29,63 @@ BEGIN
     DECLARE @MucTarget      FLOAT = 0
     DECLARE @SoTienThieu    FLOAT = 0
     DECLARE @ProgramID      VARCHAR(50) = ''
+
+    -- TỰ ĐỘNG KHẮC PHỤC TÊN KHÁCH HÀNG / ẢO GIÁC:
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = '';
+        
+        IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+        BEGIN
+            SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1);
+        END
+
+        IF EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+        BEGIN
+            SET @ResolvedID = @MaKhachHang;
+        END
+        ELSE
+        BEGIN
+            -- Ưu tiên tìm khách hàng cùng chi nhánh trước và có nhiều giao dịch nhất
+            SELECT TOP 1 @ResolvedID = O.ObjectID 
+            FROM CF_ObjectTbl O
+            LEFT JOIN (
+                SELECT ObjectID, COUNT(*) AS Cnt 
+                FROM AR_InvoiceTbl 
+                GROUP BY ObjectID
+            ) I ON O.ObjectID = I.ObjectID
+            WHERE (
+                O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+            )
+              AND (ISNULL(@SYSBranchID, '') = '' OR O.BranchID = @SYSBranchID)
+            ORDER BY ISNULL(I.Cnt, 0) DESC;
+              
+            -- Fallback tìm toàn quốc
+            IF @ResolvedID = ''
+            BEGIN
+                SELECT TOP 1 @ResolvedID = O.ObjectID 
+                FROM CF_ObjectTbl O
+                LEFT JOIN (
+                    SELECT ObjectID, COUNT(*) AS Cnt 
+                    FROM AR_InvoiceTbl 
+                    GROUP BY ObjectID
+                ) I ON O.ObjectID = I.ObjectID
+                WHERE (
+                    O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI = @MaKhachHang COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR O.ObjectName COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + @MaKhachHang + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                    OR REPLACE(O.ObjectName, ' ', '') COLLATE SQL_Latin1_General_CP1_CI_AI LIKE N'%' + REPLACE(@MaKhachHang, ' ', '') + '%' COLLATE SQL_Latin1_General_CP1_CI_AI
+                )
+                ORDER BY ISNULL(I.Cnt, 0) DESC;
+            END
+        END
+
+        IF NULLIF(@ResolvedID, '') IS NOT NULL
+        BEGIN
+            SET @MaKhachHang = @ResolvedID;
+        END
+    END
 
     -- ═══ Validate khachhang ═══
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)

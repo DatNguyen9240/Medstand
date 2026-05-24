@@ -1,4 +1,11 @@
-ALTER PROCEDURE [dbo].[API_DoanhSo_AI]
+USE medtest;
+GO
+
+IF OBJECT_ID('dbo.API_DoanhSo_AI', 'P') IS NOT NULL
+    DROP PROCEDURE dbo.API_DoanhSo_AI;
+GO
+
+CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
     @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
     @User         VARCHAR(50)    = '', -- Dashboard alias
@@ -186,14 +193,20 @@ BEGIN
     IF @LoaiBaoCao = 'NhanVien' OR @LoaiBaoCao = 'TatCa'
     BEGIN
         INSERT INTO @BC (EmployeeID, EmployeeName, ManagerID, BranchID, DoanhSo)
-        SELECT A.EmployeeID, A.EmployeeName, MAX(A.ManagerID) AS ManagerID, MAX(A.BranchID) AS BranchID, SUM(A.Amount) AS DoanhSo
+        SELECT 
+            A.EmployeeID, 
+            COALESCE(NULLIF(A.EmployeeName, ''), U.HoTen, A.EmployeeID) AS EmployeeName, 
+            MAX(A.ManagerID) AS ManagerID, 
+            MAX(A.BranchID) AS BranchID, 
+            SUM(A.Amount) AS DoanhSo
         FROM AR_OrderAndReturnView A
+        LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (
                 @SYSUserGroupID = 'Admin'
@@ -201,7 +214,7 @@ BEGIN
                 OR A.ManagerID = @SYS_EmployeeID
                 OR A.CeoID = @SYS_EmployeeID
             )
-        GROUP BY A.EmployeeID, A.EmployeeName
+        GROUP BY A.EmployeeID, COALESCE(NULLIF(A.EmployeeName, ''), U.HoTen, A.EmployeeID)
 
         IF @LoaiBaoCao = 'NhanVien' 
         BEGIN
@@ -223,12 +236,13 @@ BEGIN
         INSERT INTO @BC2 (ObjectID, ObjectName, DoanhSo)
         SELECT A.ObjectID, A.ObjectName, SUM(A.Amount) AS DoanhSo
         FROM AR_OrderAndReturnView A
+        LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (
                 @SYSUserGroupID = 'Admin'
@@ -259,12 +273,13 @@ BEGIN
         FROM AR_OrderAndReturnView A
         INNER JOIN AR_OrderDetailTbl D ON A.DocumentID = D.DocumentID
         INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
+        LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
             AND A.StatusID NOT IN (-2, -1, 0)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
-            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%')
+            AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (

@@ -3109,7 +3109,7 @@
 
             + '<div class="ae-dg-col col-sl"><label>SL</label><input type="number" class="ae-dg-val ae-dg-qty" data-col="Quantity" value="1"></div>'
 
-            + '<div class="ae-dg-col col-price"><label>Gi</label><input type="number" class="ae-dg-val ae-dg-price" data-col="Price" value="0"></div>'
+            + '<div class="ae-dg-col col-price"><label>Giá</label><input type="number" class="ae-dg-val ae-dg-price" data-col="Price" value="0"></div>'
 
             + '<div class="ae-dg-col col-total"><label>Tổng</label><input type="text" class="ae-dg-total-row" readonly value="0"></div>'
 

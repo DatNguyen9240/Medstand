@@ -7,6 +7,36 @@ BEGIN
    SET NOCOUNT ON
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
+   -- CLEAN AI EXTRACTED BRACKETS
+   IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+   BEGIN
+       SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
+   END
+
+   -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+   IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+   BEGIN
+       DECLARE @ResolvedID VARCHAR(50) = ''
+       DECLARE @CleanSearch VARCHAR(100) = REPLACE(REPLACE(@MaKhachHang, ' ', ''), N' ', '')
+
+       SELECT TOP 1 @ResolvedID = ObjectID 
+       FROM dbo.CF_ObjectTbl 
+       WHERE (REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') COLLATE Latin1_General_CI_AI) LIKE ('%' + @CleanSearch + '%' COLLATE Latin1_General_CI_AI)
+          OR (ObjectID COLLATE Latin1_General_CI_AI) LIKE ('%' + @CleanSearch + '%' COLLATE Latin1_General_CI_AI)
+       ORDER BY 
+           CASE WHEN ObjectID = @CleanSearch THEN 1
+                WHEN REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') = @CleanSearch THEN 2
+                WHEN REPLACE(REPLACE(ObjectName, ' ', ''), N' ', '') LIKE @CleanSearch + '%' THEN 3
+                ELSE 4
+           END,
+           LEN(ObjectName) ASC;
+
+       IF @ResolvedID <> ''
+       BEGIN
+           SET @MaKhachHang = @ResolvedID
+       END
+   END
+
    IF @MaKhachHang = ''
    BEGIN
        SELECT N'Vui lòng cung cấp mã khách hàng để xem chi tiết.' AS [Msg], 1 AS [MsgType]
