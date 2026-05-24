@@ -145,6 +145,37 @@ BEGIN
     END
 
     -- =========================================================
+    -- DỒN LỰC KHẮC PHỤC LỖI CLAIMS CACHE TRÊN WEB DASHBOARD
+    -- Nếu C# backend truyền sai/cũ các bộ lọc do nhớ cache claims,
+    -- stored procedure tự động ghi đè bằng dữ liệu thực tế từ SY_User.
+    -- =========================================================
+    IF NULLIF(@Username, '') IS NOT NULL AND @SYSUserGroupID <> 'Admin'
+    BEGIN
+        IF @IsManager = 1
+        BEGIN
+            -- Nếu là Manager: Giữ nguyên BranchID để lọc chi nhánh nếu đúng
+            IF @BranchID = '' OR @BranchID <> @SYS_BranchID SET @BranchID = @SYS_BranchID;
+            -- Bắt buộc lọc theo đúng ManagerID thực tế của họ trong DB
+            SET @ManagerID = @SYS_EmployeeID;
+            -- Bỏ qua lọc EmployeeID nếu họ chưa chọn nhân viên cụ thể
+            IF @EmployeeID <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @EmployeeID AND ManagerID = @SYS_EmployeeID)
+            BEGIN
+                SET @EmployeeID = ''; -- Tránh manager truyền bậy mã NV không thuộc quyền quản lý
+            END
+        END
+        ELSE
+        BEGIN
+            -- Nếu là Trình Dược Viên (TDV):
+            -- Bắt buộc lọc chính xác theo EmployeeID thực tế của họ trong DB
+            SET @EmployeeID = @SYS_EmployeeID;
+            -- Xóa trắng các bộ lọc khác của Quản lý/CEO để tránh xung đột gây rỗng dữ liệu
+            SET @ManagerID = '';
+            SET @CeoID = '';
+            SET @BranchID = '';
+        END
+    END
+
+    -- =========================================================
     -- SMART FALLBACK CHO BÁO CÁO MẶC ĐỊNH (TatCa)
     -- Nếu là Admin hoặc Manager -> Mặc định xem danh sách Nhân Viên
     -- Nếu là Sale/Nhân viên thường -> Mặc định xem danh sách Khách Hàng

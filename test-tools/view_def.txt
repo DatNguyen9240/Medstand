@@ -1,0 +1,12 @@
+﻿definition                                                                                                                                                                                                                                                      
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+CREATE VIEW vCongNoBanHang
+as
+SELECT DebitAccID AS AccountID, 
+	-- ngoài bán hàng ra, lấy số tham chiếu để trừ phat sinh
+	CASE WHEN SourceID = 'SI' then DocumentID ELSE COALESCE(RefDoc,DocumentID) END DocumentID, 
+	DocumentDate, Memo, ObjectID, Br
+
+(1 rows affected)

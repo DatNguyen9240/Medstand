@@ -57,7 +57,8 @@ BEGIN
     LEFT JOIN dbo.CF_ObjectTbl M ON M.ObjectID = A.ManagerID
     LEFT JOIN dbo.AR_InvoiceStatusTbl S ON S.StatusID = A.StatusID
     WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-      AND (@timkiem = '' OR A.ObjectID LIKE '%' + @timkiem + '%' 
+      AND (@timkiem = '' OR A.DocumentID LIKE '%' + @timkiem + '%'
+           OR A.ObjectID LIKE '%' + @timkiem + '%' 
            OR O.ObjectName LIKE N'%' + @timkiem + '%'  
            OR O.Address LIKE N'%' + @timkiem + '%' 
            OR O.Phone LIKE '%' + @timkiem + '%')

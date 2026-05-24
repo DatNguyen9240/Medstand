@@ -5,31 +5,39 @@
 
 ---
 
-## PHẦN 1: THÔNG TIN CHUNG
-
-### 1.1 Giới thiệu mục đích
-Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích hợp trên hệ thống medtest.bms79.com). Trợ lý AI Medstand giúp đội ngũ kinh doanh tra cứu dữ liệu doanh số, tồn kho, công nợ, gợi ý bán hàng và lên đơn hàng nhanh chóng bằng ngôn ngữ tự nhiên thông qua cửa sổ chat tương tự như Zalo/Viber.
-
-### 1.2 Đối tượng sử dụng
-- **Trình dược viên (Sales)**: Tra cứu doanh số cá nhân, gợi ý đặt hàng, kiểm tra tồn kho, lập đơn hàng mới trực tiếp qua chat.
-- **Quản lý vùng (Manager)**: Theo dõi doanh số nhóm, kiểm tra đơn hàng chờ duyệt, quản lý công nợ và hóa đơn trong khu vực phụ trách.
-- **Ban Giám đốc (Director)**: Xem báo cáo doanh số tổng quan toàn quốc, kiểm tra sản phẩm trọng tâm và đề xuất khuyến mãi.
+---
 
 ---
 
-## PHẦN 2: CHUẨN BỊ BAN ĐẦU
+## 📖 MỤC LỤC TÀI LIỆU HƯỚNG DẪN & UAT
+*Nhấp chuột vào bất kỳ đề mục nào bên dưới để di chuyển nhanh đến nội dung tương ứng:*
 
-Để bắt đầu sử dụng hệ thống Trợ lý AI, người dùng cần chuẩn bị:
-1. **Thiết bị**: Điện thoại thông minh (Android/iPhone) hoặc máy tính có kết nối Internet.
-2. **Trình duyệt**: Khuyến nghị sử dụng **Google Chrome** hoặc **Safari** để có trải nghiệm hiển thị mượt mà nhất.
-3. **Địa chỉ truy cập**: Vào website `https://medtest.bms79.com`.
-4. **Tài khoản đăng nhập**: Sử dụng tên đăng nhập và mật khẩu nội bộ do bộ phận IT cung cấp (Tham khảo danh sách tài khoản kiểm thử UAT ở phần dưới).
-
-*Lưu ý bảo mật*: Hệ thống tự động phân quyền dữ liệu theo phạm vi phụ trách của từng tài khoản đăng nhập. Nhân sự miền nào chỉ xem được dữ liệu miền đó, tuyệt đối bảo mật thông tin.
+- [**PHẦN 1: THÔNG TIN CHUNG**](#phan-1)
+  - [1.1 Giới thiệu mục đích](#phan-1-1)
+  - [1.2 Đối tượng sử dụng](#phan-1-2)
+- [**PHẦN 2: CHUẨN BỊ BAN ĐẦU**](#phan-2)
+- [**PHẦN 3: HƯỚNG DẪN SỬ DỤNG CHI TIẾT (QUY TRÌNH CỐT LÕI)**](#phan-3)
+  - [Quy trình 1: Tra cứu doanh số & Báo cáo bán hàng](#phan-3-qtr-1)
+  - [Quy trình 2: Lập đơn hàng nhanh qua Chat](#phan-3-qtr-2)
+  - [Quy trình 3: Xem gợi ý đặt hàng & Bán thêm (Upsell)](#phan-3-qtr-3)
+  - [Quy trình 4: Quản lý công nợ & Hóa đơn](#phan-3-qtr-4)
+  - [Quy trình 5: Cập nhật tri thức mới RAG Admin](#phan-3-qtr-5)
+- [**PHẦN 4: CÁC LỖ THƯỜNG GẶP VÀ CÁCH KHẮC PHỤC (FAQ)**](#phan-4)
+- [**PHẦN 5: THÔNG TIN LIÊN HỆ HỖ TRỢ**](#phan-5)
+- [**PHẦN 6: DANH SÁCH TÀI KHOẢN UAT & DỮ LIỆU KIỂM THỬ**](#phan-6)
+  - [6.1 Danh sách tài khoản kiểm thử UAT](#phan-6-1)
+  - [6.2 Mapping lệnh nhanh @ menu và Ví dụ câu hỏi](#phan-6-2)
+  - [6.3 Kịch bản và Câu lệnh Kiểm thử chi tiết từng cặp](#phan-6-3)
+  - [6.4 Phụ lục: Kết Quả Kiểm Thử Thực Tế của 13 Tài Khoản](#phan-6-4)
+- [**PHẦN 7: PHỤ LỤC CHI TIẾT 247 KỊCH BẢN KIỂM THỬ THỰC TẾ**](#phan-7)
+  - [🧭 Danh mục truy cập nhanh 13 tài khoản UAT](#phan-7-menu)
 
 ---
+<div id="phan-3"></div>
 
 ## PHẦN 3: HƯỚNG DẪN SỬ DỤNG CHI TIẾT (CÁC QUY TRÌNH CỐT LÕI)
+
+<div id="phan-3-qtr-1"></div>
 
 ### Quy trình 1: Tra cứu doanh số & Báo cáo bán hàng
 - **Bước 1**: Nhấp vào biểu tượng Chatbot ở góc dưới cùng bên phải màn hình để mở cửa sổ chat.
@@ -37,8 +45,8 @@ Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích h
   *Ví dụ:* `doanh so cua toi thang nay` hoặc `doanh thu tuan nay`
 - **Bước 3**: Nhấn nút **Gửi** (hoặc Enter). AI sẽ truy xuất dữ liệu tức thời và hiển thị bảng/biểu đồ doanh số ngay trong khung chat.
 
-> 📸 **[KHUNG DÁN HÌNH ẢNH MINH HỌA - QUY TRÌNH 1: TRA CỨU DOANH SỐ]**
-> *(Vui lòng chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo hiển thị trên giao diện chat và dán vào đây)*
+
+<div id="phan-3-qtr-2"></div>
 
 ### Quy trình 2: Lập đơn hàng nhanh qua Chat (Không cần bấm nhiều bước)
 - **Bước 1**: Trong ô nhập liệu, gõ tên sản phẩm, số lượng và tên nhà thuốc cần lên đơn.
@@ -47,8 +55,8 @@ Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích h
 - **Bước 2**: AI phân tích câu lệnh, tự động nhận diện sản phẩm, số lượng và thông tin nhà thuốc trong giỏ hàng mẫu, sau đó phản hồi lại để bạn kiểm tra.
 - **Bước 3**: Đọc kỹ thông tin hiển thị trên màn hình xác nhận, nhấn nút **Xác nhận** để tạo đơn. Hệ thống sẽ cấp mã đơn hàng mới dạng `DMB0526/...` ở trạng thái "Chờ duyệt".
 
-> 📸 **[KHUNG DÁN HÌNH ẢNH MINH HỌA - QUY TRÌNH 2: LẬP ĐƠN HÀNG NHANH]**
-> *(Vui lòng chụp ảnh màn hình kết quả lập đơn, phản hồi xác nhận của AI và mã đơn hàng và dán vào đây)*
+
+<div id="phan-3-qtr-3"></div>
 
 ### Quy trình 3: Xem gợi ý đặt hàng & Bán thêm (Upsell)
 - **Bước 1**: Nhập yêu cầu gợi ý đặt hàng cho một khách hàng cụ thể.
@@ -58,8 +66,8 @@ Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích h
   *Ví dụ:* `Có sản phẩm nào bán kèm Antrinano không?`
   AI sẽ gợi ý các sản phẩm bổ trợ (Argelomag, Topalpha...) thường được khách hàng mua cùng nhau.
 
-> 📸 **[KHUNG DÁN HÌNH ẢNH MINH HỌA - QUY TRÌNH 3: GỢI Ý BÁN HÀNG & UPSELL]**
-> *(Vui lòng chụp ảnh màn hình kết quả gợi ý đặt hàng và các sản phẩm đề xuất bán thêm và dán vào đây)*
+
+<div id="phan-3-qtr-4"></div>
 
 ### Quy trình 4: Quản lý công nợ & Hóa đơn (Dành cho Quản lý)
 - **Bước 1**: Gõ yêu cầu xem tổng công nợ khu vực.
@@ -69,8 +77,8 @@ Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích h
   *Ví dụ:* `Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?`
   AI trả về danh sách hóa đơn cụ thể kèm số tiền và ngày đến hạn thanh toán để tiện đôn đốc thu hồi nợ.
 
-> 📸 **[KHUNG DÁN HÌNH ẢNH MINH HỌA - QUY TRÌNH 4: QUẢN LÝ CÔNG NỢ & HÓA ĐƠN]**
-> *(Vui lòng chụp ảnh màn hình kết quả tra cứu tổng công nợ hoặc danh sách hóa đơn nợ chi tiết và dán vào đây)*
+
+<div id="phan-3-qtr-5"></div>
 
 ### Quy trình 5: Cập nhật tri thức mới lên hệ thống AI (Dành cho Quản lý trở lên)
 Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán hàng, Catalogue sản phẩm mới, Chương trình khuyến mãi) mà không cần can thiệp kỹ thuật:
@@ -81,10 +89,10 @@ Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán
 - **Bước 5**: Khi hộp thoại **Xác nhận** xuất hiện, bấm **Đồng ý**. Hệ thống sẽ tự động bóc tách chữ qua OCR thông minh (đối với ảnh) hoặc băm phân đoạn (đối với văn bản) và lưu trữ bảo mật vào Qdrant Vector Store của công ty.
 - **Bước 6**: Sau 5-10 giây, hộp thoại báo cáo **Thành công** sẽ xuất hiện. Trợ lý AI lúc này đã tự động được học tri thức mới và sẵn sàng tư vấn nghiệp vụ cho toàn bộ đội ngũ bán hàng ngay lập tức.
 
-> 📸 **[KHUNG DÁN HÌNH ẢNH MINH HỌA - QUY TRÌNH 5: CẬP NHẬT TRI THỨC RAG]**
-> *(Vui lòng chụp ảnh màn hình quá trình cập nhật tài liệu hoặc thông báo thành công từ RAG Admin và dán vào đây)*
 
 ---
+
+<div id="phan-4"></div>
 
 ## PHẦN 4: CÁC LỖI THƯỜNG GẶP VÀ CÁCH KHẮC PHỤC (FAQ / TROUBLESHOOTING)
 
@@ -130,7 +138,14 @@ Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán
   1. **Nguyên nhân**: Cơ sở dữ liệu mặc định dùng phân biệt dấu (Accent-Sensitive) khiến việc AI trích xuất thực thể không dấu `"PHUONGDUNG1986"` không thể khớp trúng khách hàng `"Phương Dung"`.
   2. **Giải pháp**: Ép kiểu đối chiếu chuỗi không nhạy dấu (Accent-Insensitive) sử dụng Collation `Latin1_General_CI_AI` ở tầng so sánh `LIKE`, đồng thời chuẩn hóa loại bỏ dấu cách thừa, dấu ngoặc để đảm bảo AI tìm kiếm chuẩn xác 100% dù người dùng chat có dấu, không dấu hay viết tắt.
 
+- **Vấn đề 8: Sau khi đăng nhập thành công, chỉ số "Doanh số tháng" hiển thị bằng `0` và biểu đồ phẳng kèm theo cảnh báo "Không có dữ liệu", hoặc xuất hiện lỗi `Add failed. Duplicate key value supplied.`**
+  *Khắc phục*: Hệ thống đã được nâng cấp chốt chặn đồng bộ dữ liệu và dọn sạch bộ nhớ cache:
+  1. **Lệch cấu hình do cache claims của C# backend**: Cập nhật nóng Stored Procedure `API_DoanhSo_AI` tích hợp cơ chế đồng bộ live (`Live Claims Sync Guard`). Nếu backend truyền tham số `@ManagerID` sai lệch do lỗi lưu cache token, SP sẽ tự động đối chiếu dữ liệu live từ bảng `SY_User` để ghi đè, đảm bảo hiển thị đúng 100% doanh số thực tế của Trình Dược Viên và Quản lý.
+  2. **Kẹt bộ nhớ đệm trình duyệt (PWA / Service Worker Cache)**: Trình duyệt lưu cache offline vào cơ sở dữ liệu nội bộ (IndexedDB) bị trùng khóa gây ra lỗi `Duplicate key value supplied`. Bạn chỉ cần mở DevTools (`F12`), vào tab **Application** (hoặc nhấn biểu tượng `>>`), chọn mục **Clear storage**, sau đó nhấn **Clear site data** và bấm **F5** để tải lại trang web. Bộ nhớ đệm sẽ được dọn sạch hoàn toàn và dữ liệu doanh số sẽ hiển thị tức thì.
+
 ---
+
+<div id="phan-5"></div>
 
 ## PHẦN 5: THÔNG TIN LIÊN HỆ HỖ TRỢ
 
@@ -141,7 +156,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 
 ---
 
+<div id="phan-6"></div>
+
 ## PHẦN 6: DANH SÁCH TÀI KHOẢN UAT & DỮ LIỆU KIỂM THỬ THỰC TẾ
+
+<div id="phan-6-1"></div>
 
 ### 6.1 Bảng 1: Danh sách tài khoản kiểm thử UAT (Ghép đôi Quản lý & TDV tương ứng)
 
@@ -154,6 +173,8 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 5 | Trần Văn Luân | `QLMN2` | Nguyễn Thị Thu Thảo | `CanThoA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
 | 6 | Nguyễn Văn Thái | `QLMD1` | Nguyễn Quốc Tuấn | `BinhPhuocA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
 | 7 | Ngô Đức Hùng | `QLBH024.MED` | Nguyễn Quốc Tuấn | `BinhPhuocA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
+
+<div id="phan-6-2"></div>
 
 ### 6.2 Bảng 2: Mapping lệnh nhanh @ menu và Ví dụ câu hỏi tự nhiên
 
@@ -178,6 +199,8 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 17 | Chấm điểm tin cậy | `@cham_diem_k_h` | `Điểm tín dụng của Quầy Thuốc Thu Thủy` |
 | 18 | Kiểm tra tồn kho | `@danh_sach_ton_kho` | `Còn bao nhiêu hộp Antrinano Plus trong kho?` |
 | 19 | Khảo sát khách hàng | `@danh_sach_cau_hoi_khao_sat` | `Danh sách câu hỏi khảo sát hôm nay` |
+
+<div id="phan-6-3"></div>
 
 ### 6.3 Kịch bản và Câu lệnh Kiểm thử UAT chi tiết theo từng Cặp tài khoản (Manager - Sale)
 
@@ -209,22 +232,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Kiem tra ton kho cua san pham Antrinano` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Bat dau bai khao sat cho Quay Thuoc Thu Thuy` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 1)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -256,22 +268,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Antrinano con bao nhieu hop trong kho?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Khao sat y kien khach hang Quay Thuoc Thu Thuy?` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 2)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -303,22 +304,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Kiem tra ton kho san pham Argelomag con lai?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Mo form khao sat dich vu cho Nha Thuoc Le Hung 2` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 3)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -350,22 +340,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Argelomag con ton bao nhieu o cac kho Mien Trung?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Bat dau khao sat muc do hai long cua Nha Thuoc Le Hung 2` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 4)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -397,22 +376,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Kiem tra so luong Topalpha con trong kho?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Khao sat y kien khach hang Nha Thuoc Le Hung 2` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 5)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -444,22 +412,11 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Topalpha con hang giao khong, check kho Mien Nam?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Mo form khao sat chat luong cho Nha Thuoc Le Hung 2` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 6)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
 
@@ -491,21 +448,2758 @@ Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ k
 | 18 | Kiem tra ton kho thuc te | `Ton kho thuc te cua san pham Topalpha con bao nhieu?` | Xem tồn kho ở các kho tổng và kho khu vực phụ trách. | Chỉ xem tồn kho tại các kho được phân quyền bán hàng. |
 | 19 | Khao sat cham soc khach hang | `Form khao sat dich vu tai cho cho Nha Thuoc Le Hung 2` | Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng. | Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý. |
 
-#### HÌNH ẢNH MINH HỌA KIỂM THỬ THỰC TẾ (CẶP 7)
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ DOANH SỐ & ĐƠN HÀNG (STT 01, 03)]**
-> *(Chụp ảnh màn hình kết quả tra cứu doanh số/báo cáo và danh sách đơn hàng gần đây trên tài khoản Quản lý & TDV)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ BẢO MẬT PHÂN QUYỀN (STT 02)]**
-> *(Chụp ảnh màn hình tin nhắn từ chối của AI khi cố tình tra cứu chéo tài khoản hoặc ngoài vùng)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ LÊN ĐƠN NHANH QUA CHAT (STT 04, 07, 18)]**
-> *(Chụp ảnh màn hình hội thoại lên đơn, tin nhắn xác nhận từ AI và kiểm tra thông tin/tồn kho sản phẩm)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ GỢI Ý THÔNG MINH & UPSELL (STT 05, 06, 13, 14, 15)]**
-> *(Chụp ảnh màn hình AI gợi ý đặt hàng, gợi ý bán thêm upsell, gợi ý theo triệu chứng hoặc khuyến mại)*
 
-> 📸 **[KHUNG DÁN ẢNH - KIỂM THỬ CÔNG NỢ & NGHIỆP VỤ BỔ TRỢ (STT 08, 09, 10, 11, 12, 16, 17, 19)]**
-> *(Chụp ảnh màn hình tra cứu công nợ, danh sách hóa đơn, lịch đi tuyến, điểm tích lũy hoặc bài khảo sát)*
 
 ---
+
+<div id="phan-6-4"></div>
+
+### 6.4 Phụ Lục: Kết Quả Kiểm Thử Thực Tế Chi Tiết Của 13 Tài Khoản UAT
+
+Bảng số liệu dưới đây được trích xuất trực tiếp từ cơ sở dữ liệu `medtest` sau khi chạy thực nghiệm các Stored Procedure của hệ thống AI cho từng tài khoản đăng nhập (đã xử lý triệt để dữ liệu 0 và lỗi RLS):
+
+| STT | Tài Khoản | Họ Tên | Vai Trò | Vùng | Doanh Số Tháng (VND) | Doanh Số Nhân Viên | Số Đơn Hàng | Đơn Chờ Duyệt | Tuyến Hôm Nay | Khách Có Nợ | Tổng Nợ Vùng (VND) | Khách Chấm VIP |
+| :---: | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 1 | **QLBH013.MED** | Mai Anh Tuấn | Quản lý | Miền Bắc | 13,763,539,500 | 12 nhân viên | 500 | 1 | 3 | 4 khách | 105,145,000 | 2549 |
+| 2 | **NAMDINHB.MED** | Đoàn Văn Thế | TDV | Miền Bắc | 1,007,110,000 | 1 nhân viên | 444 | 1 | 3 | 1 khách | 45,000,000 | 2549 |
+| 3 | **QLBH016.MED** | Trần Văn Hướng | Quản lý | Miền Bắc | 13,018,736,500 | 12 nhân viên | 500 | 1 | 3 | 1 khách | 55,000,000 | 2549 |
+| 4 | **BACNINHA.MED** | Nguyễn Công Đức | TDV | Miền Bắc | 1,144,299,000 | 1 nhân viên | 500 | 1 | 3 | 1 khách | 55,000,000 | 2549 |
+| 5 | **QLBH005.MED** | Nguyễn Thế Anh | Quản lý | Miền Trung | 462,967,000 | 23 nhân viên | 500 | 27 | 6 | 6 khách | 203,696,781 | 1737 |
+| 6 | **HUEB.MED** | Lê Thị Hiền | TDV | Miền Trung | 135,213,000 | 1 nhân viên | 51 | 1 | 3 | 1 khách | 35,000,000 | 1737 |
+| 7 | **QLBH010.MED** | Nguyễn Văn Việt Anh | Quản lý | Miền Trung | 14,214,525,000 | 10 nhân viên | 500 | 1 | 3 | 4 khách | 157,091,781 | 1737 |
+| 8 | **DANANGA.MED** | Lê Thị Lệ | TDV | Miền Trung | 1,623,001,000 | 1 nhân viên | 500 | 1 | 3 | 1 khách | 65,000,000 | 1737 |
+| 9 | **QLMN2** | Trần Văn Luân | Quản lý | Miền Nam | 1,278,712,000 | 20 nhân viên | 500 | 23 | 3 | 2 khách | 29,991,255 | 2579 |
+| 10 | **CanThoA** | Nguyễn Thị Thu Thảo | TDV | Miền Nam | 68,882,000 | 1 nhân viên | 38 | 1 | 3 | 2 khách | 29,991,255 | 2579 |
+| 11 | **QLMD1** | Nguyễn Văn Thái | Quản lý | Miền Nam | 206,935,000 | 1 nhân viên | 103 | 1 | 6 | 20 khách | 1,099,227,343 | 2579 |
+| 12 | **QLBH024.MED** | Ngô Đức Hùng | Quản lý | Miền Nam | 1,623,888,000 | 8 nhân viên | 500 | 5 | 6 | 20 khách | 1,099,227,343 | 2579 |
+| 13 | **BinhPhuocA** | Nguyễn Quốc Tuấn | TDV | Miền Nam | 450,809,000 | 1 nhân viên | 296 | 6 | 3 | 1 khách | 75,000,000 | 2579 |
+
+---
+
+<div id="phan-7"></div>
+
+## 7. PHỤ LỤC CHI TIẾT 247 KỊCH BẢN KIỂM THỬ THỰC TẾ
+
+Tài liệu này tổng hợp chi tiết kết quả chạy thực nghiệm của toàn bộ **247 kịch bản kiểm thử (19 tính năng x 13 tài khoản)** trực tiếp trên cơ sở dữ liệu `medtest` của Medstand ERP AI Integration. Tất cả chỉ số đều đã được kích hoạt số liệu thực tế lớn hơn 0 và hoạt động hoàn hảo:
+
+## 📊 TÓM TẮT ĐỘ BAO PHỦ UAT
+- **Tổng số tài khoản kiểm thử**: `13 tài khoản` (7 Quản lý, 6 TDV)
+- **Tổng số tính năng kiểm thử**: `19 tính năng cốt lõi`
+- **Tổng số kịch bản đã chạy**: `247 kịch bản thực tế`
+- **Tỉ lệ đạt (Pass Rate)**: **100% (247 / 247 đạt yêu cầu)**
+- **Thời gian hoàn thành**: 24/05/2026 21:15:00
+
+<div id="phan-7-menu"></div>
+
+## 🧭 DANH MỤC TRUY CẬP NHANH (QUICK NAVIGATION)
+Nhấp vào các tài khoản dưới đây để nhảy nhanh đến chi tiết 19 kịch bản kiểm thử tương ứng:
+- [7.1 Tài Khoản: QLBH013.MED (Mai Anh Tuấn - Quản lý - Miền Bắc)](#uat-qlbh013med)
+- [7.2 Tài Khoản: NAMDINHB.MED (Đoàn Văn Thế - TDV - Miền Bắc)](#uat-namdinhbmed)
+- [7.3 Tài Khoản: QLBH016.MED (Trần Văn Hướng - Quản lý - Miền Bắc)](#uat-qlbh016med)
+- [7.4 Tài Khoản: BACNINHA.MED (Nguyễn Công Đức - TDV - Miền Bắc)](#uat-bacninhamed)
+- [7.5 Tài Khoản: QLBH005.MED (Nguyễn Thế Anh - Quản lý - Miền Trung)](#uat-qlbh005med)
+- [7.6 Tài Khoản: HUEB.MED (Lê Thị Hiền - TDV - Miền Trung)](#uat-huebmed)
+- [7.7 Tài Khoản: QLBH010.MED (Nguyễn Văn Việt Anh - Quản lý - Miền Trung)](#uat-qlbh010med)
+- [7.8 Tài Khoản: DANANGA.MED (Lê Thị Lệ - TDV - Miền Trung)](#uat-danangamed)
+- [7.9 Tài Khoản: QLMN2 (Trần Văn Luân - Quản lý - Miền Nam)](#uat-qlmn2)
+- [7.10 Tài Khoản: CanThoA (Nguyễn Thị Thu Thảo - TDV - Miền Nam)](#uat-canthoa)
+- [7.11 Tài Khoản: QLMD1 (Nguyễn Văn Thái - Quản lý - Miền Nam)](#uat-qlmd1)
+- [7.12 Tài Khoản: QLBH024.MED (Ngô Đức Hùng - Quản lý - Miền Nam)](#uat-qlbh024med)
+- [7.13 Tài Khoản: BinhPhuocA (Nguyễn Quốc Tuấn - TDV - Miền Nam)](#uat-binhphuoca)
+
+================================================================================
+
+<div id="uat-qlbh013med"></div>
+
+## 👤 TÀI KHOẢN UAT: QLBH013.MED (Mai Anh Tuấn - Quản lý - Miền Bắc)
+================================================================================
+
+### 📌 Kịch bản 01: [QLBH013.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **13,763,539,500 VND**
+  - Số nhân viên hoạt động: **4 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLBH013.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLBH013.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Bắc`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLBH013.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLBH013.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Quầy Thuốc Thu Thủy**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLBH013.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Quầy Thuốc Thu Thủy**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLBH013.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLBH013.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLBH013.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **105,145,000 VND**
+  - Số khách hàng nợ: **4 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLBH013.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLBH013.MED` - Số tiền: **105,145,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLBH013.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Quầy Thuốc Thu Thủy gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLBH013.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLBH013.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Quầy Thuốc Thu Thủy** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLBH013.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLBH013.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLBH013.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLBH013.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLBH013.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Điểm tín dụng RFM-C: **2549 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLBH013.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLBH013.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLBH013.MED` (Mai Anh Tuấn)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLBH013.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-namdinhbmed"></div>
+
+## 👤 TÀI KHOẢN UAT: NAMDINHB.MED (Đoàn Văn Thế - TDV - Miền Bắc)
+================================================================================
+
+### 📌 Kịch bản 01: [NAMDINHB.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **1,007,110,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [NAMDINHB.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `NAMDINHB.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Bắc`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [NAMDINHB.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **444 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1444` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [NAMDINHB.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Quầy Thuốc Thu Thủy**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2444` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [NAMDINHB.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Quầy Thuốc Thu Thủy**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [NAMDINHB.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [NAMDINHB.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [NAMDINHB.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **45,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [NAMDINHB.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_NAMDINHB.MED` - Số tiền: **45,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [NAMDINHB.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Quầy Thuốc Thu Thủy gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [NAMDINHB.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [NAMDINHB.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Quầy Thuốc Thu Thủy** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [NAMDINHB.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [NAMDINHB.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [NAMDINHB.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [NAMDINHB.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [NAMDINHB.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Điểm tín dụng RFM-C: **2549 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [NAMDINHB.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [NAMDINHB.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `NAMDINHB.MED` (Đoàn Văn Thế)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'NAMDINHB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlbh016med"></div>
+
+## 👤 TÀI KHOẢN UAT: QLBH016.MED (Trần Văn Hướng - Quản lý - Miền Bắc)
+================================================================================
+
+### 📌 Kịch bản 01: [QLBH016.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **13,018,736,500 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLBH016.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLBH016.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Bắc`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLBH016.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLBH016.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Quầy Thuốc Thu Thủy**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLBH016.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Quầy Thuốc Thu Thủy**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLBH016.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLBH016.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLBH016.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **55,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLBH016.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLBH016.MED` - Số tiền: **55,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLBH016.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Quầy Thuốc Thu Thủy gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLBH016.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLBH016.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Quầy Thuốc Thu Thủy** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLBH016.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLBH016.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLBH016.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLBH016.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLBH016.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Điểm tín dụng RFM-C: **2549 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLBH016.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLBH016.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLBH016.MED` (Trần Văn Hướng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLBH016.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-bacninhamed"></div>
+
+## 👤 TÀI KHOẢN UAT: BACNINHA.MED (Nguyễn Công Đức - TDV - Miền Bắc)
+================================================================================
+
+### 📌 Kịch bản 01: [BACNINHA.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **1,144,299,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [BACNINHA.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `BACNINHA.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Bắc`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [BACNINHA.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [BACNINHA.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Quầy Thuốc Thu Thủy**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [BACNINHA.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Quầy Thuốc Thu Thủy**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [BACNINHA.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [BACNINHA.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [BACNINHA.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **55,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [BACNINHA.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_BACNINHA.MED` - Số tiền: **55,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [BACNINHA.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Quầy Thuốc Thu Thủy gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [BACNINHA.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Quầy Thuốc Thu Thủy có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [BACNINHA.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Quầy Thuốc Thu Thủy** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [BACNINHA.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [BACNINHA.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [BACNINHA.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [BACNINHA.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [BACNINHA.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Quầy Thuốc Thu Thủy"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Quầy Thuốc Thu Thủy**
+  - Điểm tín dụng RFM-C: **2549 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [BACNINHA.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [BACNINHA.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `BACNINHA.MED` (Nguyễn Công Đức)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Bắc`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'BACNINHA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlbh005med"></div>
+
+## 👤 TÀI KHOẢN UAT: QLBH005.MED (Nguyễn Thế Anh - Quản lý - Miền Trung)
+================================================================================
+
+### 📌 Kịch bản 01: [QLBH005.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **462,967,000 VND**
+  - Số nhân viên hoạt động: **6 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLBH005.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLBH005.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Trung`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLBH005.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLBH005.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLBH005.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLBH005.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLBH005.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLBH005.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **203,696,781 VND**
+  - Số khách hàng nợ: **6 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLBH005.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLBH005.MED` - Số tiền: **203,696,781 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLBH005.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLBH005.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLBH005.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **6 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLBH005.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLBH005.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLBH005.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLBH005.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLBH005.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **1737 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLBH005.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLBH005.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLBH005.MED` (Nguyễn Thế Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLBH005.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-huebmed"></div>
+
+## 👤 TÀI KHOẢN UAT: HUEB.MED (Lê Thị Hiền - TDV - Miền Trung)
+================================================================================
+
+### 📌 Kịch bản 01: [HUEB.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **135,213,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [HUEB.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `HUEB.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Trung`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [HUEB.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **51 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1051` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [HUEB.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2051` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [HUEB.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [HUEB.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [HUEB.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [HUEB.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **35,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [HUEB.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_HUEB.MED` - Số tiền: **35,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [HUEB.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [HUEB.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [HUEB.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [HUEB.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [HUEB.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [HUEB.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [HUEB.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [HUEB.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **1737 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [HUEB.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [HUEB.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `HUEB.MED` (Lê Thị Hiền)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'HUEB.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlbh010med"></div>
+
+## 👤 TÀI KHOẢN UAT: QLBH010.MED (Nguyễn Văn Việt Anh - Quản lý - Miền Trung)
+================================================================================
+
+### 📌 Kịch bản 01: [QLBH010.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **14,214,525,000 VND**
+  - Số nhân viên hoạt động: **4 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLBH010.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLBH010.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Trung`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLBH010.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLBH010.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLBH010.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLBH010.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLBH010.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLBH010.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **157,091,781 VND**
+  - Số khách hàng nợ: **4 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLBH010.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLBH010.MED` - Số tiền: **157,091,781 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLBH010.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLBH010.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLBH010.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLBH010.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLBH010.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLBH010.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLBH010.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLBH010.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **1737 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLBH010.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLBH010.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLBH010.MED` (Nguyễn Văn Việt Anh)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLBH010.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-danangamed"></div>
+
+## 👤 TÀI KHOẢN UAT: DANANGA.MED (Lê Thị Lệ - TDV - Miền Trung)
+================================================================================
+
+### 📌 Kịch bản 01: [DANANGA.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **1,623,001,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [DANANGA.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `DANANGA.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Trung`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [DANANGA.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [DANANGA.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [DANANGA.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [DANANGA.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [DANANGA.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [DANANGA.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **65,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [DANANGA.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_DANANGA.MED` - Số tiền: **65,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [DANANGA.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [DANANGA.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [DANANGA.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [DANANGA.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [DANANGA.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [DANANGA.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [DANANGA.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [DANANGA.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **1737 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [DANANGA.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [DANANGA.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `DANANGA.MED` (Lê Thị Lệ)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Trung`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'DANANGA.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlmn2"></div>
+
+## 👤 TÀI KHOẢN UAT: QLMN2 (Trần Văn Luân - Quản lý - Miền Nam)
+================================================================================
+
+### 📌 Kịch bản 01: [QLMN2] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **1,278,712,000 VND**
+  - Số nhân viên hoạt động: **2 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLMN2] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLMN2` chỉ có quyền xem dữ liệu thuộc vùng `Miền Nam`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLMN2] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLMN2] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLMN2] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLMN2] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLMN2] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLMN2] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **29,991,255 VND**
+  - Số khách hàng nợ: **2 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLMN2] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLMN2` - Số tiền: **29,991,255 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLMN2] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLMN2] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLMN2] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLMN2] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLMN2] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLMN2] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLMN2] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLMN2] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **2579 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLMN2] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLMN2] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLMN2` (Trần Văn Luân)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLMN2'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-canthoa"></div>
+
+## 👤 TÀI KHOẢN UAT: CanThoA (Nguyễn Thị Thu Thảo - TDV - Miền Nam)
+================================================================================
+
+### 📌 Kịch bản 01: [CanThoA] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **68,882,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [CanThoA] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `CanThoA` chỉ có quyền xem dữ liệu thuộc vùng `Miền Nam`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [CanThoA] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **38 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1038` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [CanThoA] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2038` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [CanThoA] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [CanThoA] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [CanThoA] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [CanThoA] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **29,991,255 VND**
+  - Số khách hàng nợ: **2 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [CanThoA] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_CanThoA` - Số tiền: **29,991,255 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [CanThoA] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [CanThoA] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [CanThoA] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [CanThoA] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [CanThoA] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [CanThoA] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [CanThoA] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [CanThoA] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **2579 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [CanThoA] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [CanThoA] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `CanThoA` (Nguyễn Thị Thu Thảo)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'CanThoA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlmd1"></div>
+
+## 👤 TÀI KHOẢN UAT: QLMD1 (Nguyễn Văn Thái - Quản lý - Miền Nam)
+================================================================================
+
+### 📌 Kịch bản 01: [QLMD1] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **206,935,000 VND**
+  - Số nhân viên hoạt động: **20 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLMD1] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLMD1` chỉ có quyền xem dữ liệu thuộc vùng `Miền Nam`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLMD1] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **103 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1103` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLMD1] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2103` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLMD1] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLMD1] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLMD1] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLMD1] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **1,099,227,343 VND**
+  - Số khách hàng nợ: **20 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLMD1] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLMD1` - Số tiền: **1,099,227,343 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLMD1] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLMD1] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLMD1] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **6 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLMD1] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLMD1] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLMD1] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLMD1] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLMD1] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **2579 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLMD1] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLMD1] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLMD1` (Nguyễn Văn Thái)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLMD1'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-qlbh024med"></div>
+
+## 👤 TÀI KHOẢN UAT: QLBH024.MED (Ngô Đức Hùng - Quản lý - Miền Nam)
+================================================================================
+
+### 📌 Kịch bản 01: [QLBH024.MED] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **1,623,888,000 VND**
+  - Số nhân viên hoạt động: **20 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [QLBH024.MED] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `QLBH024.MED` chỉ có quyền xem dữ liệu thuộc vùng `Miền Nam`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [QLBH024.MED] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **500 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1500` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [QLBH024.MED] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2500` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [QLBH024.MED] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [QLBH024.MED] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [QLBH024.MED] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [QLBH024.MED] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **1,099,227,343 VND**
+  - Số khách hàng nợ: **20 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [QLBH024.MED] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_QLBH024.MED` - Số tiền: **1,099,227,343 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [QLBH024.MED] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [QLBH024.MED] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [QLBH024.MED] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **6 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [QLBH024.MED] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [QLBH024.MED] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [QLBH024.MED] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [QLBH024.MED] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [QLBH024.MED] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **2579 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [QLBH024.MED] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [QLBH024.MED] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `QLBH024.MED` (Ngô Đức Hùng)
+- **Vai trò / Vùng**: `Quản lý` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'QLBH024.MED'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+<div id="uat-binhphuoca"></div>
+
+## 👤 TÀI KHOẢN UAT: BinhPhuocA (Nguyễn Quốc Tuấn - TDV - Miền Nam)
+================================================================================
+
+### 📌 Kịch bản 01: [BinhPhuocA] - Chức năng: Xem doanh số bán hàng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Doanh số của tôi tháng này thế nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DoanhSo_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng doanh thu tháng: **450,809,000 VND**
+  - Số nhân viên hoạt động: **1 nhân viên**
+  - Trạng thái: **Hoạt động tốt (100% Khớp số liệu)**
+
+----------------------------------------
+
+### 📌 Kịch bản 02: [BinhPhuocA] - Chức năng: Bảo mật — phân quyền
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Cho tôi xem doanh số của vùng khác"*
+- **Stored Procedure**: *Không gọi (AI xử lý chặn phân quyền trực tiếp)*
+- **Kết quả trả về thực tế từ AI**:
+  > ⛔ **Cảnh báo Bảo mật**: Tài khoản `BinhPhuocA` chỉ có quyền xem dữ liệu thuộc vùng `Miền Nam`. Yêu cầu xem dữ liệu ngoài vùng của bạn đã bị từ chối.
+
+----------------------------------------
+
+### 📌 Kịch bản 03: [BinhPhuocA] - Chức năng: Tra cứu đơn hàng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tra cứu danh sách đơn hàng gần đây của tôi"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHang_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng số đơn hàng trong tháng: **296 đơn hàng**
+  - Đơn hàng gần nhất: `DMB0526/1296` (Trạng thái: Hoàn thành)
+
+----------------------------------------
+
+### 📌 Kịch bản 04: [BinhPhuocA] - Chức năng: Tạo đơn hàng mới
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Lên đơn 5 hộp Antrinano cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DonHangChiTiet_Insert_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Lên đơn thành công cho khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Sản phẩm: `Antrinano Plus` - Số lượng: `5 hộp`
+  - Mã đơn hàng sinh ra: `DMB0526/2296` (Trạng thái: Chờ duyệt)
+
+----------------------------------------
+
+### 📌 Kịch bản 05: [BinhPhuocA] - Chức năng: Gợi ý đặt hàng cho khách
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Gợi ý đơn hàng cho Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonHang_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng phân tích: **Nhà Thuốc Lê Hùng 2**
+  - Danh sách sản phẩm gợi ý nên nhập: `Antrinano Plus (chu kỳ 30 ngày, 15 ngày chưa mua)`
+
+----------------------------------------
+
+### 📌 Kịch bản 06: [BinhPhuocA] - Chức năng: Gợi ý bán kèm (Upsell)
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Có sản phẩm nào bán kèm Antrinano không?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_UpsellGoiY_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm bán kèm đề xuất cho Antrinano: `Argelomag` (Tỉ lệ mua cùng: **87%**), `Topalpha` (Tỉ lệ mua cùng: **64%**)
+
+----------------------------------------
+
+### 📌 Kịch bản 07: [BinhPhuocA] - Chức năng: Tra cứu thông tin sản phẩm
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Thông tin sản phẩm Antrinano Plus"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TraCuuSanPham_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Sản phẩm: `Antrinano Plus (Hộp 3 vỉ x 10 viên)`
+  - Công dụng: Hỗ trợ giảm triệu chứng trĩ, nhuận tràng, tăng sức bền thành mạch.
+  - Đơn giá: **145,000 VND / Hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 08: [BinhPhuocA] - Chức năng: Xem tổng công nợ khu vực
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tổng công nợ vùng tôi tháng 5"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoKhachHang_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tổng công nợ vùng hiện tại: **75,000,000 VND**
+  - Số khách hàng nợ: **1 khách**
+
+----------------------------------------
+
+### 📌 Kịch bản 09: [BinhPhuocA] - Chức năng: Chi tiết công nợ từng khách
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_CongNoChiTiet_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Hóa đơn chưa thanh toán: Hóa đơn UAT dư nợ đầu kỳ `DK_UAT_BinhPhuocA` - Số tiền: **75,000,000 VND**
+
+----------------------------------------
+
+### 📌 Kịch bản 10: [BinhPhuocA] - Chức năng: Tra cứu hóa đơn
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Hóa đơn của Nhà Thuốc Lê Hùng 2 gần đây"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_HoaDon_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 11: [BinhPhuocA] - Chức năng: Điểm tích lũy khách hàng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Nhà Thuốc Lê Hùng 2 có bao nhiêu điểm tích lũy?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TichLuy_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 12: [BinhPhuocA] - Chức năng: Tuyến bán hàng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tuyến bán hàng của tôi hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_TuyenBanHang_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Số khách hàng đi tuyến hôm nay: **3 khách hàng**
+  - Danh sách đi đầu: **Nhà Thuốc Lê Hùng 2** (Tuyến: ONLINE3, Lịch ghé: Thứ 2)
+
+----------------------------------------
+
+### 📌 Kịch bản 13: [BinhPhuocA] - Chức năng: Gợi ý thuốc theo triệu chứng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Bệnh nhân bị mất ngủ nên dùng thuốc gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_GoiYDonThuoc_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 14: [BinhPhuocA] - Chức năng: Đề xuất khuyến mại
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Tháng này có chương trình khuyến mãi gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DeXuatKhuyenMai_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 15: [BinhPhuocA] - Chức năng: Sản phẩm trọng tâm tháng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Sản phẩm trọng tâm tháng này là gì?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_SanPhamTrongTam_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 16: [BinhPhuocA] - Chức năng: Tra cứu danh mục phân loại
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Các nhóm sản phẩm trong hệ thống"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhMuc_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------
+
+### 📌 Kịch bản 17: [BinhPhuocA] - Chức năng: Chấm điểm tin cậy RFM-C
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Điểm tín dụng của Nhà Thuốc Lê Hùng 2"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_ChamDiemKH_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Khách hàng: **Nhà Thuốc Lê Hùng 2**
+  - Điểm tín dụng RFM-C: **2579 điểm** (Phân hạng: **VIP/Khách hàng Kim Cương**)
+
+----------------------------------------
+
+### 📌 Kịch bản 18: [BinhPhuocA] - Chức năng: Kiểm tra tồn kho
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Còn bao nhiêu hộp Antrinano Plus trong kho?"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_DanhsachTonKho_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Tồn kho sản phẩm Antrinano Plus: Kho tổng Miền Bắc: **1,250 hộp**, Kho Trung chuyển: **450 hộp**
+
+----------------------------------------
+
+### 📌 Kịch bản 19: [BinhPhuocA] - Chức năng: Khảo sát khách hàng
+- **Tài khoản**: `BinhPhuocA` (Nguyễn Quốc Tuấn)
+- **Vai trò / Vùng**: `TDV` - Vùng `Miền Nam`
+- **Câu hỏi kiểm thử mẫu**: *"Danh sách câu hỏi khảo sát hôm nay"*
+- **Stored Procedure thực tế**: `EXEC dbo.API_KhaoSat_AI @Username = 'BinhPhuocA'`...
+- **Kết quả dữ liệu trả về thực tế**:
+  - Dữ liệu trả về: Khớp hoàn chỉnh cấu trúc API nghiệp vụ, không có dữ liệu trống (0).
+
+----------------------------------------

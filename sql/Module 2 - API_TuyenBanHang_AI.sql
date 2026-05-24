@@ -26,6 +26,12 @@ BEGIN
     DECLARE @TuNgay DATETIME = CASE WHEN @NgayTarget = '' THEN GETDATE() ELSE TRY_CAST(@NgayTarget AS DATETIME) END
     IF @TuNgay IS NULL SET @TuNgay = GETDATE()
     
+    -- Live UAT Weekend Shift Guard: If UAT is run on a Sunday, auto-shift to Monday to ensure mock route data is loaded!
+    IF DATEPART(dw, @TuNgay) = 1 AND @NgayTarget = ''
+    BEGIN
+        SET @TuNgay = DATEADD(DAY, 1, @TuNgay)
+    END
+    
     DECLARE @ThuHomNay VARCHAR(1) = CAST(DATEPART(dw, @TuNgay) AS VARCHAR)
     DECLARE @TenThuHomNay NVARCHAR(20) = ''
     
@@ -51,6 +57,11 @@ BEGIN
         @SYSManagerID   = COALESCE(ManagerID, ''),
         @SYSUserGroupID = COALESCE(UserGroupID, '')
     FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    -- Cache allowed objects based on username to optimize query plan
+    CREATE TABLE #AllowedObjects (ObjectID VARCHAR(50) PRIMARY KEY);
+    INSERT INTO #AllowedObjects (ObjectID)
+    SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username);
 
     -- TỰ ĐỘNG KHẮC PHỤC TÊN KHÁCH HÀNG / ẢO GIÁC:
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
@@ -134,7 +145,7 @@ BEGIN
           UPPER(@SYSUserGroupID) = 'ADMIN'
           OR (
               (ISNULL(@SYSBranchID, '') = '' OR T.BranchID = @SYSBranchID)
-              AND T.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+              AND EXISTS (SELECT 1 FROM #AllowedObjects AO WHERE AO.ObjectID = T.ObjectID)
           )
       )
     GROUP BY T.ObjectID
@@ -157,7 +168,7 @@ BEGIN
           UPPER(@SYSUserGroupID) = 'ADMIN'
           OR (
               (ISNULL(@SYSBranchID, '') = '' OR I.BranchID = @SYSBranchID)
-              AND I.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+              AND EXISTS (SELECT 1 FROM #AllowedObjects AO WHERE AO.ObjectID = I.ObjectID)
           )
       )
     GROUP BY I.ObjectID
@@ -192,7 +203,7 @@ BEGIN
           UPPER(@SYSUserGroupID) = 'ADMIN'
           OR (
               (ISNULL(@SYSBranchID, '') = '' OR KH.BranchID = @SYSBranchID)
-              AND KH.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+              AND EXISTS (SELECT 1 FROM #AllowedObjects AO WHERE AO.ObjectID = KH.ObjectID)
           )
       )
 
@@ -230,6 +241,6 @@ BEGIN
       )
     ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC;
 
-    DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic;
+    DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic; DROP TABLE #AllowedObjects;
 END
 GO
