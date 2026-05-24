@@ -135,352 +135,54 @@ def parse_js_data(text):
         users[username] = meta
     return users
 
-# ═══ MAIN Restructure & Compile ═══
+# ═══ MAIN Compile ═══
 
 def run_restructuring():
-    # Read the parsed UAT JS data from scratch file
-    js_scratch_path = r"C:\Users\Legion\\.gemini\\antigravity-ide\\brain\\6a02651b-e61b-426a-b4c8-4018525d71d0\\scratch\\parsed_js.txt"
-    print("Reading parsed JS scratch data...")
-    with open(js_scratch_path, "r", encoding="utf-8") as f:
-        js_text = f.read()
-        
-    uat_users = parse_js_data(js_text)
-    print("Successfully parsed UAT users count:", len(uat_users))
-
-    # Define the template content
-    md_content = """# HƯỚNG DẪN SỬ DỤNG HỆ THỐNG TRỢ LÝ AI MEDSTAND
-
-*Tài liệu hướng dẫn nghiệp vụ & Kịch bản kiểm thử dành cho Business*
-*Phiên bản: V38 (Tháng 05/2026)*
-
----
-
-## PHẦN 1: THÔNG TIN CHUNG
-
-### 1.1 Giới thiệu mục đích
-Tài liệu này hướng dẫn cách sử dụng Trợ lý AI Medstand (tích hợp trên hệ thống medtest.bms79.com). Trợ lý AI Medstand giúp đội ngũ kinh doanh tra cứu dữ liệu doanh số, tồn kho, công nợ, gợi ý bán hàng và lên đơn hàng nhanh chóng bằng ngôn ngữ tự nhiên thông qua cửa sổ chat tương tự như Zalo/Viber.
-
-### 1.2 Đối tượng sử dụng
-- **Trình dược viên (Sales)**: Tra cứu doanh số cá nhân, gợi ý đặt hàng, kiểm tra tồn kho, lập đơn hàng mới trực tiếp qua chat.
-- **Quản lý vùng (Manager)**: Theo dõi doanh số nhóm, kiểm tra đơn hàng chờ duyệt, quản lý công nợ và hóa đơn trong khu vực phụ trách.
-- **Ban Giám đốc (Director)**: Xem báo cáo doanh số tổng quan toàn quốc, kiểm tra sản phẩm trọng tâm và đề xuất khuyến mãi.
-
----
-
-## PHẦN 2: CHUẨN BỊ BAN ĐẦU
-
-Để bắt đầu sử dụng hệ thống Trợ lý AI, người dùng cần chuẩn bị:
-1. **Thiết bị**: Điện thoại thông minh (Android/iPhone) hoặc máy tính có kết nối Internet.
-2. **Trình duyệt**: Khuyến nghị sử dụng **Google Chrome** hoặc **Safari** để có trải nghiệm hiển thị mượt mà nhất.
-3. **Địa chỉ truy cập**: Vào website `https://medtest.bms79.com`.
-4. **Tài khoản đăng nhập**: Sử dụng tên đăng nhập và mật khẩu nội bộ do bộ phận IT cung cấp (Tham khảo danh sách tài khoản kiểm thử UAT ở phần dưới).
-
-*Lưu ý bảo mật*: Hệ thống tự động phân quyền dữ liệu theo phạm vi phụ trách của từng tài khoản đăng nhập. Nhân sự miền nào chỉ xem được dữ liệu miền đó, tuyệt đối bảo mật thông tin.
-
----
-
-## PHẦN 3: HƯỚNG DẪN SỬ DỤNG CHI TIẾT (CÁC QUY TRÌNH CỐT LÕI)
-
-### Quy trình 1: Tra cứu doanh số & Báo cáo bán hàng
-- **Bước 1**: Nhấp vào biểu tượng Chatbot ở góc dưới cùng bên phải màn hình để mở cửa sổ chat.
-- **Bước 2**: Nhập câu hỏi tự nhiên bằng tiếng Việt (có dấu hoặc không dấu).
-  *Ví dụ:* `doanh so cua toi thang nay` hoặc `doanh thu tuan nay`
-- **Bước 3**: Nhấn nút **Gửi** (hoặc Enter). AI sẽ truy xuất dữ liệu tức thời và hiển thị bảng/biểu đồ doanh số ngay trong khung chat.
-
-### Quy trình 2: Lập đơn hàng nhanh qua Chat (Không cần bấm nhiều bước)
-- **Bước 1**: Trong ô nhập liệu, gõ tên sản phẩm, số lượng và tên nhà thuốc cần lên đơn.
-  *Ví dụ:* `Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy`
-  *Mẹo*: Không cần nhớ mã sản phẩm, chỉ cần viết tắt tên nhà thuốc, AI sẽ tự động dò tìm thông minh.
-- **Bước 2**: AI phân tích câu lệnh, tự động nhận diện sản phẩm, số lượng và thông tin nhà thuốc trong giỏ hàng mẫu, sau đó phản hồi lại để bạn kiểm tra.
-- **Bước 3**: Đọc kỹ thông tin hiển thị trên màn hình xác nhận, nhấn nút **Xác nhận** để tạo đơn. Hệ thống sẽ cấp mã đơn hàng mới dạng `DMB0526/...` ở trạng thái "Chờ duyệt".
-
-### Quy trình 3: Xem gợi ý đặt hàng & Bán thêm (Upsell)
-- **Bước 1**: Nhập yêu cầu gợi ý đặt hàng cho một khách hàng cụ thể.
-  *Ví dụ:* `Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy`
-- **Bước 2**: AI phân tích lịch sử mua hàng, tần suất đặt hàng của nhà thuốc đó và đưa ra danh sách sản phẩm gợi ý nên chào kèm lý do cụ thể (ví dụ: "Sản phẩm A sắp hết chu kỳ sử dụng").
-- **Bước 3**: Để tăng thêm doanh thu trên mỗi đơn, gõ yêu cầu bán kèm:
-  *Ví dụ:* `Có sản phẩm nào bán kèm Antrinano không?`
-  AI sẽ gợi ý các sản phẩm bổ trợ (Argelomag, Topalpha...) thường được khách hàng mua cùng nhau.
-
-### Quy trình 4: Quản lý công nợ & Hóa đơn (Dành cho Quản lý)
-- **Bước 1**: Gõ yêu cầu xem tổng công nợ khu vực.
-  *Ví dụ:* `Tổng công nợ vùng tôi tháng 5`
-  AI trả về bảng tổng hợp nợ, danh sách nhà thuốc còn nợ và sắp xếp từ nợ nhiều đến nợ ít.
-- **Bước 2**: Tra cứu chi tiết hóa đơn chưa thanh toán của một khách hàng:
-  *Ví dụ:* `Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?`
-  AI trả về danh sách hóa đơn cụ thể kèm số tiền và ngày đến hạn thanh toán để tiện đôn đốc thu hồi nợ.
-
-### Quy trình 5: Cập nhật tri thức mới lên hệ thống AI (Dành cho Quản lý trở lên)
-Nhằm chủ động cập nhật các tài liệu nội bộ (Chính sách bán hàng, Catalogue sản phẩm mới, Chương trình khuyến mãi) mà không cần can thiệp kỹ thuật:
-- **Bước 1**: Truy cập menu **"Quản lý Trợ lý (RAG)"** tại Cổng cập nhật tri thức AI (`#/rag-admin`).
-- **Bước 2**: Tại vùng kéo thả tài liệu, chọn hoặc kéo thả trực tiếp tài liệu cần nạp (`PDF`, `DOCX`, `XLSX`, hoặc hình ảnh poster `PNG`/`JPG`).
-- **Bước 3**: Nhập **Tên tài liệu / Tiêu đề** và lựa chọn **Ngày hết hạn hiệu lực** của tài liệu (nếu có).
-- **Bước 4**: Nhấn nút **"Đồng bộ Tri thức lên AI"**.
-- **Bước 5**: Khi hộp thoại **Xác nhận** xuất hiện, bấm **Đồng ý**. Hệ thống sẽ tự động bóc tách chữ qua OCR thông minh (đối với ảnh) hoặc băm phân đoạn (đối với văn bản) và lưu trữ bảo mật vào Qdrant Vector Store của công ty.
-- **Bước 6**: Sau 5-10 giây, hộp thoại báo cáo **Thành công** sẽ xuất hiện. Trợ lý AI lúc này đã tự động được học tri thức mới và sẵn sàng tư vấn nghiệp vụ cho toàn bộ đội ngũ bán hàng ngay lập tức.
-
----
-
-## PHẦN 4: CÁC LỖI THƯỜNG GẶP VÀ CÁCH KHẮC PHỤC (FAQ / TROUBLESHOOTING)
-
-- **Vấn đề 1: Tôi quên mật khẩu đăng nhập phải làm thế nào?**
-  *Khắc phục*: Hệ thống hiện tại chưa có tính năng tự reset mật khẩu qua email. Bạn vui lòng liên hệ trực tiếp bộ phận IT nội bộ, cung cấp Tên đăng nhập để được cấp lại mật khẩu mới trong vòng 24 giờ.
-  
-- **Vấn đề 2: AI báo lỗi "Không có quyền xem thông tin này"**
-  *Khắc phục*: Đây không phải lỗi hệ thống mà là tính năng bảo mật phân quyền đang hoạt động đúng. Tài khoản của bạn chỉ xem được dữ liệu trong vùng mình phụ trách. Việc cố tình tra cứu số liệu của nhân sự khác vùng sẽ bị AI từ chối.
-  
-- **Vấn đề 3: Đơn hàng lập nhầm qua chat có hủy được không?**
-  *Khắc phục*: Được. Sau khi tạo đơn qua AI, đơn sẽ ở trạng thái "Chờ duyệt". Bạn hãy liên hệ ngay với Quản lý vùng của mình để yêu cầu từ chối duyệt/hủy đơn hàng đó trên hệ thống trước khi kho xuất hàng.
-
-- **Vấn đề 4: AI phản hồi chậm hoặc không gửi được tin nhắn**
-  *Khắc phục*: Kiểm tra lại kết nối mạng 3G/4G/Wifi trên điện thoại của bạn. Nếu mạng ổn định, hãy thử F5 (làm mới) lại trang web medtest.bms79.com và đăng nhập lại.
-
----
-
-## PHẦN 5: THÔNG TIN LIÊN HỆ HỖ TRỢ
-
-Trong quá trình sử dụng hệ thống Medstand AI, nếu gặp bất kỳ khó khăn hoặc sự cố kỹ thuật nào ngoài hướng dẫn trên, xin vui lòng liên hệ:
-- **Hotline hỗ trợ kỹ thuật (IT Medstand)**: 1900.xxxx (Nhánh số 3)
-- **Email tiếp nhận sự cố**: it-support@medstand.vn
-- **Thời gian làm việc**: Từ 8:00 đến 17:30 (Thứ 2 đến Thứ 7 hàng tuần)
-
----
-
-## PHẦN 6: DANH SÁCH TÀI KHOẢN UAT & DỮ LIỆU KIỂM THỬ THỰC TẾ
-
-### 6.1 Bảng 1: Danh sách tài khoản kiểm thử UAT (Ghép đôi Quản lý & TDV tương ứng)
-
-| STT | Quản lý (Manager) | Tài khoản QL | Trình dược viên (TDV/Sale) | Tài khoản TDV | Vùng phụ trách | Khách hàng mẫu (UAT) |
-| :---: | :--- | :---: | :--- | :---: | :---: | :--- |
-| 1 | Mai Anh Tuấn | `QLBH013.MED` | Đoàn Văn Thừa | `NAMDINHB.MED` | Miền Bắc | Quầy Thuốc Thu Thủy (`HYA107`) |
-| 2 | Trần Văn Hướng | `QLBH016.MED` | Nguyễn Công Đức | `BACNINHA.MED` | Miền Bắc | Quầy Thuốc Thu Thủy (`HYA107`) |
-| 3 | Nguyễn Thế Anh | `QLBH005.MED` | Lê Thị Hiền | `HUEB.MED` | Miền Trung | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
-| 4 | Nguyễn Văn Việt Anh | `QLBH010.MED` | Lê Thị Lệ | `DANANGA.MED` | Miền Trung | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
-| 5 | Trần Văn Luân | `QLMN2` | Nguyễn Thị Thu Thảo | `CanThoA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
-| 6 | Nguyễn Văn Thái | `QLMD1` | Nguyễn Quốc Tuấn | `BinhPhuocA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
-| 7 | Ngô Đức Hùng | `QLBH024.MED` | Nguyễn Quốc Tuấn | `BinhPhuocA` | Miền Nam | Nhà Thuốc Lê Hùng 2 (`DNA014`) |
-
-### 6.2 Bảng 2: Mapping lệnh nhanh @ menu và Ví dụ câu hỏi tự nhiên
-
-| STT | Tính năng | Lệnh @ nhanh | Ví dụ câu hỏi chat tự nhiên tiếng Việt |
-| :---: | :--- | :--- | :--- |
-| 01 | Xem doanh số bán hàng | `@doanh_so` | `Doanh so cua toi thang nay` |
-| 02 | Bảo mật — phân quyền | `Tự động` | *(Dữ liệu tự giới hạn theo tài khoản đăng nhập)* |
-| 03 | Tra cứu đơn hàng | `@don_hang` | `Tra cuu danh sach don hang gan day cua toi` |
-| 04 | Tạo đơn hàng mới | `@lap_don_hang` | `Lên đơn 5 hộp Antrinano cho Quầy Thuốc Thu Thủy` |
-| 05 | Gợi ý đặt hàng cho khách | `@goi_y_don_hang` | `Gợi ý đơn hàng cho Quầy Thuốc Thu Thủy` |
-| 06 | Gợi ý bán kèm (Upsell) | `@upsell_goi_y` | `Có sản phẩm nào bán kèm Antrinano không?` |
-| 07 | Tra cứu thông tin sản phẩm | `@tra_cuu_san_pham` | `Thông tin sản phẩm Antrinano Plus` |
-| 08 | Xem tổng công nợ khu vực | `@cong_no_khach_hang` | `Tổng công nợ vùng tôi tháng 5` |
-| 09 | Chi tiết công nợ từng khách | `@cong_no_chi_tiet` | `Nhà Thuốc Lê Hùng 2 còn nợ hóa đơn nào?` |
-| 10 | Tra cứu hóa đơn | `@hoa_don` | `Hóa đơn của Nhà Thuốc Hồng Mai tháng 5` |
-| 11 | Điểm tích lũy khách hàng | `@tich_luy` | `Quầy Thuốc Thu Thủy có bao nhiêu điểm tích lũy?` |
-| 12 | Tuyến bán hàng | `@tuyen_ban_hang` | `Tuyến bán hàng của tôi hôm nay` |
-| 13 | Gợi ý thuốc theo triệu chứng | `@goi_y_don_thuoc` | `Bệnh nhân bị mất ngủ nên dùng thuốc gì?` |
-| 14 | Đề xuất khuyến mại | `@de_xuat_khuyen_mai` | `Tháng này có chương trình khuyến mãi gì?` |
-| 15 | Sản phẩm trọng tâm tháng | `@san_pham_trong_tam` | `Sản phẩm trọng tâm tháng này là gì?` |
-| 16 | Tra cứu danh mục phân loại | `@danh_muc` | `Các nhóm sản phẩm trong hệ thống` |
-| 17 | Chấm điểm tin cậy | `@cham_diem_k_h` | `Điểm tín dụng của Quầy Thuốc Thu Thủy` |
-| 18 | Kiểm tra tồn kho | `@danh_sach_ton_kho` | `Còn bao nhiêu hộp Antrinano Plus trong kho?` |
-| 19 | Khảo sát khách hàng | `@danh_sach_cau_hoi_khao_sat` | `Danh sách câu hỏi khảo sát hôm nay` |
-
-### 6.3 Kịch bản và Câu lệnh Kiểm thử UAT chi tiết theo từng Cặp tài khoản (Manager - Sale)
-"""
-
-    EXPECTED_OUTCOMES = {
-        "01": {
-            "m_exp": "Xem tổng doanh số của cả vùng phụ trách.",
-            "s_exp": "Chỉ xem doanh số cá nhân của chính mình."
-        },
-        "02": {
-            "m_exp": "Hệ thống từ chối hiển thị dữ liệu ngoài vùng phụ trách.",
-            "s_exp": "Hệ thống từ chối hiển thị dữ liệu ngoài vùng phụ trách."
-        },
-        "03": {
-            "m_exp": "Xem toàn bộ danh sách đơn hàng của cả vùng.",
-            "s_exp": "Chỉ xem danh sách đơn hàng của chính mình."
-        },
-        "04": {
-            "m_exp": "Lên đơn cho khách hàng bất kỳ trong vùng.",
-            "s_exp": "Lên đơn cho khách hàng thuộc tuyến mình quản lý."
-        },
-        "05": {
-            "m_exp": "Trả về gợi ý đặt hàng cho khách hàng trong vùng.",
-            "s_exp": "Trả về gợi ý đặt hàng tương tự cho khách hàng tuyến mình."
-        },
-        "06": {
-            "m_exp": "Đề xuất sản phẩm mua cùng (Argelomag, Topalpha...) để up-sale.",
-            "s_exp": "Đề xuất tương tự cho khách hàng tuyến mình phụ trách."
-        },
-        "07": {
-            "m_exp": "Trả về chi tiết quy cách, giá bán, công dụng giống nhau.",
-            "s_exp": "Trả về chi tiết quy cách, giá bán, công dụng giống nhau."
-        },
-        "08": {
-            "m_exp": "Xem tổng công nợ toàn vùng và danh sách nợ phân bổ.",
-            "s_exp": "Chỉ xem công nợ của các nhà thuốc mình phụ trách."
-        },
-        "09": {
-            "m_exp": "Tra cứu chi tiết từng hóa đơn nợ của khách hàng bất kỳ trong vùng.",
-            "s_exp": "Chỉ tra cứu được hóa đơn nợ của khách thuộc tuyến mình."
-        },
-        "10": {
-            "m_exp": "Xem toàn bộ danh sách hóa đơn xuất trong vùng phụ trách.",
-            "s_exp": "Chỉ xem danh sách hóa đơn xuất cho khách mình phụ trách."
-        },
-        "11": {
-            "m_exp": "Tra cứu điểm tích lũy của khách hàng bất kỳ trong vùng.",
-            "s_exp": "Chỉ tra cứu điểm của khách thuộc tuyến mình quản lý."
-        },
-        "12": {
-            "m_exp": "Xem tổng hợp lịch trình, danh sách tuyến đi của nhân viên cấp dưới.",
-            "s_exp": "Chỉ xem lịch trình và tuyến đi của cá nhân mình hôm nay."
-        },
-        "13": {
-            "m_exp": "Trả về phác đồ và sản phẩm bổ trợ chuyên môn giống nhau.",
-            "s_exp": "Trả về phác đồ và sản phẩm bổ trợ chuyên môn giống nhau."
-        },
-        "14": {
-            "m_exp": "Trả về chính sách khuyến mại đang áp dụng cho vùng/hệ thống.",
-            "s_exp": "Trả về chính sách khuyến mại áp dụng cho khách hàng của mình."
-        },
-        "15": {
-            "m_exp": "Xem danh mục sản phẩm trọng tâm cần thúc đẩy cho vùng.",
-            "s_exp": "Xem danh mục sản phẩm trọng tâm để chủ động chào hàng."
-        },
-        "16": {
-            "m_exp": "Tra cứu phân loại nhóm hàng giống nhau.",
-            "s_exp": "Tra cứu phân loại nhóm hàng giống nhau."
-        },
-        "17": {
-            "m_exp": "Xem điểm tín nhiệm, phân hạng khách bất kỳ trong vùng.",
-            "s_exp": "Chỉ xem phân hạng khách hàng thuộc tuyến mình quản lý."
-        },
-        "18": {
-            "m_exp": "Xem tồn kho ở các kho tổng và kho khu vực phụ trách.",
-            "s_exp": "Chỉ xem tồn kho tại các kho được phân quyền bán hàng."
-        },
-        "19": {
-            "m_exp": "Kích hoạt khảo sát cho khách hàng bất kỳ trong vùng.",
-            "s_exp": "Kích hoạt khảo sát cho khách hàng thuộc tuyến quản lý."
-        }
-    }
-
-    pairs_config = [
-        {
-            "stt": "1",
-            "region": "Miền Bắc",
-            "region_title": "Cặp 1 (Miền Bắc): Quản lý Mai Anh Tuấn & TDV Đoàn Văn Thừa",
-            "m_user": "QLBH013.MED",
-            "m_name": "Mai Anh Tuấn",
-            "s_user": "NAMDINHB.MED",
-            "s_name": "Đoàn Văn Thừa",
-            "customer": "Quầy Thuốc Thu Thủy (HYA107)"
-        },
-        {
-            "stt": "2",
-            "region": "Miền Bắc",
-            "region_title": "Cặp 2 (Miền Bắc): Quản lý Trần Văn Hướng & TDV Nguyễn Công Đức",
-            "m_user": "QLBH016.MED",
-            "m_name": "Trần Văn Hướng",
-            "s_user": "BACNINHA.MED",
-            "s_name": "Nguyễn Công Đức",
-            "customer": "Quầy Thuốc Thu Thủy (HYA107)"
-        },
-        {
-            "stt": "3",
-            "region": "Miền Trung",
-            "region_title": "Cặp 3 (Miền Trung): Quản lý Nguyễn Thế Anh & TDV Lê Thị Hiền",
-            "m_user": "QLBH005.MED",
-            "m_name": "Nguyễn Thế Anh",
-            "s_user": "HUEB.MED",
-            "s_name": "Lê Thị Hiền",
-            "customer": "Nhà Thuốc Lê Hùng 2 (DNA014)"
-        },
-        {
-            "stt": "4",
-            "region": "Miền Trung",
-            "region_title": "Cặp 4 (Miền Trung): Quản lý Nguyễn Văn Việt Anh & TDV Lê Thị Lệ",
-            "m_user": "QLBH010.MED",
-            "m_name": "Nguyễn Văn Việt Anh",
-            "s_user": "DANANGA.MED",
-            "s_name": "Lê Thị Lệ",
-            "customer": "Nhà Thuốc Lê Hùng 2 (DNA014)"
-        },
-        {
-            "stt": "5",
-            "region": "Miền Nam",
-            "region_title": "Cặp 5 (Miền Nam): Quản lý Trần Văn Luân & TDV Nguyễn Thị Thu Thảo",
-            "m_user": "QLMN2",
-            "m_name": "Trần Văn Luân",
-            "s_user": "CanThoA",
-            "s_name": "Nguyễn Thị Thu Thảo",
-            "customer": "Nhà Thuốc Lê Hùng 2 (DNA014)"
-        },
-        {
-            "stt": "6",
-            "region": "Miền Nam",
-            "region_title": "Cặp 6 (Miền Nam): Quản lý Nguyễn Văn Thái & TDV Nguyễn Quốc Tuấn",
-            "m_user": "QLMD1",
-            "m_name": "Nguyễn Văn Thái",
-            "s_user": "BinhPhuocA",
-            "s_name": "Nguyễn Quốc Tuấn",
-            "customer": "Nhà Thuốc Lê Hùng 2 (DNA014)"
-        },
-        {
-            "stt": "7",
-            "region": "Miền Nam",
-            "region_title": "Cặp 7 (Miền Nam): Quản lý Ngô Đức Hùng & TDV Nguyễn Quốc Tuấn",
-            "m_user": "QLBH024.MED",
-            "m_name": "Ngô Đức Hùng",
-            "s_user": "BinhPhuocA",
-            "s_name": "Nguyễn Quốc Tuấn",
-            "customer": "Nhà Thuốc Lê Hùng 2 (DNA014)"
-        }
-    ]
-
-    for p in pairs_config:
-        meta = uat_users.get(p["m_user"])
-        if not meta:
-            continue
-            
-        md_content += f"\n### 6.3.{p['stt']} {p['region_title']}\n"
-        md_content += f"- **Vùng phụ trách (Region)**: {p['region']}\n"
-        md_content += f"- **Tài khoản Quản lý (Manager)**: `{p['m_user']}` (Họ tên: {p['m_name']})\n"
-        md_content += f"- **Tài khoản Trình dược viên (TDV/Sale)**: `{p['s_user']}` (Họ tên: {p['s_name']})\n"
-        md_content += f"- **Khách hàng mẫu (Customer)**: {p['customer']}\n\n"
-        
-        md_content += "| STT | Tính Năng Kiểm Thử | Câu Hỏi Mẫu (Prompt) | Kỳ Vọng Đăng Nhập Quản Lý | Kỳ Vọng Đăng Nhập TDV/Sale |\n"
-        md_content += "| :---: | :--- | :--- | :--- | :--- |\n"
-        
-        for p_item in meta['prompts']:
-            stt_val = p_item['stt']
-            name_val = p_item['name']
-            text_val = p_item['text']
-            
-            # Retrieve expectations
-            exp = EXPECTED_OUTCOMES.get(stt_val, {"m_exp": "Xem toàn bộ vùng.", "s_exp": "Xem cá nhân."})
-            md_content += f"| {stt_val} | {name_val} | `{text_val}` | {exp['m_exp']} | {exp['s_exp']} |\n"
-            
-        md_content += "\n---\n"
-
-    # Write final restructured Markdown
     md_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business.md"
-    print("Writing fully rebuilt MD manual...")
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_content)
-        
-    # Compile to DOCX
     docx_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business.docx"
     docx_alt_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business_Updated.docx"
     
+    print("Reading MD manual...")
+    with open(md_path, "r", encoding="utf-8") as f:
+        md_content = f.read()
+        
     print("Compiling to Word DOCX...")
     try:
         compile_to_docx(md_content, docx_path)
+        print("Primary DOCX compiled successfully!")
     except PermissionError:
         print("\n[Warning] Primary path locked! Saving to alternative path...")
         compile_to_docx(md_content, docx_alt_path)
         print("Fallback DOCX compiled successfully!")
+
+
+def render_callout_box(doc, lines_data, font_family):
+    w_table = doc.add_table(rows=1, cols=1)
+    w_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    w_table.autofit = True
+    
+    cell = w_table.rows[0].cells[0]
+    set_cell_shading(cell, "FAFAFA")  # Soft light gray shading
+    set_cell_margins(cell, top=140, bottom=140, left=200, right=200)
+    set_cell_borders(cell, hex_color="D0D3D4", sz="6", val="dashed")  # Nice dashed border
+    
+    p = cell.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p.paragraph_format.space_before = Pt(2)
+    p.paragraph_format.space_after = Pt(2)
+    
+    for i, line in enumerate(lines_data):
+        if i > 0:
+            p = cell.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.paragraph_format.space_before = Pt(2)
+            p.paragraph_format.space_after = Pt(2)
+        apply_text_formatting(p, line, font_family, Pt(9.5), RGBColor(100, 100, 100))
+        
+    p_space = doc.add_paragraph()
+    p_space.paragraph_format.space_before = Pt(0)
+    p_space.paragraph_format.space_after = Pt(4)
+
 
 def compile_to_docx(md_content, out_docx_path):
     doc = docx.Document()
@@ -516,6 +218,16 @@ def compile_to_docx(md_content, out_docx_path):
             in_table = False
             render_word_table(doc, table_rows, FONT_FAMILY, COLOR_TEXT)
             table_rows = []
+            
+        # Blockquote (Callout / Image Slot)
+        if line.startswith('>'):
+            blockquote_lines = []
+            while idx < len(lines) and lines[idx].strip().startswith('>'):
+                clean_line = lines[idx].strip()[1:].strip()
+                blockquote_lines.append(clean_line)
+                idx += 1
+            render_callout_box(doc, blockquote_lines, FONT_FAMILY)
+            continue
             
         if not line or line.startswith('---'):
             idx += 1

@@ -262,10 +262,12 @@
 }
 
 .chat-bubble.ai .ai-table {
-  width: 100%;
+  width: max-content;
+  max-width: none;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.88em; /* Kích thước tối ưu dễ đọc trên di động */
-  min-width: 320px;
+  table-layout: auto !important;
 }
 
 .chat-bubble.ai .ai-table th,
@@ -273,6 +275,8 @@
   padding: 10px 12px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
+  text-overflow: clip !important;
+  overflow: visible !important;
 }
 
 /* Tự động xuống dòng cho cột văn bản chính (như Tên thuốc, Tên khách hàng) để hiển thị đầy đủ thông tin */

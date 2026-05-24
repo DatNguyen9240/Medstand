@@ -50,7 +50,7 @@
 
             }
 
-        } catch (e) {}
+        } catch (e) { }
 
         return '';
 
@@ -1384,7 +1384,7 @@
             // Auto-detect and normalize form actions (e.g. @lap_don_hang)
             if (res && res.apiCode === '@lap_don_hang') {
                 if (!res.action) res.action = 'ADD';
-                
+
                 // If items are not present, extract them from user query
                 if (!res.items || res.items.length === 0) {
                     var lastUsrMsg = chatHistory.slice().reverse().find(function (m) { return m.role === 'user'; });
@@ -1493,8 +1493,8 @@
                     } else {
                         warnMsg = res.message;
                     }
-                    
-                    var warningCardHtml = 
+
+                    var warningCardHtml =
                         '<div class="ai-sales-debt-card" style="border: 1px solid rgba(245, 158, 11, 0.25); border-left: 5px solid #f59e0b; background: rgba(245, 158, 11, 0.03); padding: 15px; border-radius: 12px; margin-top: 8px; backdrop-filter: blur(8px); animation: ai-inline-fadein 0.3s ease;">'
                         + '<div style="display: flex; gap: 12px; align-items: flex-start;">'
                         + '<span style="font-size: 22px; line-height: 1;">⚠️</span>'
@@ -1647,32 +1647,32 @@
         var items = [];
         // Split by comma, "và", "cộng", "+"
         var segments = text.split(/,|và|cộng|\+/i);
-        segments.forEach(function(seg) {
+        segments.forEach(function (seg) {
             seg = seg.trim();
             if (!seg) return;
-            
+
             // Strip leading action prefixes
             seg = seg.replace(/^(lên đơn|đặt đơn|đặt|mua|thêm|bán|lấy|cần|giúp|hộ)\s+/i, '');
-            
+
             // Find any number in the segment
             var numMatch = seg.match(/(\d+(?:\.\d+)?)/);
             if (numMatch) {
                 var qty = parseFloat(numMatch[1]);
                 var numIdx = seg.indexOf(numMatch[1]);
-                
+
                 var afterPart = seg.substring(numIdx + numMatch[1].length).trim();
                 var beforePart = seg.substring(0, numIdx).trim();
-                
+
                 // Clean unit from afterPart
                 var afterClean = afterPart.replace(/^(hộp|chai|vỉ|ống|gói|viên|lon|tuýp|cái|chiếc|pcs|lọ|thùng|hộp thuốc|thuốc)\s+/i, '');
-                
+
                 var namePart = '';
                 if (afterClean.replace(/[^a-zA-Z0-9]/g, '').length >= 3) {
                     namePart = afterClean;
                 } else {
                     namePart = beforePart;
                 }
-                
+
                 // Clean up namePart (remove common words)
                 var cleanKeyword = namePart
                     .replace(/^(hộp|chai|vỉ|ống|gói|viên|lon|tuýp|cái|chiếc|pcs|lọ|thùng|hộp thuốc|thuốc)\s+/i, '')
@@ -1680,7 +1680,7 @@
                     .replace(/^(lên đơn|đặt|thêm|mua|lấy|cần)\s+/i, '')
                     .replace(/\s+(cho|cho khách|khách hàng|cho nhà thuốc|cho quầy thuốc|nhà thuốc|quầy thuốc|đại lý).*$/i, '')
                     .trim();
-                
+
                 if (cleanKeyword && cleanKeyword.length >= 2) {
                     // Capitalize first letter of keyword
                     cleanKeyword = cleanKeyword.charAt(0).toUpperCase() + cleanKeyword.slice(1);
@@ -2580,7 +2580,19 @@
             'name': 'Tên',
             'phone': 'Số ĐT',
             'address': 'Địa chỉ',
-            'username': 'Tài khoản'
+            'username': 'Tài khoản',
+            // Order & general document columns translations
+            'documentid': 'Mã đơn',
+            'documentdate': 'Ngày đặt',
+            'objectname': 'Khách hàng',
+            'basetotal': 'Tổng tiền',
+            'statusname': 'Trạng thái',
+            'employeename': 'Nhân viên',
+            'docno': 'Số CT',
+            'customerphone': 'Số ĐT KH',
+            'deliverdate': 'Ngày giao',
+            'depositamount': 'Đặt cọc',
+            'diemtichluy': 'Tích lũy'
         };
         var lower = key.toLowerCase().replace(/_/g, '');
         return dict[lower] || key;
@@ -2601,12 +2613,14 @@
             // Vietnamese normalized equivalents
             'tennv', 'tenkh', 'tensanpham', 'tenkhachhang', 'tendoitac',
             'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
-            'xuhuong', 'trangthai', 'tiendo', 'muctieu'
+            'xuhuong', 'trangthai', 'tiendo', 'muctieu',
+            // Order & general document columns
+            'documentid', 'documentdate', 'objectname', 'basetotal', 'statusname', 'employeename', 'docno'
         ];
-        
+
         var primary = [];
         var secondary = [];
-        
+
         keys.forEach(function (k) {
             var lower = k.toLowerCase().replace(/_/g, '').replace(/\s/g, '');
             // Convert Vietnamese to unsigned/diacritic-free lowercase for smart matching
@@ -2625,19 +2639,19 @@
                 secondary.push(k);
             }
         });
-        
+
         if (primary.length === 0 && keys.length > 0) {
             primary.push(keys[0]);
             secondary = keys.slice(1);
         }
-        
+
         var MAX_PRIMARY = 3;
         if (primary.length > MAX_PRIMARY) {
             var extra = primary.slice(MAX_PRIMARY);
             primary = primary.slice(0, MAX_PRIMARY);
             secondary = extra.concat(secondary);
         }
-        
+
         return {
             primary: primary,
             secondary: secondary
@@ -2683,7 +2697,7 @@
             'msg', 'Msg', 'msgtype', 'MsgType',
             'objectid', 'ObjectID'
         ];
-        
+
         // Phát hiện cờ ép hiển thị toàn bộ cột từ SQL trả về (ví dụ cột 'showallcols' hoặc 'fulltable' hoặc 'showall')
         var forceShowAll = false;
         var filteredKeys = [];
@@ -2795,9 +2809,9 @@
         if (hasDetails) {
             html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
         }
-        primaryKeys.forEach(function (k) { 
+        primaryKeys.forEach(function (k) {
             var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
-            html += '<th' + thClass + '>' + _esc(_getFriendlyHeader(k)) + '</th>'; 
+            html += '<th' + thClass + '>' + _esc(_getFriendlyHeader(k)) + '</th>';
         });
 
         html += '</tr></thead>';
@@ -2848,13 +2862,13 @@
                 var val = filteredRows[i][k];
                 var cellHtml = '';
                 var lowerK = k.toLowerCase().replace(/_/g, '');
-                
+
                 if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
                     cellHtml = '<span class="ai-badge-recommend">✨ ' + _esc(_fmtCellVal(val)) + '</span>';
                 } else {
                     cellHtml = _esc(_fmtCellVal(val));
                 }
-                
+
                 var tdClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
                 html += '<td' + tdClass + '>' + cellHtml + '</td>';
             });

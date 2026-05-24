@@ -92,6 +92,13 @@ BEGIN
         SET @EmployeeID = ''
     END
 
+    -- TỰ ĐỘNG CHUYỂN HƯỚNG TÊN QUẢN LÝ SANG @ManagerID (Để hiển thị doanh số nhân viên cấp dưới)
+    IF @TenNhanVien <> '' AND EXISTS (SELECT 1 FROM SY_User WHERE (HoTen LIKE '%' + @TenNhanVien + '%' OR UserName LIKE '%' + @TenNhanVien + '%') AND COALESCE(Manager, 0) = 1)
+    BEGIN
+        SELECT TOP 1 @ManagerID = EmployeeID FROM SY_User WHERE (HoTen LIKE '%' + @TenNhanVien + '%' OR UserName LIKE '%' + @TenNhanVien + '%') AND COALESCE(Manager, 0) = 1
+        SET @TenNhanVien = ''
+    END
+
     -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh
     DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
     DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
