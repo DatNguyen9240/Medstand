@@ -1,4 +1,4 @@
-IF OBJECT_ID('API_DonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_DonHang_AI;
+﻿IF OBJECT_ID('API_DonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_DonHang_AI;
 GO
 
 CREATE PROCEDURE [dbo].[API_DonHang_AI]
@@ -91,7 +91,13 @@ BEGIN
        SET @MaKhachHang = ''
    END
 
-   -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+   DECLARE @SYS_BranchID VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    IF @SYS_BranchID = '' AND @Username <> ''
+    BEGIN
+        SELECT @SYS_BranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    END
+
+    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
    BEGIN
        DECLARE @ResolvedID VARCHAR(50) = ''
@@ -99,8 +105,8 @@ BEGIN
 
        SELECT TOP 1 @ResolvedID = ObjectID 
        FROM dbo.CF_ObjectTbl 
-       WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-          OR ObjectID LIKE '%' + @CleanSearch + '%'
+       WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+          OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
        ORDER BY 
            CASE WHEN ObjectID = @CleanSearch THEN 1
                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2

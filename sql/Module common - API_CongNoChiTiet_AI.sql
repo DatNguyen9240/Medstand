@@ -1,10 +1,19 @@
-CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
+﻿CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
    @MaKhachHang  NVARCHAR(100),
    @Username   VARCHAR(50),
    @DenNgay     DATETIME = NULL
 AS
 BEGIN
    SET NOCOUNT ON
+    
+    DECLARE @SYS_BranchID   VARCHAR(50) = ''
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+
+    SELECT 
+        @SYS_BranchID   = COALESCE(BranchID, ''),
+        @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM dbo.SY_User WITH (NOLOCK)
+    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
    -- CLEAN AI EXTRACTED BRACKETS
@@ -21,8 +30,8 @@ BEGIN
 
         SELECT TOP 1 @ResolvedID = ObjectID 
         FROM dbo.CF_ObjectTbl WITH (NOLOCK)
-        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
         ORDER BY 
             CASE WHEN ObjectID = @CleanSearch THEN 1
                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
@@ -43,14 +52,7 @@ BEGIN
         SELECT N'Vui lòng cung cấp mã khách hàng để xem chi tiết.' AS [Msg], 1 AS [MsgType]
         RETURN
     END
-     DECLARE @SYS_BranchID   VARCHAR(50) = ''
-     DECLARE @SYSUserGroupID VARCHAR(50) = ''
      
-     SELECT 
-         @SYS_BranchID   = COALESCE(BranchID, ''),
-         @SYSUserGroupID = COALESCE(UserGroupID, '')
-     FROM dbo.SY_User WITH (NOLOCK)
-     WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
 
      IF UPPER(@SYSUserGroupID) <> 'ADMIN'
      BEGIN

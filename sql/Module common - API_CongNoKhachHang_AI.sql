@@ -1,10 +1,21 @@
-CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
+﻿CREATE OR ALTER PROCEDURE [dbo].[API_CongNoKhachHang_AI]
    @DenNgay     DATETIME     = NULL,
    @MaKhachHang  NVARCHAR(100) = '',
    @Username   VARCHAR(50)
 AS
 BEGIN
    SET NOCOUNT ON
+    
+    DECLARE @SYS_BranchID   VARCHAR(50) = ''
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+
+    SELECT 
+        @SYS_BranchID   = COALESCE(BranchID, ''),
+        @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM dbo.SY_User 
+    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    
+    
 
    -- CLEAN AI EXTRACTED BRACKETS
    IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
@@ -29,8 +40,8 @@ BEGIN
 
         SELECT TOP 1 @ResolvedID = ObjectID 
         FROM dbo.CF_ObjectTbl 
-        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
         ORDER BY 
             CASE WHEN ObjectID = @CleanSearch THEN 1
                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
@@ -46,14 +57,7 @@ BEGIN
         END
     END
    
-   DECLARE @SYS_BranchID   VARCHAR(50) = ''
-   DECLARE @SYSUserGroupID VARCHAR(50) = ''
-
-   SELECT 
-       @SYS_BranchID   = COALESCE(BranchID, ''),
-       @SYSUserGroupID = COALESCE(UserGroupID, '')
-   FROM dbo.SY_User 
-   WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+   
 
    IF @MaKhachHang = '' OR @MaKhachHang IS NULL
    BEGIN

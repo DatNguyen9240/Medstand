@@ -1,4 +1,4 @@
-IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
+﻿IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
 GO
 
 CREATE PROCEDURE API_TichLuy_AI
@@ -11,6 +11,9 @@ CREATE PROCEDURE API_TichLuy_AI
 AS
 BEGIN
    SET NOCOUNT ON
+    
+    DECLARE @SYSBranchID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
    
     -- 1. KIỂM TRA QUYỀN
     IF NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
@@ -27,8 +30,8 @@ BEGIN
 
          SELECT TOP 1 @ResolvedID = ObjectID 
          FROM dbo.CF_ObjectTbl WITH (NOLOCK)
-         WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-            OR ObjectID LIKE '%' + @CleanSearch + '%'
+         WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+            OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
          ORDER BY 
              CASE WHEN ObjectID = @CleanSearch THEN 1
                   WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
@@ -44,8 +47,7 @@ BEGIN
          END
      END
 
-     DECLARE @SYSBranchID VARCHAR(50) = ''
-     SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username
+     
 
 
     -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH
