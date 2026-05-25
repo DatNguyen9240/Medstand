@@ -1,6 +1,10 @@
-$env:N8N_USER_FOLDER = "c:\Git cua tui\Medstand\n8n-system\n8n_data"
-$env:PATH = "c:\Git cua tui\Medstand\n8n-system\n8n_data\npm_global;" + $env:PATH
-$env:PM2_HOME = "c:\Git cua tui\Medstand\n8n-system\n8n_data\.pm2"
+# 0. Determine dynamic paths relative to this script directory
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrEmpty($scriptDir)) { $scriptDir = $PSScriptRoot }
+
+$env:N8N_USER_FOLDER = "$scriptDir\n8n_data"
+$env:PATH = "$scriptDir\n8n_data\npm_global;" + $env:PATH
+$env:PM2_HOME = "$scriptDir\n8n_data\.pm2"
 
 Write-Host "--- RESTARTING N8N SERVICES VIA PM2 ---"
 pm2 restart all
