@@ -142,7 +142,7 @@ BEGIN
     END
 
     -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh
-    DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    SET @SYS_BranchID    = ISNULL(@SYSBranchID, '')
     DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
     DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
     DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
