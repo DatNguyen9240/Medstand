@@ -215,16 +215,7 @@ BEGIN
     FROM IV_StockTbl WITH (NOLOCK)
     GROUP BY ItemID;
 
-    -- ═══ 7.5. Danh sách sản phẩm trọng tâm ═══
-    SELECT DISTINCT ItemID INTO #TrongTam 
-    FROM AR_SanPhamTrongTamDetailTbl WITH (NOLOCK)
-    WHERE DocumentID = @ProgramID;
-
-    -- ════════════════════════════════════════════════════
-    -- BẢNG 2: GỢI Ý SẢN PHẨM (KỊCH BẢN CHIA NHÁNH BẰNG IF ELSE)
-    -- ════════════════════════════════════════════════════
-
-    -- Chuẩn hóa các liên từ nối tiếng Việt thành khoảng trắng/dấu phẩy đề phòng n8n chưa xử lý
+    -- ═══ 7.5. Danh sách sản phẩm trọng tâm �    -- Chuẩn hóa các liên từ nối tiếng Việt thành khoảng trắng/dấu phẩy đề phòng n8n chưa xử lý
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng với ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' với ', ','), N' Với ', ','), N' & ', ','), N' + ', ',');
 
@@ -233,6 +224,29 @@ BEGIN
 
     IF @timkiem != ''
     BEGIN
+        -- Clean and split keyword using stop words
+        DECLARE @Terms TABLE (Term NVARCHAR(100));
+        DECLARE @StopWords TABLE (Word NVARCHAR(100));
+        INSERT INTO @StopWords (Word) VALUES 
+        (N'và'), (N'của'), (N'thuốc'), (N'bị'), (N'cho'), (N'nên'), (N'uống'), (N'gì'), (N'tư'), (N'vấn'), 
+        (N'thành'), (N'phần'), (N'công'), (N'dụng'), (N'giá'), (N'tìm'), (N'hiệu'), (N'quả'), (N'tốt'), 
+        (N'nhất'), (N'có'), (N'thể'), (N'được'), (N'là'), (N'trong'), (N'với'), (N'cùng'), (N'đi'), 
+        (N'kèm'), (N'khách'), (N'em'), (N'tôi'), (N'mình'), (N'bác'), (N'sĩ'), (N'nhà'), (N'hỏi'), 
+        (N'muốn'), (N'mua'), (N'bán'), (N'thông'), (N'tin'), (N'chi'), (N'tiết'), (N'sản'),
+        (N'thì'), (N'ở'), (N'hộ'), (N'giúp'), (N'bởi'), (N'vì'), (N'như'), (N'thế'), (N'nào'), (N'a'), (N'ạ');
+
+        DECLARE @clean_timkiem NVARCHAR(200) = @timkiem;
+        SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' cùng với ', ' '), N' Cùng với ', ' '), N' đi kèm ', ' '), N' Đi kèm ', ' '), N' và ', ' '), N' Và ', ' ');
+        SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' với ', ' '), N' Với ', ' '), N' & ', ' '), N' + ', ' ');
+        SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, '.', ' '), ',', ' '), '-', ' '), '?', ' '), '!', ' '), ':', ' ');
+        SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' ');
+
+        INSERT INTO @Terms (Term)
+        SELECT DISTINCT LTRIM(RTRIM(value))
+        FROM STRING_SPLIT(@clean_timkiem, ' ')
+        WHERE LTRIM(RTRIM(value)) <> '' 
+          AND LTRIM(RTRIM(value)) NOT IN (SELECT Word FROM @StopWords);
+
         -- ====================================================================
         -- KỊCH BẢN 1: TÌM SẢN PHẨM THEO TRIỆU CHỨNG (SEARCH KEY)
         -- Yêu cầu: Trả về chính xác hàng khớp từ khóa. Tuyệt đối không nhét Trọng Tâm vào.
@@ -268,7 +282,33 @@ BEGIN
                 (CASE WHEN CHARINDEX(' '+@timkiem+' ', ' '+REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS,',',' '),'.',' '),'-',' ')+' ') > 0 THEN 50000 ELSE 0 END) +
                 
                 -- Ưu tiên 5: Từ khóa (TuKhoa) contains
-                (CASE WHEN I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' THEN 10000 ELSE 0 END)
+                (CASE WHEN I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' THEN 10000 ELSE 0 END) +
+
+                -- Ưu tiên 6: Số lượng từ khoá con khớp (+50000 điểm cho mỗi từ khớp)
+                COALESCE((
+                    SELECT COUNT(*) * 50000 
+                    FROM @Terms T 
+                    WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%' 
+                       OR I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%'
+                ), 0)
+            ) AS PriorityScore,
+            N'Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | Hết hàng' ELSE N' | Còn hàng' END AS LyDoGoiY
+        INTO #KetQuaKichBan1
+        FROM CF_ItemTbl I WITH (NOLOCK)
+        LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
+        LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
+        WHERE ISNULL(I.isDisable, 0) = 0
+          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+          AND (
+              I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
+              I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
+              EXISTS (
+                  SELECT 1 FROM @Terms T 
+                  WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%' 
+                     OR I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%'
+              )
+          )0000 ELSE 0 END)
             ) AS PriorityScore,
             N'Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | Hết hàng' ELSE N' | Còn hàng' END AS LyDoGoiY
         INTO #KetQuaKichBan1

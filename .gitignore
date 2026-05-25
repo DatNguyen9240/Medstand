@@ -22,8 +22,9 @@ n8n-system/cloudflared.exe
 # ── File test tạm ──
 n8n-system/test_n8n.ps1
 
-# ── Node modules ──
+# ── Node modules & Virtual Environment ──
 node_modules/
+.venv/
 
 # ── Scratch / temp files (tạo bởi AI tools) ──
 scratch*
@@ -37,6 +38,8 @@ n8n-system/bin/
 HDSD_*.doc
 HDSD_*.docx
 HDSD_temp*.doc
+~$*.doc
+~$*.docx
 
 # ── Debug dump / test files ──
 qdrant_*.txt

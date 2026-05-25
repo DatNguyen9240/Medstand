@@ -10,8 +10,31 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa
+    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa cho từ khóa tìm kiếm gốc
     SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));
+
+    -- Clean and split keyword using stop words
+    DECLARE @Terms TABLE (Term NVARCHAR(100));
+    DECLARE @StopWords TABLE (Word NVARCHAR(100));
+    INSERT INTO @StopWords (Word) VALUES 
+    (N'và'), (N'của'), (N'thuốc'), (N'bị'), (N'cho'), (N'nên'), (N'uống'), (N'gì'), (N'tư'), (N'vấn'), 
+    (N'thành'), (N'phần'), (N'công'), (N'dụng'), (N'giá'), (N'tìm'), (N'hiệu'), (N'quả'), (N'tốt'), 
+    (N'nhất'), (N'có'), (N'thể'), (N'được'), (N'là'), (N'trong'), (N'với'), (N'cùng'), (N'đi'), 
+    (N'kèm'), (N'khách'), (N'em'), (N'tôi'), (N'mình'), (N'bác'), (N'sĩ'), (N'nhà'), (N'hỏi'), 
+    (N'muốn'), (N'mua'), (N'bán'), (N'thông'), (N'tin'), (N'chi'), (N'tiết'), (N'sản'),
+    (N'thì'), (N'ở'), (N'hộ'), (N'giúp'), (N'bởi'), (N'vì'), (N'như'), (N'thế'), (N'nào'), (N'a'), (N'ạ');
+
+    DECLARE @clean_timkiem NVARCHAR(200) = @timkiem;
+    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' cùng với ', ' '), N' Cùng với ', ' '), N' đi kèm ', ' '), N' Đi kèm ', ' '), N' và ', ' '), N' Và ', ' ');
+    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' với ', ' '), N' Với ', ' '), N' & ', ' '), N' + ', ' ');
+    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, '.', ' '), ',', ' '), '-', ' '), '?', ' '), '!', ' '), ':', ' ');
+    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' ');
+
+    INSERT INTO @Terms (Term)
+    SELECT DISTINCT LTRIM(RTRIM(value))
+    FROM STRING_SPLIT(@clean_timkiem, ' ')
+    WHERE LTRIM(RTRIM(value)) <> '' 
+      AND LTRIM(RTRIM(value)) NOT IN (SELECT Word FROM @StopWords);
 
     -- 1. Tìm các mã sản phẩm khớp từ khóa (Rất nhanh vì chỉ quét bảng danh mục)
     SELECT TOP (@TopN)
@@ -25,10 +48,22 @@ BEGIN
           I.ItemID LIKE @timkiem + '%' OR
           I.ItemID LIKE '%' + @timkiem + '%' OR
           I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
-          ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%'
+          ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
+          EXISTS (
+              SELECT 1 FROM @Terms T 
+              WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%' 
+                 OR ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%'
+          )
       )
       AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
-    ORDER BY I.ItemName ASC;
+    ORDER BY 
+      CASE 
+        WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 1
+        WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 2
+        WHEN EXISTS (SELECT 1 FROM @Terms T WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE T.Term + N'%') THEN 3
+        ELSE 4
+      END,
+      I.ItemName ASC;
 
 
     -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng
