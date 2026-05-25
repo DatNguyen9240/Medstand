@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 //  Medstand — Project-Specific Renderers
 //  Load SAU chatbot.js và chatbot-api-engine.js:
 //    <script src="chatbot.js"></script>
@@ -55,6 +55,9 @@
     function _renderCongNoChiTiet(rows, headerMsg, apiCode, meta) {
         var khCode    = (meta && meta.khCode) ? meta.khCode : '';
         var safeRows  = (rows && rows.length > 0) ? rows : [];
+        if (!khCode && safeRows.length > 0) {
+            khCode = h.pickValue(safeRows[0], 'CUSTOMER') || safeRows[0].ObjectID || safeRows[0].MaKH || safeRows[0].CustomerCode || '';
+        }
         var tongNo    = safeRows.length > 0 ? (Number(h.pickValue(safeRows[0], 'MONEY')) || 0) : 0;
         var tongHD    = safeRows.length > 0 ? (Number(h.pickValue(safeRows[0], 'COUNT') || safeRows.length)) : 0;
         var phatSinhDuong = 0, phatSinhAm = 0, hasReturn = false;
@@ -165,6 +168,9 @@
     function _renderTichLuy(rows, headerMsg, apiCode, meta) {
         var khCode   = (meta && meta.khCode) ? meta.khCode : '';
         var safeRows = (rows && rows.length > 0) ? rows : [];
+        if (!khCode && safeRows.length > 0) {
+            khCode = h.pickValue(safeRows[0], 'CUSTOMER') || safeRows[0].ObjectID || safeRows[0].MaKH || safeRows[0].CustomerCode || '';
+        }
         if (safeRows.length === 0) {
             return '<p class="ai-para">📭 Không có dữ liệu tích lũy.</p>';
         }

@@ -1666,8 +1666,13 @@
     function _extractCartItemsFromText(text) {
         if (!text) return [];
         var items = [];
+        
+        // Strip bracketed text/parentheses (e.g. (HYA107)) and customer codes (e.g. HYA107)
+        var cleanText = text.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '');
+        cleanText = cleanText.replace(/\b[A-Za-z]{3,}\d+\b/gi, '');
+        
         // Split by comma, "và", "cộng", "+"
-        var segments = text.split(/,|và|cộng|\+/i);
+        var segments = cleanText.split(/,|và|cộng|\+/i);
         segments.forEach(function (seg) {
             seg = seg.trim();
             if (!seg) return;

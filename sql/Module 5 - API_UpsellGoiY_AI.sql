@@ -88,7 +88,7 @@ BEGIN
     END
 
     -- ═══ Validate khachhang ═══
-    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
     BEGIN
         SELECT N'Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
@@ -96,54 +96,74 @@ BEGIN
 
     -- ═══ 1. Xác định chương trình đang hoạt động ═══
     SELECT TOP 1 @ProgramID = DocumentID 
-    FROM AR_SanPhamTrongTamTbl
+    FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
     WHERE GETDATE() BETWEEN FromDate AND ToDate
-    ORDER BY ToDate DESC
+    ORDER BY ToDate DESC;
+
+    -- UAT FALLBACK: Nếu không có chương trình đang chạy, lấy chương trình mới nhất
+    IF ISNULL(@ProgramID, '') = ''
+    BEGIN
+        SELECT TOP 1 @ProgramID = DocumentID 
+        FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
+        ORDER BY ToDate DESC;
+    END
 
     -- ═══ 2. Doanh số hiện tại của khách trong tháng (Tính cả hóa đơn & đơn nháp) ═══
     SELECT @DoanhSoHienTai = ISNULL(SUM(I.TotalAmount), 0)
     FROM (
         SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.TotalAmount
-        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+        FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
         UNION ALL
         SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.TotalAmount
-        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
+        FROM AR_OrderTbl O WITH (NOLOCK) JOIN AR_OrderDetailTbl D WITH (NOLOCK) ON O.DocumentID = D.DocumentID
     ) I
     WHERE I.ObjectID = @MaKhachHang
       AND ISNULL(I.StatusID, 0) != 10
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
-      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID);
 
     -- ═══ 3. Tự động tìm mốc thưởng tiếp theo ═══
     IF @ProgramID <> ''
     BEGIN
         SELECT TOP 1 @MucTarget = CAST(TuDiem AS FLOAT)
-        FROM AR_PromotionGiftTbl
+        FROM AR_PromotionGiftTbl WITH (NOLOCK)
         WHERE DocumentID = @ProgramID AND TuDiem > @DoanhSoHienTai
-        ORDER BY TuDiem ASC
+        ORDER BY TuDiem ASC;
     END
 
-    SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END
+    SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END;
 
-    -- (ĐÃ LOẠI BỎ BẢNG 1 RỜI RẠC. DỮ LIỆU TÍCH LŨY SẼ ĐƯỢC NHÚNG VÀO TỪNG CỘT CỦA BẢNG 2 BÊN DƯỚI)
     -- ═══ 4. Giá mới nhất từ Bảng giá ═══
     SELECT
         D.ItemID,
         MAX(H.FromDate) AS MaxFromDate
     INTO #LatestPriceHeader
-    FROM AR_PriceDetailTbl D
-    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    FROM AR_PriceDetailTbl D WITH (NOLOCK)
+    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
     WHERE H.isDisable = 0
       AND H.FromDate <= GETDATE()
       AND (H.ToDate IS NULL OR H.ToDate >= GETDATE())
     GROUP BY D.ItemID;
 
+    -- UAT FALLBACK: Nếu không có bảng giá hoạt động hôm nay, lấy bảng giá mới nhất mọi thời đại
+    IF NOT EXISTS (SELECT 1 FROM #LatestPriceHeader)
+    BEGIN
+        INSERT INTO #LatestPriceHeader (ItemID, MaxFromDate)
+        SELECT
+            D.ItemID,
+            MAX(H.FromDate) AS MaxFromDate
+        FROM AR_PriceDetailTbl D WITH (NOLOCK)
+        JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
+        WHERE H.isDisable = 0
+        GROUP BY D.ItemID;
+    END
+
     SELECT
         D.ItemID,
         MAX(D.UnitPrice) AS GiaHienTai
     INTO #GiaThiTruong
-    FROM AR_PriceDetailTbl D
-    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    FROM AR_PriceDetailTbl D WITH (NOLOCK)
+    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
     JOIN #LatestPriceHeader L ON D.ItemID = L.ItemID AND H.FromDate = L.MaxFromDate
     WHERE H.isDisable = 0
     GROUP BY D.ItemID;
@@ -151,31 +171,54 @@ BEGIN
     -- ═══ 5. Hàng khách hay mua (6 tháng gần nhất) ═══
     SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
     INTO #KhachQuen 
-    FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.ObjectID = @MaKhachHang 
       AND ISNULL(I.StatusID,0) != 10 
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
-    GROUP BY D.ItemID
+    GROUP BY D.ItemID;
+
+    -- UAT FALLBACK: Lấy tất cả lịch sử mua
+    IF NOT EXISTS (SELECT 1 FROM #KhachQuen)
+    BEGIN
+        INSERT INTO #KhachQuen (ItemID, TanSuatMua)
+        SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
+        FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
+        WHERE I.ObjectID = @MaKhachHang 
+          AND ISNULL(I.StatusID,0) != 10
+        GROUP BY D.ItemID;
+    END
 
     -- ═══ 6. Top 50 bán chạy tại chi nhánh ═══
     SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
     INTO #BanChay 
-    FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.DocumentDate >= DATEADD(DAY, -180, GETDATE()) 
       AND ISNULL(I.StatusID, 0) != 10 
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
-    GROUP BY D.ItemID
+    GROUP BY D.ItemID;
+
+    -- UAT FALLBACK: Lấy top bán chạy mọi thời đại
+    IF NOT EXISTS (SELECT 1 FROM #BanChay)
+    BEGIN
+        INSERT INTO #BanChay (ItemID, DoanhSoChiNhanh)
+        SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
+        FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
+        WHERE ISNULL(I.StatusID, 0) != 10 
+          AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+        GROUP BY D.ItemID
+        ORDER BY DoanhSoChiNhanh DESC;
+    END
 
     -- ═══ 7. Tồn kho tổng hợp ═══
     SELECT ItemID, SUM(QuantityinStock) AS QuantityinStock
     INTO #TonKho
-    FROM IV_StockTbl
-    GROUP BY ItemID
+    FROM IV_StockTbl WITH (NOLOCK)
+    GROUP BY ItemID;
 
     -- ═══ 7.5. Danh sách sản phẩm trọng tâm ═══
     SELECT DISTINCT ItemID INTO #TrongTam 
-    FROM AR_SanPhamTrongTamDetailTbl 
-    WHERE DocumentID = @ProgramID
+    FROM AR_SanPhamTrongTamDetailTbl WITH (NOLOCK)
+    WHERE DocumentID = @ProgramID;
 
     -- ════════════════════════════════════════════════════
     -- BẢNG 2: GỢI Ý SẢN PHẨM (KỊCH BẢN CHIA NHÁNH BẰNG IF ELSE)
@@ -229,7 +272,7 @@ BEGIN
             ) AS PriorityScore,
             N'Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | Hết hàng' ELSE N' | Còn hàng' END AS LyDoGoiY
         INTO #KetQuaKichBan1
-        FROM CF_ItemTbl I
+        FROM CF_ItemTbl I WITH (NOLOCK)
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
         LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
         WHERE ISNULL(I.isDisable, 0) = 0
@@ -293,7 +336,8 @@ BEGIN
                 WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy'
                 ELSE N'Gợi ý sẵn có'
             END AS LyDoGoiY
-        FROM CF_ItemTbl I
+        INTO #KetQuaKichBan2
+        FROM CF_ItemTbl I WITH (NOLOCK)
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
         LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
         LEFT JOIN #KhachQuen KQ ON I.ItemID = KQ.ItemID
@@ -303,8 +347,53 @@ BEGIN
           AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
           AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
           AND ISNULL(S.QuantityinStock, 0) > 0
-          AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL)
-        ORDER BY PriorityScore DESC, ISNULL(KQ.TanSuatMua, 0) DESC
+          AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
+
+        -- UAT FALLBACK: Nếu không có sản phẩm nào có sẵn tồn kho, lấy cả sản phẩm hết hàng
+        IF NOT EXISTS (SELECT 1 FROM #KetQuaKichBan2)
+        BEGIN
+            INSERT INTO #KetQuaKichBan2
+            SELECT TOP (@TopN)
+                CAST(@DoanhSoHienTai AS BIGINT) AS DoanhSoDaDat,
+                CAST(@MucTarget AS BIGINT)      AS MucTieuTiepTheo,
+                CAST(@SoTienThieu AS BIGINT)    AS SoTienConThieu,
+                CASE 
+                    WHEN @ProgramID = '' THEN N'Hiện không có chương trình tích lũy nào đang chạy.'
+                    WHEN @MucTarget > 0  THEN N'Khách thiếu ' + FORMAT(@SoTienThieu, 'N0') + N'đ để đạt mốc thưởng kế tiếp.'
+                    ELSE N'Chúc mừng! Khách đã vượt mọi mốc thưởng cao nhất tháng này.'
+                END AS LoiNhacAI,
+
+                I.ItemID, 
+                I.ItemName, 
+                I.Unit,
+                CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
+                ISNULL(S.QuantityinStock, 0)               AS TonKho,
+                (
+                    (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
+                    (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
+                    (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
+                    (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
+                ) AS PriorityScore,
+                CASE
+                    WHEN TT.ItemID IS NOT NULL THEN N'Hàng TRỌNG TÂM (Hết hàng)'
+                    WHEN KQ.ItemID IS NOT NULL THEN N'Combo: Hàng khách quen (Hết hàng)'
+                    WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy (Hết hàng)'
+                    ELSE N'Gợi ý sẵn có (Hết hàng)'
+                END AS LyDoGoiY
+            FROM CF_ItemTbl I WITH (NOLOCK)
+            LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
+            LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
+            LEFT JOIN #KhachQuen KQ ON I.ItemID = KQ.ItemID
+            LEFT JOIN #BanChay BC ON I.ItemID = BC.ItemID
+            LEFT JOIN #TrongTam TT ON I.ItemID = TT.ItemID
+            WHERE ISNULL(I.isDisable, 0) = 0
+              AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+              AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+              AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
+        END
+
+        SELECT * FROM #KetQuaKichBan2 ORDER BY PriorityScore DESC, TonKho DESC;
+        DROP TABLE #KetQuaKichBan2;
     END
 
     DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;

@@ -49,8 +49,9 @@ OUTER APPLY (
     FROM AR_PriceView
     WHERE ItemID = J.ItemID
       AND isDisable = 0
-      AND GETDATE() BETWEEN FromDate AND ToDate
-    ORDER BY FromDate DESC
+    ORDER BY 
+      CASE WHEN GETDATE() BETWEEN FromDate AND ToDate THEN 1 ELSE 2 END,
+      FromDate DESC
 ) P
 GROUP BY J.ItemID
 IF EXISTS (SELECT 1 FROM #Items WHERE ItemName IS NULL)

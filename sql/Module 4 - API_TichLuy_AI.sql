@@ -12,78 +12,78 @@ AS
 BEGIN
    SET NOCOUNT ON
    
-   -- 1. KIỂM TRA QUYỀN
-   IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
-   BEGIN
-       SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
-   END
-
-
-    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
-    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    -- 1. KIỂM TRA QUYỀN
+    IF NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
-        DECLARE @ResolvedID VARCHAR(50) = ''
-        DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
-
-        SELECT TOP 1 @ResolvedID = ObjectID 
-        FROM dbo.CF_ObjectTbl 
-        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%'
-        ORDER BY 
-            CASE WHEN ObjectID = @CleanSearch THEN 1
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
-                 ELSE 4
-            END,
-            COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-            LEN(ObjectName) ASC;
-
-        IF @ResolvedID <> ''
-        BEGIN
-            SET @MaKhachHang = @ResolvedID
-        END
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
     END
 
-    DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+
+     -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
+     BEGIN
+         DECLARE @ResolvedID VARCHAR(50) = ''
+         DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+
+         SELECT TOP 1 @ResolvedID = ObjectID 
+         FROM dbo.CF_ObjectTbl WITH (NOLOCK)
+         WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+            OR ObjectID LIKE '%' + @CleanSearch + '%'
+         ORDER BY 
+             CASE WHEN ObjectID = @CleanSearch THEN 1
+                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
+                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                  ELSE 4
+             END,
+             COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+             LEN(ObjectName) ASC;
+
+         IF @ResolvedID <> ''
+         BEGIN
+             SET @MaKhachHang = @ResolvedID
+         END
+     END
+
+     DECLARE @SYSBranchID VARCHAR(50) = ''
+     SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username
 
 
-   -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH
-   IF @ProgramID = ''
-       SELECT TOP 1 @ProgramID = DocumentID FROM AR_SanPhamTrongTamTbl ORDER BY ToDate DESC
-   
-   IF @TuNgay IS NULL OR @DenNgay IS NULL
-       SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WHERE DocumentID = @ProgramID
+    -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH
+    IF @ProgramID = ''
+        SELECT TOP 1 @ProgramID = DocumentID FROM AR_SanPhamTrongTamTbl WITH (NOLOCK) ORDER BY ToDate DESC
+    
+    IF @TuNgay IS NULL OR @DenNgay IS NULL
+        SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WITH (NOLOCK) WHERE DocumentID = @ProgramID
 
 
-   -- 3. DANH SÁCH SẢN PHẨM TRỌNG TÂM
-   SELECT DISTINCT ItemID INTO #TrongTam FROM (
-       SELECT CAST(value AS VARCHAR(50)) AS ItemID FROM STRING_SPLIT(@ItemIDs, ',') WHERE @ItemIDs != ''
-       UNION ALL
-       SELECT ItemID FROM AR_SanPhamTrongTamDetailTbl WHERE @ItemIDs = '' AND DocumentID = @ProgramID
-   ) X
-
-
-    -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM (Tính cả hóa đơn & đơn nháp)
-    SELECT I.ObjectID, SUM(I.TotalAmount) AS TongHoaDon INTO #HoaDon
-    FROM (
-        SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.ItemID, D.TotalAmount
-        FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
+    -- 3. DANH SÁCH SẢN PHẨM TRỌNG TÂM
+    SELECT DISTINCT ItemID INTO #TrongTam FROM (
+        SELECT CAST(value AS VARCHAR(50)) AS ItemID FROM STRING_SPLIT(@ItemIDs, ',') WHERE @ItemIDs != ''
         UNION ALL
-        SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.ItemID, D.TotalAmount
-        FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
-    ) I
-    JOIN #TrongTam T ON I.ItemID = T.ItemID
-    WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
-      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
-    GROUP BY I.ObjectID
+        SELECT ItemID FROM AR_SanPhamTrongTamDetailTbl WITH (NOLOCK) WHERE @ItemIDs = '' AND DocumentID = @ProgramID
+    ) X
 
 
-   SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
-   FROM AR_ReturnTbl R JOIN AR_ReturnDetailTbl D ON R.DocumentID = D.DocumentID
-   JOIN #TrongTam T ON D.ItemID = T.ItemID
-   WHERE R.DocumentDate BETWEEN @TuNgay AND @DenNgay AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
-   GROUP BY R.ObjectID
+     -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM (Tính cả hóa đơn & đơn nháp)
+     SELECT I.ObjectID, SUM(I.TotalAmount) AS TongHoaDon INTO #HoaDon
+     FROM (
+         SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.ItemID, D.TotalAmount
+         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
+         UNION ALL
+         SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.ItemID, D.TotalAmount
+         FROM AR_OrderTbl O WITH (NOLOCK) JOIN AR_OrderDetailTbl D WITH (NOLOCK) ON O.DocumentID = D.DocumentID
+     ) I
+     JOIN #TrongTam T ON I.ItemID = T.ItemID
+     WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
+       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
+     GROUP BY I.ObjectID
+
+
+    SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
+    FROM AR_ReturnTbl R WITH (NOLOCK) JOIN AR_ReturnDetailTbl D WITH (NOLOCK) ON R.DocumentID = D.DocumentID
+    JOIN #TrongTam T ON D.ItemID = T.ItemID
+    WHERE R.DocumentDate BETWEEN @TuNgay AND @DenNgay AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
+    GROUP BY R.ObjectID
 
 
    SELECT

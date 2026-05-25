@@ -157,7 +157,7 @@ if not exist "%CF_EXE%" (
 
 if exist "%CF_LOG%" del /f /q "%CF_LOG%"
 echo [INFO] Dang xin cho ten mien dong Public (Cho 5s)...
-start "Cloudflare Tunnel" /B cmd /c ^"^"%CF_EXE%^" tunnel --url http://localhost:%N8N_PORT% ^> ^"%CF_LOG%^" 2^>^&1^"
+start "Cloudflare Tunnel" /B cmd /c ^"^"%CF_EXE%^" tunnel --url http://127.0.0.1:%N8N_PORT% ^> ^"%CF_LOG%^" 2^>^&1^"
 
 set "NGROK_URL="
 for /L %%i in (1,1,25) do (

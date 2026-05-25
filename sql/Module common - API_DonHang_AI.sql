@@ -33,30 +33,40 @@ BEGIN
    IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
    IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
    
-   -- ONLY map @ObjectID if it is a valid customer ID in the database to prevent auto-injected claims overriding MaKhachHang
-   IF NULLIF(@ObjectID, '') IS NOT NULL AND EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
-   BEGIN
-       SET @MaKhachHang = @ObjectID;
-   END
-   
-   IF NULLIF(@SearchText, '') IS NOT NULL SET @timkiem = @SearchText;
-   
-   -- Defend against NULL or non-positive bounds passed by web server model binders
-   IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
-   
-   -- @limit từ web/server override @TopN (max 5000 để tránh quá tải)
-   IF @limit IS NOT NULL AND @limit > 0 AND @limit <= 5000 SET @TopN = @limit;
-   
-   -- 1. Validate User (Skip strict validation if username not provided yet, fallback to employee id resolution)
-   IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
-   BEGIN
-       SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
-       RETURN
-   END
+    -- Allow @ObjectID mapping to MaKhachHang even if it is a name, to ensure name-to-ID resolution runs
+    IF NULLIF(@ObjectID, '') IS NOT NULL AND (NULLIF(@MaKhachHang, '') IS NULL OR @MaKhachHang = '')
+    BEGIN
+        SET @MaKhachHang = @ObjectID;
+    END
+    
+    IF NULLIF(@SearchText, '') IS NOT NULL SET @timkiem = @SearchText;
+    
+    -- Defend against NULL or non-positive bounds passed by web server model binders
+    IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
+    
+    -- @limit từ web/server override @TopN (max 5000 để tránh quá tải)
+    IF @limit IS NOT NULL AND @limit > 0 AND @limit <= 5000 SET @TopN = @limit;
+    
+    -- 1. Validate User (Skip strict validation if username not provided yet, fallback to employee id resolution)
+    IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
+        RETURN
+    END
 
-   -- 2. Defaults & Normalize Bounds
-   IF @TuNgay IS NULL SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
-   IF @DenNgay IS NULL SET @DenNgay = GETDATE()
+    -- 2. Defaults & Normalize Bounds (With UAT date fallback)
+    IF @TuNgay IS NULL
+    BEGIN
+        IF EXISTS (SELECT 1 FROM dbo.AR_OrderTbl WITH (NOLOCK) WHERE DocumentDate >= DATEADD(MONTH, -1, GETDATE()))
+        BEGIN
+            SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
+        END
+        ELSE
+        BEGIN
+            SET @TuNgay = DATEADD(YEAR, -10, GETDATE())
+        END
+    END
+    IF @DenNgay IS NULL SET @DenNgay = GETDATE()
    
    SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
    SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
@@ -200,11 +210,11 @@ BEGIN
         A.DepositAmount,
         A.Notes,
         A.DateCreate,
-        (SELECT SUM(COALESCE(DiemTichLuy, 0)) FROM AR_OrderDetailTbl X WHERE X.DocumentID = A.DocumentID) AS DiemTichLuy
-   FROM dbo.AR_OrderTbl A
-   LEFT JOIN dbo.CF_ObjectTbl O ON O.ObjectID = A.ObjectID
-   LEFT JOIN dbo.CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
-   LEFT JOIN dbo.AR_OrderStatusTbl S ON S.StatusID = A.StatusID
+        (SELECT SUM(COALESCE(DiemTichLuy, 0)) FROM AR_OrderDetailTbl X WITH (NOLOCK) WHERE X.DocumentID = A.DocumentID) AS DiemTichLuy
+   FROM dbo.AR_OrderTbl A WITH (NOLOCK)
+   LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
+   LEFT JOIN dbo.CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
+   LEFT JOIN dbo.AR_OrderStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
        AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)

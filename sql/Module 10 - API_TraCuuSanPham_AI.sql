@@ -32,7 +32,7 @@ BEGIN
 
 
     -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng
-    -- Lấy bảng giá mới nhất đang có hiệu lực cho từng Item
+    -- Lấy bảng giá mới nhất đang có hiệu lực hoặc gần đây nhất cho từng Item
     SELECT
         D.ItemID,
         MAX(H.FromDate) AS MaxFromDate
@@ -40,9 +40,29 @@ BEGIN
     FROM AR_PriceDetailTbl D
     JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
     WHERE H.isDisable = 0
-      AND H.FromDate <= GETDATE()
-      AND (H.ToDate IS NULL OR H.ToDate >= GETDATE())
       AND D.ItemID IN (SELECT ItemID FROM #Items)
+      -- Ưu tiên bảng giá đang chạy, nếu không có thì lấy bảng giá gần nhất
+      AND (
+          EXISTS (
+              SELECT 1 
+              FROM AR_PriceDetailTbl D2
+              JOIN AR_PriceTbl H2 ON D2.DocumentID = H2.DocumentID
+              WHERE H2.isDisable = 0 
+                AND H2.FromDate <= GETDATE() 
+                AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
+                AND D2.ItemID = D.ItemID
+          ) AND H.FromDate <= GETDATE() AND (H.ToDate IS NULL OR H.ToDate >= GETDATE())
+          OR
+          NOT EXISTS (
+              SELECT 1 
+              FROM AR_PriceDetailTbl D2
+              JOIN AR_PriceTbl H2 ON D2.DocumentID = H2.DocumentID
+              WHERE H2.isDisable = 0 
+                AND H2.FromDate <= GETDATE() 
+                AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
+                AND D2.ItemID = D.ItemID
+          )
+      )
     GROUP BY D.ItemID;
 
 

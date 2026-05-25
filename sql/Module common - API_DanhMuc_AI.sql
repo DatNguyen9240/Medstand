@@ -7,10 +7,16 @@ BEGIN
     SET NOCOUNT ON
 
     SET @timkiem = ISNULL(@timkiem, '')
+    DECLARE @CleanTimKiem NVARCHAR(255) = ''
+    IF @timkiem <> ''
+    BEGIN
+        SET @CleanTimKiem = dbo.ufn_remove_accents(@timkiem)
+    END
 
     DECLARE @SYSBranchID    VARCHAR(50) = ''
     DECLARE @SYSCeoID       VARCHAR(50) = ''
     DECLARE @SYSManagerID   VARCHAR(50) = ''
+    DECLARE @AllowedObjects TABLE (ObjectID VARCHAR(50) PRIMARY KEY)
     
     IF @Username <> ''
     BEGIN
@@ -19,6 +25,9 @@ BEGIN
             @SYSCeoID      = ISNULL(CeoID, ''),
             @SYSManagerID  = ISNULL(ManagerID, '')
         FROM SY_User WHERE UserName = @Username
+
+        INSERT INTO @AllowedObjects (ObjectID)
+        SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)
     END
 
     -- =========================================
@@ -39,29 +48,114 @@ BEGIN
     -- =========================================
     IF @Type = 'all'
     BEGIN
-        -- KHÁCH HÀNG
-        SELECT TOP 10 
-            'khachhang' AS Type,
-            ObjectID AS MaDanhMuc,
-            ObjectName AS Name,
-            N'Khách hàng' AS PhanLoai,
-            Phone,
-            TaxCode,
-            (
-                SELECT 
+        CREATE TABLE #TempAllKH (
+            Type VARCHAR(50),
+            MaDanhMuc VARCHAR(50),
+            Name NVARCHAR(250),
+            PhanLoai NVARCHAR(100),
+            Phone VARCHAR(50),
+            TaxCode VARCHAR(50),
+            ExtraData NVARCHAR(MAX)
+        )
+
+        IF @Username = ''
+        BEGIN
+            INSERT INTO #TempAllKH
+            SELECT TOP 10 
+                'khachhang' AS Type,
+                ObjectID AS MaDanhMuc,
+                ObjectName AS Name,
+                N'Khách hàng' AS PhanLoai,
+                Phone,
+                TaxCode,
+                (
+                    SELECT 
+                        Phone,
+                        TaxCode,
+                        N'Khách hàng' AS PhanLoai
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                ) AS ExtraData
+            FROM CF_ObjectTbl WITH (NOLOCK)
+            WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+              AND (@timkiem = '' 
+                   OR ObjectName LIKE N'%' + @timkiem + '%'
+                   OR ObjectID LIKE '%' + @timkiem + '%'
+                   OR Phone LIKE '%' + @timkiem + '%')
+        END
+        ELSE
+        BEGIN
+            INSERT INTO #TempAllKH
+            SELECT TOP 10 
+                'khachhang' AS Type,
+                C.ObjectID AS MaDanhMuc,
+                C.ObjectName AS Name,
+                N'Khách hàng' AS PhanLoai,
+                C.Phone,
+                C.TaxCode,
+                (
+                    SELECT 
+                        C.Phone,
+                        C.TaxCode,
+                        N'Khách hàng' AS PhanLoai
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                ) AS ExtraData
+            FROM CF_ObjectTbl C WITH (NOLOCK)
+            INNER JOIN @AllowedObjects A ON C.ObjectID = A.ObjectID
+            WHERE C.isCustomer = 1 AND ISNULL(C.isDisable, 0) = 0
+              AND (@timkiem = '' 
+                   OR C.ObjectName LIKE N'%' + @timkiem + '%'
+                   OR C.ObjectID LIKE '%' + @timkiem + '%'
+                   OR C.Phone LIKE '%' + @timkiem + '%')
+        END
+
+        IF NOT EXISTS (SELECT 1 FROM #TempAllKH) AND @timkiem <> ''
+        BEGIN
+            IF @Username = ''
+            BEGIN
+                INSERT INTO #TempAllKH
+                SELECT TOP 10 
+                    'khachhang' AS Type,
+                    ObjectID AS MaDanhMuc,
+                    ObjectName AS Name,
+                    N'Khách hàng' AS PhanLoai,
                     Phone,
                     TaxCode,
-                    N'Khách hàng' AS PhanLoai
-                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
-            ) AS ExtraData
-        FROM CF_ObjectTbl
-        WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)))
-          AND (@timkiem = '' 
-               OR ObjectName LIKE N'%' + @timkiem + '%'
-               OR ObjectID LIKE '%' + @timkiem + '%'
-               OR Phone LIKE '%' + @timkiem + '%')
+                    (
+                        SELECT 
+                            Phone,
+                            TaxCode,
+                            N'Khách hàng' AS PhanLoai
+                        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                    ) AS ExtraData
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+                  AND (dbo.ufn_remove_accents(ObjectName) LIKE '%' + @CleanTimKiem + '%')
+            END
+            ELSE
+            BEGIN
+                INSERT INTO #TempAllKH
+                SELECT TOP 10 
+                    'khachhang' AS Type,
+                    C.ObjectID AS MaDanhMuc,
+                    C.ObjectName AS Name,
+                    N'Khách hàng' AS PhanLoai,
+                    C.Phone,
+                    C.TaxCode,
+                    (
+                        SELECT 
+                            C.Phone,
+                            C.TaxCode,
+                            N'Khách hàng' AS PhanLoai
+                        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                    ) AS ExtraData
+                FROM CF_ObjectTbl C WITH (NOLOCK)
+                INNER JOIN @AllowedObjects A ON C.ObjectID = A.ObjectID
+                WHERE C.isCustomer = 1 AND ISNULL(C.isDisable, 0) = 0
+                  AND (dbo.ufn_remove_accents(C.ObjectName) LIKE '%' + @CleanTimKiem + '%')
+            END
+        END
 
+        SELECT * FROM #TempAllKH
         UNION ALL
 
         -- SẢN PHẨM
@@ -131,6 +225,7 @@ BEGIN
                OR ObjectName LIKE N'%' + @timkiem + '%'
                OR Phone LIKE '%' + @timkiem + '%')
 
+        DROP TABLE #TempAllKH
         RETURN
     END
 
@@ -140,31 +235,132 @@ BEGIN
 
     IF @Type = 'khachhang'
     BEGIN
-        SELECT TOP 20 
-            'khachhang' AS Type,
-            ObjectID AS MaDanhMuc, 
-            ObjectName AS Name, 
-            N'Khách hàng' AS PhanLoai, 
-            Address, 
-            TaxCode,
-            Phone,
-            (
-                SELECT 
-                    Address,
+        CREATE TABLE #TempKH (
+            Type VARCHAR(50),
+            MaDanhMuc VARCHAR(50),
+            Name NVARCHAR(250),
+            PhanLoai NVARCHAR(100),
+            Address NVARCHAR(500),
+            TaxCode VARCHAR(50),
+            Phone VARCHAR(50),
+            ExtraData NVARCHAR(MAX)
+        )
+
+        -- 1. Tìm kiếm nhanh chính xác bằng LIKE
+        IF @Username = ''
+        BEGIN
+            INSERT INTO #TempKH
+            SELECT TOP 20 
+                'khachhang' AS Type,
+                ObjectID AS MaDanhMuc, 
+                ObjectName AS Name, 
+                N'Khách hàng' AS PhanLoai, 
+                Address, 
+                TaxCode,
+                Phone,
+                (
+                    SELECT 
+                        Address,
+                        TaxCode,
+                        Phone,
+                        N'Khách hàng' AS PhanLoai
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                ) AS ExtraData
+            FROM CF_ObjectTbl WITH (NOLOCK)
+            WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+              AND (@timkiem = '' 
+                   OR ObjectName LIKE N'%' + @timkiem + '%'
+                   OR ObjectID LIKE '%' + @timkiem + '%'
+                   OR TaxCode LIKE '%' + @timkiem + '%'
+                   OR Phone LIKE '%' + @timkiem + '%')
+        END
+        ELSE
+        BEGIN
+            INSERT INTO #TempKH
+            SELECT TOP 20 
+                'khachhang' AS Type,
+                C.ObjectID AS MaDanhMuc, 
+                C.ObjectName AS Name, 
+                N'Khách hàng' AS PhanLoai, 
+                C.Address, 
+                C.TaxCode,
+                C.Phone,
+                (
+                    SELECT 
+                        C.Address,
+                        C.TaxCode,
+                        C.Phone,
+                        N'Khách hàng' AS PhanLoai
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                ) AS ExtraData
+            FROM CF_ObjectTbl C WITH (NOLOCK)
+            INNER JOIN @AllowedObjects A ON C.ObjectID = A.ObjectID
+            WHERE C.isCustomer = 1 AND ISNULL(C.isDisable, 0) = 0
+              AND (@timkiem = '' 
+                   OR C.ObjectName LIKE N'%' + @timkiem + '%'
+                   OR C.ObjectID LIKE '%' + @timkiem + '%'
+                   OR C.TaxCode LIKE '%' + @timkiem + '%'
+                   OR C.Phone LIKE '%' + @timkiem + '%')
+        END
+
+        -- 2. Fallback tìm chậm bằng ufn_remove_accents
+        IF NOT EXISTS (SELECT 1 FROM #TempKH) AND @timkiem <> ''
+        BEGIN
+            IF @Username = ''
+            BEGIN
+                INSERT INTO #TempKH
+                SELECT TOP 20 
+                    'khachhang' AS Type,
+                    ObjectID AS MaDanhMuc, 
+                    ObjectName AS Name, 
+                    N'Khách hàng' AS PhanLoai, 
+                    Address, 
                     TaxCode,
                     Phone,
-                    N'Khách hàng' AS PhanLoai
-                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
-            ) AS ExtraData
-        FROM CF_ObjectTbl
-        WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
-          AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)))
-          AND (@timkiem = '' 
-               OR ObjectName LIKE N'%' + @timkiem + '%'
-               OR ObjectID LIKE '%' + @timkiem + '%'
-               OR TaxCode LIKE '%' + @timkiem + '%'
-               OR Phone LIKE '%' + @timkiem + '%')
-        ORDER BY ObjectName
+                    (
+                        SELECT 
+                            Address,
+                            TaxCode,
+                            Phone,
+                            N'Khách hàng' AS PhanLoai
+                        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                    ) AS ExtraData
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE isCustomer = 1 AND ISNULL(isDisable, 0) = 0
+                  AND (dbo.ufn_remove_accents(ObjectName) LIKE '%' + @CleanTimKiem + '%')
+            END
+            ELSE
+            BEGIN
+                INSERT INTO #TempKH
+                SELECT TOP 20 
+                    'khachhang' AS Type,
+                    C.ObjectID AS MaDanhMuc, 
+                    C.ObjectName AS Name, 
+                    N'Khách hàng' AS PhanLoai, 
+                    C.Address, 
+                    C.TaxCode,
+                    C.Phone,
+                    (
+                        SELECT 
+                            C.Address,
+                            C.TaxCode,
+                            C.Phone,
+                            N'Khách hàng' AS PhanLoai
+                        FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                    ) AS ExtraData
+                FROM CF_ObjectTbl C WITH (NOLOCK)
+                INNER JOIN @AllowedObjects A ON C.ObjectID = A.ObjectID
+                WHERE C.isCustomer = 1 AND ISNULL(C.isDisable, 0) = 0
+                  AND (dbo.ufn_remove_accents(C.ObjectName) LIKE '%' + @CleanTimKiem + '%')
+            END
+        END
+
+        SELECT * FROM #TempKH 
+        ORDER BY 
+            CASE WHEN MaDanhMuc = @timkiem THEN 0 ELSE 1 END,
+            CASE WHEN Name LIKE N'%DỪNG XUẤT%' OR Name LIKE N'%DUNG XUAT%' OR Name LIKE N'%TRÙNG%' THEN 1 ELSE 0 END,
+            Name
+        DROP TABLE #TempKH
     END
 
     ELSE IF @Type = 'sanpham'
@@ -189,8 +385,9 @@ BEGIN
             FROM AR_PriceView P
             WHERE P.ItemID = I.ItemID
               AND P.isDisable = 0 
-              AND GETDATE() BETWEEN P.FromDate AND P.ToDate
-            ORDER BY P.FromDate DESC
+            ORDER BY 
+              CASE WHEN GETDATE() BETWEEN P.FromDate AND P.ToDate THEN 1 ELSE 2 END,
+              P.FromDate DESC
         ) P
         WHERE @timkiem = '' 
            OR I.ItemID LIKE '%' + @timkiem + '%' 
