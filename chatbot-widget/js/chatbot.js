@@ -330,7 +330,13 @@
 
         var text = rawHtml ? rawHtml : (role === 'user' ? _esc(processedContent) : _formatAI(processedContent));
 
-        var hasCard = role === 'ai' && (text.indexOf('ai-card') !== -1 || text.indexOf('ai-table') !== -1 || text.indexOf('ai-summary') !== -1);
+        var hasCard = role === 'ai' && (
+            text.indexOf('ai-card') !== -1 || 
+            text.indexOf('ai-table') !== -1 || 
+            text.indexOf('ai-summary') !== -1 || 
+            text.indexOf('ai-sales-') !== -1 || 
+            text.indexOf('ai-catalog-') !== -1
+        );
         if (hasCard) cls += ' has-table';
 
         var fileTag = '';
@@ -853,7 +859,7 @@
 
         _setStopMode(false);
 
-        _addMessage('ai', ' ã dừng phản hồi.');
+        _addMessage('ai', 'Đã dừng phản hồi.');
 
     }
 
@@ -1385,6 +1391,31 @@
             if (res && res.apiCode === '@lap_don_hang') {
                 if (!res.action) res.action = 'ADD';
 
+                if (res.data && res.data.length > 0) {
+                    res.params = Object.assign({}, res.params || {});
+                    if (res.data[0].MaKhachHang) {
+                        res.params['@MaKhachHang'] = res.data[0].MaKhachHang;
+                        res.params['@ObjectID'] = res.data[0].MaKhachHang;
+                    }
+                    if (res.data[0].ItemList) {
+                        try {
+                            var itemsArr = typeof res.data[0].ItemList === 'string' ? JSON.parse(res.data[0].ItemList) : res.data[0].ItemList;
+                            if (Array.isArray(itemsArr) && itemsArr.length > 0) {
+                                res.items = itemsArr.map(function(it) {
+                                    return {
+                                        keyword: it.ItemID || it.ItemName || it.keyword || '',
+                                        qty: it.Quantity || it.qty || 1,
+                                        price: it.Price !== undefined ? it.Price : null,
+                                        discount: it.DiscountPercent !== undefined ? it.DiscountPercent : (it.discount !== undefined ? it.discount : 0)
+                                    };
+                                });
+                            }
+                        } catch(e) {
+                            console.error('Lỗi parse ItemList từ n8n response:', e);
+                        }
+                    }
+                }
+
                 // If items are not present, extract them from user query
                 if (!res.items || res.items.length === 0) {
                     var lastUsrMsg = chatHistory.slice().reverse().find(function (m) { return m.role === 'user'; });
@@ -1487,25 +1518,12 @@
 
                 if (cleanData.length === 0) {
                     var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1 || res.message.indexOf('ket qua') > -1);
-                    var warnMsg = 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé! 🙇‍♀️';
+                    var warnMsg = 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé!';
                     
                     var isNoDebt = (res.apiCode === '@cong_no_chi_tiet' || (res.message && (res.message.indexOf('nợ') > -1 || res.message.indexOf('hóa đơn') > -1)));
                     
                     if (isNoDebt) {
-                        // Trả về thông báo siêu tích cực thay vì hiện khung Warning màu vàng
-                        var successCardHtml = 
-                            '<div class="ai-sales-debt-card" style="border: 1px solid rgba(16, 185, 129, 0.25); border-left: 5px solid #10b981; background: rgba(16, 185, 129, 0.03); padding: 15px; border-radius: 12px; margin-top: 8px; backdrop-filter: blur(8px); animation: ai-inline-fadein 0.3s ease;">'
-                            + '<div style="display: flex; gap: 12px; align-items: flex-start;">'
-                            + '<span style="font-size: 22px; line-height: 1;">✅</span>'
-                            + '<div>'
-                            + '<div style="font-weight: 700; font-size: 14px; color: #10b981; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Thông báo hệ thống</div>'
-                            + '<div style="font-size: 13px; color: var(--ai-text-main, #334155); line-height: 1.5;">'
-                            + 'Dạ tuyệt vời! Khách hàng này **hiện không có bất kỳ hóa đơn nợ nào**, Sếp hoàn toàn yên tâm nhé! 🎉'
-                            + '</div>'
-                            + '</div>'
-                            + '</div>'
-                            + '</div>';
-                        _addHtmlMessage(successCardHtml, '✅ Không có nợ');
+                        _addMessage('ai', 'Dạ tuyệt vời! Khách hàng này hiện không có bất kỳ hóa đơn nợ nào, Sếp hoàn toàn yên tâm nhé!');
                         return;
                     }
                     
@@ -1515,25 +1533,11 @@
                         warnMsg = res.message;
                     }
 
-                    var warningCardHtml =
-                        '<div class="ai-sales-debt-card" style="border: 1px solid rgba(245, 158, 11, 0.25); border-left: 5px solid #f59e0b; background: rgba(245, 158, 11, 0.03); padding: 15px; border-radius: 12px; margin-top: 8px; backdrop-filter: blur(8px); animation: ai-inline-fadein 0.3s ease;">'
-                        + '<div style="display: flex; gap: 12px; align-items: flex-start;">'
-                        + '<span style="font-size: 22px; line-height: 1;">⚠️</span>'
-                        + '<div>'
-                        + '<div style="font-weight: 700; font-size: 14px; color: #d97706; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Thông báo hệ thống</div>'
-                        + '<div style="font-size: 13px; color: var(--ai-text-main, #334155); line-height: 1.5;">'
-                        + _esc(warnMsg)
-                        + '</div>'
-                        + '</div>'
-                        + '</div>'
-                        + '</div>';
-                    _addHtmlMessage(warningCardHtml, '⚠️ Không tìm thấy dữ liệu');
+                    _addMessage('ai', warnMsg);
                     return;
                 }
 
-
-
-                // 2. Tìm Mã ối Tượng (Customer Code) từ metadata
+                // 2. Tìm Mã  ối Tượng (Customer Code) từ metadata
 
                 var idF = _pickField(res.intentParams || {}, 'ID');
 
@@ -1567,12 +1571,9 @@
 
             if (res && res.status === 'error') {
 
-                var errorMsg = (res.message && res.message.length < 100) ? res.message : 'Dạ hệ thống đang bận hoặc dữ liệu chưa sẵn sàng ạ.';
-
-                _addMessage('ai', ' ' + errorMsg);
-
+                var errorMsg = (res.message && res.message.length < 200) ? res.message : 'Dạ hệ thống đang bận hoặc dữ liệu chưa sẵn sàng ạ. Sếp vui lòng thử lại sau nhé!';
+                _addMessage('ai', 'Lỗi hệ thống: ' + errorMsg);
                 return;
-
             }
 
 
@@ -2163,7 +2164,7 @@
 
                 var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='var(--color-surface)'; b.style.color='var(--color-text)';}); this.style.background='var(--color-primary)'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
 
-                var icon = (idx === 0) ? '📌 ' : '📋 ';
+                var icon = '';
 
                 html += '<button class="ai-tab-btn-' + tabsId + '" onclick="' + clickJs + '" style="padding:6px 14px; border:none; border-radius:20px; font-weight:600; font-size:13px; background:' + bg + '; color:' + cl + '; cursor:pointer; outline:none; transition: background 0.2s;">' + icon + _esc(g.label) + ' (' + g.rows.length + ')</button>';
 

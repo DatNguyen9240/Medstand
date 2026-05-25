@@ -3111,6 +3111,8 @@
 
             + '<div class="ae-dg-col col-price"><label>Giá</label><input type="number" class="ae-dg-val ae-dg-price" data-col="Price" value="0"></div>'
 
+            + '<div class="ae-dg-col col-dis"><label>CK%</label><input type="number" class="ae-dg-val ae-dg-discount" data-col="DiscountPercent" value="0"></div>'
+
             + '<div class="ae-dg-col col-total"><label>Tổng</label><input type="text" class="ae-dg-total-row" readonly value="0"></div>'
 
             + '<button type="button" class="ae-dg-del-btn">✕</button>'
@@ -3137,7 +3139,7 @@
 
         // Bind events cho tnh ton
 
-        var qtyIns = rowEl.querySelectorAll('.ae-dg-qty, .ae-dg-price');
+        var qtyIns = rowEl.querySelectorAll('.ae-dg-qty, .ae-dg-price, .ae-dg-discount');
 
         qtyIns.forEach(function (inp) {
 
@@ -3177,7 +3179,10 @@
 
             var price = parseFloat(row.querySelector('.ae-dg-price').value) || 0;
 
-            var total = qty * price;
+            var discountInput = row.querySelector('.ae-dg-discount');
+            var discount = discountInput ? (parseFloat(discountInput.value) || 0) : 0;
+
+            var total = qty * price * (1 - discount / 100);
 
             var totalInp = row.querySelector('.ae-dg-total-row');
 
@@ -3532,7 +3537,7 @@
                                             val = inp.previousElementSibling.value;
                                         }
 
-                                        if (col === 'Quantity' || col === 'Price') val = parseFloat(val) || 0;
+                                        if (col === 'Quantity' || col === 'Price' || col === 'DiscountPercent') val = parseFloat(val) || 0;
                                         item[col] = val;
                                     });
 
@@ -4757,10 +4762,15 @@
                         var inName = targetRow.querySelector('.ae-combo-txt');
                         var inQty = targetRow.querySelector('.ae-dg-qty');
                         var inVal = targetRow.querySelector('.ae-dg-val[data-col="ItemID"]');
+                        var inDiscount = targetRow.querySelector('.ae-dg-discount');
                         
                         if (inQty) {
                             inQty.value = parseFloat(it.qty) || 1;
                             inQty.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                        if (inDiscount && it.discount !== undefined && it.discount !== null) {
+                            inDiscount.value = parseFloat(it.discount) || 0;
+                            inDiscount.dispatchEvent(new Event('input', { bubbles: true }));
                         }
                         if (inName) {
                             inName.value = it.keyword; // Synchronously mark row as claimed to avoid race condition
@@ -4770,7 +4780,7 @@
                         if (wrap && inVal) {
                             var dsType = wrap.getAttribute('data-ds-type');
                             var dsVal = wrap.getAttribute('data-ds-val');
-                            (function(hiddenEl, textEl, gridRow, keyword) {
+                            (function(hiddenEl, textEl, gridRow, keyword, customPrice) {
                                 _loadDataSource(dsType, dsVal, keyword, function(rows) {
                                     if (rows && rows.length > 0) {
                                         var r = rows[0];
@@ -4800,11 +4810,15 @@
                                         // Also lookup price if column exists!
                                         var priceInp = gridRow.querySelector('.ae-dg-price');
                                         var priceVal = null;
-                                        for (var i = 2; i < keys.length; i++) {
-                                            var col = keys[i];
-                                            if (col.toLowerCase().indexOf('gi') > -1 || col.toLowerCase().indexOf('price') > -1 || col.toLowerCase().indexOf('tiền') > -1) {
-                                                priceVal = r[col];
-                                                break;
+                                        if (customPrice !== null && customPrice !== undefined) {
+                                            priceVal = customPrice;
+                                        } else {
+                                            for (var i = 2; i < keys.length; i++) {
+                                                var col = keys[i];
+                                                if (col.toLowerCase().indexOf('gi') > -1 || col.toLowerCase().indexOf('price') > -1 || col.toLowerCase().indexOf('tiền') > -1) {
+                                                    priceVal = r[col];
+                                                    break;
+                                                }
                                             }
                                         }
                                         if (priceInp && priceVal !== null && priceVal !== undefined) {
@@ -4820,7 +4834,7 @@
                                         hiddenEl.dispatchEvent(new Event('input', { bubbles: true }));
                                     }
                                 });
-                            })(inVal, inName, targetRow, it.keyword);
+                            })(inVal, inName, targetRow, it.keyword, it.price);
                         } else {
                             if (inName) inName.value = it.keyword;
                             if (inVal) {

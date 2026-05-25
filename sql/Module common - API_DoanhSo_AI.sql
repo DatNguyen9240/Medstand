@@ -34,7 +34,10 @@ BEGIN
     SET ANSI_WARNINGS OFF;
     
     -- MAPPING DASHBOARD PARAMETERS
-    IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+    IF NULLIF(@User, '') IS NOT NULL AND EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE (UserName = @User OR HoTen = @User) AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SET @Username = @User;
+    END
     IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
     IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 50;

@@ -62,9 +62,15 @@ AS
 BEGIN
     SET NOCOUNT ON
 
-    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    DECLARE @SYSUserGroupID VARCHAR(50) = '';
+    SELECT TOP 1 @SYSUserGroupID = ISNULL(UserGroupID, '')
+    FROM SY_User WITH (NOLOCK)
+    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN'
     BEGIN
-        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
+        SELECT N'Quyền truy cập bị từ chối. Chỉ dành cho quản trị viên (Admin).' AS Msg, 1 AS MsgType
+        RETURN
     END
 
     IF @TuNgay IS NULL SET @TuNgay = DATEADD(DAY, -7, GETDATE())

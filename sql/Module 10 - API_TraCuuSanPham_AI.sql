@@ -18,7 +18,7 @@ BEGIN
         I.ItemID,
         I.ItemName
     INTO #Items
-    FROM CF_ItemTbl I
+    FROM CF_ItemTbl I WITH (NOLOCK)
     WHERE (ISNULL(I.isDisable, 0) = 0)
       AND (
           @timkiem = '' OR
@@ -37,16 +37,16 @@ BEGIN
         D.ItemID,
         MAX(H.FromDate) AS MaxFromDate
     INTO #LatestPriceHeader
-    FROM AR_PriceDetailTbl D
-    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    FROM AR_PriceDetailTbl D WITH (NOLOCK)
+    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
     WHERE H.isDisable = 0
       AND D.ItemID IN (SELECT ItemID FROM #Items)
       -- Ưu tiên bảng giá đang chạy, nếu không có thì lấy bảng giá gần nhất
       AND (
           EXISTS (
               SELECT 1 
-              FROM AR_PriceDetailTbl D2
-              JOIN AR_PriceTbl H2 ON D2.DocumentID = H2.DocumentID
+              FROM AR_PriceDetailTbl D2 WITH (NOLOCK)
+              JOIN AR_PriceTbl H2 WITH (NOLOCK) ON D2.DocumentID = H2.DocumentID
               WHERE H2.isDisable = 0 
                 AND H2.FromDate <= GETDATE() 
                 AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
@@ -55,8 +55,8 @@ BEGIN
           OR
           NOT EXISTS (
               SELECT 1 
-              FROM AR_PriceDetailTbl D2
-              JOIN AR_PriceTbl H2 ON D2.DocumentID = H2.DocumentID
+              FROM AR_PriceDetailTbl D2 WITH (NOLOCK)
+              JOIN AR_PriceTbl H2 WITH (NOLOCK) ON D2.DocumentID = H2.DocumentID
               WHERE H2.isDisable = 0 
                 AND H2.FromDate <= GETDATE() 
                 AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
@@ -70,8 +70,8 @@ BEGIN
         D.ItemID,
         MAX(D.UnitPrice) AS UnitPrice -- Đề phòng 1 bảng giá có 2 dòng cùng Item
     INTO #FinalPrices
-    FROM AR_PriceDetailTbl D
-    JOIN AR_PriceTbl H ON D.DocumentID = H.DocumentID
+    FROM AR_PriceDetailTbl D WITH (NOLOCK)
+    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
     JOIN #LatestPriceHeader L ON D.ItemID = L.ItemID AND H.FromDate = L.MaxFromDate
     WHERE H.isDisable = 0
     GROUP BY D.ItemID;
@@ -94,7 +94,7 @@ BEGIN
             I.ItemID AS [Mã sp],
             I.ItemName AS [Sản Phẩm],
             CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
+            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
         FROM #Items I
         LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID;
     END

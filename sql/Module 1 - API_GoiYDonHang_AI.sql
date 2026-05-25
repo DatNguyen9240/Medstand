@@ -42,7 +42,10 @@ BEGIN
     SET NOCOUNT ON
 
     -- ═══ 0. Mapping Dashboard/Frontend Alias ═══
-    IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+    IF NULLIF(@User, '') IS NOT NULL AND EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @User AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SET @Username = @User;
+    END
     
     -- Allow @ObjectID mapping to MaKhachHang even if it is a name, to ensure name-to-ID resolution runs
     IF NULLIF(@ObjectID, '') IS NOT NULL AND (NULLIF(@MaKhachHang, '') IS NULL OR @MaKhachHang = '')

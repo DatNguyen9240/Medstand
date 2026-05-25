@@ -24,7 +24,7 @@ BEGIN
             @SYSBranchID   = ISNULL(BranchID, ''),
             @SYSCeoID      = ISNULL(CeoID, ''),
             @SYSManagerID  = ISNULL(ManagerID, '')
-        FROM SY_User WHERE UserName = @Username
+        FROM SY_User WITH (NOLOCK) WHERE UserName = @Username
 
         INSERT INTO @AllowedObjects (ObjectID)
         SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username)
@@ -171,7 +171,7 @@ BEGIN
                     N'Sản phẩm' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM CF_ItemTbl I
+        FROM CF_ItemTbl I WITH (NOLOCK)
         WHERE @timkiem = ''
            OR I.ItemID LIKE '%' + @timkiem + '%'
            OR I.ItemName LIKE N'%' + @timkiem + '%'
@@ -192,8 +192,8 @@ BEGIN
                     N'Đơn hàng' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM AR_OrderTbl A
-        LEFT JOIN CF_ObjectTbl O ON O.ObjectID = A.ObjectID
+        FROM AR_OrderTbl A WITH (NOLOCK)
+        LEFT JOIN CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
         WHERE (ISNULL(@SYSBranchID, '') = '' OR A.BranchID = @SYSBranchID)
           AND (ISNULL(@SYSCeoID, '') = '' OR A.CeoID = @SYSCeoID)
           AND (ISNULL(@SYSManagerID, '') = '' OR A.ManagerID = @SYSManagerID)
@@ -217,7 +217,7 @@ BEGIN
                     N'Nhân viên' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM CF_ObjectTbl
+        FROM CF_ObjectTbl WITH (NOLOCK)
         WHERE isEmployee = 1 AND ISNULL(isDisable, 0) = 0
           AND (ISNULL(@SYSBranchID, '') = '' OR BranchID = @SYSBranchID)
           AND (ISNULL(@SYSCeoID, '') = '' OR CeoID = @SYSCeoID)
@@ -379,10 +379,10 @@ BEGIN
                     N'Sản phẩm' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM CF_ItemTbl I
+        FROM CF_ItemTbl I WITH (NOLOCK)
         OUTER APPLY (
             SELECT TOP 1 UnitPrice, DiemSanPham
-            FROM AR_PriceView P
+            FROM AR_PriceView P WITH (NOLOCK)
             WHERE P.ItemID = I.ItemID
               AND P.isDisable = 0 
             ORDER BY 
@@ -407,7 +407,7 @@ BEGIN
                     N'Kho hàng' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM CF_StoreHouseTbl
+        FROM CF_StoreHouseTbl WITH (NOLOCK)
         WHERE @timkiem = '' 
            OR StoreHouseID LIKE '%' + @timkiem + '%' 
            OR StoreHouseName LIKE N'%' + @timkiem + '%'
@@ -438,10 +438,10 @@ BEGIN
                     N'Đơn hàng' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM AR_OrderTbl A
-        LEFT JOIN CF_ObjectTbl O ON O.ObjectID = A.ObjectID
-        LEFT JOIN CF_ObjectTbl E ON E.ObjectID = A.EmployeeID
-        LEFT JOIN AR_OrderStatusTbl S ON S.StatusID = A.StatusID
+        FROM AR_OrderTbl A WITH (NOLOCK)
+        LEFT JOIN CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
+        LEFT JOIN CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
+        LEFT JOIN AR_OrderStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
         WHERE @timkiem = ''
            OR A.DocumentID LIKE '%' + @timkiem + '%'
            OR O.ObjectName LIKE N'%' + @timkiem + '%'
@@ -465,7 +465,7 @@ BEGIN
                     N'Nhân viên' AS PhanLoai
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
-        FROM CF_ObjectTbl
+        FROM CF_ObjectTbl WITH (NOLOCK)
         WHERE isEmployee = 1 AND ISNULL(isDisable, 0) = 0
           AND (@timkiem = '' 
                OR ObjectID LIKE '%' + @timkiem + '%' 

@@ -82,14 +82,14 @@ def render_word_table(doc, rows_data, font_family, color_text):
     for r_idx, r_data in enumerate(parsed_table):
         row = w_table.rows[r_idx]
         is_header = (r_idx == 0)
-        shading_color = "F2F2F2" if is_header else "FFFFFF"
+        shading_color = "EFF6FF" if is_header else ("F9FAFB" if r_idx % 2 == 1 else "FFFFFF") # Xen kẽ dòng
         
         for c_idx, val in enumerate(r_data):
             cell = row.cells[c_idx]
             set_cell_shading(cell, shading_color)
             set_cell_margins(cell, top=120, bottom=120, left=160, right=160)
             
-            border_color = "808080" if is_header else "D3D3D3"
+            border_color = "BFDBFE" if is_header else "E5E7EB"
             set_cell_borders(cell, hex_color=border_color, sz="4")
             
             p = cell.paragraphs[0]
@@ -107,7 +107,7 @@ def render_word_table(doc, rows_data, font_family, color_text):
             
             if is_header:
                 run.bold = True
-                run.font.color.rgb = RGBColor(0, 0, 0)
+                run.font.color.rgb = RGBColor(30, 64, 175)
                 run.text = val
             else:
                 apply_text_formatting(p, val, font_family, Pt(9), color_text)
@@ -138,9 +138,9 @@ def parse_js_data(text):
 # ═══ MAIN Compile ═══
 
 def run_restructuring():
-    md_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business.md"
-    docx_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business.docx"
-    docx_alt_path = r"c:\Users\Legion\Desktop\AI Nhà Thuốc\Medstand\HDSD_Medstand_AI_Business_Updated.docx"
+    md_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business.md"
+    docx_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business.docx"
+    docx_alt_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business_Updated.docx"
     
     print("Reading MD manual...")
     with open(md_path, "r", encoding="utf-8") as f:
@@ -162,9 +162,9 @@ def render_callout_box(doc, lines_data, font_family):
     w_table.autofit = True
     
     cell = w_table.rows[0].cells[0]
-    set_cell_shading(cell, "FAFAFA")  # Soft light gray shading
+    set_cell_shading(cell, "F0F9FF")  # Soft light blue shading (Medstand light brand)
     set_cell_margins(cell, top=140, bottom=140, left=200, right=200)
-    set_cell_borders(cell, hex_color="D0D3D4", sz="6", val="dashed")  # Nice dashed border
+    set_cell_borders(cell, hex_color="3B82F6", sz="8", val="single")  # Sleek blue border
     
     p = cell.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -194,10 +194,10 @@ def compile_to_docx(md_content, out_docx_path):
         section.left_margin = Inches(0.9)
         section.right_margin = Inches(0.9)
         
-    FONT_FAMILY = "Arial"
-    COLOR_PRIMARY = RGBColor(0, 0, 0)
-    COLOR_SECONDARY = RGBColor(0, 0, 0)
-    COLOR_TEXT = RGBColor(0, 0, 0)
+    FONT_FAMILY = "Segoe UI"
+    COLOR_PRIMARY = RGBColor(30, 64, 175)     # Deep Royal Blue (Màu xanh y học cao cấp của Medstand)
+    COLOR_SECONDARY = RGBColor(79, 70, 229)   # Accent Indigo Blue (Màu nhấn tinh tế)
+    COLOR_TEXT = RGBColor(31, 41, 55)         # Charcoal Dark Gray (Dễ đọc, sang trọng)
     
     lines = md_content.split('\n')
     

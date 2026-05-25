@@ -29,7 +29,10 @@ BEGIN
    SET NOCOUNT ON
    
    -- 0. Mapping Dashboard/Frontend Alias
-   IF NULLIF(@User, '') IS NOT NULL SET @Username = @User;
+   IF NULLIF(@User, '') IS NOT NULL AND EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @User AND COALESCE(Disable, 0) = 0)
+   BEGIN
+       SET @Username = @User;
+   END
    IF @FromDate IS NOT NULL SET @TuNgay = @FromDate;
    IF @ToDate IS NOT NULL SET @DenNgay = @ToDate;
    

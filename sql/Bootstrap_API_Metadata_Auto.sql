@@ -482,6 +482,8 @@ BEGIN
             END AS ApiName,
             CASE
                 WHEN FieldCode = '@Username'   THEN N'Người dùng'
+                WHEN FieldCode = '@FilterUser' THEN N'Lọc người dùng'
+                WHEN FieldCode = '@FilterAction' THEN N'Lọc hành động'
                 WHEN FieldCode = '@timkiem'    THEN N'Tìm kiếm'
                 WHEN FieldCode = '@Type'       THEN N'Loại danh mục'
                 WHEN FieldCode = '@MaKhachHang'  THEN N'Khách hàng'
@@ -541,6 +543,9 @@ BEGIN
             0 AS IsRequired, -- Mặc định AI API là linh hoạt, SP sẽ tự handle giá trị default nội bộ
             CASE 
                 WHEN FieldCode = '@Username' THEN 1 
+                WHEN FieldCode = '@User' THEN 1
+                WHEN FieldCode = '@BotType' THEN 1
+                WHEN FieldCode LIKE '@SYS%' THEN 1
                 WHEN StoredProcedure = 'API_DanhMuc_AI' AND FieldCode NOT IN ('@Type', '@timkiem') THEN 1
                 ELSE 0 
             END AS IsSystemParam,
@@ -770,6 +775,14 @@ BEGIN
         FROM dbo.API_Field f
         JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
         JOIN #AI_META a ON a.ApiCode = d.ApiCode AND a.FieldCode = f.FieldCode;
+
+        UPDATE af
+        SET af.IsVisible = CASE WHEN f.IsSystemParam = 1 THEN 0 ELSE af.IsVisible END,
+            af.IsEditable = CASE WHEN f.IsSystemParam = 1 THEN 0 ELSE af.IsEditable END
+        FROM dbo.API_Action_Field af
+        JOIN dbo.API_Field f ON f.FieldID = af.FieldID
+        JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
+        WHERE d.ApiCode IN (SELECT DISTINCT ApiCode FROM #AI_META);
     END
 
     -- Ensure API_Action_Field mapping

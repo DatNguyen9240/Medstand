@@ -36,12 +36,19 @@ END
     -- Đã bỏ kiểm tra đơn hàng không tồn tại để tự động khởi tạo nếu truyền mã mới chưa có trong hệ thống
 -- ═══ 2. PARSE JSON + LẤY GIÁ ═══
 SELECT 
-    J.ItemID, SUM(J.Quantity) AS Quantity, MAX(I.ItemName) AS ItemName, MAX(P.UnitPrice) AS UnitPrice, MAX(P.DiemSanPham) AS DiemSanPham
+    J.ItemID, 
+    SUM(J.Quantity) AS Quantity, 
+    MAX(I.ItemName) AS ItemName, 
+    COALESCE(MAX(J.Price), MAX(P.UnitPrice)) AS UnitPrice, 
+    MAX(P.DiemSanPham) AS DiemSanPham,
+    MAX(J.DiscountPercent) AS DiscountPercent
 INTO #Items
 FROM OPENJSON(@ItemList)
 WITH (
-    ItemID   VARCHAR(50)   '$.ItemID',
-    Quantity DECIMAL(18,2) '$.Quantity'
+    ItemID          VARCHAR(50)   '$.ItemID',
+    Quantity        DECIMAL(18,2) '$.Quantity',
+    Price           DECIMAL(18,2) '$.Price',
+    DiscountPercent DECIMAL(18,2) '$.DiscountPercent'
 ) J
 LEFT JOIN CF_ItemTbl I ON I.ItemID = J.ItemID
 OUTER APPLY (
@@ -116,8 +123,9 @@ BEGIN TRY
         NEWID(), @DocumentID, ItemID,
         COALESCE(UnitPrice, 0), Quantity, 0,
         COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0),
-        0, 0,
-        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0),
+        COALESCE(DiscountPercent, 0),
+        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0) * (COALESCE(DiscountPercent, 0) / 100.0),
+        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0) * (1.0 - COALESCE(DiscountPercent, 0) / 100.0),
         COALESCE(DiemSanPham, 0),
         COALESCE(Quantity, 0) * COALESCE(DiemSanPham, 0),
         ''
