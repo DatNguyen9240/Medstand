@@ -1,4 +1,4 @@
-﻿USE medtest;
+USE medtest;
 GO
 
 IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
@@ -131,7 +131,12 @@ BEGIN
         ORDER BY TuDiem ASC;
     END
 
-    SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END;
+    SET @SoTienThieu = CASE WHEN @MucTarget > 0 THEN @MucTarget - @DoanhSoHienTai ELSE 0 END;
+
+    -- ═══ 3.5. Danh sách sản phẩm trọng tâm ═══
+    SELECT DISTINCT ItemID INTO #TrongTam 
+    FROM AR_SanPhamTrongTamDetailTbl WITH (NOLOCK) 
+    WHERE DocumentID = @ProgramID;
 
     -- ═══ 4. Giá mới nhất từ Bảng giá ═══
     SELECT
