@@ -4762,6 +4762,9 @@
                             inQty.value = parseFloat(it.qty) || 1;
                             inQty.dispatchEvent(new Event('input', { bubbles: true }));
                         }
+                        if (inName) {
+                            inName.value = it.keyword; // Synchronously mark row as claimed to avoid race condition
+                        }
                         
                         var wrap = inName ? inName.closest('.ae-combo') : null;
                         if (wrap && inVal) {
