@@ -3151,7 +3151,9 @@
 
         // Xa dòng
 
-        rowEl.querySelector('.ae-dg-del-btn').onclick = function () {
+        rowEl.querySelector('.ae-dg-del-btn').onclick = function (e) {
+
+            if (e) e.stopPropagation();
 
             rowEl.remove();
 

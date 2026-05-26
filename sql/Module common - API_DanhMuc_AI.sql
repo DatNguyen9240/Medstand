@@ -366,6 +366,18 @@ BEGIN
 
     ELSE IF @Type = 'sanpham'
     BEGIN
+        CREATE TABLE #TempSP (
+            Type VARCHAR(50),
+            MaDanhMuc VARCHAR(50),
+            Name NVARCHAR(250),
+            PhanLoai NVARCHAR(100),
+            UnitPrice DECIMAL(18,2),
+            DiemSanPham INT,
+            ExtraData NVARCHAR(MAX)
+        )
+
+        -- 1. Tìm kiếm nhanh chính xác bằng LIKE
+        INSERT INTO #TempSP
         SELECT TOP 20 
             'sanpham' AS Type,
             I.ItemID AS MaDanhMuc, 
@@ -390,10 +402,47 @@ BEGIN
               CASE WHEN GETDATE() BETWEEN P.FromDate AND P.ToDate THEN 1 ELSE 2 END,
               P.FromDate DESC
         ) P
-        WHERE @timkiem = '' 
-           OR I.ItemID LIKE '%' + @timkiem + '%' 
-           OR I.ItemName LIKE N'%' + @timkiem + '%'
-        ORDER BY I.ItemName
+        WHERE ISNULL(I.isDisable, 0) = 0
+          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND (@timkiem = '' 
+               OR I.ItemID LIKE '%' + @timkiem + '%' 
+               OR I.ItemName LIKE N'%' + @timkiem + '%')
+
+        -- 2. Fallback tìm chậm bằng ufn_remove_accents
+        IF NOT EXISTS (SELECT 1 FROM #TempSP) AND @timkiem <> ''
+        BEGIN
+            INSERT INTO #TempSP
+            SELECT TOP 20 
+                'sanpham' AS Type,
+                I.ItemID AS MaDanhMuc, 
+                I.ItemName AS Name,
+                N'Sản phẩm' AS PhanLoai, 
+                P.UnitPrice, 
+                P.DiemSanPham,
+                (
+                    SELECT 
+                        P.UnitPrice,
+                        P.DiemSanPham,
+                        N'Sản phẩm' AS PhanLoai
+                    FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+                ) AS ExtraData
+            FROM CF_ItemTbl I WITH (NOLOCK)
+            OUTER APPLY (
+                SELECT TOP 1 UnitPrice, DiemSanPham
+                FROM AR_PriceView P WITH (NOLOCK)
+                WHERE P.ItemID = I.ItemID
+                  AND P.isDisable = 0 
+                ORDER BY 
+                  CASE WHEN GETDATE() BETWEEN P.FromDate AND P.ToDate THEN 1 ELSE 2 END,
+                  P.FromDate DESC
+            ) P
+            WHERE ISNULL(I.isDisable, 0) = 0
+              AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+              AND (dbo.ufn_remove_accents(I.ItemName) LIKE '%' + @CleanTimKiem + '%')
+        END
+
+        SELECT * FROM #TempSP ORDER BY Name
+        DROP TABLE #TempSP
     END
 
     ELSE IF @Type = 'khohang'
