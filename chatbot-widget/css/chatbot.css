@@ -472,23 +472,27 @@
   color: transparent !important;
   user-select: none;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
   position: relative;
+  text-align: center;
+  vertical-align: middle !important;
+  padding: 0 !important;
+  width: 32px;
+  min-width: 32px;
+  max-width: 32px;
+  height: auto;
 }
 
 .chat-bubble.ai .ai-row-toggle::before {
   content: '';
-  display: block;
+  display: inline-block;
   width: 6px;
   height: 6px;
   border-right: 2px solid #64748b;
   border-bottom: 2px solid #64748b;
   transform: rotate(-45deg); /* Mặc định chỉ sang phải (Đóng) */
   transition: transform 0.15s ease;
+  vertical-align: middle;
+  margin-top: -2px; /* Điều chỉnh tâm sau khi xoay */
 }
 
 tr.expanded .ai-row-toggle::before {

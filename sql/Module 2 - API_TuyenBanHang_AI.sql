@@ -223,12 +223,12 @@ BEGIN
         L.DiemUuTien AS [DiemUuTien],
         CONCAT(
             CASE
-                WHEN L.LanMuaCuoi IS NULL THEN N'🆕 Khách hàng mới chưa có đơn'
-                WHEN L.NgayConLaiHetHang < 0 THEN N'📍 Chưa phát sinh đơn hàng ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày'
-                WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'⏳ Sắp hết hàng (Còn ' + CAST(L.NgayConLaiHetHang AS VARCHAR) + N' ngày)'
-                ELSE N'📅 Theo lịch ghé'
+                WHEN L.LanMuaCuoi IS NULL THEN N'Khách hàng mới chưa có đơn'
+                WHEN L.NgayConLaiHetHang < 0 THEN N'Chưa phát sinh đơn hàng ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày'
+                WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'Sắp hết hàng (Còn ' + CAST(L.NgayConLaiHetHang AS VARCHAR) + N' ngày)'
+                ELSE N'Theo lịch ghé'
             END,
-            CASE WHEN KH.ZoneID IS NULL THEN N' | ⛔ Ngoài tuyến' ELSE '' END
+            CASE WHEN KH.ZoneID IS NULL THEN N' | Ngoài tuyến' ELSE '' END
         ) AS [LyDoGhe]
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID

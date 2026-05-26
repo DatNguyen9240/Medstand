@@ -175,7 +175,7 @@ BEGIN
             CF.ItemName                                  AS [Sản phẩm],
             COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
             CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
-            N'📊 Bán chạy trong chi nhánh'               AS [Gợi ý]
+            N'Bán chạy trong chi nhánh'                  AS [Gợi ý]
         INTO #TopChiNhanh
         FROM AR_InvoiceTbl I WITH (NOLOCK)
         JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
@@ -194,7 +194,7 @@ BEGIN
                 CF.ItemName                                  AS [Sản phẩm],
                 COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
                 CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
-                N'📊 Bán chạy trong chi nhánh (Toàn thời gian)' AS [Gợi ý]
+                N'Bán chạy trong chi nhánh (Toàn thời gian)' AS [Gợi ý]
             FROM AR_InvoiceTbl I WITH (NOLOCK)
             JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
             JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID

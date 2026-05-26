@@ -324,6 +324,16 @@
         var processedContent = content || '';
 
         if (role === 'ai' && typeof processedContent === 'string') {
+            // Chuẩn hóa tiếng Việt có dấu, không có emoji/icon
+            if (processedContent.indexOf('Tim thay ') === 0 && processedContent.indexOf(' ket qua.') !== -1) {
+                processedContent = processedContent.replace('Tim thay ', 'Tìm thấy ').replace(' ket qua.', ' kết quả.');
+            } else if (processedContent.indexOf('Đã tìm thấy ') === 0 && processedContent.indexOf(' kết quả.') !== -1) {
+                processedContent = processedContent.replace('Đã tìm thấy ', 'Tìm thấy ');
+            }
+            if (processedContent === 'Khong tim thay du lieu') {
+                processedContent = 'Không tìm thấy dữ liệu.';
+            }
+
             var suggestMatch = processedContent.match(/<suggest>(.*?)<\/suggest>/i);
             if (suggestMatch) {
                 var buttons = suggestMatch[1].split('|');
@@ -2791,7 +2801,11 @@
             'doanhsochinhanh', 'DoanhSoChiNhanh',
             'statusbackcolor', 'StatusBackColor',
             'msg', 'Msg', 'msgtype', 'MsgType',
-            'objectid', 'ObjectID'
+            'objectid', 'ObjectID',
+            // Các cột điểm số nội bộ (RFM/Scoring) không cần thiết hiển thị cho user
+            'r_score', 'f_score', 'm_score', 'c_score',
+            'rscore', 'fscore', 'mscore', 'cscore',
+            'diemtonghop', 'diem_tong_hop'
         ];
 
         // Phát hiện cờ ép hiển thị toàn bộ cột từ SQL trả về (ví dụ cột 'showallcols' hoặc 'fulltable' hoặc 'showall')
@@ -2860,15 +2874,12 @@
 
         chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
 
-
-
-        html += '<div class="ai-sales-filter-bar ai-inline-filter">'
-
-            + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
-
-            + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
-
-            + '</div>';
+        if (rows.length > 5) {
+            html += '<div class="ai-sales-filter-bar ai-inline-filter">'
+                + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
+                + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
+                + '</div>';
+        }
 
 
 
@@ -2941,7 +2952,7 @@
                 var lowerK = k.toLowerCase().replace(/_/g, '');
 
                 if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
-                    cellHtml = '<span class="ai-badge-recommend">✨ ' + _esc(_fmtCellVal(val)) + '</span>';
+                    cellHtml = '<span class="ai-badge-recommend">' + _esc(_fmtCellVal(val)) + '</span>';
                 } else {
                     cellHtml = _esc(_fmtCellVal(val));
                 }
