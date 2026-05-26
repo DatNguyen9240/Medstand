@@ -7,6 +7,7 @@ BEGIN
     SET NOCOUNT ON
 
     SET @timkiem = ISNULL(@timkiem, '')
+    SET @timkiem = REPLACE(REPLACE(@timkiem, '"', ''), '''', '')
     DECLARE @CleanTimKiem NVARCHAR(255) = ''
     IF @timkiem <> ''
     BEGIN

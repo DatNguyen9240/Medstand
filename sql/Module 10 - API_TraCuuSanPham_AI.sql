@@ -11,7 +11,7 @@ BEGIN
     SET NOCOUNT ON;
 
     -- Xử lý triệt để dấu câu và khoảng trắng dư thừa cho từ khóa tìm kiếm gốc
-    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));
+    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', ''), '"', ''), '''', '')));
 
     -- Clean and split keyword using stop words
     DECLARE @Terms TABLE (Term NVARCHAR(100));

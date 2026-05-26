@@ -235,7 +235,7 @@ BEGIN
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' với ', ','), N' Với ', ','), N' & ', ','), N' + ', ',');
 
     -- Xử lý triệt để dấu câu và khoảng trắng dư thừa
-    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', '')));
+    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', ''), '"', ''), '''', '')));
 
     IF @timkiem != ''
     BEGIN

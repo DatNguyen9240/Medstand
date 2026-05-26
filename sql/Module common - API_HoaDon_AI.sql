@@ -20,7 +20,11 @@ BEGIN
     -- 2. Defaults (Mặc định xem 10 ngày gần nhất, với UAT date fallback)
     IF @TuNgay IS NULL
     BEGIN
-        IF EXISTS (SELECT 1 FROM dbo.AR_InvoiceTbl WITH (NOLOCK) WHERE DocumentDate >= DATEADD(DAY, -10, GETDATE()))
+        IF @timkiem <> ''
+        BEGIN
+            SET @TuNgay = DATEADD(YEAR, -10, GETDATE())
+        END
+        ELSE IF EXISTS (SELECT 1 FROM dbo.AR_InvoiceTbl WITH (NOLOCK) WHERE DocumentDate >= DATEADD(DAY, -10, GETDATE()))
         BEGIN
             SET @TuNgay = DATEADD(DAY, -10, GETDATE())
         END

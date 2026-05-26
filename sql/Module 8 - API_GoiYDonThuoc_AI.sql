@@ -10,6 +10,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET ANSI_WARNINGS OFF;
+    SET @timkiem = REPLACE(REPLACE(@timkiem, '"', ''), '''', '');
    
     -- Chuẩn hóa các liên từ nối tiếng Việt thành dấu phẩy đề phòng n8n chưa xử lý
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng with ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
