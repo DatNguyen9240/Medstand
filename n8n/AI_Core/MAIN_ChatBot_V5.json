@@ -382,7 +382,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: $json.status, message: $json.message, data: $json.data, count: $json.count, apiCode: $json.apiCode, username: ($('LIB NormalizeInput').first().json.originalBody?.username || 'QLBH013.MED'), intentParams: $('LIB ConfidenceDecision').first().json.params, _debug: { confidence: $('LIB ConfidenceDecision').first().json.finalConfidence, matchedBy: $('LIB ConfidenceDecision').first().json.matchedBy, decision: $('LIB ConfidenceDecision').first().json.decision } }) }}",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, message: $json.message, data: $json.data, count: $json.count, apiCode: $json.apiCode, items: $('LIB ConfidenceDecision').first().json.items, action: $('LIB ConfidenceDecision').first().json.action, username: ($('LIB NormalizeInput').first().json.originalBody?.username || 'QLBH013.MED'), intentParams: $('LIB ConfidenceDecision').first().json.params, _debug: { confidence: $('LIB ConfidenceDecision').first().json.finalConfidence, matchedBy: $('LIB ConfidenceDecision').first().json.matchedBy, decision: $('LIB ConfidenceDecision').first().json.decision } }) }}",
         "options": {
           "responseCode": 200,
           "responseHeaders": {

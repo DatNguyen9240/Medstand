@@ -2717,7 +2717,7 @@
             'canhbaoai', 'canh_bao_ai', 'trend', 'percent',
             'money', 'amount', 'price', 'quantity',
             // Vietnamese normalized equivalents
-            'tennv', 'tenkh', 'tensanpham', 'tenkhachhang', 'tendoitac',
+            'tennv', 'tenkh', 'tensanpham', 'tenkhachhang', 'tendoitac', 'tencuahang', 'tennhanvien',
             'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
             'xuhuong', 'trangthai', 'tiendo', 'muctieu',
             // Order & general document columns
