@@ -211,16 +211,16 @@ BEGIN
     SELECT TOP (@TopN)
         KH.ObjectID, 
         KH.ObjectName AS TenCuaHang, 
-        KH.Phone AS [SĐT], 
-        KH.Address AS [Địa Chỉ],
-        KH.ZoneID AS [Tuyến], 
-        KH.ThuTrongTuan AS [Lịch Ghé], 
-        CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.LanMuaCuoi, 'dd/MM/yyyy') END AS [Lần Mua Cuối], 
-        CASE WHEN L.SoNgayKhongMua = 999 THEN NULL ELSE L.SoNgayKhongMua END AS [Số Ngày Không Mua],
-        L.ChuKyMuaTB_Ngay AS [Chu Kỳ Mua TB (Ngày)], 
-        CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.NgayDuDoanHetHang, 'dd/MM/yyyy') END AS [Ngày Dự Đoán Hết Hàng],
-        CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS [Còn Lại (Ngày)],
-        L.DiemUuTien AS [Điểm Ưu Tiên],
+        KH.Phone AS [Phone], 
+        KH.Address AS [Address],
+        KH.ZoneID AS [Tuyen], 
+        KH.ThuTrongTuan AS [LichGhe], 
+        CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.LanMuaCuoi, 'dd/MM/yyyy') END AS [LanMuaCuoi], 
+        CASE WHEN L.SoNgayKhongMua = 999 THEN NULL ELSE L.SoNgayKhongMua END AS [SoNgayKhongMua],
+        L.ChuKyMuaTB_Ngay AS [ChuKyTB], 
+        CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.NgayDuDoanHetHang, 'dd/MM/yyyy') END AS [NgayDuDoan],
+        CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS [ConLai],
+        L.DiemUuTien AS [DiemUuTien],
         CONCAT(
             CASE
                 WHEN L.LanMuaCuoi IS NULL THEN N'🆕 Khách hàng mới chưa có đơn'
@@ -229,7 +229,7 @@ BEGIN
                 ELSE N'📅 Theo lịch ghé'
             END,
             CASE WHEN KH.ZoneID IS NULL THEN N' | ⛔ Ngoài tuyến' ELSE '' END
-        ) AS [Lý Do Ghé]
+        ) AS [LyDoGhe]
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
     WHERE (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)

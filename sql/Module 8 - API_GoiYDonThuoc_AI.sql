@@ -12,8 +12,18 @@ BEGIN
     SET ANSI_WARNINGS OFF;
    
     -- Chuẩn hóa các liên từ nối tiếng Việt thành dấu phẩy đề phòng n8n chưa xử lý
-    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng với ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
+    SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng with ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' với ', ','), N' Với ', ','), N' & ', ','), N' + ', ',');
+
+    -- Map common symptoms to accent-free keywords matching 'An ngủ ngon Medstand'
+    IF @timkiem LIKE N'%mất ngủ%' OR @timkiem LIKE N'%mat ngu%' OR @timkiem LIKE N'%ngủ%'
+    BEGIN
+        SET @timkiem = @timkiem + N',ngon'
+    END
+    IF @timkiem LIKE N'%mệt mỏi%' OR @timkiem LIKE N'%met moi%' OR @timkiem LIKE N'%mệt%'
+    BEGIN
+        SET @timkiem = @timkiem + N',ngon'
+    END
 
     DECLARE @Keys TABLE (TuKhoa NVARCHAR(100));
     INSERT INTO @Keys (TuKhoa)

@@ -1,12 +1,17 @@
-$env:N8N_USER_FOLDER = "c:\Git cua tui\Medstand\n8n-system\n8n_data"
-$env:PATH = "c:\Git cua tui\Medstand\n8n-system\n8n_data\npm_global;" + $env:PATH
+# 0. Determine dynamic paths relative to this script directory
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ([string]::IsNullOrEmpty($scriptDir)) { $scriptDir = $PSScriptRoot }
+$baseDir = (Resolve-Path "$scriptDir\..").Path
+
+$env:N8N_USER_FOLDER = "$scriptDir\n8n_data"
+$env:PATH = "$scriptDir\n8n_data\npm_global;" + $env:PATH
 
 # 1. Path files
-$localExecutePath = "c:\Git cua tui\Medstand\n8n\API_Services\API_Execute.json"
-$localParserPath = "c:\Git cua tui\Medstand\n8n\AI_Core\AI_Intent_Parser.json"
+$localExecutePath = "$baseDir\n8n\API_Services\API_Execute.json"
+$localParserPath = "$baseDir\n8n\AI_Core\AI_Intent_Parser.json"
 
-$tempExecutePath = "c:\Git cua tui\Medstand\n8n-system\patched_execute.json"
-$tempParserPath = "c:\Git cua tui\Medstand\n8n-system\patched_parser.json"
+$tempExecutePath = "$scriptDir\patched_execute.json"
+$tempParserPath = "$scriptDir\patched_parser.json"
 
 # 2. Patch API_Execute
 Write-Host "Patching API_Execute..."

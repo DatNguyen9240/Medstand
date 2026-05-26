@@ -1,4 +1,4 @@
-USE medtest;
+﻿USE medtest;
 GO
 
 IF OBJECT_ID('dbo.API_DoanhSo_AI', 'P') IS NOT NULL
@@ -72,6 +72,12 @@ BEGIN
     SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
     SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
 
+    DECLARE @SYS_BranchID VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    IF @SYS_BranchID = '' AND @Username <> ''
+    BEGIN
+        SELECT @SYS_BranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    END
+
     -- SMART CUSTOMER RESOLUTION (NAME TO ID)
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
@@ -80,8 +86,8 @@ BEGIN
 
         SELECT TOP 1 @ResolvedID = ObjectID 
         FROM dbo.CF_ObjectTbl 
-        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
         ORDER BY 
             CASE WHEN ObjectID = @CleanSearch THEN 1
                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
@@ -136,7 +142,7 @@ BEGIN
     END
 
     -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh
-    DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    SET @SYS_BranchID    = ISNULL(@SYSBranchID, '')
     DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
     DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
     DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')

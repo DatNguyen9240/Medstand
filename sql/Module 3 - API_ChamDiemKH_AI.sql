@@ -46,6 +46,9 @@ BEGIN
        OR UPPER(@MaKhachHang) LIKE '%ỔN ĐỊNH%' OR UPPER(@MaKhachHang) LIKE '%NGUY CƠ%'
         SET @MaKhachHang = ''
 
+    DECLARE @SYSBranchID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+
     -- SMART CUSTOMER RESOLUTION (NAME TO ID)
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
     BEGIN
@@ -54,8 +57,9 @@ BEGIN
 
         SELECT TOP 1 @ResolvedID = ObjectID 
         FROM dbo.CF_ObjectTbl 
-        WHERE REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%'
+        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
+           OR ObjectID LIKE '%' + @CleanSearch + '%')
+           AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
         ORDER BY 
             CASE WHEN ObjectID = @CleanSearch THEN 1
                  WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
@@ -70,9 +74,6 @@ BEGIN
             SET @MaKhachHang = @ResolvedID
         END
     END
-
-    DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
 
 
     -- ═══ BƯỚC 1: AGGREGATION — Gom dữ liệu 12 tháng gần nhất ═══

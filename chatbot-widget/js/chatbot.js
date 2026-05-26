@@ -2624,7 +2624,17 @@
             'tenkh': 'Tên KH',
             'tongno': 'Tổng nợ',
             'makh': 'Mã KH',
-            'phanloai': 'Phân loại'
+            'phanloai': 'Phân loại',
+            // Tuyen ban hang translations (API_TuyenBanHang_AI)
+            'tuyen': 'Tuyến',
+            'lichghe': 'Lịch Ghé',
+            'lanmuacuoi': 'Lần Mua Cuối',
+            'songaykhongmua': 'Số Ngày Không Mua',
+            'chukytb': 'Chu Kỳ Mua TB (Ngày)',
+            'ngaydudoan': 'Ngày Dự Đoán Hết Hàng',
+            'conlai': 'Còn Lại (Ngày)',
+            'diemuutien': 'Điểm Ưu Tiên',
+            'lydoghe': 'Lý Do Ghé'
         };
         var lower = key.toLowerCase().replace(/_/g, '');
         return dict[lower] || key;

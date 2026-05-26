@@ -138,9 +138,11 @@ def parse_js_data(text):
 # ═══ MAIN Compile ═══
 
 def run_restructuring():
-    md_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business.md"
-    docx_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business.docx"
-    docx_alt_path = r"c:\Git cua tui\Medstand\HDSD_Medstand_AI_Business_Updated.docx"
+    import os
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    md_path = os.path.join(BASE_DIR, "HDSD_Medstand_AI_Business.md")
+    docx_path = os.path.join(BASE_DIR, "HDSD_Medstand_AI_Business.docx")
+    docx_alt_path = os.path.join(BASE_DIR, "HDSD_Medstand_AI_Business_Updated.docx")
     
     print("Reading MD manual...")
     with open(md_path, "r", encoding="utf-8") as f:
