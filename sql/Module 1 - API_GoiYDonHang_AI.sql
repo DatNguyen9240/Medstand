@@ -318,13 +318,13 @@ BEGIN
         CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
              ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [TonKho],
         CASE 
-            WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Quá hạn'
+            WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm'
             WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
             ELSE N'Ổn định'
         END                                             AS [TrangThai],
         CONCAT(
             CASE 
-                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Quá hạn ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
+                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
                 WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
                 ELSE N'Ổn định'
             END,

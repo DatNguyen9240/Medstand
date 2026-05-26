@@ -2820,6 +2820,7 @@ tr.expanded .ai-row-toggle::before {
   justify-content: center;
   cursor: pointer;
   color: var(--color-text, #334155);
+  pointer-events: auto; /* Cho phép nhận sự kiện click chuột */
 }
 
 .chat-header-actions .chat-clear-btn:hover {

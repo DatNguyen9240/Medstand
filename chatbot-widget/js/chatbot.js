@@ -2874,7 +2874,7 @@
 
         chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
 
-        if (rows.length > 5) {
+        if (rows.length > 12) {
             html += '<div class="ai-sales-filter-bar ai-inline-filter">'
                 + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
                 + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
@@ -3211,6 +3211,9 @@
                                 if (searchEl2) {
 
                                     var _t2 = null;
+
+                                    searchEl2.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+                                    searchEl2.addEventListener('click', function (e) { e.stopPropagation(); });
 
                                     searchEl2.addEventListener('input', function () {
 
