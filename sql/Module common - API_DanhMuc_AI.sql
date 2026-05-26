@@ -162,9 +162,9 @@ BEGIN
         -- SẢN PHẨM
         SELECT TOP 10 
             'sanpham' AS Type,
-            I.ItemID AS MaDanhMuc,
+            I.ItemID AS MaDanhMuc, 
             I.ItemName AS Name,
-            N'Sản phẩm' AS PhanLoai,
+            N'Sản phẩm' AS PhanLoai, 
             NULL AS Phone,
             NULL AS TaxCode,
             (
@@ -173,9 +173,11 @@ BEGIN
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
         FROM CF_ItemTbl I WITH (NOLOCK)
-        WHERE @timkiem = ''
+        WHERE ISNULL(I.isDisable, 0) = 0
+          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND (@timkiem = ''
            OR I.ItemID LIKE '%' + @timkiem + '%'
-           OR I.ItemName LIKE N'%' + @timkiem + '%'
+           OR I.ItemName LIKE N'%' + @timkiem + '%')
 
         UNION ALL
 

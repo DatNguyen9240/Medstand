@@ -102,7 +102,7 @@ set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 
 :: Don sach tien trinh cu neu mang hoac port bi ket
 call "%NPM_GLOBAL_DIR%\pm2.cmd" kill > nul 2>&1
-taskkill /f /im node.exe /t > nul 2>&1
+:: taskkill /f /im node.exe /t > nul 2>&1
 taskkill /f /im qdrant.exe /t > nul 2>&1
 taskkill /f /im redis-server.exe /t > nul 2>&1
 taskkill /f /im cloudflared.exe /t > nul 2>&1
