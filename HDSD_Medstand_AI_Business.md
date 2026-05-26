@@ -4,7 +4,7 @@
 ---
 
 ## 1. HƯỚNG DẪN BẮT ĐẦU NHANH
-1. **Truy cập:** Mở trình duyệt Web (điện thoại/máy tính) → **[medtest.bms79.com](https://medtest.bms79.com)**
+1. **Truy cập:** Mở trình duyệt Web (điện thoại/máy tính) → **[medtest.bms.7.net](https://medtest.bms.7.net)**
 2. **Đăng nhập:** Nhập tài khoản kinh doanh (QL hoặc TDV) của bạn.
 3. **Mở Chat:** Nhấp **Bong bóng chat** màu xanh ở góc phải dưới màn hình.
 
