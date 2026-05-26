@@ -4,7 +4,7 @@
 ---
 
 ## 🚀 3 BƯỚC KHỞI ĐỘNG
-1. Vào web: **[medtest.bms79.com](https://medtest.bms79.com)**
+1. Vào web: **[medtest.bms.7.net](https://medtest.bms.7.net)**
 2. Đăng nhập tài khoản của bạn.
 3. Bấm **Bong bóng chat** ở góc phải bên dưới để nhắn tin.
 

@@ -169,7 +169,7 @@ Error reading AI_Reviewer.json: Unexpected UTF-8 BOM (decode using utf-8-sig): l
 - **Execute Workflow Trigger** (`n8n-nodes-base.executeWorkflowTrigger`)
 - **Is UUID Token?** (`n8n-nodes-base.if`)
 - **Resolve UUID** (`n8n-nodes-base.httpRequest`)
-  - *URL*: https://medtest.bms79.com/api/API_UserInfo
+  - *URL*: https://medtest.bms.7.net/api/API_UserInfo
 
 
 Error reading API_GetConfig.json: Unexpected UTF-8 BOM (decode using utf-8-sig): line 1 column 1 (char 0)
