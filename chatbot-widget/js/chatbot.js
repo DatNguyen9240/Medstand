@@ -230,14 +230,29 @@
     var $fileInput = document.getElementById('chat-file-input');
 
     var $filePreview = document.getElementById('chat-file-preview');
-
     var $fileList = document.getElementById('chat-file-list');
 
     var $btnApi = document.getElementById('btn-api');
 
+    // Load theme preference on startup
+    try {
+        var savedTheme = localStorage.getItem('ai_chat_theme') || 'light';
+        if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.body.classList.add('dark-theme', 'dark');
+            if ($container) $container.classList.add('dark-theme');
+            setTimeout(function() {
+                var moonIcon = document.getElementById('chatbot-icon-moon');
+                var sunIcon = document.getElementById('chatbot-icon-sun');
+                if (moonIcon && sunIcon) {
+                    moonIcon.style.display = 'none';
+                    sunIcon.style.display = '';
+                }
+            }, 50);
+        }
+    } catch(e) {}
 
-
-    // Khởi tạo Chatbot API Engine UI (Nút "Chn API")
+    // Khởi tạo Chatbot API Engine UI (Nút "Ch n API")
 
     if (window.ApiEngine) {
 
@@ -789,7 +804,46 @@
 
     }
 
+    if ($btnClear) {
+        $btnClear.addEventListener('click', function () {
+            if (confirm('Sếp có chắc chắn muốn xóa sạch toàn bộ lịch sử trò chuyện này không?')) {
+                _clearCache();
+                var uname = _user();
+                var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+                sessionStorage.removeItem(key); // Xóa session ngầm
+                chatHistory = [];
+                _renderHistory();
+            }
+        });
+    }
 
+    if ($btnTheme) {
+        $btnTheme.addEventListener('click', function () {
+            try {
+                var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                var isDark = currentTheme === 'dark';
+                var nextTheme = isDark ? 'light' : 'dark';
+                
+                document.documentElement.setAttribute('data-theme', nextTheme);
+                document.body.classList.toggle('dark-theme', !isDark);
+                document.body.classList.toggle('dark', !isDark);
+                if ($container) $container.classList.toggle('dark-theme', !isDark);
+                localStorage.setItem('ai_chat_theme', nextTheme);
+
+                var moonIcon = document.getElementById('chatbot-icon-moon');
+                var sunIcon = document.getElementById('chatbot-icon-sun');
+                if (moonIcon && sunIcon) {
+                    if (isDark) {
+                        moonIcon.style.display = '';
+                        sunIcon.style.display = 'none';
+                    } else {
+                        moonIcon.style.display = 'none';
+                        sunIcon.style.display = '';
+                    }
+                }
+            } catch(e) {}
+        });
+    }
 
     $btnAttach.addEventListener('click', function () { $fileInput.click(); });
 
