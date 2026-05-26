@@ -104,6 +104,7 @@ set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 call "%NPM_GLOBAL_DIR%\pm2.cmd" kill > nul 2>&1
 taskkill /f /im node.exe /t > nul 2>&1
 taskkill /f /im qdrant.exe /t > nul 2>&1
+taskkill /f /im redis-server.exe /t > nul 2>&1
 taskkill /f /im cloudflared.exe /t > nul 2>&1
 
 :: ============================================================
@@ -163,7 +164,7 @@ set "NGROK_URL="
 for /L %%i in (1,1,25) do (
     if "!NGROK_URL!"=="" (
         if exist "%CF_LOG%" (
-            for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "Get-Content '.logs\cf_tunnel.log' | Select-String -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | ForEach-Object { $_.Matches.Value } | Select-Object -First 1" 2^>nul`) do (
+            for /f "usebackq tokens=*" %%a in (`powershell -NoProfile -Command "Get-Content '.logs\cf_tunnel.log' | Select-String -Pattern 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | ForEach-Object { $_.Matches.Value } | Where-Object { $_ -notmatch 'api\.trycloudflare\.com' } | Select-Object -First 1" 2^>nul`) do (
                 set "NGROK_URL=%%a"
             )
         )
