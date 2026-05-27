@@ -39,7 +39,25 @@ BEGIN
     -- 1. Tìm các mã sản phẩm khớp từ khóa (Rất nhanh vì chỉ quét bảng danh mục)
     SELECT TOP (@TopN)
         I.ItemID,
-        I.ItemName
+        I.ItemName,
+        -- Tính toán thứ tự sắp xếp thông minh theo độ liên quan
+        ROW_NUMBER() OVER (
+            ORDER BY 
+              -- 1. Ưu tiên khớp toàn bộ cụm từ tìm kiếm trước
+              CASE 
+                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 1
+                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 2
+                ELSE 3
+              END ASC,
+              -- 2. Ưu tiên khớp nhiều từ khóa nhất (giải quyết triệt để lỗi phân tách từ khóa của AI gây nhiễu)
+              (
+                  SELECT COUNT(DISTINCT T.Term) 
+                  FROM @Terms T 
+                  WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
+                     OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
+              ) DESC,
+              I.ItemName ASC
+        ) AS OrderIndex
     INTO #Items
     FROM CF_ItemTbl I WITH (NOLOCK)
     WHERE (ISNULL(I.isDisable, 0) = 0)
@@ -51,19 +69,11 @@ BEGIN
           ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
           EXISTS (
               SELECT 1 FROM @Terms T 
-              WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%' 
-                 OR ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + T.Term + N'%'
+              WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
+                 OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
           )
       )
-      AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
-    ORDER BY 
-      CASE 
-        WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 1
-        WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 2
-        WHEN EXISTS (SELECT 1 FROM @Terms T WHERE I.ItemName COLLATE Vietnamese_CI_AS LIKE T.Term + N'%') THEN 3
-        ELSE 4
-      END,
-      I.ItemName ASC;
+      AND ISNULL(I.ItemGroupID, '') = 'HH1';
 
 
     -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng
@@ -125,13 +135,14 @@ BEGIN
     ELSE
     BEGIN
         SELECT
-            ROW_NUMBER() OVER (ORDER BY I.ItemName) AS [STT],
+            ROW_NUMBER() OVER (ORDER BY I.OrderIndex ASC) AS [STT],
             I.ItemID AS [Mã sp],
             I.ItemName AS [Sản Phẩm],
             CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
             ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
         FROM #Items I
-        LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID;
+        LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID
+        ORDER BY I.OrderIndex ASC;
     END
 
 

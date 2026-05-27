@@ -6,9 +6,9 @@
 
     var _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
 
-    var CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
+    var CHAT_API = '/api/chat';
 
-    var CHAT_CASUAL_API = (_cfg.N8N_BASE || '') + '/webhook/hook-ai-casual';
+    var CHAT_CASUAL_API = '/api/chat';
 
     var CHAT_API_KEY = _cfg.CHAT_API_KEY || '';
 
@@ -106,64 +106,102 @@
 
 
 
-    function _loadCache() {
-
-        try {
-
-            var raw = localStorage.getItem(_getSessionKey());
-
-            if (!raw) return [];
-
-            var data = JSON.parse(raw);
-
-            if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
-
-                localStorage.removeItem(_getSessionKey());
-
-                var uname = _user();
-
-                var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
-
-                sessionStorage.removeItem(key); // Clear backend memory
-
-                return [];
-
+    // ── IndexedDB Storage Core ──
+    function _initDB() {
+        return new Promise(function(resolve, reject) {
+            try {
+                var request = indexedDB.open('MedstandChatDB', 1);
+                request.onupgradeneeded = function(e) {
+                    var db = e.target.result;
+                    if (!db.objectStoreNames.contains('history')) {
+                        db.createObjectStore('history', { keyPath: 'sessionKey' });
+                    }
+                };
+                request.onsuccess = function(e) { resolve(e.target.result); };
+                request.onerror = function(e) { reject(e.target.error); };
+            } catch(err) {
+                reject(err);
             }
-
-            return data.messages || [];
-
-        } catch (e) { return []; }
-
+        });
     }
 
+    function _loadCacheAsync() {
+        return new Promise(function(resolve) {
+            _initDB().then(function(db) {
+                var transaction = db.transaction(['history'], 'readonly');
+                var store = transaction.objectStore('history');
+                var request = store.get(_getSessionKey());
+                request.onsuccess = function(e) {
+                    var data = e.target.result;
+                    if (!data) return resolve([]);
+                    if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
+                        _clearCache();
+                        var uname = _user();
+                        var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+                        sessionStorage.removeItem(key);
+                        return resolve([]);
+                    }
+                    resolve(data.messages || []);
+                };
+                request.onerror = function() { resolve([]); };
+            }).catch(function() {
+                try {
+                    var raw = localStorage.getItem(_getSessionKey());
+                    if (!raw) return resolve([]);
+                    var data = JSON.parse(raw);
+                    if (data.ts && (Date.now() - data.ts > CACHE_TTL)) {
+                        localStorage.removeItem(_getSessionKey());
+                        return resolve([]);
+                    }
+                    resolve(data.messages || []);
+                } catch(e) { resolve([]); }
+            });
+        });
+    }
 
+    function _saveCacheAsync(messages) {
+        _initDB().then(function(db) {
+            var msgsToSave = messages || [];
+            if (msgsToSave.length > 200) msgsToSave = msgsToSave.slice(-200);
+            var transaction = db.transaction(['history'], 'readwrite');
+            var store = transaction.objectStore('history');
+            store.put({
+                sessionKey: _getSessionKey(),
+                ts: Date.now(),
+                messages: msgsToSave
+            });
+        }).catch(function() {
+            try {
+                var msgsToSave = messages || [];
+                if (msgsToSave.length > 100) msgsToSave = msgsToSave.slice(-100);
+                localStorage.setItem(_getSessionKey(), JSON.stringify({
+                    ts: Date.now(),
+                    messages: msgsToSave
+                }));
+            } catch(e) {}
+        });
+    }
+
+    function _clearCacheAsync() {
+        _initDB().then(function(db) {
+            var transaction = db.transaction(['history'], 'readwrite');
+            var store = transaction.objectStore('history');
+            store.delete(_getSessionKey());
+        }).catch(function() {});
+        try { localStorage.removeItem(_getSessionKey()); } catch(e) {}
+    }
+
+    // ── Synchronous wrappers for caller compatibility ──
+    function _loadCache() {
+        return [];
+    }
 
     function _saveCache(messages) {
-
-        try {
-
-            var msgsToSave = messages;
-
-            if (messages && messages.length > 100) msgsToSave = messages.slice(-100);
-
-            localStorage.setItem(_getSessionKey(), JSON.stringify({
-
-                ts: Date.now(),
-
-                messages: msgsToSave
-
-            }));
-
-        } catch (e) { }
-
+        _saveCacheAsync(messages);
     }
 
-
-
     function _clearCache() {
-
-        localStorage.removeItem(_getSessionKey());
-
+        _clearCacheAsync();
     }
 
 
@@ -268,7 +306,7 @@
 
 
 
-    var chatHistory = _loadCache();
+    var chatHistory = [];
 
     var selectedFiles = [];
 
@@ -4988,7 +5026,11 @@
 
     _ghostCreate();
 
-    _renderHistory();
+    _loadCacheAsync().then(function(loadedHistory) {
+        chatHistory = loadedHistory || [];
+        _renderHistory();
+        _updateChipsVisibility();
+    });
 
     // _initSuggestionBar(); // ã ẩn thanh gợi ý the user
 

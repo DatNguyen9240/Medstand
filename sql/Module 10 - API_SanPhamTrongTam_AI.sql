@@ -109,6 +109,7 @@ BEGIN
     FROM AR_SanPhamTrongTamDetailTbl D
     JOIN CF_ItemTbl I ON D.ItemID = I.ItemID
     WHERE D.DocumentID = @ProgramID
+      AND ISNULL(I.ItemGroupID, '') = 'HH1'
     ORDER BY I.ItemName ASC;
 END
 GO

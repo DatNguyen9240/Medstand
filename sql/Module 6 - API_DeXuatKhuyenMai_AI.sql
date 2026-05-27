@@ -52,7 +52,7 @@ BEGIN
     LEFT JOIN #V V ON I.ItemID = V.ItemID
     LEFT JOIN #Lot L ON I.ItemID = L.ItemID
     WHERE I.QuantityinStock > 0 
-      AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'KM', 'VT', 'TUI', 'Vat Tu') -- Loại bỏ hàng không kinh doanh
+      AND ISNULL(CF.ItemGroupID, '') = 'HH1' -- Lọc hàng HH1
     ORDER BY 
         -- Ưu tiên hàng cận date lên đầu, sau đó đến hàng chậm
         CASE WHEN L.HanDungNhat <= DATEADD(MONTH, 6, GETDATE()) THEN 1 

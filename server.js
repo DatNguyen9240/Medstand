@@ -6,6 +6,37 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+app.use(express.json()); // Enable JSON body parsing
+
+// N8N Backend URL ẩn phía server
+const N8N_INTERNAL_URL = process.env.N8N_BASE || 'https://realized-comfortable-oxygen-played.trycloudflare.com';
+
+// Proxy API cho Chatbot
+app.post('/api/chat', async (req, res) => {
+    try {
+        console.log('[Proxy Gateway] Forwarding chat request to N8N...');
+        const response = await fetch(`${N8N_INTERNAL_URL}/webhook/hook-ai-dainao`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers['authorization'] || ''
+            },
+            body: JSON.stringify(req.body)
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            res.status(response.status).json(data);
+        } else {
+            const text = await response.text();
+            res.status(response.status).send(text);
+        }
+    } catch (error) {
+        console.error('[Proxy Gateway Error]:', error);
+        res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
+    }
+});
 
 // Serve static files from the root directory
 app.use(express.static(__dirname));

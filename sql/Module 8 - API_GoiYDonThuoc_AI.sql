@@ -47,7 +47,7 @@ BEGIN
         OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(CF.TuKhoa,''), ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
     )
     WHERE ISNULL(CF.isDisable, 0) = 0
-      AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT');
+      AND ISNULL(CF.ItemGroupID, '') = 'HH1';
 
     -- SELECT * FROM #Table1; -- COMMENT ĐỂ TRÁNH CRASH N8N KHI TRẢ 2 BẢNG
 
@@ -69,7 +69,7 @@ BEGIN
         WHERE ItemName LIKE @CoreName + '%'
           AND ItemID NOT IN (SELECT ItemID FROM @Table1)
           AND ISNULL(isDisable, 0) = 0
-          AND ISNULL(ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT');
+          AND ISNULL(ItemGroupID, '') = 'HH1';
     END
 
     -- 2.2. Logic bán chéo thông minh dựa trên lịch sử hóa đơn thực tế (Market Basket Analysis)
@@ -86,7 +86,7 @@ BEGIN
       AND D_Other.ItemID NOT IN (SELECT ItemID FROM @FinalGoiY)
       AND I.DocumentDate >= DATEADD(month, -6, GETDATE())
       AND ISNULL(CF.isDisable, 0) = 0
-      AND ISNULL(CF.ItemGroupID, '') NOT IN ('BB', 'BBVT', 'PB', 'KM', 'VT')
+      AND ISNULL(CF.ItemGroupID, '') = 'HH1'
     GROUP BY CF.ItemID, CF.ItemName, CF.Unit
     ORDER BY COUNT(DISTINCT I.DocumentID) DESC;
 

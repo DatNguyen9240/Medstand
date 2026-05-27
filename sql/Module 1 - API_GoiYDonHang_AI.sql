@@ -183,6 +183,7 @@ BEGIN
         WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
           AND ISNULL(I.StatusID, 0) != 10
           AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
+          AND ISNULL(CF.ItemGroupID, '') = 'HH1'
         GROUP BY D.ItemID, CF.ItemName;
 
         -- Fallback if empty in UAT (take all time)
@@ -200,6 +201,7 @@ BEGIN
             JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
             WHERE ISNULL(I.StatusID, 0) != 10
               AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
+              AND ISNULL(CF.ItemGroupID, '') = 'HH1'
             GROUP BY D.ItemID, CF.ItemName;
         END
 
@@ -339,8 +341,7 @@ BEGIN
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
-    WHERE ISNULL(CF.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI') -- Lọc rác
-      AND CF.ItemID NOT LIKE 'KM%' AND CF.ItemID NOT LIKE 'BB%'
+    WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
       AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
              (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 

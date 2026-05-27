@@ -93,7 +93,7 @@ BEGIN TRY
             DECLARE @Prefix VARCHAR(10) = 'DMB' + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
                                                + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2)
             DECLARE @MaxNum INT
-            SELECT @MaxNum = ISNULL(MAX(CAST(
+            SELECT @MaxNum = ISNULL(MAX(TRY_CAST(
                 SUBSTRING(DocumentID, CHARINDEX('/', DocumentID) + 1, LEN(DocumentID)) AS INT
             )), 0)
             FROM AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)

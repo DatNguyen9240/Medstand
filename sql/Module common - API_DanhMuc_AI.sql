@@ -174,7 +174,7 @@ BEGIN
             ) AS ExtraData
         FROM CF_ItemTbl I WITH (NOLOCK)
         WHERE ISNULL(I.isDisable, 0) = 0
-          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND ISNULL(I.ItemGroupID, '') = 'HH1'
           AND (@timkiem = ''
            OR I.ItemID LIKE '%' + @timkiem + '%'
            OR I.ItemName LIKE N'%' + @timkiem + '%')
@@ -405,7 +405,7 @@ BEGIN
               P.FromDate DESC
         ) P
         WHERE ISNULL(I.isDisable, 0) = 0
-          AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+          AND ISNULL(I.ItemGroupID, '') = 'HH1'
           AND (@timkiem = '' 
                OR I.ItemID LIKE '%' + @timkiem + '%' 
                OR I.ItemName LIKE N'%' + @timkiem + '%')
@@ -439,7 +439,7 @@ BEGIN
                   P.FromDate DESC
             ) P
             WHERE ISNULL(I.isDisable, 0) = 0
-              AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+              AND ISNULL(I.ItemGroupID, '') = 'HH1'
               AND (dbo.ufn_remove_accents(I.ItemName) LIKE '%' + @CleanTimKiem + '%')
         END
 
