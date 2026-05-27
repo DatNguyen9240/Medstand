@@ -56,20 +56,12 @@
 
       // 3. Bẫy Debugger vô hiệu hóa DevTools (Làm treo tab khi cố mở F12)
       setInterval(function () {
-          (function () {
-              try {
-                  (function a(i) {
-                      if (("" + i / i).length !== 1 || i % 20 === 0) {
-                          (function () { }).constructor("debugger")();
-                      } else {
-                          debugger;
-                      }
-                      a(++i);
-                      console.log('🔒 F12 is blocked on production.');
-                  })(0);
-              } catch (e) { }
-          })();
-      }, 1000);
+          try {
+              (function () {}).constructor("debugger")();
+          } catch (e) {
+              debugger;
+          }
+      }, 100);
     }
   </script>
 
