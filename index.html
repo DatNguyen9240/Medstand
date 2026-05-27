@@ -43,8 +43,9 @@
       // Nếu là chạy ở local HOẶC có mã bí mật ?dev=true trên URL -> Cho phép F12 bình thường
       console.log('%c🛡️ MEDSTAND SECURITY: DevTools Blocker is BYPASSED (Local or Developer mode).', 'color: #2196f3; font-weight: bold; font-size: 11px;');
     } else {
-      // 2. Chặn phím tắt mở F12, Ctrl+Shift+I, Ctrl+U (Xem Source) và click chuột phải
-      document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+      // 2. Chặn phím tắt mở F12, Ctrl+Shift+I, Ctrl+U (Xem Source)
+      // (Cho phép chuột phải để copy/paste, bẫy debugger bên dưới vẫn sẽ khóa cứng F12 nếu cố tình inspect)
+      // document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
       document.addEventListener('keydown', function (e) {
         if (e.key === 'F12' || 
             (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'C' || e.key === 'J')) || 

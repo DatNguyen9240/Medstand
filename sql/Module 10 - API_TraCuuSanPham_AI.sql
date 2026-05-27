@@ -1,151 +1,232 @@
-IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
-GO
+<!DOCTYPE html>
+<html lang="vi">
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="manifest" href="../src/pwa/manifest.json">
+  <meta name="theme-color" content="">
+  <link rel="apple-touch-icon" href="../images/logo/medstand-logo.png">
+  <title>Đăng nhập - Medstand</title>
 
-CREATE PROCEDURE API_TraCuuSanPham_AI
-    @Username VARCHAR(50) = '',
-    @timkiem NVARCHAR(100) = '',
-    @TopN      INT = 50
-AS
-BEGIN
-    SET NOCOUNT ON;
+  <!-- CSS -->
+  <link rel="stylesheet" href="../src/css/design-tokens.css">
+  <link rel="stylesheet" href="../src/css/pages/auth.css">
 
-    -- Xử lý triệt để dấu câu và khoảng trắng dư thừa cho từ khóa tìm kiếm gốc
-    SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', ''), '"', ''), '''', '')));
+  <!-- Theme (before body) -->
+  <script src="../src/js/utils/theme.js"></script>
 
-    -- Clean and split keyword using stop words
-    DECLARE @Terms TABLE (Term NVARCHAR(100));
-    DECLARE @StopWords TABLE (Word NVARCHAR(100));
-    INSERT INTO @StopWords (Word) VALUES 
-    (N'và'), (N'của'), (N'thuốc'), (N'bị'), (N'cho'), (N'nên'), (N'uống'), (N'gì'), (N'tư'), (N'vấn'), 
-    (N'thành'), (N'phần'), (N'công'), (N'dụng'), (N'giá'), (N'tìm'), (N'hiệu'), (N'quả'), (N'tốt'), 
-    (N'nhất'), (N'có'), (N'thể'), (N'được'), (N'là'), (N'trong'), (N'với'), (N'cùng'), (N'đi'), 
-    (N'kèm'), (N'khách'), (N'em'), (N'tôi'), (N'mình'), (N'bác'), (N'sĩ'), (N'nhà'), (N'hỏi'), 
-    (N'muốn'), (N'mua'), (N'bán'), (N'thông'), (N'tin'), (N'chi'), (N'tiết'), (N'sản'),
-    (N'thì'), (N'ở'), (N'hộ'), (N'giúp'), (N'bởi'), (N'vì'), (N'như'), (N'thế'), (N'nào'), (N'a'), (N'ạ');
+  <!-- Cash.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+</head>
 
-    DECLARE @clean_timkiem NVARCHAR(200) = @timkiem;
-    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' cùng với ', ' '), N' Cùng với ', ' '), N' đi kèm ', ' '), N' Đi kèm ', ' '), N' và ', ' '), N' Và ', ' ');
-    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, N' với ', ' '), N' Với ', ' '), N' & ', ' '), N' + ', ' ');
-    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, '.', ' '), ',', ' '), '-', ' '), '?', ' '), '!', ' '), ':', ' ');
-    SET @clean_timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@clean_timkiem, ';', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' ');
+<body>
+  <!-- Global Spinner -->
+  <div id="global-spinner" class="loading-spinner" hidden aria-live="polite">
+    <span class="spinner-dot"></span>
+  </div>
 
-    INSERT INTO @Terms (Term)
-    SELECT DISTINCT LTRIM(RTRIM(value))
-    FROM STRING_SPLIT(@clean_timkiem, ' ')
-    WHERE LTRIM(RTRIM(value)) <> '' 
-      AND LTRIM(RTRIM(value)) NOT IN (SELECT Word FROM @StopWords);
+  <!-- Theme toggle -->
+  <button class="theme-btn" id="btn-theme" aria-label="Đổi giao diện">
+    <svg id="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg id="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      style="display:none">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </button>
 
-    -- 1. Tìm các mã sản phẩm khớp từ khóa (Rất nhanh vì chỉ quét bảng danh mục)
-    SELECT TOP (@TopN)
-        I.ItemID,
-        I.ItemName,
-        -- Tính toán thứ tự sắp xếp thông minh theo độ liên quan
-        ROW_NUMBER() OVER (
-            ORDER BY 
-              -- 1. Ưu tiên khớp toàn bộ cụm từ tìm kiếm trước
-              CASE 
-                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 1
-                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 2
-                ELSE 3
-              END ASC,
-              -- 2. Ưu tiên khớp nhiều từ khóa nhất (giải quyết triệt để lỗi phân tách từ khóa của AI gây nhiễu)
-              (
-                  SELECT COUNT(DISTINCT T.Term) 
-                  FROM @Terms T 
-                  WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
-                     OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
-              ) DESC,
-              I.ItemName ASC
-        ) AS OrderIndex
-    INTO #Items
-    FROM CF_ItemTbl I WITH (NOLOCK)
-    WHERE (ISNULL(I.isDisable, 0) = 0)
-      AND (
-          @timkiem = '' OR
-          I.ItemID LIKE @timkiem + '%' OR
-          I.ItemID LIKE '%' + @timkiem + '%' OR
-          I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
-          ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
-          EXISTS (
-              SELECT 1 FROM @Terms T 
-              WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
-                 OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
-          )
-      )
-      AND ISNULL(I.ItemGroupID, '') = 'HH1';
+  <div class="auth-card">
+    <!-- Logo -->
+    <div class="auth-logo">
+      <img src="../images/logo/medstand-logo.png" alt="Medstand Pharma" style="max-width: 200px; height: auto;">
+      <div>
+        <div class="auth-subtitle">Đăng nhập vào tài khoản</div>
+      </div>
+    </div>
 
+    <!-- Form -->
+    <form id="login-form" novalidate>
+      <div id="login-error" class="alert-error" role="alert"></div>
 
-    -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng
-    -- Lấy bảng giá mới nhất đang có hiệu lực hoặc gần đây nhất cho từng Item
-    SELECT
-        D.ItemID,
-        MAX(H.FromDate) AS MaxFromDate
-    INTO #LatestPriceHeader
-    FROM AR_PriceDetailTbl D WITH (NOLOCK)
-    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
-    WHERE H.isDisable = 0
-      AND D.ItemID IN (SELECT ItemID FROM #Items)
-      -- Ưu tiên bảng giá đang chạy, nếu không có thì lấy bảng giá gần nhất
-      AND (
-          EXISTS (
-              SELECT 1 
-              FROM AR_PriceDetailTbl D2 WITH (NOLOCK)
-              JOIN AR_PriceTbl H2 WITH (NOLOCK) ON D2.DocumentID = H2.DocumentID
-              WHERE H2.isDisable = 0 
-                AND H2.FromDate <= GETDATE() 
-                AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
-                AND D2.ItemID = D.ItemID
-          ) AND H.FromDate <= GETDATE() AND (H.ToDate IS NULL OR H.ToDate >= GETDATE())
-          OR
-          NOT EXISTS (
-              SELECT 1 
-              FROM AR_PriceDetailTbl D2 WITH (NOLOCK)
-              JOIN AR_PriceTbl H2 WITH (NOLOCK) ON D2.DocumentID = H2.DocumentID
-              WHERE H2.isDisable = 0 
-                AND H2.FromDate <= GETDATE() 
-                AND (H2.ToDate IS NULL OR H2.ToDate >= GETDATE())
-                AND D2.ItemID = D.ItemID
-          )
-      )
-    GROUP BY D.ItemID;
+      <div class="form-group">
+        <label class="form-label" for="username">Tên đăng nhập</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </span>
+          <input type="text" id="username" name="username" class="form-input" placeholder="Nhập tên đăng nhập"
+            autocomplete="username" required>
+        </div>
+      </div>
 
+      <div class="form-group">
+<label class="form-label" for="password">Mật khẩu</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </span>
+          <input type="password" id="password" name="password" class="form-input has-toggle" placeholder="Nhập mật khẩu"
+            autocomplete="current-password" required>
+          <button type="button" class="btn-toggle-pw" data-target="password" aria-label="Hiện/Ẩn mật khẩu">
+            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg class="eye-off" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" style="display:none">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
 
-    SELECT
-        D.ItemID,
-        MAX(D.UnitPrice) AS UnitPrice -- Đề phòng 1 bảng giá có 2 dòng cùng Item
-    INTO #FinalPrices
-    FROM AR_PriceDetailTbl D WITH (NOLOCK)
-    JOIN AR_PriceTbl H WITH (NOLOCK) ON D.DocumentID = H.DocumentID
-    JOIN #LatestPriceHeader L ON D.ItemID = L.ItemID AND H.FromDate = L.MaxFromDate
-    WHERE H.isDisable = 0
-    GROUP BY D.ItemID;
+      <div class="form-row">
+        <label class="checkbox-wrap">
+          <input type="checkbox" id="remember-me">
+          Ghi nhớ đăng nhập
+        </label>
+        <a href="forgot-password.html" class="link">Quên mật khẩu?</a>
+      </div>
 
+      <button type="submit" class="btn-primary" id="btn-login">
+        <span class="btn-spinner" id="login-spinner"></span>
+        <span id="btn-login-text">Đăng nhập</span>
+      </button>
+    </form>
 
-    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn Giá, Tồn Kho
-    IF NOT EXISTS (SELECT 1 FROM #Items)
-    BEGIN
-        SELECT
-            1 AS [STT],
-            'N/A' AS [Mã sp],
-            N'Không tìm thấy sản phẩm' AS [Sản Phẩm],
-            0 AS [Đơn Giá],
-            0 AS [Tồn Kho];
-    END
-    ELSE
-    BEGIN
-        SELECT
-            ROW_NUMBER() OVER (ORDER BY I.OrderIndex ASC) AS [STT],
-            I.ItemID AS [Mã sp],
-            I.ItemName AS [Sản Phẩm],
-            CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
-        FROM #Items I
-        LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID
-        ORDER BY I.OrderIndex ASC;
-    END
+    <div class="auth-footer">
+      Chưa có tài khoản? <a href="register.html" class="link">Đăng ký ngay</a>
+    </div>
+  </div>
 
+  <!-- Minimal JS needed for login -->
+  <script>
+    /* Global Spinner (inline — no need for Cash.js binding) */
+    var $spinner = document.getElementById('global-spinner');
+    var _spinnerCount = 0;
+    function showGlobalSpinner() { _spinnerCount++; $spinner.removeAttribute('hidden'); }
+    function hideGlobalSpinner() { _spinnerCount = Math.max(0, _spinnerCount - 1); if (_spinnerCount === 0) $spinner.setAttribute('hidden', ''); }
+  </script>
+  <script src="../env.js"></script>
+  <script src="../src/js/services/http.js"></script>
+  <script src="../src/js/services/auth.service.js"></script>
+  <script src="../src/js/components/Alert.js"></script>
+  <script src="../src/js/components/AuthThemeToggle.js"></script>
+  <script src="../src/js/components/PasswordToggle.js"></script>
 
-    DROP TABLE #Items; DROP TABLE #LatestPriceHeader; DROP TABLE #FinalPrices;
-END
-GO
+  <script>
+    // Nếu đã đăng nhập → về trang chủ
+    (function () {
+var match = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
+      if (match && match[1]) {
+        window.location.href = '../index.html#/home';
+        return;
+      }
+    })();
+
+    // Init theme toggle + password toggle
+    AuthThemeToggle.bind();
+    PasswordToggle.init();
+
+    // LocalStorage-based "Remember me" (including Password) logic
+    (function () {
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const rememberCheckbox = document.getElementById('remember-me');
+
+      // Helper for UTF-8 safe Base64 obfuscation
+      const b64Encode = (str) => btoa(unescape(encodeURIComponent(str)));
+      const b64Decode = (str) => {
+        try { return decodeURIComponent(escape(atob(str))); }
+        catch (e) { return ''; }
+      };
+
+      // 1. Initial Load (with small delay to ensure DOM and native autofill are ready)
+      setTimeout(() => {
+        const rememberedUser = localStorage.getItem('remember_user');
+        const rememberedPw = localStorage.getItem('remember_pw');
+
+        if (rememberedUser && rememberedPw) {
+          usernameInput.value = rememberedUser;
+          passwordInput.value = b64Decode(rememberedPw);
+          rememberCheckbox.checked = true;
+        }
+      }, 100);
+
+      // (Readonly logic removed as requested)
+
+      // 3. Login form submission
+      document.getElementById('login-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        const errorEl = document.getElementById('login-error');
+        const spinner = document.getElementById('login-spinner');
+        const btnText = document.getElementById('btn-login-text');
+        const btn = document.getElementById('btn-login');
+
+        errorEl.style.display = 'none';
+
+        if (!username || !password) {
+          errorEl.textContent = 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.';
+          errorEl.style.display = 'block';
+          return;
+        }
+
+        btn.disabled = true;
+        spinner.style.display = '';
+        btnText.textContent = 'Đang đăng nhập...';
+
+        try {
+          // Perform authentication
+          await AuthService.login(username, password);
+
+          // If "Remember me" is active, save to localStorage
+          if (rememberCheckbox.checked) {
+            localStorage.setItem('remember_user', username);
+            localStorage.setItem('remember_pw', b64Encode(password));
+          } else {
+            // Otherwise, clear remembered details
+            localStorage.removeItem('remember_user');
+            localStorage.removeItem('remember_pw');
+          }
+
+          // Successful login, go home
+          window.location.href = '../index.html#/home';
+        } catch (err) {
+          errorEl.textContent = err.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+errorEl.style.display = 'block';
+        } finally {
+          btn.disabled = false;
+          spinner.style.display = 'none';
+          btnText.textContent = 'Đăng nhập';
+        }
+      });
+    })();
+  </script>
+
+  <!-- PWA Service Worker -->
+  <script src="../src/pwa/pwa-register.js"></script>
+</body>
+
+</html>

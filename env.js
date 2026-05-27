@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ============================================================
  *  MEDSTAND — CẤU HÌNH HỆ THỐNG (UNIFIED CONFIG)
  *  File này là file DUY NHẤT cần sửa khi deploy sang server mới
@@ -7,11 +7,10 @@
 
 // 1. Tham số môi trường (Environment Variables)
 const ENV_VARS = {
-    // Nếu chạy App ngay tại quầy thu ngân (Local), ưu tiên dùng 127.0.0.1 để không bị nghẽn mạng Cloudflare
-    // Nếu dùng từ xa (Internet), dán link https://...trycloudflare.com sinh ra từ start_n8n.bat vào đây
-    N8N_BASE: 'https://realized-comfortable-oxygen-played.trycloudflare.com',
+    // N8N_BASE đã được ẩn bảo mật và chạy thông qua API Gateway của Server Node.js
+    N8N_BASE: '', 
     API_BASE: 'https://medtest.bms79.com',
-    CHAT_API_KEY: 'test123456'
+    CHAT_API_KEY: '' 
 };
 
 // 2. Cấu hình API chi tiết (Dữ liệu gốc từ api.config.js)

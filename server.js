@@ -38,6 +38,40 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
+// Proxy cho toàn bộ các endpoint n8n bắt đầu bằng /webhook/ để bảo mật tuyệt đối
+app.all('/webhook/*', async (req, res) => {
+    try {
+        console.log(`[Proxy Gateway] Forwarding ${req.method} request to N8N: ${req.url}`);
+        const targetUrl = `${N8N_INTERNAL_URL}${req.originalUrl || req.url}`;
+        
+        const options = {
+            method: req.method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers['authorization'] || ''
+            }
+        };
+
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+            options.body = JSON.stringify(req.body);
+        }
+
+        const response = await fetch(targetUrl, options);
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            res.status(response.status).json(data);
+        } else {
+            const text = await response.text();
+            res.status(response.status).send(text);
+        }
+    } catch (error) {
+        console.error('[Proxy Gateway Error]:', error);
+        res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
+    }
+});
+
 // Serve static files from the root directory
 app.use(express.static(__dirname));
 
