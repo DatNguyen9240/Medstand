@@ -182,10 +182,10 @@ set "WEBHOOK_URL=!NGROK_URL!/"
 set "N8N_WEBHOOK_TUNNEL_URL=!NGROK_URL!"
 
 :: Chi replace file neu tim thay de tranh bao loi bat thinh linh
-if not exist "%BASE_DIR%\..\env.js" goto SKIP_CF_TUNNEL
-for %%i in ("%BASE_DIR%\..\env.js") do set "ABS_ENV_PATH=%%~fi"
-powershell -NoProfile -Command "$f='%ABS_ENV_PATH%'; (Get-Content -Path $f -Encoding UTF8) -replace \"N8N_BASE: '.*?'\", \"N8N_BASE: '!NGROK_URL!'\" | Set-Content -Path $f -Encoding UTF8"
-echo [OK] Da cap nhat tu dong link vao env.js.
+if not exist "%BASE_DIR%\..\.env" goto SKIP_CF_TUNNEL
+for %%i in ("%BASE_DIR%\..\.env") do set "ABS_ENV_PATH=%%~fi"
+powershell -NoProfile -Command "$f='%ABS_ENV_PATH%'; (Get-Content -Path $f -Encoding UTF8) -replace 'N8N_BASE=.*', 'N8N_BASE=!NGROK_URL!' | Set-Content -Path $f -Encoding UTF8"
+echo [OK] Da cap nhat tu dong link vao .env.
 
 :SKIP_CF_TUNNEL
 
