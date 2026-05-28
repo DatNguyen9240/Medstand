@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v33';
+const CACHE_VERSION = 'medstand-v34'; // Tăng phiên bản để kích hoạt cập nhật cache mới tức thì
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -44,6 +44,12 @@ const PRECACHE_URLS = [
 
   // Offline fallback
   '/pages/offline.html',
+
+  // Thư viện ngoài CDN (Cache cục bộ để tải tức thời trong 0ms)
+  'https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js',
+  'https://cdn.jsdelivr.net/npm/chart.js',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
 // ── Install: cache từng file riêng, bỏ qua file lỗi ──────────────────────────

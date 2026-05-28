@@ -47,8 +47,7 @@ function initDashboard() {
     } catch (e) { }
 
     loadStats(fromDate, toDate);
-    loadChart(fromDate, toDate);
-    loadRevenue(fromDate, toDate);
+    loadChartAndRevenue(fromDate, toDate);
     loadBirthdays(fromDate, toDate);
   }
 
@@ -81,114 +80,10 @@ function initDashboard() {
       });
   }
 
-  // ── Chart ──
-  function loadChart(fromDate, toDate) {
+  // ── Chart & Revenue (Merged for 2x performance - only 1 API request) ──
+  function loadChartAndRevenue(fromDate, toDate) {
     $('#chart-skeleton').prop('hidden', false).show();
     $('#revenue-chart').hide();
-
-    // Biểu đồ doanh số theo ngày -> Sử dụng getRevenue để lấy số liệu nhanh và an toàn từ API_Dashboard_Chart1
-    DashboardService.getRevenue(fromDate, toDate)
-      .then(function (res) {
-          var data = res.data || res;
-          var records = data.records || [];
-          
-          // 1. Tạo mảng liên tục các ngày từ fromDate đến toDate với giá trị 0
-          var dayValues = {};
-          var startD = new Date(fromDate);
-          var endD = new Date(toDate);
-          if (!isNaN(startD) && !isNaN(endD) && startD <= endD) {
-            for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
-              var dayStr = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
-              dayValues[dayStr] = 0;
-            }
-          }
-
-          // 2. Đưa data vào từng ngày
-          var hasValidDateMapping = false;
-          records.forEach(function (r) {
-            var rawDate = '';
-            var v = 0;
-            
-            // Tìm nội dung ngày + số liệu theo alias (Không phân biệt hoa thường)
-            for (var k in r) {
-                if (!r.hasOwnProperty(k)) continue;
-                var kl = String(k).toLowerCase();
-                if (['ngay', 'date', 'ngaylap', 'documentdate', 'createddate', 'label', 'thoigian', 'ngày', 'columndate'].indexOf(kl) !== -1) {
-                    if (String(r[k]).match(/\d/)) rawDate = r[k]; // Chỉ nhận nếu có chứa số
-                }
-                if (['basetotal', 'amount', 'doanhso', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri', 'doanhthu'].indexOf(kl) !== -1) v = parseFloat(r[k]) || 0;
-            }
-            
-            // Nếu vẫn chưa thấy Date, quét tìm giá trị chuỗi giống ngày nhất (phải có format YYYY-MM-DD hoặc DD/MM)
-            if (!rawDate) {
-                for (var key in r) {
-                    var strVal = String(r[key]);
-                    // Bắt Buộc là chuỗi có dạng giống ngày thật sự (có số)
-                    if ((strVal.match(/\d{4}-\d{2}-\d{2}/) || strVal.match(/\d{2}\/\d{2}/) || strVal.match(/\d{4}\/\d{2}\/\d{2}/)) && !strVal.match(/^[a-zA-Z]+$/)) {
-                        rawDate = strVal; break;
-                    }
-                }
-            }
-            // Nếu vẫn chưa thấy Value, lấy cột Number dạng số
-            if (!v) {
-                for (var key in r) {
-                    var parsed = parseFloat(r[key]);
-                    if (!isNaN(parsed) && String(r[key]) !== rawDate && r[key] !== null && r[key] !== '') {
-                        v = parsed; 
-                    }
-                }
-            }
-
-            var mappedDate = '';
-            if (rawDate) {
-                var strD = String(rawDate);
-                var matchISO = strD.match(/(\d{4})-(\d{2})-(\d{2})/);
-                var matchSlash1 = strD.match(/(\d{2})\/(\d{2})\/(\d{4})/); // DD/MM/YYYY
-                var matchSlash2 = strD.match(/(\d{4})\/(\d{2})\/(\d{2})/); // YYYY/MM/DD
-                var matchSlash3 = strD.match(/^(\d{2})\/(\d{2})$/);        // DD/MM
-                var matchNumber = strD.match(/^(\d{1,2})$/);               // D hoặc DD
-                
-                if (matchISO) {
-                    mappedDate = matchISO[3] + '/' + matchISO[2];
-                } else if (matchSlash1) {
-                    mappedDate = matchSlash1[1] + '/' + matchSlash1[2];
-                } else if (matchSlash2) {
-                    mappedDate = matchSlash2[3] + '/' + matchSlash2[2];
-                } else if (matchSlash3) {
-                    mappedDate = matchSlash3[1] + '/' + matchSlash3[2];
-                } else if (matchNumber && !isNaN(parseInt(matchNumber[1]))) {
-                    mappedDate = matchNumber[1].padStart(2, '0') + '/' + String(startD.getMonth() + 1).padStart(2, '0');
-                } else {
-                    mappedDate = strD;
-                }
-            }
-
-            if (mappedDate && dayValues[mappedDate] !== undefined) {
-               dayValues[mappedDate] += v;
-               hasValidDateMapping = true;
-            } else if (mappedDate) {
-               dayValues[mappedDate] = (dayValues[mappedDate] || 0) + v;
-               hasValidDateMapping = true;
-            }
-          });
-
-          // Nếu ko map thành công vào 1 ngày nào cả nhưng có data, biểu đồ sẽ hiển thị thẳng tắp 0.
-
-
-          var labels = Object.keys(dayValues);
-          var values = labels.map(function(k) { return dayValues[k]; });
-          
-          renderChart({ labels: labels, values: values });
-      })
-      .catch(function () { renderChart({ labels: [], values: [] }); })
-      .finally(function () {
-        $('#chart-skeleton').prop('hidden', true).hide();
-        $('#revenue-chart').show();
-      });
-  }
-
-  // ── Revenue ──
-  function loadRevenue(fromDate, toDate) {
     $('#revenue-value').prop('hidden', true);
     $('#revenue-skeleton').prop('hidden', false);
 
@@ -196,12 +91,96 @@ function initDashboard() {
       .then(function (res) {
         var data = res.data || res;
         var records = data.records || [];
+
+        // 1. Tính tổng doanh thu
         var total = records.reduce(function (sum, r) { return sum + (parseFloat(r.Amount) || 0); }, 0);
         $('#revenue-value').text(Number(total).toLocaleString('vi-VN')).prop('hidden', false);
-        $('#revenue-skeleton').prop('hidden', true);
+
+        // 2. Tạo mảng liên tục các ngày từ fromDate đến toDate với giá trị 0
+        var dayValues = {};
+        var startD = new Date(fromDate);
+        var endD = new Date(toDate);
+        if (!isNaN(startD) && !isNaN(endD) && startD <= endD) {
+          for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+            var dayStr = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+            dayValues[dayStr] = 0;
+          }
+        }
+
+        // 3. Đưa dữ liệu vào từng ngày
+        records.forEach(function (r) {
+          var rawDate = '';
+          var v = 0;
+          
+          for (var k in r) {
+              if (!r.hasOwnProperty(k)) continue;
+              var kl = String(k).toLowerCase();
+              if (['ngay', 'date', 'ngaylap', 'documentdate', 'createddate', 'label', 'thoigian', 'ngày', 'columndate'].indexOf(kl) !== -1) {
+                  if (String(r[k]).match(/\d/)) rawDate = r[k];
+              }
+              if (['basetotal', 'amount', 'doanhso', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri', 'doanhthu'].indexOf(kl) !== -1) v = parseFloat(r[k]) || 0;
+          }
+          
+          if (!rawDate) {
+              for (var key in r) {
+                  var strVal = String(r[key]);
+                  if ((strVal.match(/\d{4}-\d{2}-\d{2}/) || strVal.match(/\d{2}\/\d{2}/) || strVal.match(/\d{4}\/\d{2}\/\d{2}/)) && !strVal.match(/^[a-zA-Z]+$/)) {
+                      rawDate = strVal; break;
+                  }
+              }
+          }
+          if (!v) {
+              for (var key in r) {
+                  var parsed = parseFloat(r[key]);
+                  if (!isNaN(parsed) && String(r[key]) !== rawDate && r[key] !== null && r[key] !== '') {
+                      v = parsed; 
+                  }
+              }
+          }
+
+          var mappedDate = '';
+          if (rawDate) {
+              var strD = String(rawDate);
+              var matchISO = strD.match(/(\d{4})-(\d{2})-(\d{2})/);
+              var matchSlash1 = strD.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+              var matchSlash2 = strD.match(/(\d{4})\/(\d{2})\/(\d{2})/);
+              var matchSlash3 = strD.match(/^(\d{2})\/(\d{2})$/);
+              var matchNumber = strD.match(/^(\d{1,2})$/);
+              
+              if (matchISO) {
+                  mappedDate = matchISO[3] + '/' + matchISO[2];
+              } else if (matchSlash1) {
+                  mappedDate = matchSlash1[1] + '/' + matchSlash1[2];
+              } else if (matchSlash2) {
+                  mappedDate = matchSlash2[3] + '/' + matchSlash2[2];
+              } else if (matchSlash3) {
+                  mappedDate = matchSlash3[1] + '/' + matchSlash3[2];
+              } else if (matchNumber && !isNaN(parseInt(matchNumber[1]))) {
+                  mappedDate = matchNumber[1].padStart(2, '0') + '/' + String(startD.getMonth() + 1).padStart(2, '0');
+              } else {
+                  mappedDate = strD;
+              }
+          }
+
+          if (mappedDate && dayValues[mappedDate] !== undefined) {
+             dayValues[mappedDate] += v;
+          } else if (mappedDate) {
+             dayValues[mappedDate] = (dayValues[mappedDate] || 0) + v;
+          }
+        });
+
+        var labels = Object.keys(dayValues);
+        var values = labels.map(function(k) { return dayValues[k]; });
+        
+        renderChart({ labels: labels, values: values });
       })
       .catch(function () {
         $('#revenue-value').text('0').prop('hidden', false);
+        renderChart({ labels: [], values: [] });
+      })
+      .finally(function () {
+        $('#chart-skeleton').prop('hidden', true).hide();
+        $('#revenue-chart').show();
         $('#revenue-skeleton').prop('hidden', true);
       });
   }

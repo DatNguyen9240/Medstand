@@ -652,3 +652,9 @@
       
       $('#promoSuggest_' + rowId).hide().html('');
     });
+
+// -- Cleanup Hooks (Chống rò rỉ bộ nhớ) --------------------------------
+window._pageCleanupHooks = window._pageCleanupHooks || [];
+window._pageCleanupHooks.push(function() {
+  $(document).off('click', '.btn-apply-promo');
+});

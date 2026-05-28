@@ -1,4 +1,4 @@
-﻿USE medtest;
+USE medtest;
 GO
 
 IF OBJECT_ID('dbo.API_DoanhSo_AI', 'P') IS NOT NULL
@@ -235,7 +235,7 @@ BEGIN
             SUM(Amount) AS Amount,
             FORMAT(SUM(Amount), '#,##0') AS [Doanh Số]
         FROM AR_OrderAndReturnView
-        WHERE CAST(DocumentDate AS DATE) BETWEEN @TuNgay AND @DenNgay
+        WHERE DocumentDate BETWEEN @TuNgay AND @DenNgay
           AND (
               @SYSUserGroupID = 'Admin'
               OR EmployeeID = @SYS_EmployeeID

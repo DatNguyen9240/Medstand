@@ -3,7 +3,7 @@
  * Tự động gắn Authorization header, xử lý lỗi tập trung, timeout
  */
 const Http = (() => {
-  const TIMEOUT_MS = 15000; // 15s
+  const TIMEOUT_MS = 60000; // Tăng timeout lên 60s để các truy vấn báo cáo lớn có đủ thời gian chạy
   const CACHE_TTL_MS = 3 * 60 * 1000; // 3 phút
   const CACHE_PREFIX = '_hc_'; // prefix cho sessionStorage keys
 
@@ -166,11 +166,12 @@ const Http = (() => {
         return res;
       } catch (err) {
         console.warn(`[HTTP] Attempt ${attempt}/${retries} failed:`, err.message);
-        if (attempt === retries) {
-          // Phân biệt lỗi timeout vs mất mạng
-          const isTimeout = err.name === 'AbortError';
+        
+        const isTimeout = err.name === 'AbortError';
+        // Nếu là lỗi Timeout (AbortError), dừng retry ngay để tránh "Retry Storm" gây quá tải máy chủ
+        if (isTimeout || attempt === retries) {
           const msg = isTimeout
-            ? 'Kết nối quá thời gian chờ. Vui lòng thử lại.'
+            ? 'Kết nối quá thời gian chờ (Timeout). Vui lòng thử lại sau.'
             : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.';
           _alert('error', msg);
           throw new Error(msg);
