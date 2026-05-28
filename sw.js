@@ -32,29 +32,15 @@ const PRECACHE_URLS = [
   '/chatbot-widget/css/chatbot-api-engine.css',
   '/chatbot-widget/css/ai-bot-button.css',
 
-  // Global CSS
-  '/src/css/design-tokens.css',
-  '/src/css/global.css',
-  '/src/css/components/header.css',
-  '/src/css/components/card.css',
-  '/src/css/components/nav-bar.css',
-  '/src/css/components/list.css',
-  '/src/css/components/chart.css',
-  '/src/css/components/skeleton.css',
-  '/src/css/components/loading-spinner.css',
-  '/src/css/layouts/desktop.css',
+  // Bundled Production Assets (Tải cực nhanh)
+  '/src/css/dist/app.bundle.min.css',
+  '/src/js/dist/app.bundle.min.js',
+  '/env.js',
 
   // Assets
   '/images/logo/medstand-logo.png',
   '/src/pwa/manifest.json',
   '/src/pwa/pwa-register.js',
-
-  // Core JS
-  '/src/js/core/router.js',
-  '/env.js',
-  '/src/js/services/http.js',
-  '/src/js/services/auth.service.js',
-  '/src/js/components/NavBar.js',
 
   // Offline fallback
   '/pages/offline.html',
