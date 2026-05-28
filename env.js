@@ -7,11 +7,13 @@
 
 // 1. Tham số môi trường (Environment Variables)
 const ENV_VARS = {
-    // N8N_BASE đã được ẩn bảo mật và chạy thông qua API Gateway của Server Node.js
-    N8N_BASE: '', 
+    // Trả về link Cloudflare chạy thực tế của n8n để Chatbot gọi trực tiếp
+    N8N_BASE: 'https://mental-miller-rebecca-sets.trycloudflare.com',
     API_BASE: 'https://medtest.bms79.com',
-    CHAT_API_KEY: '' 
+    CHAT_API_KEY: 'test123456'
 };
+
+
 
 // 2. Cấu hình API chi tiết (Dữ liệu gốc từ api.config.js)
 window.API_CONFIG = {

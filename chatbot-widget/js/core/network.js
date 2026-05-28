@@ -2,10 +2,7 @@
 import { emit, EVENTS } from './event-bus.js';
 import { logger } from '../utils/logger.js';
 
-let _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
-
 // Khởi tạo Base Params từ Window/Env 
-const CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 30000;
 
@@ -44,7 +41,8 @@ export const getHeaders = () => {
     // Lấy cookie token
     const tokenMatch = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
     const token = tokenMatch ? tokenMatch[1] : '';
-    const apiKey = _cfg.CHAT_API_KEY || '';
+    const config = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
+    const apiKey = config.CHAT_API_KEY || '';
     
     return {
         'Content-Type': 'application/json',
@@ -125,7 +123,9 @@ export const NetworkService = {
         InFlightPayloads.add(pHash);
 
         // Chuẩn bị Fetch
-        const targetUrl = payload.overrideUrl || CHAT_API;
+        const config = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
+        const chatApiUrl = (config.N8N_BASE || '') + (config.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
+        const targetUrl = payload.overrideUrl || chatApiUrl;
         this.abortController = new AbortController(); // lưu lại ngộ nhỡ user ấn DỪNG
 
         emit(EVENTS.NETWORK_REQUEST, payload);

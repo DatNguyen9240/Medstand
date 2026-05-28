@@ -6,9 +6,9 @@
 
     var _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
 
-    var CHAT_API = '/api/chat';
+    var CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
 
-    var CHAT_CASUAL_API = '/api/chat';
+    var CHAT_CASUAL_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
 
     var CHAT_API_KEY = _cfg.CHAT_API_KEY || '';
 
