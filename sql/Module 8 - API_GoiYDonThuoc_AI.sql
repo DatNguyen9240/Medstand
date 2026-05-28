@@ -25,6 +25,15 @@ BEGIN
     BEGIN
         SET @timkiem = @timkiem + N',ngon'
     END
+    IF @timkiem LIKE N'%lười ăn%' OR @timkiem LIKE N'%luoi an%' 
+       OR @timkiem LIKE N'%biếng ăn%' OR @timkiem LIKE N'%bieng an%'
+       OR @timkiem LIKE N'%chán ăn%' OR @timkiem LIKE N'%chan an%'
+       OR @timkiem LIKE N'%kén ăn%' OR @timkiem LIKE N'%ken an%'
+       OR @timkiem LIKE N'%ăn kém%' OR @timkiem LIKE N'%an kem%'
+       OR @timkiem LIKE N'%ăn ngon%' OR @timkiem LIKE N'%an ngon%'
+    BEGIN
+        SET @timkiem = @timkiem + N',ngon'
+    END
 
     DECLARE @Keys TABLE (TuKhoa NVARCHAR(100));
     INSERT INTO @Keys (TuKhoa)
@@ -34,6 +43,18 @@ BEGIN
     -- Xử lý triệt để dấu câu và khoảng trắng dư thừa từ Chatbot AI trả về
     UPDATE @Keys 
     SET TuKhoa = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(TuKhoa, '.', ''), ',', ''), '-', '')));
+
+    -- Loại bỏ các từ khóa chung chung (stop words) có thể gây khớp sai (ví dụ: 'thuốc' khớp với 'Thuốc ho Naomy')
+    DELETE FROM @Keys
+    WHERE TuKhoa IN (
+        N'thuốc', N'thuoc', 
+        N'uống', N'uong', 
+        N'bác sĩ', N'bac si', N'bác sỹ', N'bac sy',
+        N'cho', N'trị', N'tri', N'điều trị', N'dieu tri',
+        N'bệnh', N'benh', N'bị', N'bi',
+        N'em', N'bé', N'be', N'trẻ', N'tre', N'con',
+        N'tui', N'tôi', N'toi', N'gì', N'gi', N'nào', N'nao'
+    ) OR LEN(TuKhoa) <= 1;
 
     -- BẢNG 1: Tìm sản phẩm thay thế (Món khớp trực tiếp)
     DECLARE @Table1 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(500), Unit NVARCHAR(50), TuKhoa NVARCHAR(500), LyDoGoiY NVARCHAR(1000));
