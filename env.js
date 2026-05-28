@@ -6,11 +6,11 @@
  */
 
 // 1. Tham số môi trường (Environment Variables)
+// Đã chuyển toàn bộ thông tin nhạy cảm về Server Proxy để giấu hoàn toàn khỏi trình duyệt F12
 const ENV_VARS = {
-    // Trả về link Cloudflare chạy thực tế của n8n để Chatbot gọi trực tiếp
-    N8N_BASE: 'https://mental-miller-rebecca-sets.trycloudflare.com',
-    API_BASE: 'https://medtest.bms79.com',
-    CHAT_API_KEY: 'test123456'
+    N8N_BASE: '', // Chạy qua Server Proxy nội bộ (ẩn link Cloudflare thật)
+    API_BASE: '', // Chạy qua Server Proxy nội bộ (ẩn link backend thật)
+    CHAT_API_KEY: '' // Khóa bí mật do Server Proxy tự động chèn ở phía backend
 };
 
 

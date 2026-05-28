@@ -585,11 +585,11 @@ setTimeout(function() {
                         var realPrice = match.UnitPrice || match.Price || 0;
                         var targetRId = idx + 1;
                         
-                         // Extract Discount (Chiết khấu) from direct parameter or string regex fallback
+                         // Extract Discount (Chiết khấu)
                          var autoDiscount = 0;
-                         if (it.DiscountPercent !== undefined && it.DiscountPercent !== null && it.DiscountPercent !== '') {
+                         if (it.DiscountPercent !== undefined && it.DiscountPercent !== null && it.DiscountPercent !== '' && parseFloat(it.DiscountPercent) > 0) {
                              autoDiscount = parseFloat(it.DiscountPercent);
-                         } else if (it.discount !== undefined && it.discount !== null && it.discount !== '') {
+                         } else if (it.discount !== undefined && it.discount !== null && it.discount !== '' && parseFloat(it.discount) > 0) {
                              autoDiscount = parseFloat(it.discount);
                          } else {
                              var chatbotString = it.ItemName || it.ItemID || '';
