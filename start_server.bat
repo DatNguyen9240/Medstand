@@ -12,21 +12,24 @@ set "NODE_EXE=%BASE_DIR%\n8n-system\.bin\node-v22.14.0-win-x64\node.exe"
 if exist "%NODE_EXE%" (
     set "RUN_NODE=%NODE_EXE%"
     echo [INFO] Phat hien Node.js Portable tu start_n8n.bat
-) else (
-    where node >nul 2>nul
-    if %errorlevel% equ 0 (
-        set "RUN_NODE=node"
-        echo [INFO] Su dung Node.js he thong (Global)
-    ) else (
-        echo.
-        echo [ERROR] Khong tim thay Node.js!
-        echo Vui long chay file n8n-system\start_n8n.bat truoc de tai Node.js ve local.
-        echo.
-        pause
-        exit /b 1
-    )
+    goto START_PROCESS
 )
 
+where node >nul 2>nul
+if %errorlevel% equ 0 (
+    set "RUN_NODE=node"
+    echo [INFO] Su dung Node.js he thong (Global)
+    goto START_PROCESS
+)
+
+echo.
+echo [ERROR] Khong tim thay Node.js!
+echo Vui long chay file n8n-system\start_n8n.bat truoc de tai Node.js ve local.
+echo.
+pause
+exit /b 1
+
+:START_PROCESS
 :: 2. Tự động đóng gói tài nguyên mới nhất (Rebuild JS/CSS Bundle)
 echo.
 echo [1/3] Dang tu dong dong goi va toi uu hoa hieu nang...
@@ -44,7 +47,7 @@ echo [OK] Dong goi tai nguyen thanh cong.
 echo.
 echo [2/3] Dang kiem tra va giai phong cong 3000...
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3000 ^| findstr LISTENING') do (
-    echo [INFO] Phat hien Express Server cu (PID %%a) dang chiem cong 3000. Dang dong...
+    echo [INFO] Phat hien Express Server cu voi PID %%a dang chiem cong 3000. Dang dong...
     taskkill /f /pid %%a >nul 2>&1
 )
 echo [OK] Cong 3000 da san sang.
