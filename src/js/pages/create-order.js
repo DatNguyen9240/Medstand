@@ -262,6 +262,15 @@ function openProductPicker(rowId) {
       $pickerText.text(name);
       $pickerContainer.addClass('has-value');
       $('#price_' + rowId).val(price);
+
+      // Auto extract discount from product name
+      var autoDiscount = 0;
+      var ckMatch = name.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
+      if (ckMatch) {
+          autoDiscount = parseFloat(ckMatch[1]);
+      }
+      $('#discount_' + rowId).val(autoDiscount);
+
       $overlay.remove();
       calculateRowTotal(rowId);
     });
@@ -587,6 +596,11 @@ setTimeout(function() {
                              var ckMatch = chatbotString.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
                              if (ckMatch) {
                                  autoDiscount = parseFloat(ckMatch[1]);
+                             } else {
+                                 var realCkMatch = realName.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
+                                 if (realCkMatch) {
+                                     autoDiscount = parseFloat(realCkMatch[1]);
+                                 }
                              }
                          }
 
@@ -597,7 +611,7 @@ setTimeout(function() {
                         }
 
                         var $p = $('#productPickerContainer_' + targetRId);
-                        $p.attr('data-name', realName).attr('data-price', realPrice);
+                        $p.attr('data-value', match.ItemID).attr('data-name', realName).attr('data-price', realPrice).addClass('has-value');
                         $p.find('.filter-value-text').text(realName);
                         $('#price_' + targetRId).val(realPrice);
                         

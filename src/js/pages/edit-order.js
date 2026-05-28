@@ -293,6 +293,15 @@
           $pickerText.text(name);
           $pickerContainer.addClass('has-value');
           $('#price_' + rowId).val(price);
+
+          // Auto extract discount from product name
+          var autoDiscount = 0;
+          var ckMatch = name.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
+          if (ckMatch) {
+              autoDiscount = parseFloat(ckMatch[1]);
+          }
+          $('#discount_' + rowId).val(autoDiscount);
+
           $overlay.remove();
           calculateRowTotal(rowId);
         });
