@@ -37,6 +37,38 @@ function calculateFreeProducts(qty, promos) {
   return freeQty;
 }
 
+function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
+  var $existingPromoRow = $('#dynamicProductRowsContainer .add-product-row[data-parent-row-id="' + parentRowId + '"]');
+  
+  if (freeQty <= 0) {
+    if ($existingPromoRow.length) {
+      var existingRowId = $existingPromoRow.attr('id').split('_')[1];
+      removeProductRow(existingRowId);
+    }
+    return;
+  }
+  
+  var cleanName = name.replace(/\s*\(Mua\s+[\s\S]*$/, '');
+  
+  if ($existingPromoRow.length) {
+    var existingRowId = $existingPromoRow.attr('id').split('_')[1];
+    var $qtyField = $('#qty_' + existingRowId);
+    if (parseInt($qtyField.val(), 10) !== freeQty) {
+      $qtyField.val(freeQty);
+      calculateRowTotal(existingRowId);
+    }
+  } else {
+    appendProductRow({
+      ItemID: itemId,
+      ItemName: cleanName + ' (KM)',
+      UnitPrice: 0,
+      Quantity: freeQty,
+      DiscountPercent: 0,
+      parentRowId: parentRowId
+    });
+  }
+}
+
 var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
 var rowCounter = 0;
 var _productsCache = null;
@@ -255,11 +287,14 @@ function calculateRowTotal(rowId) {
       var promos = parsePromotions(name);
       var freeQty = calculateFreeProducts(qty, promos);
       if (freeQty > 0) {
-        $promoSuggest.html('🎁 Đủ điều kiện tặng ' + freeQty + ' sp (Giá 0đ). <a href="#" class="btn-apply-promo" data-row-id="' + rowId + '" data-qty="' + freeQty + '" style="text-decoration:underline;color:#2563eb;margin-left:4px;">Thêm ngay</a>').show();
+        autoApplyPromotion(rowId, itemId, name, freeQty);
+        $promoSuggest.html('🎁 Đã tự động thêm ' + freeQty + ' sản phẩm khuyến mãi (Giá 0đ).').show();
       } else {
+        autoApplyPromotion(rowId, itemId, name, 0);
         $promoSuggest.hide().html('');
       }
-    } else {
+    } else if (price > 0) {
+      autoApplyPromotion(rowId, itemId, name, 0);
       $promoSuggest.hide().html('');
     }
   }
@@ -297,14 +332,17 @@ function appendProductRow(prefill) {
   rowCounter++;
   var rowId = rowCounter;
   var p = prefill || {};
+  var isPromo = (p.UnitPrice !== undefined && p.UnitPrice !== null && parseFloat(p.UnitPrice) === 0);
 
-  var productSelect = Input.renderSelect({ key: 'p_' + rowId, label: 'Sản phẩm', value: p.ItemName || 'Chọn sản phẩm' });
-  var qtyField = Input.renderField({ id: 'qty_' + rowId, label: 'SL', type: 'number', value: p.Quantity || '1' });
-  var priceField = Input.renderField({ id: 'price_' + rowId, label: 'Giá', type: 'number', value: (p.UnitPrice !== undefined && p.UnitPrice !== null) ? p.UnitPrice : '' });
-  var discountField = Input.renderField({ id: 'discount_' + rowId, label: 'CK', type: 'number', value: p.DiscountPercent || '0' });
+  var productSelect = Input.renderSelect({ key: 'p_' + rowId, label: 'Sản phẩm', value: p.ItemName || 'Chọn sản phẩm', locked: isPromo });
+  var qtyField = Input.renderField({ id: 'qty_' + rowId, label: 'SL', type: 'number', value: p.Quantity || '1', readonly: isPromo });
+  var priceField = Input.renderField({ id: 'price_' + rowId, label: 'Giá', type: 'number', value: (p.UnitPrice !== undefined && p.UnitPrice !== null) ? p.UnitPrice : '', readonly: true });
+  var discountField = Input.renderField({ id: 'discount_' + rowId, label: 'CK', type: 'number', value: p.DiscountPercent || '0', readonly: isPromo });
   var totalField = Input.renderField({ id: 'total_' + rowId, label: 'Tiền', readonly: true, className: 'amount-field' });
 
-  var rowHtml = '<div class="responsive-grid add-product-row" id="row_' + rowId + '" style="margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid var(--color-border)">' +
+  var parentAttr = p.parentRowId ? ' data-parent-row-id="' + p.parentRowId + '"' : '';
+  var removeBtn = isPromo ? '' : '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">🗑️</button>';
+  var rowHtml = '<div class="responsive-grid add-product-row' + (isPromo ? ' promo-row' : '') + '" id="row_' + rowId + '"' + parentAttr + ' style="margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid var(--color-border)">' +
     '<div style="display:flex;flex-direction:column;min-width:0;">' +
       '<div id="productPickerContainer_' + rowId + '" class="form-group' + (p.ItemID ? ' has-value' : '') + '" style="cursor:pointer" data-value="' + (p.ItemID || '') + '" data-price="' + (p.UnitPrice || 0) + '" data-name="' + (p.ItemName || '') + '">' + productSelect + '</div>' +
       '<div id="promoSuggest_' + rowId + '" class="promo-suggest" style="font-size:0.8rem;color:#16a34a;margin-top:2px;font-weight:600;display:none;"></div>' +
@@ -313,13 +351,16 @@ function appendProductRow(prefill) {
     priceField +
     discountField +
     totalField +
-    '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">🗑️</button>' +
+    removeBtn +
     '</div>';
 
   $('#dynamicProductRowsContainer').prepend(rowHtml);
 
   // Bind click for product picker
-  $('#productPickerContainer_' + rowId).on('click', function () { openProductPicker(rowId); });
+  $('#productPickerContainer_' + rowId).on('click', function () {
+    if ($(this).find('.locked').length > 0) return;
+    openProductPicker(rowId);
+  });
   // Bind input for calculations
   $('#qty_' + rowId + ', #discount_' + rowId + ', #price_' + rowId).on('input', function () { calculateRowTotal(rowId); });
 
@@ -327,6 +368,10 @@ function appendProductRow(prefill) {
 }
 
 function removeProductRow(rowId) {
+  $('#dynamicProductRowsContainer .add-product-row[data-parent-row-id="' + rowId + '"]').each(function() {
+    var promoRowId = $(this).attr('id').split('_')[1];
+    $('#row_' + promoRowId).remove();
+  });
   $('#row_' + rowId).remove();
   updateLiveTotal();
 }
@@ -442,26 +487,7 @@ $('#btnDraftOrder').on('click', function () {
   });
 });
 
-// Bind apply promotion button click
-$(document).on('click', '.btn-apply-promo', function (e) {
-  e.preventDefault();
-  var rowId = $(this).attr('data-row-id');
-  var freeQty = parseInt($(this).attr('data-qty'), 10);
-  
-  var $pickerContainer = $('#productPickerContainer_' + rowId);
-  var itemId = $pickerContainer.attr('data-value');
-  var name = $pickerContainer.attr('data-name');
-  
-  appendProductRow({
-    ItemID: itemId,
-    ItemName: name + ' (KM)',
-    UnitPrice: 0,
-    Quantity: freeQty,
-    DiscountPercent: 0
-  });
-  
-  $('#promoSuggest_' + rowId).hide().html('');
-});
+// Obsolete promo click handler replaced with reactive auto-promotion
 
 // Initialize with one empty row
 appendProductRow();
@@ -550,13 +576,19 @@ setTimeout(function() {
                         var realPrice = match.UnitPrice || match.Price || 0;
                         var targetRId = idx + 1;
                         
-                        // Extract Discount (Chiết khấu) from original chatbot string if present
-                        var chatbotString = it.ItemName || it.ItemID || '';
-                        var ckMatch = chatbotString.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
-                        var autoDiscount = 0;
-                        if (ckMatch) {
-                            autoDiscount = parseFloat(ckMatch[1]);
-                        }
+                         // Extract Discount (Chiết khấu) from direct parameter or string regex fallback
+                         var autoDiscount = 0;
+                         if (it.DiscountPercent !== undefined && it.DiscountPercent !== null && it.DiscountPercent !== '') {
+                             autoDiscount = parseFloat(it.DiscountPercent);
+                         } else if (it.discount !== undefined && it.discount !== null && it.discount !== '') {
+                             autoDiscount = parseFloat(it.discount);
+                         } else {
+                             var chatbotString = it.ItemName || it.ItemID || '';
+                             var ckMatch = chatbotString.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
+                             if (ckMatch) {
+                                 autoDiscount = parseFloat(ckMatch[1]);
+                             }
+                         }
 
                         // Nhận diện chatbotPrice để giữ giá 0đ của chatbot nếu có
                         var chatbotPrice = it.Price !== undefined ? it.Price : (it.UnitPrice !== undefined ? it.UnitPrice : null);

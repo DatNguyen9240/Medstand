@@ -363,18 +363,19 @@
       var autoId = p.UserAutoID || '';
       // Row mới: chưa có UserAutoID
       var isNew = !autoId;
-      var actionBtns = isNew
+      var isPromo = (p.UnitPrice !== undefined && p.UnitPrice !== null && parseFloat(p.UnitPrice) === 0);
+      var actionBtns = isPromo ? '' : (isNew
         ? '<button type="button" class="btn-save-row" id="saveBtn_' + rowId + '" title="Lưu mới" onclick="saveProductRow(' + rowId + ')">&#x2713;</button>' +
         '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">&#x2715;</button>'
         : '<button type="button" class="btn-update-row" id="saveBtn_' + rowId + '" title="Cập nhật" onclick="updateProductRow(' + rowId + ')">&#x270E;</button>' +
-        '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">&#x2715;</button>';
-      var productSelect = Input.renderSelect({ key: 'p_' + rowId, label: 'Sản phẩm', value: p.ItemName || 'Chọn sản phẩm' });
-      var qtyField = Input.renderField({ id: 'qty_' + rowId, label: 'SL', type: 'number', value: p.Quantity || 1 });
-      var priceField = Input.renderField({ id: 'price_' + rowId, label: 'Giá', type: 'number', value: (p.UnitPrice !== undefined && p.UnitPrice !== null) ? p.UnitPrice : '' });
-      var discountField = Input.renderField({ id: 'discount_' + rowId, label: 'CK', type: 'number', value: p.DiscountPercent || 0 });
+        '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">&#x2715;</button>');
+      var productSelect = Input.renderSelect({ key: 'p_' + rowId, label: 'Sản phẩm', value: p.ItemName || 'Chọn sản phẩm', locked: isPromo });
+      var qtyField = Input.renderField({ id: 'qty_' + rowId, label: 'SL', type: 'number', value: p.Quantity || 1, readonly: isPromo });
+      var priceField = Input.renderField({ id: 'price_' + rowId, label: 'Giá', type: 'number', value: (p.UnitPrice !== undefined && p.UnitPrice !== null) ? p.UnitPrice : '', readonly: true });
+      var discountField = Input.renderField({ id: 'discount_' + rowId, label: 'CK', type: 'number', value: p.DiscountPercent || 0, readonly: isPromo });
       var totalField = Input.renderField({ id: 'total_' + rowId, label: 'Tiền', readonly: true, className: 'amount-field' });
 
-      var rowHtml = '<div class="responsive-grid add-product-row edit-mode" id="row_' + rowId + '"' +
+      var rowHtml = '<div class="responsive-grid add-product-row edit-mode' + (isPromo ? ' promo-row' : '') + '" id="row_' + rowId + '"' +
         ' data-auto-id="' + autoId + '"' +
         ' style="margin-bottom:4px;padding-bottom:4px;border-bottom:1px solid var(--color-border)">' +
         '<div style="display:flex;flex-direction:column;min-width:0;">' +
@@ -394,7 +395,10 @@
       $('#dynamicProductRowsContainer').prepend(rowHtml);
 
       // Bind click for product picker
-      $('#productPickerContainer_' + rowId).on('click', function () { openProductPicker(rowId); });
+      $('#productPickerContainer_' + rowId).on('click', function () {
+        if ($(this).find('.locked').length > 0) return;
+        openProductPicker(rowId);
+      });
       // Bind input for calculations
       $('#qty_' + rowId + ', #discount_' + rowId + ', #price_' + rowId).on('input', function () { calculateRowTotal(rowId); });
 

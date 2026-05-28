@@ -33,13 +33,33 @@ BEGIN
     SELECT N'ERR:Mã khách hàng không tồn tại: ' + @ObjectID AS DocumentID
     RETURN
 END
+
+    -- CHẶN CHỦ ĐỘNG MÃ PHIẾU SAI ĐỊNH DẠNG (TRÁNH LỖI ÉP KIỂU HỆ THỐNG)
+    IF COALESCE(@DocumentID, '') <> ''
+    BEGIN
+        -- 1. Yêu cầu bắt buộc phải có dấu gạch chéo /
+        IF CHARINDEX('/', @DocumentID) = 0
+        BEGIN
+            SELECT N'ERR:Mã phiếu tự điền phải theo định dạng chuẩn (ví dụ: DMB0526/1)' AS DocumentID
+            RETURN
+        END
+        
+        -- 2. Yêu cầu phần số thứ tự sau dấu gạch chéo phải là số nguyên
+        DECLARE @Suffix VARCHAR(50) = SUBSTRING(@DocumentID, CHARINDEX('/', @DocumentID) + 1, LEN(@DocumentID))
+        IF TRY_CAST(@Suffix AS INT) IS NULL
+        BEGIN
+            SELECT N'ERR:Mã phiếu không hợp lệ. Phần số thứ tự sau dấu gạch chéo phải là chữ số (ví dụ: DMB0526/12).' AS DocumentID
+            RETURN
+        END
+    END
+
     -- Đã bỏ kiểm tra đơn hàng không tồn tại để tự động khởi tạo nếu truyền mã mới chưa có trong hệ thống
 -- ═══ 2. PARSE JSON + LẤY GIÁ ═══
 SELECT 
     J.ItemID, 
     SUM(J.Quantity) AS Quantity, 
     MAX(I.ItemName) AS ItemName, 
-    COALESCE(MAX(J.Price), MAX(P.UnitPrice)) AS UnitPrice, 
+    COALESCE(J.UnitPrice, J.Price, MAX(P.UnitPrice)) AS UnitPrice, 
     MAX(P.DiemSanPham) AS DiemSanPham,
     MAX(J.DiscountPercent) AS DiscountPercent
 INTO #Items
@@ -48,6 +68,7 @@ WITH (
     ItemID          VARCHAR(50)   '$.ItemID',
     Quantity        DECIMAL(18,2) '$.Quantity',
     Price           DECIMAL(18,2) '$.Price',
+    UnitPrice       DECIMAL(18,2) '$.UnitPrice',
     DiscountPercent DECIMAL(18,2) '$.DiscountPercent'
 ) J
 LEFT JOIN CF_ItemTbl I ON I.ItemID = J.ItemID
@@ -60,7 +81,26 @@ OUTER APPLY (
       CASE WHEN GETDATE() BETWEEN FromDate AND ToDate THEN 1 ELSE 2 END,
       FromDate DESC
 ) P
-GROUP BY J.ItemID
+GROUP BY J.ItemID, J.UnitPrice, J.Price
+
+    -- HẠNG MỤC BẢO MẬT BACKEND (SAFEGUARD): Chặn tự ý đưa hàng khuyến mãi 0đ vào đơn nếu không có sản phẩm chính tương ứng
+    IF EXISTS (
+        SELECT 1 
+        FROM #Items I1
+        WHERE I1.UnitPrice = 0
+          AND NOT EXISTS (
+              SELECT 1 
+              FROM #Items I2 
+              WHERE I2.ItemID = I1.ItemID 
+                AND I2.UnitPrice > 0
+          )
+    )
+    BEGIN
+        DROP TABLE #Items
+        SELECT N'ERR:Sản phẩm khuyến mãi 0đ không hợp lệ (phải có sản phẩm mua chính đi kèm trong đơn hàng)' AS DocumentID
+        RETURN
+    END
+
 IF EXISTS (SELECT 1 FROM #Items WHERE ItemName IS NULL)
 BEGIN
     DECLARE @BadItems NVARCHAR(500)
@@ -90,7 +130,15 @@ BEGIN TRY
     BEGIN
         IF COALESCE(@DocumentID, '') = ''
         BEGIN
-            DECLARE @Prefix VARCHAR(10) = 'DMB' + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
+            -- 1. Lấy mã chi nhánh của tài khoản đang đăng nhập (mặc định là 'MB' nếu trống)
+            DECLARE @UserBranch VARCHAR(10) = 'MB'
+            SELECT @UserBranch = COALESCE(BranchID, 'MB') 
+            FROM SY_User 
+            WHERE UserName = @Username
+            
+            -- 2. Ghép động tiền tố: 'D' + 'MB' = 'DMB', 'D' + 'MN' = 'DMN'
+            DECLARE @Prefix VARCHAR(10) = 'D' + @UserBranch 
+                                               + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
                                                + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2)
             DECLARE @MaxNum INT
             SELECT @MaxNum = ISNULL(MAX(TRY_CAST(

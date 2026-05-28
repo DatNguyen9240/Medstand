@@ -41,7 +41,7 @@ BEGIN
             A.ObjectID + ' - ' + A.ObjectName AS DisplayName
         FROM dbo.vKhachHangList A
         INNER JOIN dbo.AR_OrderTbl O ON O.ObjectID = A.ObjectID
-        WHERE O.EmployeeID = @RealEmployeeID
+        WHERE O.EmployeeID IN (SELECT DISTINCT EmployeeID FROM dbo.SY_User WHERE EmployeeID = @RealEmployeeID OR ManagerID = @RealEmployeeID)
           AND (A.ObjectID LIKE '%' + @SearchText + '%' OR A.ObjectName LIKE '%' + @SearchText + '%');
     END
 END
