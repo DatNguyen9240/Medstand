@@ -100,6 +100,7 @@ set "N8N_DIAGNOSTICS_ENABLED=false"
 set "N8N_HIRING_BANNER_ENABLED=false"
 set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
+set "N8N_DISABLE_TASK_RUNNERS=true"
 
 :: Don sach tien trinh cu neu mang hoac port bi ket
 call "%NPM_GLOBAL_DIR%\pm2.cmd" kill > nul 2>&1

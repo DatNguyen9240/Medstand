@@ -296,19 +296,21 @@
 
     // Load theme preference on startup
     try {
-        var savedTheme = localStorage.getItem('ai_chat_theme') || 'light';
+        var savedTheme = localStorage.getItem('medstand-theme') || localStorage.getItem('ai_chat_theme') || 'light';
         if (savedTheme === 'dark') {
             document.documentElement.setAttribute('data-theme', 'dark');
             document.body.classList.add('dark-theme', 'dark');
-            if ($container) $container.classList.add('dark-theme');
             setTimeout(function() {
+                var containerEl = document.getElementById('chat-container');
+                if (containerEl) containerEl.classList.add('dark-theme');
+                
                 var moonIcon = document.getElementById('chatbot-icon-moon');
                 var sunIcon = document.getElementById('chatbot-icon-sun');
                 if (moonIcon && sunIcon) {
                     moonIcon.style.display = 'none';
                     sunIcon.style.display = '';
                 }
-            }, 50);
+            }, 80);
         }
     } catch(e) {}
 
@@ -874,8 +876,9 @@
 
     }
 
-    if ($btnClear) {
-        $btnClear.addEventListener('click', function () {
+    // Expose functions globally to avoid event listener attachment issues in SPA router
+    window.ChatbotPage = {
+        clearChat: function () {
             if (confirm('Sếp có chắc chắn muốn xóa sạch toàn bộ lịch sử trò chuyện này không?')) {
                 _clearCache();
                 var uname = _user();
@@ -884,35 +887,57 @@
                 chatHistory = [];
                 _renderHistory();
             }
-        });
-    }
-
-    if ($btnTheme) {
-        $btnTheme.addEventListener('click', function () {
+        },
+        toggleTheme: function () {
             try {
-                var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-                var isDark = currentTheme === 'dark';
-                var nextTheme = isDark ? 'light' : 'dark';
+                // 1. Gọi hàm toggleTheme toàn cục của hệ thống trước để thay đổi trạng thái theme toàn cục
+                if (typeof window.toggleTheme === 'function') {
+                    window.toggleTheme();
+                } else {
+                    // Nếu không có theme manager toàn cục (fallback)
+                    var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                    var nextTheme = (currentTheme === 'dark') ? 'light' : 'dark';
+                    document.documentElement.setAttribute('data-theme', nextTheme);
+                    localStorage.setItem('medstand-theme', nextTheme);
+                }
+
+                // 2. Lấy trạng thái theme mới sau khi đã toggle
+                var nextTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                var isDark = nextTheme === 'dark';
                 
-                document.documentElement.setAttribute('data-theme', nextTheme);
-                document.body.classList.toggle('dark-theme', !isDark);
-                document.body.classList.toggle('dark', !isDark);
-                if ($container) $container.classList.toggle('dark-theme', !isDark);
+                // 3. Cập nhật các class cho body và container của chatbot
+                document.body.classList.toggle('dark-theme', isDark);
+                document.body.classList.toggle('dark', isDark);
+                
+                var containerEl = document.getElementById('chat-container');
+                if (containerEl) {
+                    containerEl.classList.toggle('dark-theme', isDark);
+                }
+                
                 localStorage.setItem('ai_chat_theme', nextTheme);
 
+                // 4. Cập nhật icon mặt trăng / mặt trời
                 var moonIcon = document.getElementById('chatbot-icon-moon');
                 var sunIcon = document.getElementById('chatbot-icon-sun');
                 if (moonIcon && sunIcon) {
                     if (isDark) {
-                        moonIcon.style.display = '';
-                        sunIcon.style.display = 'none';
-                    } else {
                         moonIcon.style.display = 'none';
                         sunIcon.style.display = '';
+                    } else {
+                        moonIcon.style.display = '';
+                        sunIcon.style.display = 'none';
                     }
                 }
             } catch(e) {}
-        });
+        }
+    };
+
+    if ($btnClear) {
+        $btnClear.onclick = window.ChatbotPage.clearChat;
+    }
+
+    if ($btnTheme) {
+        $btnTheme.onclick = window.ChatbotPage.toggleTheme;
     }
 
     $btnAttach.addEventListener('click', function () { $fileInput.click(); });

@@ -2,6 +2,28 @@
 <html lang="vi">
 
 <head>
+  <!-- Inline Cache-Clearing Script (Bypasses Service Worker traps) -->
+  <script>
+    if (window.location.href.indexOf('clean=true') > -1) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function (names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+          }
+        });
+      }
+      localStorage.removeItem('ai_chat_history');
+      var cleanUrl = window.location.href.replace(/[?&]clean=true/g, '').replace(/clean=true/g, '');
+      setTimeout(function () { window.location.href = cleanUrl; }, 300);
+    }
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">

@@ -31,7 +31,7 @@ app.use(express.json()); // Enable JSON body parsing
 
 // Backend URLs ẩn hoàn toàn phía server
 const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms79.com';
-const N8N_INTERNAL_URL = process.env.N8N_BASE || 'https://realized-comfortable-oxygen-played.trycloudflare.com';
+const N8N_INTERNAL_URL = 'http://127.0.0.1:5678';
 
 // ─── CIPHER HELPER (XOR + Base64) ───
 const Cipher = {
