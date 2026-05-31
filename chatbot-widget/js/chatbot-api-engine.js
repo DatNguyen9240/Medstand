@@ -52,6 +52,27 @@
 
     'use strict';
 
+    // ─── CIPHER HELPER (XOR + Base64) ───
+    var Cipher = {
+        encrypt: function (str, key) {
+            key = key || 107;
+            var b64 = btoa(unescape(encodeURIComponent(str)));
+            var xor = '';
+            for (var i = 0; i < b64.length; i++) {
+                xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+            }
+            return btoa(xor);
+        },
+        decrypt: function (b64Cipher, key) {
+            key = key || 107;
+            var xor = atob(b64Cipher);
+            var b64 = '';
+            for (var i = 0; i < xor.length; i++) {
+                b64 += String.fromCharCode(xor.charCodeAt(i) ^ key);
+            }
+            return decodeURIComponent(escape(atob(b64)));
+        }
+    };
 
 
     // ── Config ────────────────────────────────────────────────────────
@@ -153,79 +174,71 @@
     // ── Networking Helpers ────────────────────────────────────────────
 
     function _post(url, data) {
-
-        var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
-
         var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
+        var n8nBase = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE) ? API_CONFIG.N8N_BASE : '';
+        var relativeUrl = url;
+        if (n8nBase && url.indexOf(n8nBase) === 0) {
+            relativeUrl = url.substring(n8nBase.length);
+        }
 
-        return fetch(url, {
-
+        var rawPayload = JSON.stringify({
             method: 'POST',
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'x-api-key': key,
-
-                'Authorization': 'Bearer ' + token
-
-            },
-
-            body: JSON.stringify(data || {})
-
-        }).then(function (res) {
-
-            return res.text().then(function(text) {
-
-                if (!res.ok) throw new Error('Network error: ' + res.status + ' | ' + text.substring(0, 50));
-
-                if (!text) return {}; // Xử l m lỗi rỗng trả về {} để hệ thống khng sập
-
-                try { return JSON.parse(text); } 
-
-                catch(e) { throw new Error('Invalid JSON: ' + text.substring(0, 50)); }
-
-            });
-
+            endpoint: relativeUrl,
+            body: data
         });
 
+        var encryptedData = Cipher.encrypt(rawPayload);
+        var gatewayUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.GATEWAY_URL) || '/api/gateway';
+
+        return fetch(gatewayUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? 'Bearer ' + token : ''
+            },
+            body: JSON.stringify({ data: encryptedData })
+        }).then(function (res) {
+            return res.json().then(function(resJson) {
+                if (!res.ok) throw new Error('Gateway error: ' + res.status);
+                var decryptedText = Cipher.decrypt(resJson.data);
+                if (!decryptedText) return {};
+                return JSON.parse(decryptedText);
+            });
+        });
     }
 
-
-
     function _get(url) {
-
-        var key = (typeof API_CONFIG !== 'undefined') ? API_CONFIG.CHAT_API_KEY : '';
-
         var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
+        var n8nBase = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE) ? API_CONFIG.N8N_BASE : '';
+        var relativeUrl = url;
+        if (n8nBase && url.indexOf(n8nBase) === 0) {
+            relativeUrl = url.substring(n8nBase.length);
+        }
 
-        return fetch(url, {
-
-            headers: { 
-
-                'x-api-key': key,
-
-                'Authorization': 'Bearer ' + token
-
-            }
-
-        }).then(function (res) {
-
-            return res.text().then(function(text) {
-
-                if (!res.ok) throw new Error('Network error: ' + res.status + ' | ' + text.substring(0, 50));
-
-                if (!text) return {}; 
-
-                try { return JSON.parse(text); } 
-
-                catch(e) { throw new Error('Invalid JSON: ' + text.substring(0, 50)); }
-
-            });
-
+        var rawPayload = JSON.stringify({
+            method: 'GET',
+            endpoint: relativeUrl,
+            body: null
         });
 
+        var encryptedData = Cipher.encrypt(rawPayload);
+        var gatewayUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.GATEWAY_URL) || '/api/gateway';
+
+        return fetch(gatewayUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? 'Bearer ' + token : ''
+            },
+            body: JSON.stringify({ data: encryptedData })
+        }).then(function (res) {
+            return res.json().then(function(resJson) {
+                if (!res.ok) throw new Error('Gateway error: ' + res.status);
+                var decryptedText = Cipher.decrypt(resJson.data);
+                if (!decryptedText) return {};
+                return JSON.parse(decryptedText);
+            });
+        });
     }
 
 

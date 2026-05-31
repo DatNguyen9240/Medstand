@@ -35,6 +35,13 @@ module.exports = {
       cwd: __dirname,
       watch: false,
       max_memory_restart: "2G"
+    },
+    {
+      name: "Medstand_WebGateway",
+      script: path.join(__dirname, '..', 'server.js'),
+      interpreter: nodeExe,
+      cwd: path.join(__dirname, '..'),
+      watch: false
     }
   ]
 };

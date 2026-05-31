@@ -4,6 +4,28 @@
 
 (function () {
 
+    // ─── CIPHER HELPER (XOR + Base64) ───
+    var Cipher = {
+        encrypt: function (str, key) {
+            key = key || 107;
+            var b64 = btoa(unescape(encodeURIComponent(str)));
+            var xor = '';
+            for (var i = 0; i < b64.length; i++) {
+                xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+            }
+            return btoa(xor);
+        },
+        decrypt: function (b64Cipher, key) {
+            key = key || 107;
+            var xor = atob(b64Cipher);
+            var b64 = '';
+            for (var i = 0; i < xor.length; i++) {
+                b64 += String.fromCharCode(xor.charCodeAt(i) ^ key);
+            }
+            return decodeURIComponent(escape(atob(b64)));
+        }
+    };
+
     var _cfg = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
 
     var CHAT_API = (_cfg.N8N_BASE || '') + (_cfg.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
@@ -1314,34 +1336,30 @@
                 }
             }
 
-            fetch(CHAT_API, {
-
+            var relativeUrl = CHAT_API.replace(_cfg.N8N_BASE || '', '');
+            var rawPayload = JSON.stringify({
                 method: 'POST',
+                endpoint: relativeUrl,
+                body: payload
+            });
+            var encryptedData = Cipher.encrypt(rawPayload);
+            var gatewayUrl = _cfg.GATEWAY_URL || '/api/gateway';
 
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken(), 'x-api-key': CHAT_API_KEY },
-
-                body: JSON.stringify(payload),
-
+            fetch(gatewayUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken() },
+                body: JSON.stringify({ data: encryptedData }),
                 signal: abortController.signal
-
             })
-
                 .then(function (res) {
-
-                    return res.text().then(function (text) {
-
-                        if (!res.ok) throw new Error("Lỗi Server N8N (" + res.status + "): Có thể Workflow bị lỗi ngầm, hãy kiểm tra Excecutions tab trong N8N.");
-
-                        if (!text) throw new Error("Lỗi Server N8N: Trả v dữ liệu trống.");
-
-                        try { return JSON.parse(text); }
-
-                        catch (e) { throw new Error("N8N không trả v JSON: " + text.substring(0, 50)); }
-
+                    return res.json().then(function (resJson) {
+                        if (!res.ok) throw new Error("Lỗi Server Gateway (" + res.status + ")");
+                        var decryptedText = Cipher.decrypt(resJson.data);
+                        if (!decryptedText) throw new Error("Trả về dữ liệu trống.");
+                        try { return JSON.parse(decryptedText); }
+                        catch (e) { throw new Error("Dữ liệu không phải JSON: " + decryptedText.substring(0, 50)); }
                     });
-
                 })
-
                 .then(function (data) { _handleReply(data); })
 
                 .catch(function (err) { _handleError(err); });
@@ -1353,38 +1371,33 @@
 
 
     function _callCasualChatFallback(lastText) {
-
         var text = $input.value.trim() || lastText || "Xin chào";
-
         var pastMsgs = chatHistory.slice(-11, -1);
-
         var historyStr = pastMsgs.map(function (m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
 
-
-
         _showTyping();
-
         var payload = { action: 'chat', text: text, session_id: _getSessionId(), history: historyStr };
 
-        fetch(CHAT_CASUAL_API, {
-
+        var relativeUrl = CHAT_CASUAL_API.replace(_cfg.N8N_BASE || '', '');
+        var rawPayload = JSON.stringify({
             method: 'POST',
+            endpoint: relativeUrl,
+            body: payload
+        });
+        var encryptedData = Cipher.encrypt(rawPayload);
+        var gatewayUrl = _cfg.GATEWAY_URL || '/api/gateway';
 
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken(), 'x-api-key': CHAT_API_KEY },
-
-            body: JSON.stringify(payload)
-
+        fetch(gatewayUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken() },
+            body: JSON.stringify({ data: encryptedData })
         }).then(function (res) {
-
             return res.json();
-
-        }).then(function (data) {
-
+        }).then(function (resJson) {
             _hideTyping();
-
+            var decryptedText = Cipher.decrypt(resJson.data);
+            var data = JSON.parse(decryptedText);
             if (data && data.message) _addMessage('ai', data.message);
-
-            else _addMessage('ai', "Xin lỗi, tôi chưa thể trả li câu hi này.");
 
         }).catch(function (err) {
 
@@ -1434,17 +1447,24 @@
 
 
 
-        fetch(webhookUrl, {
-
+        var relativeUrl = webhookUrl.replace(_cfg.N8N_BASE || '', '');
+        var rawPayload = JSON.stringify({
             method: 'POST',
+            endpoint: relativeUrl,
+            body: payload
+        });
+        var encryptedData = Cipher.encrypt(rawPayload);
+        var gatewayUrl = _cfg.GATEWAY_URL || '/api/gateway';
 
+        fetch(gatewayUrl, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken() },
-
-            body: JSON.stringify(payload)
-
+            body: JSON.stringify({ data: encryptedData })
         }).then(function (res) {
-
             return res.json();
+        }).then(function (resJson) {
+            var decryptedText = Cipher.decrypt(resJson.data);
+            return JSON.parse(decryptedText);
 
         }).then(function (data) {
 

@@ -252,12 +252,7 @@
     function showGlobalSpinner() { _spinnerCount++; $spinner.removeAttribute('hidden'); }
     function hideGlobalSpinner() { _spinnerCount = Math.max(0, _spinnerCount - 1); if (_spinnerCount === 0) $spinner.setAttribute('hidden', ''); }
   </script>
-  <script src="../env.js"></script>
-  <script src="../src/js/services/http.js"></script>
-  <script src="../src/js/services/auth.service.js"></script>
-  <script src="../src/js/components/Alert.js"></script>
-  <script src="../src/js/components/AuthThemeToggle.js"></script>
-  <script src="../src/js/components/PasswordToggle.js"></script>
+  <script src="../src/js/dist/auth.bundle.min.js"></script>
 
   <script>
     // Nếu đã đăng nhập → về trang chủ

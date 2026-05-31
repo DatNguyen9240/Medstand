@@ -33,6 +33,91 @@ app.use(express.json()); // Enable JSON body parsing
 const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms79.com';
 const N8N_INTERNAL_URL = process.env.N8N_BASE || 'https://realized-comfortable-oxygen-played.trycloudflare.com';
 
+// ─── CIPHER HELPER (XOR + Base64) ───
+const Cipher = {
+    encrypt: (str, key = 107) => {
+        const b64 = Buffer.from(str, 'utf-8').toString('base64');
+        let xor = '';
+        for (let i = 0; i < b64.length; i++) {
+            xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+        }
+        return Buffer.from(xor, 'utf-8').toString('base64');
+    },
+    decrypt: (b64Cipher, key = 107) => {
+        const xor = Buffer.from(b64Cipher, 'base64').toString('utf-8');
+        let b64 = '';
+        for (let i = 0; i < xor.length; i++) {
+            b64 += String.fromCharCode(xor.charCodeAt(i) ^ key);
+        }
+        return Buffer.from(b64, 'base64').toString('utf-8');
+    }
+};
+
+// ─── GLOBAL API GATEWAY (Encrypted Tunnel) ───
+app.post('/api/gateway', async (req, res) => {
+    try {
+        if (!req.body || !req.body.data) {
+            return res.status(400).json({ error: 'Yêu cầu không hợp lệ.' });
+        }
+
+        // 1. Giải mã yêu cầu từ Client
+        const decryptedRaw = Cipher.decrypt(req.body.data);
+        const requestPayload = JSON.parse(decryptedRaw);
+        const { method, endpoint, body } = requestPayload;
+
+        if (!endpoint) {
+            return res.status(400).json({ error: 'Thiếu endpoint xử lý.' });
+        }
+
+        // 2. Định tuyến đến máy chủ đích thật
+        const isN8n = endpoint.startsWith('/webhook');
+        const baseUrl = isN8n ? N8N_INTERNAL_URL : API_INTERNAL_URL;
+        const targetUrl = `${baseUrl}${endpoint}`;
+
+        console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(req.headers['authorization'] ? { 'Authorization': req.headers['authorization'] } : {}),
+            ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {})
+        };
+
+        console.log('[Proxy Gateway] Request headers:', JSON.stringify(headers));
+        console.log('[Proxy Gateway] Request body:', JSON.stringify(body));
+
+        const options = {
+            method: method,
+            headers: headers
+        };
+
+        if (method !== 'GET' && method !== 'HEAD' && body) {
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(targetUrl, options);
+        const contentType = response.headers.get('content-type') || '';
+        let resDataText = '';
+
+        if (contentType.includes('application/json')) {
+            const json = await response.json();
+            resDataText = JSON.stringify(json);
+        } else {
+            resDataText = await response.text();
+        }
+
+        console.log(`[Proxy Gateway] Response status: ${response.status}`);
+        console.log(`[Proxy Gateway] Response text snippet: ${resDataText.substring(0, 300)}`);
+
+        // 3. Mã hóa kết quả trả về cho Client
+        const encryptedRes = Cipher.encrypt(resDataText);
+        res.status(response.status).json({ data: encryptedRes });
+
+    } catch (error) {
+        console.error('[Proxy Gateway Dynamic Error]:', error);
+        res.status(500).json({ error: 'Không thể kết nối đến máy chủ hệ thống.' });
+    }
+});
+
 // ─── 1. PROXY API CHO CHATBOT (Có đính kèm CHAT_API_KEY bảo mật) ───
 app.post('/api/chat', async (req, res) => {
     try {
@@ -133,8 +218,27 @@ app.all('/webhook/*all', async (req, res) => {
     }
 });
 
-// Serve static files from the root directory
-app.use(express.static(__dirname));
+// Serve static files from the root directory (Tắt tự động trả về index.html mặc định)
+app.use(express.static(__dirname, { index: false }));
+
+// Định tuyến rõ ràng cho trang chủ và index.html để ưu tiên bản index.prod.html
+app.get('/', (req, res) => {
+    const prodFile = path.join(__dirname, 'index.prod.html');
+    if (fs.existsSync(prodFile)) {
+        res.sendFile(prodFile);
+    } else {
+        res.sendFile(path.join(__dirname, 'index.html'));
+    }
+});
+
+app.get('/index.html', (req, res) => {
+    const prodFile = path.join(__dirname, 'index.prod.html');
+    if (fs.existsSync(prodFile)) {
+        res.sendFile(prodFile);
+    } else {
+        res.sendFile(path.join(__dirname, 'index.html'));
+    }
+});
 
 // Direct all other requests to index.prod.html (if exists) or index.html (SPA routing support)
 app.get('*all', (req, res) => {
