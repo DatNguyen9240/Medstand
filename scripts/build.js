@@ -17,9 +17,9 @@ async function build() {
     console.log('🚀 MEDSTAND FRONTEND BUNDLER & MINIFIER');
     console.log('===================================================');
 
-    const htmlPath = path.join(__dirname, '../index.html');
+    const htmlPath = path.join(__dirname, '../index.dev.html');
     if (!fs.existsSync(htmlPath)) {
-        console.error('Lỗi: Không tìm thấy file index.html!');
+        console.error('Lỗi: Không tìm thấy file index.dev.html!');
         process.exit(1);
     }
 
@@ -66,6 +66,41 @@ async function build() {
         }
     }
 
+    // --- 1B. AUTO STRING OBFUSCATION (MÃ HÓA ẢN GIẤU 100% API/WEBHOOK PATHS) ---
+    console.log('Đang thực hiện mã hóa tự động các chuỗi đường dẫn API/Webhook...');
+    function encryptString(str, key = 107) {
+        const b64 = Buffer.from(str, 'utf-8').toString('base64');
+        let xor = '';
+        for (let i = 0; i < b64.length; i++) {
+            xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+        }
+        return Buffer.from(xor, 'utf-8').toString('base64');
+    }
+
+    const decHelper = `
+var _dec = function(b64) {
+    var key = 107;
+    var xor = atob(b64);
+    var b64Dec = '';
+    for (var i = 0; i < xor.length; i++) {
+        b64Dec += String.fromCharCode(xor.charCodeAt(i) ^ key);
+    }
+    return decodeURIComponent(escape(atob(b64Dec)));
+};
+`;
+
+    function obfuscateJS(jsCode) {
+        let result = decHelper + '\n' + jsCode;
+        const apiStringRegex = /(["'])((\/api\/|\/webhook\/)[^"']*?)\1/g;
+        result = result.replace(apiStringRegex, (match, quote, content) => {
+            const encrypted = encryptString(content);
+            return `_dec("${encrypted}")`;
+        });
+        return result;
+    }
+
+    concatenatedJS = obfuscateJS(concatenatedJS);
+
     console.log('Đang tiến hành làm rối và nén JS...');
     const terserResult = await minify(concatenatedJS, {
         compress: {
@@ -111,6 +146,8 @@ async function build() {
         }
     }
 
+    concatenatedAuthJS = obfuscateJS(concatenatedAuthJS);
+
     console.log('Đang tiến hành làm rối và nén JS Auth...');
     const terserAuthResult = await minify(concatenatedAuthJS, {
         compress: {
@@ -131,6 +168,49 @@ async function build() {
     const authBundleOutputPath = path.join(jsOutputDir, 'auth.bundle.min.js');
     fs.writeFileSync(authBundleOutputPath, terserAuthResult.code, 'utf-8');
     console.log(`✅ Đã đóng gói JS Auth: ${authBundleOutputPath} (${(terserAuthResult.code.length / 1024).toFixed(2)} KB)`);
+
+    // ─── 1.3 ĐÓNG GÓI RIÊNG CHO PLUGIN CHATBOT WIDGET (TÁCH BIỆT DỄ MANG SANG WEB KHÁC) ───
+    console.log('\nĐang tiến hành đóng gói và bảo mật riêng cho module Chatbot Widget...');
+    const chatbotScripts = [
+        'chatbot-widget/js/chatbot-suggestions.js',
+        'chatbot-widget/js/chatbot-api-engine.js',
+        'chatbot-widget/js/chatbot.js',
+        'chatbot-widget/js/chatbot-renderers-medstand.js'
+    ];
+
+    let concatenatedChatbotJS = '';
+    for (const p of chatbotScripts) {
+        const absolutePath = path.join(__dirname, '..', p);
+        if (fs.existsSync(absolutePath)) {
+            concatenatedChatbotJS += `\n/* --- BUNDLED JS: ${p} --- */\n`;
+            concatenatedChatbotJS += fs.readFileSync(absolutePath, 'utf-8') + '\n';
+        } else {
+            console.warn(`Cảnh báo: Không tìm thấy file ${absolutePath}`);
+        }
+    }
+
+    concatenatedChatbotJS = obfuscateJS(concatenatedChatbotJS);
+
+    console.log('Đang tiến hành làm rối và nén JS Chatbot...');
+    const terserChatbotResult = await minify(concatenatedChatbotJS, {
+        compress: {
+            drop_console: false,
+            passes: 2
+        },
+        mangle: true,
+        format: {
+            comments: false
+        }
+    });
+
+    if (terserChatbotResult.error) {
+        console.error('Lỗi nén code Terser cho Chatbot:', terserChatbotResult.error);
+        process.exit(1);
+    }
+
+    const chatbotBundleOutputPath = path.join(__dirname, '../chatbot-widget/js/chatbot.bundle.min.js');
+    fs.writeFileSync(chatbotBundleOutputPath, terserChatbotResult.code, 'utf-8');
+    console.log(`✅ Đã đóng gói và mã hóa thành công Chatbot Bundle: ${chatbotBundleOutputPath} (${(terserChatbotResult.code.length / 1024).toFixed(2)} KB)`);
 
     // ─── 2. ĐÓNG GÓI CSS ───
     // Tìm các thẻ link stylesheet cục bộ (src/css/... hoặc chatbot-widget/css/...)
@@ -194,8 +274,10 @@ async function build() {
     prodHtmlContent = prodHtmlContent.replace(/\r?\n\s*\r?\n/g, '\n');
 
     const prodHtmlPath = path.join(__dirname, '../index.prod.html');
+    const indexHtmlPath = path.join(__dirname, '../index.html');
     fs.writeFileSync(prodHtmlPath, prodHtmlContent, 'utf-8');
-    console.log(`\n✅ Đã tạo file HTML Production thành công: ${prodHtmlPath}`);
+    fs.writeFileSync(indexHtmlPath, prodHtmlContent, 'utf-8');
+    console.log(`\n✅ Đã tạo file HTML Production thành công: ${indexHtmlPath} và ${prodHtmlPath}`);
     console.log('===================================================');
 }
 

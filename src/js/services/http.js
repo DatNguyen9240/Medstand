@@ -176,7 +176,7 @@ const Http = (() => {
 
   async function _fetchWithTimeout(url, options, retries = MAX_RETRIES) {
     const gatewayUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.GATEWAY_URL) || '/api/gateway';
-    const bypassGateway = true; // Flag kiểm tra để hoàn toàn bỏ qua Gateway khi debug
+    const bypassGateway = false; // Chạy qua cổng Gateway mã hóa bảo mật
 
     // 1. Kiểm tra điều kiện bỏ qua (không qua Gateway)
     const isGatewayCall = url === gatewayUrl;

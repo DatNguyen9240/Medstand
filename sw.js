@@ -24,9 +24,7 @@ const PRECACHE_URLS = [
   // Chatbot Widget
   '/chatbot-widget/template/chatbot.html',
   '/chatbot-widget/template/ai-bot-button.html',
-  '/chatbot-widget/js/chatbot-suggestions.js',
-  '/chatbot-widget/js/chatbot-api-engine.js',
-  '/chatbot-widget/js/chatbot.js',
+  '/chatbot-widget/js/chatbot.bundle.min.js',
   '/chatbot-widget/css/chatbot.css',
   '/chatbot-widget/css/chatbot-api-engine.css',
   '/chatbot-widget/css/ai-bot-button.css',

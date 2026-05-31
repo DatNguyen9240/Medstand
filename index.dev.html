@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <!-- Inline Cache-Clearing Script (Bypasses Service Worker traps) -->
   <script>
@@ -23,6 +24,7 @@
       setTimeout(function () { window.location.href = cleanUrl; }, 300);
     }
   </script>
+
   <!-- ── Security: DevTools Blocker (F12 Blocker) ── -->
   <script>
     (function () {
@@ -33,14 +35,17 @@
                        window.location.search.indexOf('debug=true') > -1 ||
                        window.location.hash.indexOf('dev=true') > -1 ||
                        window.location.hash.indexOf('debug=true') > -1;
+      
       if (isLocal || isDevParam) {
         console.log('%c🛡️ MEDSTAND SECURITY: DevTools Blocker is BYPASSED (Local or Developer mode).', 'color: #00ff00; font-weight: bold; font-family: monospace;');
         return;
       }
+
       // Disable Right Click
       document.addEventListener('contextmenu', function (e) {
         e.preventDefault();
       });
+
       // Disable Keyboard Shortcuts
       document.addEventListener('keydown', function (e) {
         // F12
@@ -59,6 +64,7 @@
           return false;
         }
       });
+
       // Debugger Loop (Debugger Trap)
       setInterval(function () {
         (function () {
@@ -77,40 +83,98 @@
   <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
   <link rel="shortcut icon" href="images/logo/medstand-logo.png" type="image/png">
   <title>Medstand</title>
+
+
   <!-- ── Core CSS ─────────────────────────────────── -->
-  <link rel="stylesheet" href="src/css/dist/app.bundle.min.css">
+  <link rel="stylesheet" href="src/css/design-tokens.css">
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="src/css/components/header.css">
+  <link rel="stylesheet" href="chatbot-widget/css/ai-bot-button.css">
+  <link rel="stylesheet" href="src/css/components/card.css">
+  <link rel="stylesheet" href="src/css/components/nav-bar.css">
+  <link rel="stylesheet" href="src/css/components/list.css">
+  <link rel="stylesheet" href="src/css/components/chart.css">
+  <link rel="stylesheet" href="src/css/components/skeleton.css">
+  <link rel="stylesheet" href="src/css/components/loading-spinner.css">
+  <link rel="stylesheet" href="src/css/components/filter.css">
+  <link rel="stylesheet" href="src/css/components/input.css">
+  <link rel="stylesheet" href="src/css/components/total-bar.css">
+  <link rel="stylesheet" href="src/css/components/form-select.css">
+  <link rel="stylesheet" href="src/css/components/confirm-modal.css">
+  <link rel="stylesheet" href="src/css/layouts/desktop.css">
+
   <!-- ── Theme (must be before body) ─────────────── -->
   <script src="src/js/utils/theme.js"></script>
+
+
+
   <!-- ── Cash.js (jQuery-like) ───────────────────── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
 </head>
+
 <body>
   <!-- Global Spinner -->
   <div id="global-spinner" class="loading-spinner" hidden aria-live="polite">
     <span class="spinner-dot"></span>
   </div>
+
+
   <!-- SPA Content Container (templates provide their own layout wrappers) -->
   <div id="app-content">
     <div style="text-align:center;padding:48px 0;color:var(--color-text-muted)">Đang tải...</div>
   </div>
+
   <!-- Sidebar + Nav (managed by router) -->
   <div id="sidebar-container"></div>
   <div id="nav-container"></div>
+
   <!-- Môi trường — SỬA FILE NÀY KHI DEPLOY SANG SERVER MỚI -->
+  <script src="env.js"></script>
+
   <!-- ── Shared JS ────────────────────────────────── -->
-  <script src="src/js/dist/app.bundle.min.js"></script>
+  <script src="src/js/utils/debounce.js"></script>
+  <script src="src/js/components/LoadingSpinner.js"></script>
+  <script src="src/js/components/NavBar.js"></script>
+  <script src="src/js/components/Input.js"></script>
+  <script src="src/js/components/Alert.js"></script>
+  <script src="src/js/components/AuthThemeToggle.js"></script>
+  <script src="src/js/components/PasswordToggle.js"></script>
+
   <!-- API layer -->
+  <script src="src/js/config/filter-fields.js"></script>
+  <script src="src/js/utils/format.js"></script>
+  <script src="src/js/schemas/dashboard.schema.js"></script>
+  <script src="src/js/services/http.js"></script>
+  <script src="src/js/services/auth.service.js?v=9.5"></script>
+  <script src="src/js/services/dashboard.service.js"></script>
+  <script src="src/js/services/order.service.js"></script>
+  <script src="src/js/services/sales.service.js"></script>
+  <script src="src/js/services/other.service.js"></script>
+
   <!-- Components -->
+  <script src="src/js/components/SurveyCheck.js?v=9.6"></script>
+  <script src="src/js/components/SearchBar.js"></script>
+  <script src="src/js/components/FilterComponent.js"></script>
+  <script src="src/js/components/TotalBar.js"></script>
+  <script src="src/js/components/FormSelect.js"></script>
+  <script src="src/js/components/ConfirmModal.js"></script>
+  <script src="src/js/components/Pagination.js"></script>
+  <script src="src/js/components/MapPicker.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="src/js/components/Chart.js"></script>
+
   <!-- Leaflet (for maps) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <!-- SPA Router (must be last) -->
+  <script src="src/js/core/router.js?v=9.7"></script>
   <script>
     $(function () {
       Router.init();
     });
   </script>
+
   <!--
     CHATBOT WIDGET V5 — Chỉ load main.js (ES6 module).
     Các script engine cũ (chatbot-api-engine.js, chatbot.js...) vẫn do
@@ -118,6 +182,8 @@
     main.js chỉ tạo floating button + Shadow DOM overlay.
   -->
   <script type="module" src="chatbot-widget/js/main.js"></script>
+
   <script src="src/pwa/pwa-register.js"></script>
 </body>
+
 </html>
