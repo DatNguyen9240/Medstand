@@ -5050,6 +5050,23 @@
         chatHistory = loadedHistory || [];
         _renderHistory();
         _updateChipsVisibility();
+        
+        // Auto-run search query parameter 'q' if passed
+        var q = window._routeParams && window._routeParams.q;
+        if (!q) {
+            var hash = location.hash || '';
+            var qMatch = hash.match(/[?&]q=([^&]*)/);
+            if (qMatch) q = decodeURIComponent(qMatch[1]);
+        }
+        if (q) {
+            if (window._routeParams) delete window._routeParams.q;
+            var cleanHash = location.hash.split('?')[0];
+            history.replaceState(null, null, cleanHash);
+            
+            $input.value = q;
+            _updateSendBtn();
+            _send();
+        }
     });
 
     // _initSuggestionBar(); // ã ẩn thanh gợi ý the user

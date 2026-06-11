@@ -9,7 +9,7 @@ const Router = (() => {
     // See: login.html, register.html, forgot-password.html
 
     // Main app pages (need auth + nav)
-    { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
+    { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: ['src/css/pages/home.css'], auth: true, nav: 'home', title: 'Trang chủ' },
     { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
     { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot-suggestions.js', 'chatbot-widget/js/chatbot-api-engine.js', 'chatbot-widget/js/chatbot.js', 'chatbot-widget/js/chatbot-renderers-medstand.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
@@ -265,6 +265,37 @@ const Router = (() => {
     try {
       const html = await _fetchTemplate(route.template);
       if ($content) $content.innerHTML = html;
+      
+      // Dynamic injection of global AI Search Bar into .app-header (except on chatbot page itself)
+      if (path !== 'chatbot') {
+        const $header = document.querySelector('.app-header');
+        if ($header && !$header.querySelector('.header-search-ai')) {
+          const $actions = $header.querySelector('.header-actions');
+          const searchHTML = `
+            <div class="header-search-ai">
+              <div class="search-ai-wrap">
+                <span class="search-ai-icon">✦</span>
+                <input type="text" class="ai-global-search" placeholder="Hỏi AI về doanh số, khách hàng, báo cáo..." autocomplete="off">
+              </div>
+            </div>
+          `;
+          if ($actions) {
+            $actions.insertAdjacentHTML('beforebegin', searchHTML);
+          } else {
+            $header.insertAdjacentHTML('beforeend', searchHTML);
+          }
+          
+          // Bind Enter key to trigger AI navigation
+          $header.querySelector('.ai-global-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+              const val = this.value.trim();
+              if (val) {
+                navigate('chatbot?q=' + encodeURIComponent(val));
+              }
+            }
+          });
+        }
+      }
     } catch (e) {
       console.error('[Router] Template load error:', e);
       _hideSpinner($content);

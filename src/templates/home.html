@@ -1,14 +1,12 @@
-<!-- Home Template -->
+<!-- Home Template — Medstand Operational Dashboard v3 -->
 <header class="app-header">
-    <img src="https://ui-avatars.com/api/?name=User&background=e2e8f0&color=64748b" alt="" class="header-avatar" width="40"
-        height="40">
+    <img src="https://ui-avatars.com/api/?name=User&background=e2e8f0&color=64748b" alt="" class="header-avatar" width="40" height="40">
     <div class="header-info">
         <p class="header-greeting">Xin chào</p>
         <p class="header-username">Tài khoản test app</p>
     </div>
     <div class="header-actions">
         <span id="theme-toggle-container"></span>
-        <span id="ai-chat-btn-container"></span>
         <div class="header-notification">
             <button type="button" class="header-icon" aria-label="Thông báo" id="btn-notif">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -22,73 +20,370 @@
     </div>
 </header>
 
-<div class="app-content">
-    <div class="top-row">
-        <div id="stats-container">
-            <div class="stats-row" id="stats-skeleton" aria-busy="true">
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-            </div>
-            <div class="stats-row" id="stats-content" hidden aria-busy="false"></div>
-        </div>
+<div class="app-content" id="home-page">
 
-        <div class="revenue-section">
-            <div class="revenue-top-row">
-                <p class="revenue-title">Doanh số tháng</p>
-                <p class="revenue-value" id="revenue-value" hidden>—</p>
-                <div class="skeleton skeleton-text" id="revenue-skeleton"
-                    style="width:140px;height:28px;border-radius:6px"></div>
-            </div>
-            <div class="revenue-date-row" id="revenue-date-container">
-                <!-- Rendered by Input.renderDate in home.js -->
-            </div>
-        </div>
+  <!-- ══════════════════════════════════════
+       HERO BANNER — nền trắng xanh nhạt
+       ══════════════════════════════════════ -->
+  <div class="home-hero">
+    <!-- Flower watermark logo in the center-left background -->
+    <div class="hero-watermark-bg" aria-hidden="true">
+      <svg viewBox="0 0 100 100" fill="none" stroke="rgba(11, 138, 67, 0.025)" stroke-width="1.2">
+        <circle cx="50" cy="50" r="8"/>
+        <ellipse cx="50" cy="25" rx="6" ry="20"/>
+        <ellipse cx="50" cy="75" rx="6" ry="20"/>
+        <ellipse cx="25" cy="50" rx="20" ry="6"/>
+        <ellipse cx="75" cy="50" rx="20" ry="6"/>
+        <g transform="rotate(30, 50, 50)">
+          <ellipse cx="50" cy="25" rx="6" ry="20"/>
+          <ellipse cx="50" cy="75" rx="6" ry="20"/>
+          <ellipse cx="25" cy="50" rx="20" ry="6"/>
+          <ellipse cx="75" cy="50" rx="20" ry="6"/>
+        </g>
+        <g transform="rotate(60, 50, 50)">
+          <ellipse cx="50" cy="25" rx="6" ry="20"/>
+          <ellipse cx="50" cy="75" rx="6" ry="20"/>
+          <ellipse cx="25" cy="50" rx="20" ry="6"/>
+          <ellipse cx="75" cy="50" rx="20" ry="6"/>
+        </g>
+      </svg>
     </div>
 
-    <div class="chart-section">
-        <div class="chart-header">
-            <div class="chart-header-left">
-                <h3 class="chart-title">Biểu đồ doanh số</h3>
-                <p class="chart-subtitle">Theo ngày trong kỳ</p>
+    <!-- Cột trái: Lời chào -->
+    <div class="hero-left">
+      <p class="hero-greeting" id="greeting-text">Chào buổi sáng,</p>
+      <h1 class="hero-name" id="user-name">Test App</h1>
+      <p class="hero-subtitle" id="hero-summary">Chúc bạn một ngày làm việc hiệu quả!</p>
+      <div class="hero-date-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        <span id="today-date">--</span>
+      </div>
+    </div>
+
+    <!-- Cột phải: Slogan + illustration -->
+    <div class="hero-right">
+      <div class="hero-slogan-text">
+        <span class="slogan-main">BỀN GAN</span>
+        <span class="slogan-main">VỮNG CHÍ</span>
+        <span class="slogan-sub">VƯỢT SÓNG VƯƠN XA</span>
+      </div>
+      <!-- SVG illustration: sóng + ngọn hải đăng -->
+      <div class="hero-illustration" aria-hidden="true">
+        <svg viewBox="0 0 420 180" fill="none" xmlns="http://www.w3.org/2000/svg" class="hero-svg">
+          <defs>
+            <linearGradient id="wave-grad-1" x1="0" y1="180" x2="420" y2="100" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0b8a43" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#34c877" stop-opacity="0.08"/>
+            </linearGradient>
+            <linearGradient id="wave-grad-2" x1="0" y1="180" x2="420" y2="120" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0b8a43" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#10b981" stop-opacity="0.12"/>
+            </linearGradient>
+            <linearGradient id="wave-grad-3" x1="0" y1="180" x2="420" y2="135" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#097a3b" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#059669" stop-opacity="0.18"/>
+            </linearGradient>
+            <linearGradient id="lighthouse-body-grad" x1="378" y1="50" x2="400" y2="50" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#097a3b"/>
+              <stop offset="70%" stop-color="#0b8a43"/>
+              <stop offset="100%" stop-color="#059669"/>
+            </linearGradient>
+            <radialGradient id="light-beam-glow" cx="389" cy="38" r="80" fx="389" fy="38" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#fff59d" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="#fff59d" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          
+          <!-- Sky / background glow -->
+          <circle cx="389" cy="40" r="90" fill="#f0faf4" opacity="0.8"/>
+          <ellipse cx="330" cy="70" rx="90" ry="50" fill="#eaf7f0" opacity="0.6"/>
+          
+          <!-- Birds -->
+          <path d="M250 25 Q254 22 258 25" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
+          <path d="M265 17 Q269 14 273 17" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+          <path d="M280 29 Q283 26 286 29" stroke="#0b8a43" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.3"/>
+          <path d="M305 20 Q309 17 313 20" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.45"/>
+
+          <!-- Modern city skyline (sleek silhouettes) -->
+          <path d="M220 150 L220 110 L230 110 L230 150 Z" fill="#cbd5e1" opacity="0.25"/>
+          <path d="M232 150 L232 95 L242 95 L242 150 Z" fill="#94a3b8" opacity="0.2"/>
+          <path d="M244 150 L244 105 L256 105 L256 150 Z" fill="#cbd5e1" opacity="0.25"/>
+          <path d="M258 150 L258 85 L268 85 L268 150 Z" fill="#94a3b8" opacity="0.25"/>
+          <path d="M270 150 L270 115 L280 115 L280 150 Z" fill="#cbd5e1" opacity="0.2"/>
+          
+          <!-- Sailboat silhouette -->
+          <path d="M290 135 L297 135 L294 125 Z" fill="#0b8a43" opacity="0.4"/>
+          <path d="M288 135 L299 135 L296 137 L291 137 Z" fill="#0b8a43" opacity="0.5"/>
+
+          <!-- Lighthouse Base -->
+          <path d="M365 148 L415 148 L405 140 L375 140 Z" fill="#1e293b" opacity="0.15"/>
+          <rect x="370" y="138" width="38" height="12" rx="2" fill="#334155" opacity="0.8"/>
+          
+          <!-- Lighthouse Body -->
+          <path d="M378 138 L382 50 L396 50 L400 138 Z" fill="url(#lighthouse-body-grad)"/>
+          <path d="M378 138 L382 50 L385 50 L380 138 Z" fill="#fff" opacity="0.15"/> <!-- Highlight -->
+          
+          <!-- Lighthouse horizontal stripes -->
+          <path d="M379.8 98 L398.2 98 L397.6 112 L380.4 112 Z" fill="#fff" opacity="0.95"/>
+          <path d="M381.1 70 L396.9 70 L396.3 84 L381.7 84 Z" fill="#fff" opacity="0.95"/>
+          
+          <!-- Gallery / Top deck -->
+          <rect x="376" y="44" width="26" height="6" rx="1" fill="#1e293b"/>
+          
+          <!-- Glass room (Lantern room) -->
+          <rect x="382" y="32" width="14" height="12" fill="#fff" opacity="0.3"/>
+          <line x1="389" y1="32" x2="389" y2="44" stroke="#1e293b" stroke-width="1.5"/>
+          
+          <!-- Dome / Roof -->
+          <path d="M380 32 C380 20 398 20 398 32 Z" fill="#097a3b"/>
+          <circle cx="389" cy="20" r="2" fill="#097a3b"/>
+
+          <!-- Glowing Light Beam -->
+          <path d="M389 38 L180 80 L195 120 Z" fill="url(#light-beam-glow)"/>
+          
+          <!-- Dynamic Ocean waves (emerald gradient layers) -->
+          <path d="M0 132 Q60 120 120 132 T240 132 T360 132 T420 128 L420 180 L0 180 Z" fill="url(#wave-grad-1)"/>
+          <path d="M0 144 Q70 132 140 144 T280 144 T420 138 L420 180 L0 180 Z" fill="url(#wave-grad-2)"/>
+          <path d="M0 156 Q80 142 160 156 T320 156 T420 148 L420 180 L0 180 Z" fill="url(#wave-grad-3)"/>
+          
+          <!-- Wave highlights / foam peaks -->
+          <path d="M10 133 C40 125 70 125 100 133" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
+          <path d="M130 145 C170 135 210 135 250 145" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.35"/>
+          <path d="M290 157 C330 147 370 147 410 157" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.3"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       KPI CARDS — 4 card ngang
+       ══════════════════════════════════════ -->
+  <div class="home-kpi-grid">
+
+    <!-- Card 1: Đơn hàng -->
+    <div class="kpi-card" id="kpi-orders">
+      <div class="kpi-header">
+        <span class="kpi-label">ĐƠN HÀNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-orders-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-orders-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-orders-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 2: Khách hàng giao dịch -->
+    <div class="kpi-card" id="kpi-customers">
+      <div class="kpi-header">
+        <span class="kpi-label">KHÁCH HÀNG GIAO DỊCH</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-customers-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-customers-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-customers-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 3: Độ phủ ngành hàng -->
+    <div class="kpi-card" id="kpi-coverage">
+      <div class="kpi-header">
+        <span class="kpi-label">ĐỘ PHỦ NGÀNH HÀNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-coverage-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-coverage-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-coverage-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 4: Doanh số tháng -->
+    <div class="kpi-card" id="kpi-revenue">
+      <div class="kpi-header">
+        <span class="kpi-label">DOANH SỐ THÁNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value kpi-value-green" id="kpi-revenue-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-revenue-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-revenue-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       ANALYTICS ROW — Chart (2/3) + Sinh nhật (1/3)
+       ══════════════════════════════════════ -->
+  <div class="home-analytics-row">
+
+    <!-- Chart card -->
+    <div class="home-analytics-card">
+      <div class="analytics-header">
+        <div class="analytics-title">
+          <h2>Biểu đồ doanh số</h2>
+          <p class="analytics-subtitle">Theo ngày trong kỳ</p>
+        </div>
+        <div class="analytics-actions-wrap">
+          <div class="analytics-tabs">
+            <button type="button" class="tab-btn active" data-tab="day">Theo ngày</button>
+            <button type="button" class="tab-btn" data-tab="week">Theo tuần</button>
+            <button type="button" class="tab-btn tab-more">•••</button>
+          </div>
+          <div id="revenue-date-container" class="date-filter-group">
+            <!-- Inject date inputs from home.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrapper">
+        <canvas id="revenue-chart"></canvas>
+      </div>
+
+      <!-- Quick Stats Bar -->
+      <div class="quick-stats-bar">
+        <div class="qs-item">
+          <span class="qs-label">Doanh số cao nhất</span>
+          <div class="qs-value-wrap">
+            <span class="qs-value" id="qs-max-value">--</span>
+            <span class="qs-date" id="qs-max-date">(--)</span>
+          </div>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Doanh số thấp nhất</span>
+          <div class="qs-value-wrap">
+            <span class="qs-value" id="qs-min-value">--</span>
+            <span class="qs-date" id="qs-min-date">(--)</span>
+          </div>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Doanh số trung bình</span>
+          <span class="qs-value" id="qs-avg-value">--</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Tổng doanh số</span>
+          <span class="qs-value qs-total" id="qs-total-value">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sinh nhật sidebar -->
+    <div class="widget-card widget-birthdays">
+      <div class="widget-header">
+        <span class="widget-icon" aria-hidden="true">🎂</span>
+        <h3>Sinh nhật hôm nay</h3>
+        <span class="widget-badge" id="birthday-count">0</span>
+      </div>
+      <div id="birthdays-container">
+        <ul class="birthday-list" id="birthdays-skeleton">
+          <li class="birthday-item-skeleton">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-info">
+              <div class="skeleton-line" style="width:65%"></div>
+              <div class="skeleton-line" style="width:45%"></div>
             </div>
-        </div>
-        <div id="chart-skeleton" class="skeleton skeleton-chart"></div>
-        <div class="chart-wrapper">
-            <canvas id="revenue-chart" style="display:none"></canvas>
-        </div>
-    </div>
-
-    <div class="section-header">
-        <span class="section-line"></span>
-        <h3 class="section-title">Sinh nhật</h3>
-        <span class="section-badge" id="birthday-count" hidden>🎁 0</span>
-    </div>
-
-    <div id="birthdays-container">
-        <ul class="list" id="birthdays-skeleton">
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
+          </li>
+          <li class="birthday-item-skeleton">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-info">
+              <div class="skeleton-line" style="width:55%"></div>
+              <div class="skeleton-line" style="width:40%"></div>
+            </div>
+          </li>
         </ul>
-        <ul class="list" id="birthdays-list" hidden></ul>
+        <ul class="birthday-list" id="birthdays-list" style="display:none"></ul>
+      </div>
+      <a href="#/customer-management" class="widget-see-all">Xem tất cả <span>›</span></a>
     </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       CÔNG VIỆC HÔM NAY — 4 cột ngang
+       ══════════════════════════════════════ -->
+  <div class="widget-card widget-tasks">
+    <div class="widget-header">
+      <h3>Công việc hôm nay</h3>
+    </div>
+    <div class="tasks-grid" id="tasks-grid">
+      <!-- Inject bởi home.js -->
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       BOTTOM GRID — 2 cột widget phụ
+       ══════════════════════════════════════ -->
+  <div class="home-bottom-grid">
+
+    <!-- Cột trái: Quick Actions + Top Khách hàng -->
+    <div class="home-col-left">
+
+      <div class="widget-card widget-quick-actions">
+        <div class="widget-header">
+          <h3>Thao tác nhanh</h3>
+        </div>
+        <div class="quick-actions-grid">
+          <a href="#/create-order" class="qa-btn qa-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Tạo đơn hàng
+          </a>
+          <a href="#/customer-management" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Khách hàng mới
+          </a>
+          <a href="#/revenue" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            Xem báo cáo
+          </a>
+          <a href="#/order-report" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            Báo cáo đơn hàng
+          </a>
+        </div>
+      </div>
+
+      <div class="widget-card widget-top-customers">
+        <div class="widget-header">
+          <h3>Top khách hàng đóng góp</h3>
+        </div>
+        <ul class="top-customer-list" id="top-customer-list"></ul>
+      </div>
+
+    </div>
+
+    <!-- Cột phải: Độ phủ khu vực -->
+    <div class="home-col-right">
+
+      <div class="widget-card widget-coverage">
+        <div class="widget-header">
+          <h3>Độ phủ khu vực</h3>
+        </div>
+        <ul class="coverage-list" id="coverage-list"></ul>
+      </div>
+
+    </div>
+  </div>
+
 </div>

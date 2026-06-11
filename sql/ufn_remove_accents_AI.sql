@@ -8,8 +8,9 @@ IF OBJECT_ID('dbo.ufn_remove_accents', 'FN') IS NOT NULL
     DROP FUNCTION dbo.ufn_remove_accents;
 GO
 
-CREATE FUNCTION dbo.ufn_remove_accents (@Input NVARCHAR(MAX))
-RETURNS NVARCHAR(MAX)
+CREATE FUNCTION dbo.ufn_remove_accents (@Input NVARCHAR(400))
+RETURNS NVARCHAR(400)
+WITH SCHEMABINDING
 AS
 BEGIN
     IF @Input IS NULL RETURN NULL;

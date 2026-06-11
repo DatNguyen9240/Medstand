@@ -12,7 +12,20 @@ var THEME_ICONS = {
   moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
 };
 
-function getNavTabs(activeTab) {
+function getSidebarTabs(activeTab) {
+  return [
+    { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
+    { id: 'customers', label: 'Khách hàng', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>', href: '#/customer-management' },
+    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: '#/orders' },
+    { id: 'routes', label: 'Quản lý công việc', icon: NAV_ICONS.routes, href: '#/routes' },
+    { id: 'reports', label: 'Báo cáo', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>', href: '#/revenue' },
+    { id: 'tdv', label: 'Trình dược viên', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>', href: '#/routes' },
+    { id: 'library', label: 'Thư viện', icon: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5v-15z"/></svg>', href: '#/rag-admin' },
+    { id: 'account', label: 'Cài đặt', icon: NAV_ICONS.account, href: '#/account' }
+  ];
+}
+
+function getMobileTabs(activeTab) {
   return [
     { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
     { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: '#/routes' },
@@ -23,23 +36,59 @@ function getNavTabs(activeTab) {
 
 function renderSidebar(activeTab, base) {
   activeTab = activeTab || 'home';
-  base = base || '';
-  var tabs = getNavTabs(activeTab, base);
+  var tabs = getSidebarTabs(activeTab);
   var collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
+  // Get current user info from localStorage
+  var user = {};
+  try {
+    user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+  } catch (e) {}
+  var displayName = user.DisplayName || user.UserName || 'Trình dược viên';
+  var avatarSrc = '';
+  if (user.Avatar) {
+    avatarSrc = user.Avatar.startsWith('data:') ? user.Avatar : 'data:image/jpeg;base64,' + user.Avatar;
+  } else {
+    avatarSrc = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=0b8a43&color=fff';
+  }
+
   return '<aside class="app-sidebar' + (collapsed ? ' collapsed' : '') + '" aria-label="Sidebar navigation">' +
-    '<button type="button" class="sidebar-toggle" aria-label="Thu gọn sidebar" onclick="toggleSidebar()">' +
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
-    '</button>' +
-    '<div class="sidebar-heading">MENU</div>' +
+    '<div class="sidebar-brand-wrapper">' +
+    '  <div class="sidebar-brand">' +
+    '    <img src="images/logo/medstand-logo.png" alt="Medstand Pharma" style="height: 36px; max-width: 175px; object-fit: contain; flex-shrink: 0;">' +
+    '  </div>' +
+    '  <button type="button" class="sidebar-toggle" aria-label="Thu gọn sidebar" onclick="toggleSidebar()">' +
+    '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
+    '  </button>' +
+    '</div>' +
+    '<div class="sidebar-heading">MENU HỆ THỐNG</div>' +
     '<nav class="sidebar-nav">' +
     tabs.map(function (t) {
-      return '<a href="' + t.href + '" class="sidebar-item ' + (t.id === activeTab ? 'active' : '') + '" data-tab="' + t.id + '" title="' + t.label + '">' +
+      // Map active states based on path/id
+      var isActive = (t.id === activeTab);
+      if (activeTab === 'customer-management' && t.id === 'customers') isActive = true;
+      if (activeTab === 'revenue' && t.id === 'reports') isActive = true;
+      if (activeTab === 'rag-admin' && t.id === 'library') isActive = true;
+      
+      return '<a href="' + t.href + '" class="sidebar-item ' + (isActive ? 'active' : '') + '" data-tab="' + t.id + '" title="' + t.label + '">' +
         '<span class="sidebar-icon">' + t.icon + '</span>' +
         '<span class="sidebar-label">' + t.label + '</span>' +
         '</a>';
     }).join('') +
     '</nav>' +
+    '<div class="sidebar-footer">' +
+    '  <div class="sidebar-user">' +
+    '    <img src="' + avatarSrc + '" class="sidebar-user-avatar" alt="">' +
+    '    <div class="sidebar-user-info">' +
+    '      <div class="sidebar-user-name">' + displayName + '</div>' +
+    '      <div class="sidebar-user-role">Kênh Miền Bắc</div>' +
+    '    </div>' +
+    '  </div>' +
+    '  <button class="sidebar-logout-btn" onclick="AuthService.logout()">' +
+    '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+    '    <span>Đăng xuất</span>' +
+    '  </button>' +
+    '</div>' +
     '</aside>';
 }
 
@@ -70,8 +119,7 @@ $(function () {
 
 function renderNavBar(activeTab, base) {
   activeTab = activeTab || 'home';
-  base = base || '';
-  var tabs = getNavTabs(activeTab, base);
+  var tabs = getMobileTabs(activeTab);
   return '<nav class="app-nav" aria-label="Bottom navigation">' +
     tabs.map(function (t) {
       return '<a href="' + t.href + '" class="nav-item ' + (t.id === activeTab ? 'active' : '') + '" data-tab="' + t.id + '">' +

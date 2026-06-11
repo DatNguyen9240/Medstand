@@ -91,7 +91,7 @@ app.post('/api/gateway', async (req, res) => {
 
         // 2. Định tuyến đến máy chủ đích thật
         const isN8n = endpoint.startsWith('/webhook');
-        const baseUrl = isN8n ? N8N_INTERNAL_URL : API_INTERNAL_URL;
+        const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
         const targetUrl = `${baseUrl}${endpoint}`;
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);

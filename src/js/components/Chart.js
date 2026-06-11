@@ -16,7 +16,7 @@ function drawLineChart(canvasId, labels, values, options = {}) {
 
   // Color palette
   const primaryColor   = options.lineColor || '#3c50e0';
-  const primaryRgb     = '60, 80, 224';
+  const primaryRgb     = options.primaryRgb || '60, 80, 224';
   const gridColor      = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
   const tickColor      = isDark ? '#8a99af' : '#64748b';
   const tooltipBg      = isDark ? '#1c2536' : '#ffffff';

@@ -216,3 +216,76 @@ select.form-control {
     transform: rotate(360deg);
   }
 }
+
+/* ── Global AI Search Bar ────────────────────────────────────────── */
+.header-search-ai {
+  flex: 1;
+  max-width: 480px;
+  margin: 0 var(--spacing-md);
+  display: flex;
+  justify-content: center;
+  position: relative;
+  z-index: 10;
+}
+
+.search-ai-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.search-ai-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0b8a43; /* Brand green */
+  font-size: 1.1rem;
+  pointer-events: none;
+  font-family: inherit;
+  transition: transform 0.2s ease;
+}
+
+.ai-global-search {
+  width: 100%;
+  height: 40px;
+  padding: 8px 16px 8px 40px;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.ai-global-search:focus {
+  border-color: #0b8a43;
+  background: var(--color-surface);
+  box-shadow: 0 0 0 3px rgba(11, 138, 67, 0.15);
+}
+
+.search-ai-wrap:focus-within .search-ai-icon {
+  transform: translateY(-50%) scale(1.15) rotate(15deg);
+}
+
+/* Adjust header layout to make search input look centered */
+@media (min-width: 768px) {
+  .header-info {
+    flex: 0 0 auto;
+    min-width: 160px;
+  }
+  .header-search-ai {
+    margin: 0 auto; /* Centers the search bar */
+  }
+}
+
+@media (max-width: 767px) {
+  .header-info {
+    display: none; /* Hide welcome text to fit input nicely on mobile */
+  }
+  .header-search-ai {
+    margin: 0 8px;
+    max-width: none;
+  }
+}
