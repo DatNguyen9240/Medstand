@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "K0_ChatCasual (Fallback)",
   "nodes": [
     {
@@ -42,7 +42,10 @@
     },
     {
       "parameters": {
-        "model": "openai/gpt-4o-mini",
+        "model": {
+          "mode": "list",
+          "value": "openai/gpt-4o-mini"
+        },
         "options": {
           "temperature": 0.5
         }

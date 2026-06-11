@@ -64,44 +64,104 @@ BEGIN
         RETURN
     END
 
-    -- 2. Defaults
-    IF @TuNgay IS NULL SET @TuNgay = DATEADD(DAY, 1 - DAY(GETDATE()), CAST(GETDATE() AS DATE))
+    -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh (moved up for date fallback)
+    DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
+    DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
+    DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
+    DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
+    DECLARE @IsManager       BIT         = 0
+    DECLARE @SYSUserGroupID VARCHAR(50)  = ''
+
+    -- Ưu tiên tìm theo UserName trước
+    IF NULLIF(@Username, '') IS NOT NULL
+    BEGIN
+        SELECT TOP 1
+            @SYS_BranchID    = COALESCE(BranchID, ''),
+            @SYS_CeoID       = COALESCE(CeoID, ''),
+            @SYS_ManagerID   = COALESCE(ManagerID, ''),
+            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
+            @IsManager       = COALESCE(Manager, 0),
+            @SYSUserGroupID = COALESCE(UserGroupID, '')
+        FROM SY_User 
+        WHERE (UserName = @Username OR HoTen = @Username) AND COALESCE(Disable, 0) = 0
+    END
+    -- Nếu không có Username nhưng có mã EmployeeID, tra cứu ngược lại từ SY_User
+    ELSE IF NULLIF(@SYS_EmployeeID, '') IS NOT NULL OR NULLIF(@EmployeeID, '') IS NOT NULL
+    BEGIN
+        DECLARE @EmpLookup VARCHAR(50) = COALESCE(NULLIF(@SYS_EmployeeID, ''), @EmployeeID)
+        SELECT TOP 1
+            @Username        = UserName,
+            @SYS_BranchID    = COALESCE(BranchID, ''),
+            @SYS_CeoID       = COALESCE(CeoID, ''),
+            @SYS_ManagerID   = COALESCE(ManagerID, ''),
+            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
+            @IsManager       = COALESCE(Manager, 0),
+            @SYSUserGroupID  = COALESCE(UserGroupID, '')
+        FROM SY_User 
+        WHERE EmployeeID = @EmpLookup AND COALESCE(Disable, 0) = 0
+        ORDER BY Manager DESC
+    END
+
+    -- 2. Defaults (with UAT date fallback)
+    IF @TuNgay IS NULL
+    BEGIN
+        IF EXISTS (SELECT 1 FROM dbo.AR_InvoiceTbl WITH (NOLOCK) WHERE DocumentDate >= DATEADD(MONTH, -1, GETDATE()))
+        BEGIN
+            SET @TuNgay = DATEADD(MONTH, -1, GETDATE())
+        END
+        ELSE
+        BEGIN
+            SET @TuNgay = DATEADD(YEAR, -10, GETDATE())
+        END
+    END
     IF @DenNgay IS NULL SET @DenNgay = GETDATE()
 
     -- Fix bounds: 00:00:00 to 23:59:59 (Safe Math Version)
     SET @TuNgay = DATEADD(DAY, DATEDIFF(DAY, 0, @TuNgay), 0)
     SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
 
-    DECLARE @SYS_BranchID VARCHAR(50) = ISNULL(@SYSBranchID, '')
-    IF @SYS_BranchID = '' AND @Username <> ''
-    BEGIN
-        SELECT @SYS_BranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
-    END
-
     -- SMART CUSTOMER RESOLUTION (NAME TO ID)
-    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
-    BEGIN
-        DECLARE @ResolvedID VARCHAR(50) = ''
-        DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+     BEGIN
+         DECLARE @ResolvedID VARCHAR(50) = ''
+         DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
 
-        SELECT TOP 1 @ResolvedID = ObjectID 
-        FROM dbo.CF_ObjectTbl 
-        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
-        ORDER BY 
-            CASE WHEN ObjectID = @CleanSearch THEN 1
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
-                 ELSE 4
-            END,
-            COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-            LEN(ObjectName) ASC;
+         -- 1. Fast Path: Match by ObjectID or ObjectName directly without scalar function scan
+         SELECT TOP 1 @ResolvedID = ObjectID 
+         FROM dbo.CF_ObjectTbl 
+         WHERE (ObjectID LIKE '%' + @CleanSearch + '%'
+            OR ObjectName LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+         ORDER BY 
+             CASE WHEN ObjectID = @CleanSearch THEN 1
+                  WHEN ObjectName = @CleanSearch THEN 2
+                  WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
+                  ELSE 4
+             END,
+             COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+             LEN(ObjectName) ASC;
 
-        IF @ResolvedID <> ''
-        BEGIN
-            SET @MaKhachHang = @ResolvedID
-        END
-    END
+         -- 2. Slow Path: Fallback to heavy clean function scan only if Fast Path found nothing
+         IF @ResolvedID = ''
+         BEGIN
+             SELECT TOP 1 @ResolvedID = ObjectID 
+             FROM dbo.CF_ObjectTbl 
+             WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
+                OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+             ORDER BY 
+                 CASE WHEN ObjectID = @CleanSearch THEN 1
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                      ELSE 4
+                 END,
+                 COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                 LEN(ObjectName) ASC;
+         END
+
+         IF @ResolvedID <> ''
+         BEGIN
+             SET @MaKhachHang = @ResolvedID
+         END
+     END
 
     -- SMART AI ID ROUTING
     DECLARE @ExtractedID VARCHAR(50) = ''
@@ -141,43 +201,8 @@ BEGIN
         SET @TenNhanVien = ''
     END
 
-    -- 3. Lấy quyền user cục bộ với cơ chế fallback thông minh
-    SET @SYS_BranchID    = ISNULL(@SYSBranchID, '')
-    DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
-    DECLARE @SYS_ManagerID   VARCHAR(50) = ISNULL(@SYSManagerID, '')
-    DECLARE @SYS_EmployeeID  VARCHAR(50) = ISNULL(@SYSEmployeeID, '')
-    DECLARE @IsManager       BIT         = 0
-    DECLARE @SYSUserGroupID VARCHAR(50)  = ''
-
-    -- Ưu tiên tìm theo UserName trước
-    IF NULLIF(@Username, '') IS NOT NULL
-    BEGIN
-        SELECT TOP 1
-            @SYS_BranchID    = COALESCE(BranchID, ''),
-            @SYS_CeoID       = COALESCE(CeoID, ''),
-            @SYS_ManagerID   = COALESCE(ManagerID, ''),
-            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
-            @IsManager       = COALESCE(Manager, 0),
-            @SYSUserGroupID = COALESCE(UserGroupID, '')
-        FROM SY_User 
-        WHERE (UserName = @Username OR HoTen = @Username) AND COALESCE(Disable, 0) = 0
-    END
-    -- Nếu không có Username nhưng có mã EmployeeID, tra cứu ngược lại từ SY_User
-    ELSE IF NULLIF(@SYS_EmployeeID, '') IS NOT NULL OR NULLIF(@EmployeeID, '') IS NOT NULL
-    BEGIN
-        DECLARE @EmpLookup VARCHAR(50) = COALESCE(NULLIF(@SYS_EmployeeID, ''), @EmployeeID)
-        SELECT TOP 1
-            @Username        = UserName,
-            @SYS_BranchID    = COALESCE(BranchID, ''),
-            @SYS_CeoID       = COALESCE(CeoID, ''),
-            @SYS_ManagerID   = COALESCE(ManagerID, ''),
-            @SYS_EmployeeID  = COALESCE(EmployeeID, ''),
-            @IsManager       = COALESCE(Manager, 0),
-            @SYSUserGroupID  = COALESCE(UserGroupID, '')
-        FROM SY_User 
-        WHERE EmployeeID = @EmpLookup AND COALESCE(Disable, 0) = 0
-        ORDER BY Manager DESC
-    END
+    -- 3. (User permissions loaded at the top to resolve date fallback)
+    -- Kept empty to preserve line layout structure.
 
     -- =========================================================
     -- DỒN LỰC KHẮC PHỤC LỖI CLAIMS CACHE TRÊN WEB DASHBOARD
@@ -274,6 +299,7 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (@BranchID = '' OR A.BranchID = @BranchID)
             AND (
                 @SYSUserGroupID = 'Admin'
                 OR A.EmployeeID = @SYS_EmployeeID
@@ -310,6 +336,7 @@ BEGIN
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (@BranchID = '' OR A.BranchID = @BranchID)
             AND (
                 @SYSUserGroupID = 'Admin'
                 OR A.EmployeeID = @SYS_EmployeeID
@@ -348,6 +375,7 @@ BEGIN
             AND (@TenNhanVien = '' OR A.EmployeeName LIKE N'%' + @TenNhanVien + '%' OR U.HoTen LIKE N'%' + @TenNhanVien + '%')
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
+            AND (@BranchID = '' OR A.BranchID = @BranchID)
             AND (
                 @SYSUserGroupID = 'Admin'
                 OR A.EmployeeID = @SYS_EmployeeID

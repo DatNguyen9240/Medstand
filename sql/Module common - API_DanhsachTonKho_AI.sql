@@ -26,6 +26,16 @@ BEGIN
       AND (@TenSanPham = '' OR I.ItemName LIKE '%' + @TenSanPham + '%')
       AND (@SYSBranchID = '' OR A.BranchID = @SYSBranchID)
       AND (@timkiem = '' OR I.ItemName LIKE '%' + @timkiem + '%' OR A.ItemID LIKE '%' + @timkiem + '%')
+      AND (
+          EXISTS (
+              SELECT 1 FROM SY_User 
+              WHERE UserName = @Username 
+                AND (UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') OR COALESCE(Manager, 0) = 1)
+          )
+          OR A.StoreHouseID IN (
+              SELECT StoreHouseID FROM SY_UserStoreHouseTbl WHERE UserName = @Username
+          )
+      )
     GROUP BY A.ItemID, I.ItemName, A.StoreHouseID, A.BranchID,
              A.Lot, A.ExpireDate
 END

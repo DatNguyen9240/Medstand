@@ -65,3 +65,8 @@ Technical_Documentation/*.zip
 .agent/
 AGENTS.md
 Phan_Tich_BRD_AI_Sale.md
+
+
+# Database backup - không commit lên Git
+*.bak
+*.bak.bak

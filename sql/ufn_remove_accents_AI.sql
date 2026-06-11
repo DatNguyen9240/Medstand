@@ -1,3 +1,9 @@
+-- ============================================================
+-- [AI-GENERATED] Refactored by Antigravity AI - 2026-06-11
+-- Removed Mojibake dead code (data in CF_ObjectTbl confirmed
+-- clean Unicode NVARCHAR). Kept: LOWER + NFD strip + NFC map.
+-- ============================================================
+
 IF OBJECT_ID('dbo.ufn_remove_accents', 'FN') IS NOT NULL 
     DROP FUNCTION dbo.ufn_remove_accents;
 GO
@@ -7,8 +13,23 @@ RETURNS NVARCHAR(MAX)
 AS
 BEGIN
     IF @Input IS NULL RETURN NULL;
-    DECLARE @str NVARCHAR(MAX) = LOWER(@Input);
-    
+    DECLARE @str NVARCHAR(MAX) = @Input;
+
+    -- CONVERT TO LOWERCASE
+    SET @str = LOWER(@str);
+
+    -- STRIP COMBINING ACCENT MARKS FOR NFD (DECOMPOSED) STRINGS
+    -- Handles text sent by Chatbot in NFD normalization form
+    SET @str = REPLACE(@str, NCHAR(768), ''); -- Grave accent
+    SET @str = REPLACE(@str, NCHAR(769), ''); -- Acute accent
+    SET @str = REPLACE(@str, NCHAR(771), ''); -- Tilde
+    SET @str = REPLACE(@str, NCHAR(777), ''); -- Hook above
+    SET @str = REPLACE(@str, NCHAR(803), ''); -- Dot below
+    SET @str = REPLACE(@str, NCHAR(770), ''); -- Circumflex
+    SET @str = REPLACE(@str, NCHAR(774), ''); -- Breve
+    SET @str = REPLACE(@str, NCHAR(795), ''); -- Horn
+
+    -- STANDARD VIETNAMESE ACCENT REPLACEMENTS (NFC Unicode)
     SET @str = REPLACE(@str, N'á', 'a');
     SET @str = REPLACE(@str, N'à', 'a');
     SET @str = REPLACE(@str, N'ả', 'a');

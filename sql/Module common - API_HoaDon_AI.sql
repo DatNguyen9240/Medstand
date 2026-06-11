@@ -5,7 +5,8 @@ CREATE PROCEDURE [dbo].[API_HoaDon_AI]
     @Username   VARCHAR(50)   = '',
     @TuNgay   DATETIME      = NULL,
     @DenNgay     DATETIME      = NULL,
-    @timkiem NVARCHAR(50)  = ''
+    @timkiem NVARCHAR(50)  = '',
+    @MaKhachHang NVARCHAR(100) = ''
 AS
 BEGIN
     SET NOCOUNT ON
@@ -52,6 +53,49 @@ BEGIN
         @SYSUserGroupID = ISNULL(UserGroupID, '')
     FROM SY_User WITH (NOLOCK) WHERE UserName = @Username
 
+    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
+     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+     BEGIN
+         DECLARE @ResolvedID VARCHAR(50) = ''
+         DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
+
+         -- 1. Fast Path: Match by ObjectID or ObjectName directly without scalar function scan
+         SELECT TOP 1 @ResolvedID = ObjectID 
+         FROM dbo.CF_ObjectTbl 
+         WHERE (ObjectID LIKE '%' + @CleanSearch + '%'
+            OR ObjectName LIKE '%' + @CleanSearch + '%') AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
+         ORDER BY 
+             CASE WHEN ObjectID = @CleanSearch THEN 1
+                  WHEN ObjectName = @CleanSearch THEN 2
+                  WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
+                  ELSE 4
+             END,
+             COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+             LEN(ObjectName) ASC;
+
+         -- 2. Slow Path: Fallback to heavy clean function scan only if Fast Path found nothing
+         IF @ResolvedID = ''
+         BEGIN
+             SELECT TOP 1 @ResolvedID = ObjectID 
+             FROM dbo.CF_ObjectTbl 
+             WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
+                OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
+             ORDER BY 
+                 CASE WHEN ObjectID = @CleanSearch THEN 1
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                      ELSE 4
+                 END,
+                 COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                 LEN(ObjectName) ASC;
+         END
+
+         IF @ResolvedID <> ''
+         BEGIN
+             SET @MaKhachHang = @ResolvedID
+         END
+     END
+
     -------------------------------------------------
     -- 4. Truy vấn dữ liệu hóa đơn
     -------------------------------------------------
@@ -71,6 +115,7 @@ BEGIN
     LEFT JOIN dbo.CF_ObjectTbl M WITH (NOLOCK) ON M.ObjectID = A.ManagerID
     LEFT JOIN dbo.AR_InvoiceStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
     WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
+      AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
       AND (@timkiem = '' OR A.DocumentID LIKE '%' + @timkiem + '%'
            OR A.ObjectID LIKE '%' + @timkiem + '%' 
            OR O.ObjectName LIKE N'%' + @timkiem + '%'  

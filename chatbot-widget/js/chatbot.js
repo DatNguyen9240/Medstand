@@ -631,12 +631,19 @@
             'ìíỉĩị': 'i', 'ÌỈĨỊ': 'I',
 
             'òóõôồốổỗộơớởỡợ': 'o', 'ÒÓỎÕỌÔỒỔỖỘƠỜỚỞỠỢ': 'O',
+            'àáảãạăắặằẵẫâầấậẫẵ': 'a', 'À ẢÃẠĂẮẶẰẴẪÂẦẤẬẪẴ': 'A',
+
+            'èéẻẽẹê ếểễệ': 'e', 'ÈÉẺẼẸÊỀẾỂỄỆ': 'E',
+
+            'ìíỉĩị': 'i', 'Ì ỈĨỊ': 'I',
+
+            'òó õ ôồốổỗộơ ớởỡợ': 'o', 'ÒÓỎÕỌÔỒ ỔỖỘƠỜỚỞỠỢ': 'O',
 
             'ùúủũụưừứửữự': 'u', 'ÙÚỦŨỤƯỪỨỬỮỰ': 'U',
 
-            'ỳýỷỹỵ': 'y', 'ỲỶỸỴ': 'Y',
+            'ỳýỷỹỵ': 'y', 'Ỳ ỶỸỴ': 'Y',
 
-            'đ': 'd', '': 'D'
+            'đ': 'd', 'Đ': 'd'
 
         };
 
@@ -1077,9 +1084,9 @@
 
 
 
-            // --- KIỂM TRA LỆNH NẠP RAG TỪ ỊNH DẠNG TEXT ---
+            // --- KIỂM TRA LỆNH NẠP RAG TỪ  ỊNH DẠNG TEXT ---
 
-            // Cú pháp: /nạp [Tiêu đ bắt buộc] | [Ngày hết hạn (Tuỳ chn)]
+            // Cú pháp: /nạp [Tiêu đ  bắt buộc] | [Ngày hết hạn (Tuỳ ch n)]
 
             var isUploadCommand = String(text).trim().toLowerCase().indexOf('/nạp') === 0 || String(text).trim().toLowerCase().indexOf('/rag') === 0;
 
@@ -1094,7 +1101,7 @@
 
                     _hideTyping(); _setStopMode(false);
 
-                    _addMessage('ai', ' ể sử dụng lệnh `/nạp`, bạn cần đính kèm ít nhất 1 file định dạng văn bản (PDF, DOCX, XLSX).');
+                    _addMessage('ai', '   ể sử dụng lệnh `/nạp`, bạn cần đính kèm ít nhất 1 file định dạng văn bản (PDF, DOCX, XLSX).');
 
                     return;
 
@@ -1108,7 +1115,7 @@
 
 
 
-                // Nếu khách có gạch dc "Tiêu đ | 2026-10-15"
+                // Nếu khách có gạch d c "Tiêu đ  | 2026-10-15"
 
                 if (titleText.indexOf('|') !== -1) {
 
@@ -1194,13 +1201,13 @@
 
                                 let expiredText = data.expiryDate === 'never' ? 'Vĩnh viễn' : data.expiryDate;
 
-                                let serverMsg = data.message || 'ã nạp thành công!';
+                                let serverMsg = data.message || ' ã nạp thành công!';
 
-                                _addMessage('ai', '✅ **' + serverMsg + '**\n\n- File: `' + fileList[0].name + '`\n- Tiêu đ: **' + (data.title || titleText) + '**\n- Hết hạn: **' + expiredText + '**');
+                                _addMessage('ai', '✅ **' + serverMsg + '**\n\n- File: `' + fileList[0].name + '`\n- Tiêu đ : **' + (data.title || titleText) + '**\n- Hết hạn: **' + expiredText + '**');
 
                             } else {
 
-                                _addMessage('ai', ' Không thể nạp tài liệu: ' + (data.error || data.message || 'Lỗi hệ thống'));
+                                _addMessage('ai', '  Không thể nạp tài liệu: ' + (data.error || data.message || 'Lỗi hệ thống'));
 
                             }
 
@@ -1210,7 +1217,7 @@
 
                             _hideTyping(); _setStopMode(false);
 
-                            _addMessage('ai', ' Tải lên thất bại: ' + err.message);
+                            _addMessage('ai', '  Tải lên thất bại: ' + err.message);
 
                         });
 
@@ -1226,7 +1233,7 @@
 
                 if (ext === 'xls' || ext === 'xlsx') {
 
-                    _addMessage('ai', ' ang bóc tách dữ liệu từ file ' + ext.toUpperCase() + '...');
+                    _addMessage('ai', '   ang bóc tách dữ liệu từ file ' + ext.toUpperCase() + '...');
 
                     if (!window.XLSX) {
 
@@ -1272,7 +1279,7 @@
 
                                 _hideTyping(); _setStopMode(false);
 
-                                _addMessage('ai', ' Lỗi đc Excel: ịnh dạng cổ bị hng hoặc file có bc mật khẩu.');
+                                _addMessage('ai', '  Lỗi đ c Excel:  ịnh dạng cổ bị h ng hoặc file có b c mật khẩu.');
 
                             }
 
@@ -1332,11 +1339,11 @@
 
                         if (!res.ok) throw new Error("Lỗi Server N8N (" + res.status + "): Có thể Workflow bị lỗi ngầm, hãy kiểm tra Excecutions tab trong N8N.");
 
-                        if (!text) throw new Error("Lỗi Server N8N: Trả v dữ liệu trống.");
+                        if (!text) throw new Error("Lỗi Server N8N: Trả v  dữ liệu trống.");
 
                         try { return JSON.parse(text); }
 
-                        catch (e) { throw new Error("N8N không trả v JSON: " + text.substring(0, 50)); }
+                        catch (e) { throw new Error("N8N không trả v  JSON: " + text.substring(0, 50)); }
 
                     });
 
@@ -1384,7 +1391,7 @@
 
             if (data && data.message) _addMessage('ai', data.message);
 
-            else _addMessage('ai', "Xin lỗi, tôi chưa thể trả li câu hi này.");
+            else _addMessage('ai', "Xin lỗi, tôi chưa thể trả l i câu h i này.");
 
         }).catch(function (err) {
 
@@ -1426,9 +1433,9 @@
 
         var searchingTimeout = setTimeout(function () {
 
-            _addMessage('ai', 'Dạ em vẫn đang lục lại các chính sách liên quan, sắp có kết quả rồi ạ! ');
+            _addMessage('ai', 'Dạ em vẫn đang lục lại các chính sách liên quan, sắp có kết quả rồi ạ!  ');
 
-            _showTyping(); // Reload typing bt
+            _showTyping(); // Reload typing b t
 
         }, 8000);
 
@@ -1460,7 +1467,7 @@
 
             } else {
 
-                _addMessage('ai', " Lỗi tra cứu tài liệu: " + (data.error || data.message || "Luồng webhook không phản hồi đúng định dạng"));
+                _addMessage('ai', "  Lỗi tra cứu tài liệu: " + (data.error || data.message || "Luồng webhook không phản hồi đúng định dạng"));
 
             }
 
@@ -1470,7 +1477,7 @@
 
             _hideTyping(); _setStopMode(false);
 
-            _addMessage('ai', " Lỗi kết nối máy chủ tri thức: " + err.message);
+            _addMessage('ai', "  Lỗi kết nối máy chủ tri thức: " + err.message);
 
         });
 
@@ -1596,7 +1603,7 @@
 
             if (res && res.status === 'success' && Array.isArray(res.data)) {
 
-                // 1. Lc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả v)
+                // 1. L c data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả v )
 
                 var cleanData = res.data.filter(function (r) {
 
@@ -1655,7 +1662,7 @@
 
                 var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
 
-                // 4. Render — truyn meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
+                // 4. Render — truy n meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
 
                 var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode };
 
@@ -1680,7 +1687,7 @@
 
 
 
-            // -- Các trưng hợp trả v Text (Fallbacks) --
+            // -- Các trư ng hợp trả v  Text (Fallbacks) --
 
             var reply = '';
 
@@ -1732,7 +1739,7 @@
 
             console.error(err);
 
-            _addMessage('ai', ' Lỗi hiển thị dữ liệu: ' + err.message);
+            _addMessage('ai', '  Lỗi hiển thị dữ liệu: ' + err.message);
 
         }
 
@@ -1822,11 +1829,11 @@
 
 
 
-    // 
+    //                                                               
 
     //  FEATURE 1: QUICK ACTION BUTTONS
 
-    // 
+    //                                                               
 
 
 
@@ -1890,7 +1897,7 @@
 
         if (c.phone) {
 
-            html += '<a class="ai-sales-action-btn ai-sales-btn-call" href="tel:' + _esc(c.phone) + '" aria-label="Gi điện">📞 Gi</a>';
+            html += '<a class="ai-sales-action-btn ai-sales-btn-call" href="tel:' + _esc(c.phone) + '" aria-label="G i điện">📞 G i</a>';
 
             html += '<a class="ai-sales-action-btn ai-sales-btn-zalo" href="https://zalo.me/' + _esc(c.phone) + '" target="_blank" rel="noopener noreferrer" aria-label="Nhắn Zalo">💬 Zalo</a>';
 
@@ -1910,7 +1917,7 @@
 
 
 
-    /** in "Lên đơn cho [name]" vào ô input (KHÔNG tự gửi) */
+    /**  i n "Lên đơn cho [name]" vào ô input (KHÔNG tự gửi) */
 
     function _handleLenDon(name) {
 
@@ -2090,7 +2097,7 @@
 
     /**
 
-     * Renderer ỘNG 100%: Tự động nhận dạng Tabs và Render danh sách
+     * Renderer  ỘNG 100%: Tự động nhận dạng Tabs và Render danh sách
 
      */
 
@@ -2138,7 +2145,7 @@
 
 
 
-        // Phân loại rows 100% ỘNG
+        // Phân loại rows 100%  ỘNG
 
         rows.forEach(function (r) {
 
@@ -2304,7 +2311,7 @@
 
 
 
-    // 
+    //                                                               
 
     //  PROJECT-SPECIFIC RENDERERS
 
@@ -2312,9 +2319,9 @@
 
     //  tách sang: chatbot-renderers-{project}.js
 
-    //  ăng ký qua: ApiChatbot.registerRenderer('KEY', function(...){})
+    //   ăng ký qua: ApiChatbot.registerRenderer('KEY', function(...){})
 
-    // 
+    //                                                               
 
 
 
@@ -2421,7 +2428,7 @@
 
 
 
-        // --- BƯỚC 2: RENDER CC NHÓM ---
+        // --- BƯỚC 2: RENDER C C NHÓM ---
 
         groups.forEach(function (grp, idx) {
 
@@ -2431,7 +2438,7 @@
 
                 html += '<details style="margin-top:10px;">';
 
-                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:var(--color-primary); font-weight:bold; background:rgba(var(--color-primary-rgb), 0.1); border-radius:8px; margin-bottom:10px; list-style:none;"> Xem thêm ' + (groups.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + groups.length + ')</summary>';
+                html += '<summary style="cursor:pointer; padding:10px; text-align:center; color:var(--color-primary); font-weight:bold; background:rgba(var(--color-primary-rgb), 0.1); border-radius:8px; margin-bottom:10px; list-style:none;">  Xem thêm ' + (groups.length - MAX_CARDS) + ' thẻ nữa (Tổng ' + groups.length + ')</summary>';
 
                 html += '<div class="ai-catalog-grid">';
 
@@ -2503,7 +2510,7 @@
 
 
 
-            // Body — Các fields CÓ CÙNG GI TRỊ (commonKeys)
+            // Body — Các fields CÓ CÙNG GI  TRỊ (commonKeys)
 
             html += '<div class="ai-catalog-card-body">';
 
@@ -2541,7 +2548,7 @@
 
                 html += '<details class="ai-catalog-details">';
 
-                html += '<summary class="ai-catalog-summary"> Hiển thị ' + grp.rows.length + ' phân loại (Kho/Lô...)</summary>';
+                html += '<summary class="ai-catalog-summary">  Hiển thị ' + grp.rows.length + ' phân loại (Kho/Lô...)</summary>';
 
                 html += '<div class="ai-catalog-details-content">';
 
@@ -2571,7 +2578,7 @@
 
                     Object.keys(shGroups).forEach(function (shVal) {
 
-                        html += '<div class="ai-catalog-subgroup-title"> Kho: <strong>' + _esc(shVal) + '</strong> (' + shGroups[shVal].length + ' mục)</div>';
+                        html += '<div class="ai-catalog-subgroup-title">  Kho: <strong>' + _esc(shVal) + '</strong> (' + shGroups[shVal].length + ' mục)</div>';
 
                         shGroups[shVal].forEach(function (r, sIdx) {
 
@@ -3028,7 +3035,7 @@
 
 
 
-    /** Lc rows theo search text + filter key (client-side) */
+    /** L c rows theo search text + filter key (client-side) */
 
     function _applyModalFilter(allRows, keys, searchText, filterKey, badgeKey) {
 
@@ -3042,7 +3049,7 @@
 
             filtered = filtered.filter(function (r) {
 
-                // Nếu biết cụ thể field nào (badgeKey) → chỉ lc field đó
+                // Nếu biết cụ thể field nào (badgeKey) → chỉ l c field đó
 
                 if (badgeKey) {
 
@@ -3062,7 +3069,7 @@
 
         }
 
-        // Search text: khớp bất kỳ field nào (case-insensitive, b dấu)
+        // Search text: khớp bất kỳ field nào (case-insensitive, b  dấu)
 
 
 
@@ -3204,7 +3211,7 @@
 
 
 
-                    // Bind filter events (chỉ 1 lần, bc try-catch để không block display)
+                    // Bind filter events (chỉ 1 lần, b c try-catch để không block display)
 
                     if (!tableView.dataset.filterBound) {
 
@@ -3240,7 +3247,7 @@
 
                                     var filtered = _applyModalFilter(allRows, keysF, curSearch, curFilter, curBadgeKey);
 
-                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF);
+                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF, cached.forceShowAll);
 
                                     if (countEl2) countEl2.textContent = filtered.length + ' dòng';
 

@@ -208,7 +208,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\n// FIX FOR FILESYSTEM BINARY STORE\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst base64Data = buffer.toString('base64');\nconst mimeType = item.binary.file.mimeType || 'image/png';\n\nconst systemPrompt = `Bạn là công cụ trích xuất văn bản (OCR) siêu việt. Hãy trích xuất chính xác 100% các chữ có trong ảnh. Tuyệt đối không tự tóm tắt, không tự sáng tạo nội dung, không giải thích hình ảnh. Giả định bạn đang làm việc với tờ rơi phòng khám/sản phẩm, hãy phân tích bố cục và trả về dữ liệu dưới định dạng JSON chứa 2 field:\\n1. \\\"product_name\\\": Tên sản phẩm chính.\\n2. \\\"content\\\": Toàn bộ nội dung tờ rơi.`;\n\nreturn [{ json: {\n  model: \"openai/gpt-4o-mini\",\n  response_format: { type: \"json_object\" },\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: [\n        { type: \"text\", text: \"Hãy trích xuất thông tin dưới dạng JSON:\" },\n        { type: \"image_url\", image_url: { url: 'data:' + mimeType + ';base64,' + base64Data } }\n    ] }\n  ]\n}}];"
+        "jsCode": "const item = $input.first();\n// FIX FOR FILESYSTEM BINARY STORE\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst base64Data = buffer.toString('base64');\nconst mimeType = item.binary.file.mimeType || 'image/png';\n\nconst systemPrompt = `Bạn là công cụ trích xuất văn bản (OCR) siêu việt. Hãy trích xuất chính xác 100% các chữ có trong ảnh. Tuyệt đối không tự tóm tắt, không tự sáng tạo nội dung, không giải thích hình ảnh. Giả định bạn đang làm việc với tờ rơi/catalog sản phẩm y khoa, hãy phân tích bố cục và trả về dữ liệu dưới định dạng JSON có cấu trúc chính xác như sau:\n{\n  \"product_name\": \"Tên sản phẩm chính (ví dụ: 'Thymopath Gold', 'Argelomag')\",\n  \"item_id\": \"Mã sản phẩm nếu có ghi rõ trên ảnh (ví dụ: 'T005', 'A008'), nếu không có hãy ghi null\",\n  \"ingredients\": \"Thành phần và hàm lượng chi tiết của sản phẩm\",\n  \"main_uses\": \"Công dụng chính nổi bật của sản phẩm\",\n  \"target_patients\": \"Đối tượng sử dụng phù hợp\",\n  \"usage_instructions\": \"Cách dùng, liều dùng chi tiết cho từng đối tượng\",\n  \"contraindications\": \"Chống chỉ định, lưu ý khi dùng nếu có, không có ghi 'Không'\",\n  \"side_effects\": \"Tác dụng phụ nếu có, không có ghi 'Không'\",\n  \"keywords\": \"Từ khóa các triệu chứng bệnh, chỉ định liên quan đến sản phẩm để phục vụ tìm kiếm sau này (ví dụ: 'ho, viêm họng, đề kháng yếu')\",\n  \"confidence\": \"Mức độ tự tin trích xuất: HIGH hoặc MEDIUM hoặc LOW\",\n  \"content\": \"Toàn bộ nội dung thô trích xuất từ ảnh sản phẩm\"\n}`;\n\nreturn [{ json: {\n  model: \"openai/gpt-4o-mini\",\n  response_format: { type: \"json_object\" },\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: [\n        { type: \"text\", text: \"Hãy trích xuất thông tin dưới dạng JSON:\" },\n        { type: \"image_url\", image_url: { url: 'data:' + mimeType + ';base64,' + base64Data } }\n    ] }\n  ]\n}}];"
       },
       "id": "prep-vision",
       "name": "Prep Vision Body",
@@ -260,7 +260,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const text = $input.first().json.choices[0].message.content;\nlet parsed = {};\ntry {\n  parsed = JSON.parse(text);\n} catch(e) {\n  parsed = { product_name: 'Unknown', content: text };\n}\nconst productName = parsed.product_name || 'Thông tin hình ảnh';\nconst rawContent = parsed.content || text;\nconst textBuffer = Buffer.from(`[ẢNH SẢN PHẨM: ${productName}]\\n\\n` + rawContent, 'utf8');\n\nconst authNode = $('Check Auth & Format').first().json;\nconst expiryDate = authNode.expiryDate || 'never';\n\nreturn [{\n  json: { title: productName, expiryDate: expiryDate, source_type: 'image_poster' },\n  binary: { text_file: { data: textBuffer.toString('base64'), mimeType: 'text/plain', fileName: 'ocr_extracted.txt' } }\n}];"
+        "jsCode": "const text = $input.first().json.choices[0].message.content;\nlet parsed = {};\ntry {\n  const cleanJsonText = text.replace(/\\`\\`\\`json|\\`\\`\\`/gi, '').trim();\n  parsed = JSON.parse(cleanJsonText);\n} catch(e) {\n  parsed = { product_name: 'Unknown', content: text };\n}\n\nreturn [{\n  json: {\n    product_name: parsed.product_name || 'Thông tin hình ảnh',\n    item_id: parsed.item_id || null,\n    ingredients: parsed.ingredients || null,\n    main_uses: parsed.main_uses || null,\n    target_patients: parsed.target_patients || null,\n    usage_instructions: parsed.usage_instructions || null,\n    contraindications: parsed.contraindications || null,\n    side_effects: parsed.side_effects || null,\n    keywords: parsed.keywords || null,\n    confidence: parsed.confidence || 'MEDIUM',\n    content: parsed.content || text,\n    extracted_json: JSON.stringify(parsed)\n  }\n}];"
       },
       "id": "parse-ocr",
       "name": "Parse OCR & Inject",
@@ -333,7 +333,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { status: 'success', message: 'Tài liệu đã được bóc tách bằng OmniReader thành công' } }];"
+        "jsCode": "const sqlResult = $input.first().json;\nreturn [{ json: { \n  status: 'success', \n  message: 'Tài liệu đã được bóc tách thành công và lưu nháp ở hàng đợi duyệt (Pending)', \n  itemId: sqlResult.ItemID,\n  productName: sqlResult.ProductName\n} }];"
       },
       "id": "respond-success",
       "name": "Respond Success",
@@ -342,6 +342,191 @@
       "position": [
         2100,
         200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @product_name NVARCHAR(500) = N'{{ ($json.product_name || \"\").replace(/'/g, \"''\") }}';\nDECLARE @item_id VARCHAR(50) = '{{ ($json.item_id || \"\").replace(/'/g, \"''\") }}';\nDECLARE @ingredients NVARCHAR(1000) = N'{{ ($json.ingredients || \"\").replace(/'/g, \"''\") }}';\nDECLARE @main_uses NVARCHAR(MAX) = N'{{ ($json.main_uses || \"\").replace(/'/g, \"''\") }}';\nDECLARE @target_patients NVARCHAR(500) = N'{{ ($json.target_patients || \"\").replace(/'/g, \"''\") }}';\nDECLARE @usage_instructions NVARCHAR(1000) = N'{{ ($json.usage_instructions || \"\").replace(/'/g, \"''\") }}';\nDECLARE @contraindications NVARCHAR(1000) = N'{{ ($json.contraindications || \"\").replace(/'/g, \"''\") }}';\nDECLARE @side_effects NVARCHAR(1000) = N'{{ ($json.side_effects || \"\").replace(/'/g, \"''\") }}';\nDECLARE @keywords NVARCHAR(1000) = N'{{ ($json.keywords || \"\").replace(/'/g, \"''\") }}';\nDECLARE @confidence VARCHAR(20) = '{{ ($json.confidence || \"\").replace(/'/g, \"''\") }}';\nDECLARE @content NVARCHAR(MAX) = N'{{ ($json.content || \"\").replace(/'/g, \"''\") }}';\nDECLARE @extracted_json NVARCHAR(MAX) = N'{{ ($json.extracted_json || \"\").replace(/'/g, \"''\") }}';\n\nDECLARE @MatchedItemID VARCHAR(50) = NULL;\n\nIF NULLIF(@item_id, '') IS NOT NULL\nBEGIN\n    SELECT TOP 1 @MatchedItemID = ItemID FROM CF_ItemTbl WHERE ItemID = @item_id;\nEND\n\nIF @MatchedItemID IS NULL\nBEGIN\n    SELECT TOP 1 @MatchedItemID = ItemID \n    FROM CF_ItemTbl \n    WHERE ItemName LIKE '%' + @product_name + '%' \n       OR @product_name LIKE '%' + ItemName + '%';\nEND\n\nIF @MatchedItemID IS NULL\nBEGIN\n    SET @MatchedItemID = 'OCR_' + REPLACE(REPLACE(REPLACE(LOWER(@product_name), ' ', '_'), '-', '_'), '.', '_');\nEND\n\nIF EXISTS (SELECT 1 FROM AI_ProductKnowledgeTbl WHERE ItemID = @MatchedItemID)\nBEGIN\n    UPDATE AI_ProductKnowledgeTbl\n    SET Ingredients = @ingredients,\n        MainUses = @main_uses,\n        TargetPatients = @target_patients,\n        UsageInstructions = @usage_instructions,\n        Contraindications = @contraindications,\n        SideEffects = @side_effects,\n        Keywords = @keywords,\n        Confidence = @confidence,\n        SourceText = @content,\n        ExtractedJson = @extracted_json,\n        Status = 'Pending',\n        DateUpdate = GETDATE()\n    WHERE ItemID = @MatchedItemID;\nEND\nELSE\nBEGIN\n    INSERT INTO AI_ProductKnowledgeTbl (\n        ItemID, Ingredients, MainUses, TargetPatients, UsageInstructions, \n        Contraindications, SideEffects, Keywords, Confidence, SourceText, \n        ExtractedJson, Status, VersionNo, DateUpdate\n    )\n    VALUES (\n        @MatchedItemID, @ingredients, @main_uses, @target_patients, @usage_instructions,\n        @contraindications, @side_effects, @keywords, @confidence, @content,\n        @extracted_json, 'Pending', 1, GETDATE()\n    );\nEND\n\nSELECT @MatchedItemID AS ItemID, 'Pending' AS Status, @product_name AS ProductName;"
+      },
+      "id": "save-ocr-to-db",
+      "name": "Save OCR to DB",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        150
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "oltuZlv17pevRi6M",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "approve-catalog",
+        "responseMode": "responseNode",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
+            ]
+          }
+        }
+      },
+      "id": "webhook-approve-catalog",
+      "name": "Webhook Approve Catalog",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = $input.first().json.headers || {};\nconst body = $input.first().json.body || {};\nconst adminKey = headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '';\nif (adminKey !== 'Medstand@Admin2026') {\n    throw new Error(\"SECURITY_ALERT: Unauthorized. Only admins can approve catalog.\");\n}\nreturn [{ json: { \n    itemId: body.itemId,\n    action: body.action || 'APPROVE',\n    username: body.username || 'admin'\n}}];"
+      },
+      "id": "check-approve-auth",
+      "name": "Check Approve Auth",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @ItemID VARCHAR(50) = '{{ $json.itemId.replace(/'/g, \"''\") }}';\nDECLARE @Action VARCHAR(20) = '{{ $json.action.replace(/'/g, \"''\") }}';\nDECLARE @UserName VARCHAR(50) = '{{ $json.username.replace(/'/g, \"''\") }}';\nDECLARE @OldVersion INT = 0;\nDECLARE @NewVersion INT = 1;\n\nIF NOT EXISTS (SELECT 1 FROM AI_ProductKnowledgeTbl WHERE ItemID = @ItemID)\nBEGIN\n    SELECT 1 AS Error, N'Sản phẩm không tồn tại trong hàng đợi duyệt!' AS Msg, 'Rejected' AS Status, '' AS ItemID;\nEND\nELSE\nBEGIN\n    SELECT TOP 1 @OldVersion = ISNULL(VersionNo, 1) FROM AI_ProductKnowledgeTbl WHERE ItemID = @ItemID;\n    \n    IF @Action = 'APPROVE'\n    BEGIN\n        SET @NewVersion = @OldVersion + 1;\n        \n        UPDATE AI_ProductKnowledgeTbl\n        SET Status = 'Approved',\n            VersionNo = @NewVersion,\n            ApprovedBy = @UserName,\n            ApprovedDate = GETDATE()\n        WHERE ItemID = @ItemID;\n        \n        INSERT INTO AI_ApprovalLogTbl (ItemID, Action, UserName, DateTime, OldVersion, NewVersion)\n        VALUES (@ItemID, 'APPROVE', @UserName, GETDATE(), @OldVersion, @NewVersion);\n        \n        SELECT \n            0 AS Error,\n            N'Phê duyệt thành công!' AS Msg,\n            P.ItemID,\n            I.ItemName,\n            P.Ingredients,\n            P.MainUses,\n            P.TargetPatients,\n            P.UsageInstructions,\n            P.Contraindications,\n            P.SideEffects,\n            P.Keywords,\n            P.Confidence,\n            P.VersionNo,\n            'Approved' AS Status\n        FROM AI_ProductKnowledgeTbl P\n        JOIN CF_ItemTbl I ON P.ItemID = I.ItemID\n        WHERE P.ItemID = @ItemID;\n    END\n    ELSE IF @Action = 'REJECT'\n    BEGIN\n        UPDATE AI_ProductKnowledgeTbl\n        SET Status = 'Rejected',\n            DateUpdate = GETDATE()\n        WHERE ItemID = @ItemID;\n        \n        INSERT INTO AI_ApprovalLogTbl (ItemID, Action, UserName, DateTime, OldVersion, NewVersion)\n        VALUES (@ItemID, 'REJECT', @UserName, GETDATE(), @OldVersion, @OldVersion);\n        \n        SELECT 0 AS Error, N'Đã từ chối sản phẩm thành công!' AS Msg, @ItemID AS ItemID, 'Rejected' AS Status;\n    END\nEND"
+      },
+      "id": "execute-approve-db",
+      "name": "Execute Approve DB",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        450,
+        600
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "oltuZlv17pevRi6M",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.Error }}",
+              "value2": 0
+            },
+            {
+              "value1": "={{ $json.Status }}",
+              "value2": "Approved"
+            }
+          ]
+        }
+      },
+      "id": "if-approve-success",
+      "name": "Check Approve Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        700,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst documentText = `[SẢN PHẨM: ${item.ItemName}]\nMã sản phẩm: ${item.ItemID}\nThành phần: ${item.Ingredients || 'Chưa cập nhật'}\nCông dụng chính: ${item.MainUses || 'Chưa cập nhật'}\nĐối tượng sử dụng: ${item.TargetPatients || 'Chưa cập nhật'}\nHướng dẫn sử dụng: ${item.UsageInstructions || 'Chưa cập nhật'}\nChống chỉ định: ${item.Contraindications || 'Chưa cập nhật'}\nTác dụng phụ: ${item.SideEffects || 'Chưa cập nhật'}\nTừ khóa tìm kiếm: ${item.Keywords || 'Chưa cập nhật'}\nPhiên bản: ${item.VersionNo || 1}\nMức tin cậy: ${item.Confidence || 'HIGH'}`;\n\nconst textBuffer = Buffer.from(documentText, 'utf8');\n\nreturn [{\n  json: {\n    itemId: item.ItemID,\n    itemName: item.ItemName,\n    status: item.Status,\n    version: item.VersionNo,\n    confidence: item.Confidence || 'HIGH',\n    keywords: item.Keywords || '',\n    approvedDate: new Date().toISOString(),\n    title: item.ItemName\n  },\n  binary: {\n    file: {\n      data: textBuffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.ItemID}_spec.txt`\n    }\n  }\n}];"
+      },
+      "id": "prepare-qdrant-doc",
+      "name": "Prepare Qdrant Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        600
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "document-loader-sync",
+      "name": "Document Loader Sync",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": "medstand-products",
+        "options": {}
+      },
+      "id": "qdrant-vector-store-sync",
+      "name": "Qdrant Vector Sync",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        600
+      ],
+      "credentials": {
+        "qdrantApi": {
+          "id": "wRToVAhAN63iZT6Q",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Phê duyệt danh mục sản phẩm và đồng bộ Vector Qdrant thành công!\",\n  \"itemId\": \"{{ $('execute-approve-db').first().json.ItemID }}\",\n  \"status_db\": \"{{ $('execute-approve-db').first().json.Status }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-approve-success",
+      "name": "Respond Approve Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"{{ $('execute-approve-db').first().json.Msg || 'Thực thi thành công!' }}\",\n  \"itemId\": \"{{ $('execute-approve-db').first().json.ItemID }}\",\n  \"status_db\": \"{{ $('execute-approve-db').first().json.Status }}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-approve-fail",
+      "name": "Respond Approve Fail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        950,
+        750
       ]
     }
   ],
@@ -470,7 +655,7 @@
       "main": [
         [
           {
-            "node": "Qdrant Vector Store",
+            "node": "Save OCR to DB",
             "type": "main",
             "index": 0
           }
@@ -528,6 +713,11 @@
             "node": "Qdrant Vector Store",
             "type": "ai_embedding",
             "index": 0
+          },
+          {
+            "node": "Qdrant Vector Sync",
+            "type": "ai_embedding",
+            "index": 0
           }
         ]
       ]
@@ -538,6 +728,115 @@
           {
             "node": "Default Data Loader",
             "type": "ai_textSplitter",
+            "index": 0
+          },
+          {
+            "node": "Document Loader Sync",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save OCR to DB": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Approve Catalog": {
+      "main": [
+        [
+          {
+            "node": "Check Approve Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approve Auth": {
+      "main": [
+        [
+          {
+            "node": "Execute Approve DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Approve DB": {
+      "main": [
+        [
+          {
+            "node": "Check Approve Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approve Success": {
+      "main": [
+        [
+          {
+            "node": "Prepare Qdrant Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Approve Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Qdrant Document": {
+      "main": [
+        [
+          {
+            "node": "Document Loader Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Document Loader Sync": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Sync",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Sync": {
+      "main": [
+        [
+          {
+            "node": "Respond Approve Success",
+            "type": "main",
             "index": 0
           }
         ]
