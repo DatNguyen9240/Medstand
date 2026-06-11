@@ -99,37 +99,65 @@ BEGIN
         END
         ELSE
         BEGIN
-            DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+            DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
 
+            -- 1. Fast Path (Branch-filtered)
             SELECT TOP 1 @ResolvedID = ObjectID 
             FROM CF_ObjectTbl WITH (NOLOCK)
-            WHERE (
-                REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-                OR ObjectID LIKE '%' + @CleanSearch + '%'
-            )
+            WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
               AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
             ORDER BY 
                 CASE WHEN ObjectID = @CleanSearch THEN 1
-                     WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
-                     WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                     WHEN ObjectName = @CleanSearch THEN 2
+                     WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
                      ELSE 4
                 END,
                 COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
                 LEN(ObjectName) ASC;
                 
-            -- Fallback tìm toàn quốc nếu lọc theo chi nhánh không ra
+            -- 2. Slow Path (Branch-filtered, fallback)
             IF @ResolvedID = ''
             BEGIN
                 SELECT TOP 1 @ResolvedID = ObjectID 
                 FROM CF_ObjectTbl WITH (NOLOCK)
-                WHERE (
-                    REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-                    OR ObjectID LIKE '%' + @CleanSearch + '%'
-                )
+                WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                  AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
                 ORDER BY 
                     CASE WHEN ObjectID = @CleanSearch THEN 1
-                         WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
-                         WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
+                         WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                         WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                         ELSE 4
+                    END,
+                    COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                    LEN(ObjectName) ASC;
+            END
+
+            -- 3. Fast Path (Nationwide fallback)
+            IF @ResolvedID = ''
+            BEGIN
+                SELECT TOP 1 @ResolvedID = ObjectID 
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
+                ORDER BY 
+                    CASE WHEN ObjectID = @CleanSearch THEN 1
+                         WHEN ObjectName = @CleanSearch THEN 2
+                         WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
+                         ELSE 4
+                    END,
+                    COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                    LEN(ObjectName) ASC;
+            END
+
+            -- 4. Slow Path (Nationwide fallback, final)
+            IF @ResolvedID = ''
+            BEGIN
+                SELECT TOP 1 @ResolvedID = ObjectID 
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                ORDER BY 
+                    CASE WHEN ObjectID = @CleanSearch THEN 1
+                         WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                         WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
                          ELSE 4
                     END,
                     COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,

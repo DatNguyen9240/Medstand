@@ -31,7 +31,27 @@ app.use(express.json()); // Enable JSON body parsing
 
 // Backend URLs ẩn hoàn toàn phía server
 const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms79.com';
-const N8N_INTERNAL_URL = 'http://127.0.0.1:5678';
+
+const getN8nUrl = () => {
+    let url = process.env.N8N_BASE;
+    const envPath = path.join(__dirname, '.env');
+    if (fs.existsSync(envPath)) {
+        try {
+            const envContent = fs.readFileSync(envPath, 'utf-8');
+            const match = envContent.match(/^N8N_BASE\s*=\s*(https:\/\/[^\s#]+)/m);
+            if (match) url = match[1].trim();
+        } catch (e) {}
+    }
+    const cfLogPath = path.join(__dirname, 'n8n-system', '.logs', 'cf_tunnel.log');
+    if (fs.existsSync(cfLogPath)) {
+        try {
+            const logContent = fs.readFileSync(cfLogPath, 'utf-8');
+            const match = logContent.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+            if (match) url = match[0];
+        } catch (e) {}
+    }
+    return url || 'https://realized-comfortable-oxygen-played.trycloudflare.com';
+};
 
 // ─── CIPHER HELPER (XOR + Base64) ───
 const Cipher = {
@@ -71,7 +91,7 @@ app.post('/api/gateway', async (req, res) => {
 
         // 2. Định tuyến đến máy chủ đích thật
         const isN8n = endpoint.startsWith('/webhook');
-        const baseUrl = isN8n ? N8N_INTERNAL_URL : API_INTERNAL_URL;
+        const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
         const targetUrl = `${baseUrl}${endpoint}`;
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);
@@ -122,7 +142,7 @@ app.post('/api/gateway', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
     try {
         console.log('[Proxy Gateway] Forwarding chat request to N8N...');
-        const response = await fetch(`${N8N_INTERNAL_URL}/webhook/hook-ai-dainao`, {
+        const response = await fetch(`${getN8nUrl()}/webhook/hook-ai-dainao`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -143,6 +163,67 @@ app.post('/api/chat', async (req, res) => {
     } catch (error) {
         console.error('[Proxy Gateway Error]:', error);
         res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
+    }
+});
+
+// ─── NEW: API CUNG CẤP DỮ LIỆU DẠNG FLAT ARRAY CHO GOOGLE SHEETS ───
+app.get('/api/sheet-data', async (req, res) => {
+    try {
+        console.log('[Sheet Gateway] Received request from Google Sheets:', req.url);
+        
+        // 1. Kiểm tra API Key bảo mật để tránh người ngoài truy cập trái phép
+        const apiKey = req.query.apiKey || req.headers['x-api-key'];
+        const validKey = process.env.CHAT_API_KEY || 'test123456';
+        if (apiKey !== validKey) {
+            return res.status(401).json({ error: 'Không có quyền truy cập. Vui lòng cung cấp apiKey hợp lệ.' });
+        }
+
+        const { ApiCode, username, ...otherParams } = req.query;
+        if (!ApiCode) {
+            return res.status(400).json({ error: 'Thiếu tham số ApiCode. Ví dụ: ApiCode=@danh_muc' });
+        }
+
+        // Map query params to standard SQL parameters (prefixed with @)
+        const params = {};
+        for (const [key, val] of Object.entries(otherParams)) {
+            // Bỏ qua tham số apiKey khi đưa vào SQL params
+            if (key === 'apiKey') continue;
+            
+            if (key.startsWith('@')) {
+                params[key] = val;
+            } else {
+                params[`@${key}`] = val;
+            }
+        }
+
+        const requestBody = {
+            ApiCode: ApiCode,
+            username: username || 'admin', // Mặc định dùng tài khoản admin nếu không truyền
+            params: params
+        };
+
+        // Gửi truy vấn an toàn qua hệ thống execute API sẵn có của n8n
+        const response = await fetch(`${getN8nUrl()}/webhook/api-execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': validKey
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+        
+        if (result && result.status === 'success' && Array.isArray(result.data)) {
+            // Trả về mảng phẳng các object cực kỳ sạch để Google Apps Script duyệt qua tự động
+            res.json(result.data);
+        } else {
+            console.error('[Sheet Gateway Error] n8n response failed:', result);
+            res.status(500).json({ error: 'Lỗi thực thi dữ liệu.', details: result.reply || result });
+        }
+    } catch (error) {
+        console.error('[Sheet Gateway Error]:', error);
+        res.status(500).json({ error: 'Không thể kết nối đến máy chủ dữ liệu.' });
     }
 });
 
@@ -187,7 +268,7 @@ app.all('/api/*all', async (req, res) => {
 app.all('/webhook/*all', async (req, res) => {
     try {
         console.log(`[Proxy Gateway] Forwarding ${req.method} request to N8N: ${req.url}`);
-        const targetUrl = `${N8N_INTERNAL_URL}${req.originalUrl || req.url}`;
+        const targetUrl = `${getN8nUrl()}${req.originalUrl || req.url}`;
         
         const options = {
             method: req.method,
@@ -252,7 +333,7 @@ app.get('*all', (req, res) => {
 
 app.listen(PORT, () => {
     console.log('===================================================');
-    console.log(`🚀 MEDSTAND FRONTEND SERVER IS RUNNING (PROXY ENABLED)`);
+    console.log(`🚀 FRONTEND SERVER IS RUNNING (PROXY ENABLED)`);
     console.log(`   Local URL: http://localhost:${PORT}`);
     console.log('===================================================');
 });

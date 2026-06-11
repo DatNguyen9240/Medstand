@@ -40,25 +40,18 @@ BEGIN
     SELECT TOP (@TopN)
         I.ItemID,
         I.ItemName,
-        -- Tính toán thứ tự sắp xếp thông minh theo độ liên quan
-        ROW_NUMBER() OVER (
-            ORDER BY 
-              -- 1. Ưu tiên khớp toàn bộ cụm từ tìm kiếm trước
-              CASE 
-                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 1
-                WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 2
-                ELSE 3
-              END ASC,
-              -- 2. Ưu tiên khớp nhiều từ khóa nhất (giải quyết triệt để lỗi phân tách từ khóa của AI gây nhiễu)
-              (
-                  SELECT COUNT(DISTINCT T.Term) 
-                  FROM @Terms T 
-                  WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
-                     OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
-              ) DESC,
-              I.ItemName ASC
-        ) AS OrderIndex
-    INTO #Items
+        CASE 
+          WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 100
+          WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 80
+          WHEN ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 80
+          ELSE (
+              SELECT COUNT(DISTINCT T.Term) * 10 
+              FROM @Terms T 
+              WHERE N' ' + REPLACE(REPLACE(REPLACE(I.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %' 
+                 OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
+          )
+        END AS MatchScore
+    INTO #MatchedItems
     FROM CF_ItemTbl I WITH (NOLOCK)
     WHERE (ISNULL(I.isDisable, 0) = 0)
       AND (
@@ -74,6 +67,19 @@ BEGIN
           )
       )
       AND ISNULL(I.ItemGroupID, '') = 'HH1';
+
+    DECLARE @MaxScore INT = 0;
+    SELECT @MaxScore = MAX(MatchScore) FROM #MatchedItems;
+
+    SELECT TOP (@TopN)
+        ItemID,
+        ItemName,
+        ROW_NUMBER() OVER (ORDER BY MatchScore DESC, ItemName ASC) AS OrderIndex
+    INTO #Items
+    FROM #MatchedItems
+    WHERE MatchScore = @MaxScore OR (@MaxScore < 80 AND MatchScore > 0);
+
+    DROP TABLE #MatchedItems;
 
 
     -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng

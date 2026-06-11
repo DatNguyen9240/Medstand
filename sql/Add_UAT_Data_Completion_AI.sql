@@ -47,37 +47,42 @@ BEGIN TRY
     PRINT '⚙️ BƯỚC 3: BƠM DƯ NỢ ĐẦU KỲ CHO KHÁCH HÀNG ĐỂ TẠO CÔNG NỢ THỰC TẾ';
     PRINT '----------------------------------------------------------------------';
 
+    -- Lấy PeriodID hiện tại đang có hiệu lực trong DB để khớp với SY_GetDebitDocFnc
+    DECLARE @ActivePeriodID VARCHAR(10);
+    SELECT @ActivePeriodID = dbo.SY_GetBalancePeriodFnc(GETDATE());
+    PRINT '⚙️ Active PeriodID for UAT balance: ' + COALESCE(@ActivePeriodID, 'NULL');
+
     -- Cặp 1: TDV_NAMDINHB (EmployeeID) dưới quyền QLBH013.MED (MED0330)
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'HPA515', 45000000, 1, 1, 'DK_UAT_HPA515', '2016-01-01', 'TDV_NAMDINHB', 'MED0330', 'MB', N'Số dư nợ đầu kỳ UAT - TDV Nam Định B');
+    (NEWID(), '1311', 'HPA515', 45000000, 1, 1, 'DK_UAT_HPA515', '2016-01-01', 'TDV_NAMDINHB', 'MED0330', 'MB', N'Số dư nợ đầu kỳ UAT - TDV Nam Định B', @ActivePeriodID);
 
     -- Cặp 2: TDV_BACNINHA (EmployeeID) dưới quyền QLBH016.MED (MED0229)
     -- Giúp cả TDV và Quản lý Trần Văn Hướng (đang bị 0 khách nợ) đều thấy nợ!
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'BNB161', 55000000, 1, 1, 'DK_UAT_BNB161', '2016-01-01', 'TDV_BACNINHA', 'MED0229', 'MB', N'Số dư nợ đầu kỳ UAT - TDV Bắc Ninh A');
+    (NEWID(), '1311', 'BNB161', 55000000, 1, 1, 'DK_UAT_BNB161', '2016-01-01', 'TDV_BACNINHA', 'MED0229', 'MB', N'Số dư nợ đầu kỳ UAT - TDV Bắc Ninh A', @ActivePeriodID);
 
     -- Cặp 3: TDV_HUEB (EmployeeID) dưới quyền QLBH005.MED (MED0185)
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'HUEB111', 35000000, 1, 1, 'DK_UAT_HUEB111', '2016-01-01', 'TDV_HUEB', 'MED0185', 'MT', N'Số dư nợ đầu kỳ UAT - TDV Huế B');
+    (NEWID(), '1311', 'HUEB111', 35000000, 1, 1, 'DK_UAT_HUEB111', '2016-01-01', 'TDV_HUEB', 'MED0185', 'MT', N'Số dư nợ đầu kỳ UAT - TDV Huế B', @ActivePeriodID);
 
     -- Cặp 4: TDV_DANANGA (EmployeeID) dưới quyền QLBH010.MED (MED0096)
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'QANA371', 65000000, 1, 1, 'DK_UAT_QANA371', '2016-01-01', 'TDV_DANANGA', 'MED0096', 'MT', N'Số dư nợ đầu kỳ UAT - TDV Đà Nẵng A');
+    (NEWID(), '1311', 'QANA371', 65000000, 1, 1, 'DK_UAT_QANA371', '2016-01-01', 'TDV_DANANGA', 'MED0096', 'MT', N'Số dư nợ đầu kỳ UAT - TDV Đà Nẵng A', @ActivePeriodID);
 
     -- Cặp 5: TDV_CANTHOA (EmployeeID) dưới quyền QLMN2 (MED0134)
     -- Giúp cả TDV và Quản lý Trần Văn Luân (đang bị 0 khách nợ) đều thấy nợ!
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'DL012', 25000000, 1, 1, 'DK_UAT_DL012', '2016-01-01', 'TDV_CANTHOA', 'MED0134', 'MN', N'Số dư nợ đầu kỳ UAT - TDV Cần Thơ A');
+    (NEWID(), '1311', 'DL012', 25000000, 1, 1, 'DK_UAT_DL012', '2016-01-01', 'TDV_CANTHOA', 'MED0134', 'MN', N'Số dư nợ đầu kỳ UAT - TDV Cần Thơ A', @ActivePeriodID);
 
     -- Cặp 6: TDV_BINHPHUOCA (EmployeeID) dưới quyền QLMD1 (QLMD1) và QLBH024.MED (QLBH024)
-    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo)
+    INSERT INTO SY_BalanceObjectTbl (UserAutoID, AccountID, ObjectID, Amount, IsDebit, IsBalance, DocumentID, DocumentDate, EmployeeID, ManagerID, BranchID, Memo, PeriodID)
     VALUES 
-    (NEWID(), '1311', 'SGNB0018', 75000000, 1, 1, 'DK_UAT_SGNB0018', '2016-01-01', 'TDV_BINHPHUOCA', 'QLMD1', 'MN', N'Số dư nợ đầu kỳ UAT - TDV Bình Phước A');
+    (NEWID(), '1311', 'SGNB0018', 75000000, 1, 1, 'DK_UAT_SGNB0018', '2016-01-01', 'TDV_BINHPHUOCA', 'QLMD1', 'MN', N'Số dư nợ đầu kỳ UAT - TDV Bình Phước A', @ActivePeriodID);
 
     PRINT '✅ Đã bơm dữ liệu công nợ đầu kỳ thành công cho 6 khách hàng đại diện!';
 

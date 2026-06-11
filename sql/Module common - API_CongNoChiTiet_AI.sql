@@ -1,4 +1,4 @@
-﻿CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_CongNoChiTiet_AI]
    @MaKhachHang  NVARCHAR(100),
    @Username   VARCHAR(50),
    @DenNgay     DATETIME = NULL
@@ -23,29 +23,47 @@ BEGIN
    END
 
     -- SMART CUSTOMER RESOLUTION (NAME TO ID)
-    IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
-    BEGIN
-        DECLARE @ResolvedID VARCHAR(50) = ''
-        DECLARE @CleanSearch NVARCHAR(100) = REPLACE(dbo.ufn_remove_accents(@MaKhachHang), ' ', '')
+     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+     BEGIN
+         DECLARE @ResolvedID VARCHAR(50) = ''
+         DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
 
-        SELECT TOP 1 @ResolvedID = ObjectID 
-        FROM dbo.CF_ObjectTbl WITH (NOLOCK)
-        WHERE (REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE '%' + @CleanSearch + '%'
-           OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
-        ORDER BY 
-            CASE WHEN ObjectID = @CleanSearch THEN 1
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') = @CleanSearch THEN 2
-                 WHEN REPLACE(dbo.ufn_remove_accents(ObjectName), ' ', '') LIKE @CleanSearch + '%' THEN 3
-                 ELSE 4
-            END,
-            COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-            LEN(ObjectName) ASC;
+         -- 1. Fast Path: Match by ObjectID or ObjectName directly without scalar function scan
+         SELECT TOP 1 @ResolvedID = ObjectID 
+         FROM dbo.CF_ObjectTbl 
+         WHERE (ObjectID LIKE '%' + @CleanSearch + '%'
+            OR ObjectName LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+         ORDER BY 
+             CASE WHEN ObjectID = @CleanSearch THEN 1
+                  WHEN ObjectName = @CleanSearch THEN 2
+                  WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
+                  ELSE 4
+             END,
+             COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+             LEN(ObjectName) ASC;
 
-        IF @ResolvedID <> ''
-        BEGIN
-            SET @MaKhachHang = @ResolvedID
-        END
-    END
+         -- 2. Slow Path: Fallback to heavy clean function scan only if Fast Path found nothing
+         IF @ResolvedID = ''
+         BEGIN
+             SELECT TOP 1 @ResolvedID = ObjectID 
+             FROM dbo.CF_ObjectTbl 
+             WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
+                OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+             ORDER BY 
+                 CASE WHEN ObjectID = @CleanSearch THEN 1
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                      WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                      ELSE 4
+                 END,
+                 COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                 LEN(ObjectName) ASC;
+         END
+
+         IF @ResolvedID <> ''
+         BEGIN
+             SET @MaKhachHang = @ResolvedID
+         END
+     END
 
     IF @MaKhachHang = ''
     BEGIN

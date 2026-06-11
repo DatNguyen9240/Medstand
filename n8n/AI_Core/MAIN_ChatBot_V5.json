@@ -164,7 +164,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const apiCode = $json.apiCode || '';\nconst rawParams = $json.params || {};\n\nconst SCHEMA = {\n  '@goi_ydon_hang':     { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string', '@TopN': 'number' } },\n  '@upsell_goi_y':       { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@goi_ydon_thuoc':    { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@tuyen_ban_hang':     { required: [],               types: { '@SoNgayVangMat': 'number', '@NgayTarget': 'string' } },\n  '@cham_diem_kh':       { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@tich_luy':           { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@de_xuat_khuyen_mai': { required: [],               types: {} },\n  '@danh_sach_tonkho':   { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@tra_cuu_san_pham':   { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@san_pham_trong_tam': { required: [],               types: {} },\n  '@doanh_so':           { required: [],               types: { '@TuNgay': 'string', '@DenNgay': 'string', '@LoaiBaoCao': 'string', '@EmployeeID': 'string', '@TenNhanVien': 'string' } },\n  '@hoa_don':            { required: [],               types: { '@TuNgay': 'string', '@DenNgay': 'string' } },\n  '@cong_no_khach_hang': { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@cong_no_chi_tiet':   { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@don_hang':           { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@lap_don_hang':       { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@danh_muc':           { required: [],               types: { '@Type': 'string', '@timkiem': 'string' } },\n};\n\nif (!SCHEMA[apiCode]) {\n  return [{ json: { isValid: true, cleanParams: rawParams, errorMsg: null, validationLevel: 'SKIP' } }];\n}\n\nconst schema = SCHEMA[apiCode];\nconst FRIENDLY = {\n  '@MaKhachHang': 'Mã Khách Hàng', '@timkiem': 'Từ khóa tìm kiếm',\n  '@TuNgay': 'Từ ngày', '@DenNgay': 'Đến ngày'\n};\n\nconst missing = schema.required.filter(k => {\n  const v = rawParams[k];\n  return v === undefined || v === null || v === '' || v === 'null';\n});\nif (missing.length > 0) {\n  const names = missing.map(k => FRIENDLY[k] || k).join(', ');\n  return [{ json: { isValid: false, cleanParams: {}, errorMsg: `Dạ, để tra cứu em cần thêm: ${names} ạ!`, validationLevel: 'REQUIRED' } }];\n}\n\nconst cleanParams = {};\nfor (const [key, val] of Object.entries(rawParams)) {\n  if (val === null || val === undefined || val === '' || val === 'null') continue;\n  const expectedType = schema.types[key];\n  let cleanVal = val;\n  if (expectedType === 'number') {\n    cleanVal = Number(val);\n    if (isNaN(cleanVal)) continue;\n  } else if (expectedType === 'string') {\n    cleanVal = String(val).trim().replace(/[';]|--/g, ''); // SQL injection guard\n    if (cleanVal === '') continue;\n  }\n  if (key === '@MaKhachHang') cleanVal = String(cleanVal).replace(/\\s+/g,'').toUpperCase();\n  cleanParams[key] = cleanVal;\n}\nif (!cleanParams['@Username'] && rawParams['@Username']) {\n  cleanParams['@Username'] = rawParams['@Username'];\n}\nif (apiCode === '@tuyen_ban_hang') {\n  const targetDate = rawParams['@NgayTarget'] || rawParams['@TuNgay'] || rawParams['@DenNgay'];\n  if (targetDate) {\n    cleanParams['@NgayTarget'] = String(targetDate).trim().replace(/[';]|--/g, '');\n  }\n}\nif (apiCode === '@danh_muc') {\n  if (!cleanParams['@timkiem']) {\n    cleanParams['@timkiem'] = rawParams['@timkiem'] || rawParams['@EmployeeID'] || rawParams['@MaKhachHang'] || '';\n  }\n}\n\nconst tzOffset = (new Date()).getTimezoneOffset() * 60000; const todayStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0]; if (apiCode === '@cong_no_khach_hang' || apiCode === '@cong_no_chi_tiet') { if (!cleanParams['@DenNgay']) cleanParams['@DenNgay'] = todayStr; } if (apiCode === '@doanh_so' || apiCode === '@hoa_don') { if (!cleanParams['@DenNgay']) cleanParams['@DenNgay'] = todayStr; if (!cleanParams['@TuNgay']) { const d = new Date(); const firstDay = new Date(d.getFullYear(), d.getMonth(), 1); cleanParams['@TuNgay'] = new Date(firstDay.getTime() - tzOffset).toISOString().split('T')[0]; } } const errors = [];\n\n// Rule 1: TuNgay phải <= DenNgay\nif (cleanParams['@TuNgay'] && cleanParams['@DenNgay']) {\n  const tu = new Date(cleanParams['@TuNgay']);\n  const den = new Date(cleanParams['@DenNgay']);\n  if (tu > den) {\n    errors.push(`Từ ngày (${cleanParams['@TuNgay']}) phải nhỏ hơn hoặc bằng Đến ngày (${cleanParams['@DenNgay']})`);\n  }\n}\n\n// Rule 2: Khoảng ngày không quá 2 năm (tránh query nặng)\nif (cleanParams['@TuNgay'] && cleanParams['@DenNgay']) {\n  const diffDays = (new Date(cleanParams['@DenNgay']) - new Date(cleanParams['@TuNgay'])) / 86400000;\n  if (diffDays > 730) {\n    errors.push('Khoảng thời gian tra cứu không nên vượt quá 2 năm, anh/chị có thể thu hẹp lại không ạ?');\n  }\n}\n\n// Rule 3: TopN hợp lý (1–100)\nif (cleanParams['@TopN'] !== undefined) {\n  if (cleanParams['@TopN'] < 1 || cleanParams['@TopN'] > 100) {\n    cleanParams['@TopN'] = Math.min(Math.max(cleanParams['@TopN'], 1), 100); // Auto-clamp thay vì báo lỗi\n  }\n}\n\n// Rule 4: timkiem tối thiểu 2 ký tự\nif (cleanParams['@timkiem'] !== undefined && String(cleanParams['@timkiem']).length < 2) {\n  errors.push('Từ khóa tìm kiếm cần ít nhất 2 ký tự ạ!');\n}\n\nif (errors.length > 0) {\n  return [{ json: { isValid: false, cleanParams: {}, errorMsg: errors[0], validationLevel: 'BUSINESS' } }];\n}\n\nreturn [{ json: { isValid: true, cleanParams, errorMsg: null, validationLevel: 'PASSED' } }];"
+        "jsCode": "const apiCode = $json.apiCode || '';\nconst rawParams = $json.params || {};\n\nconst SCHEMA = {\n  '@goi_ydon_hang':     { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string', '@TopN': 'number' } },\n  '@upsell_goi_y':       { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@goi_ydon_thuoc':    { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@tuyen_ban_hang':     { required: [],               types: { '@SoNgayVangMat': 'number', '@NgayTarget': 'string' } },\n  '@cham_diem_kh':       { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@tich_luy':           { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@de_xuat_khuyen_mai': { required: [],               types: {} },\n  '@danh_sach_tonkho':   { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@tra_cuu_san_pham':   { required: ['@timkiem'],     types: { '@timkiem': 'string' } },\n  '@san_pham_trong_tam': { required: [],               types: {} },\n  '@doanh_so':           { required: [],               types: { '@TuNgay': 'string', '@DenNgay': 'string', '@LoaiBaoCao': 'string', '@EmployeeID': 'string', '@TenNhanVien': 'string' } },\n  '@hoa_don':            { required: [],               types: { '@TuNgay': 'string', '@DenNgay': 'string', '@MaKhachHang': 'string' } },\n  '@cong_no_khach_hang': { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@cong_no_chi_tiet':   { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@don_hang':           { required: ['@MaKhachHang'], types: { '@MaKhachHang': 'string' } },\n  '@lap_don_hang':       { required: [],               types: { '@MaKhachHang': 'string' } },\n  '@danh_muc':           { required: [],               types: { '@Type': 'string', '@timkiem': 'string' } },\n};\n\nif (!SCHEMA[apiCode]) {\n  return [{ json: { isValid: true, cleanParams: rawParams, errorMsg: null, validationLevel: 'SKIP' } }];\n}\n\nconst schema = SCHEMA[apiCode];\nconst FRIENDLY = {\n  '@MaKhachHang': 'Mã Khách Hàng', '@timkiem': 'Từ khóa tìm kiếm',\n  '@TuNgay': 'Từ ngày', '@DenNgay': 'Đến ngày'\n};\n\nconst missing = schema.required.filter(k => {\n  const v = rawParams[k];\n  return v === undefined || v === null || v === '' || v === 'null';\n});\nif (missing.length > 0) {\n  const names = missing.map(k => FRIENDLY[k] || k).join(', ');\n  return [{ json: { isValid: false, cleanParams: {}, errorMsg: `Dạ, để tra cứu em cần thêm: ${names} ạ!`, validationLevel: 'REQUIRED' } }];\n}\n\nconst cleanParams = {};\nfor (const [key, val] of Object.entries(rawParams)) {\n  if (val === null || val === undefined || val === '' || val === 'null') continue;\n  const expectedType = schema.types[key];\n  let cleanVal = val;\n  if (expectedType === 'number') {\n    cleanVal = Number(val);\n    if (isNaN(cleanVal)) continue;\n  } else if (expectedType === 'string') {\n    cleanVal = String(val).trim().replace(/[';]|--/g, ''); // SQL injection guard\n    if (cleanVal === '') continue;\n  }\n  if (key === '@MaKhachHang') cleanVal = String(cleanVal).replace(/\\s+/g,'').toUpperCase();\n  cleanParams[key] = cleanVal;\n}\nif (!cleanParams['@Username'] && rawParams['@Username']) {\n  cleanParams['@Username'] = rawParams['@Username'];\n}\nif (apiCode === '@tuyen_ban_hang') {\n  const targetDate = rawParams['@NgayTarget'] || rawParams['@TuNgay'] || rawParams['@DenNgay'];\n  if (targetDate) {\n    cleanParams['@NgayTarget'] = String(targetDate).trim().replace(/[';]|--/g, '');\n  }\n}\nif (apiCode === '@danh_muc') {\n  if (!cleanParams['@timkiem']) {\n    cleanParams['@timkiem'] = rawParams['@timkiem'] || rawParams['@EmployeeID'] || rawParams['@MaKhachHang'] || '';\n  }\n}\n\nconst tzOffset = (new Date()).getTimezoneOffset() * 60000; const todayStr = new Date(Date.now() - tzOffset).toISOString().split('T')[0]; if (apiCode === '@cong_no_khach_hang' || apiCode === '@cong_no_chi_tiet') { if (!cleanParams['@DenNgay']) cleanParams['@DenNgay'] = todayStr; } if (apiCode === '@doanh_so' || apiCode === '@hoa_don') { if (!cleanParams['@DenNgay']) cleanParams['@DenNgay'] = todayStr; if (!cleanParams['@TuNgay']) { const d = new Date(); const firstDay = new Date(d.getFullYear(), d.getMonth(), 1); cleanParams['@TuNgay'] = new Date(firstDay.getTime() - tzOffset).toISOString().split('T')[0]; } } const errors = [];\n\n// Rule 1: TuNgay phải <= DenNgay\nif (cleanParams['@TuNgay'] && cleanParams['@DenNgay']) {\n  const tu = new Date(cleanParams['@TuNgay']);\n  const den = new Date(cleanParams['@DenNgay']);\n  if (tu > den) {\n    errors.push(`Từ ngày (${cleanParams['@TuNgay']}) phải nhỏ hơn hoặc bằng Đến ngày (${cleanParams['@DenNgay']})`);\n  }\n}\n\n// Rule 2: Khoảng ngày không quá 2 năm (tránh query nặng)\nif (cleanParams['@TuNgay'] && cleanParams['@DenNgay']) {\n  const diffDays = (new Date(cleanParams['@DenNgay']) - new Date(cleanParams['@TuNgay'])) / 86400000;\n  if (diffDays > 730) {\n    errors.push('Khoảng thời gian tra cứu không nên vượt quá 2 năm, anh/chị có thể thu hẹp lại không ạ?');\n  }\n}\n\n// Rule 3: TopN hợp lý (1–100)\nif (cleanParams['@TopN'] !== undefined) {\n  if (cleanParams['@TopN'] < 1 || cleanParams['@TopN'] > 100) {\n    cleanParams['@TopN'] = Math.min(Math.max(cleanParams['@TopN'], 1), 100); // Auto-clamp thay vì báo lỗi\n  }\n}\n\n// Rule 4: timkiem tối thiểu 2 ký tự\nif (cleanParams['@timkiem'] !== undefined && String(cleanParams['@timkiem']).length < 2) {\n  errors.push('Từ khóa tìm kiếm cần ít nhất 2 ký tự ạ!');\n}\n\nif (errors.length > 0) {\n  return [{ json: { isValid: false, cleanParams: {}, errorMsg: errors[0], validationLevel: 'BUSINESS' } }];\n}\n\nreturn [{ json: { isValid: true, cleanParams, errorMsg: null, validationLevel: 'PASSED' } }];"
       },
       "id": "c29426d0-53bc-4165-b3a5-19f832788753",
       "name": "LIB ValidateParams",
@@ -457,6 +457,209 @@
         -720,
         352
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ ['symptom_search'].includes($json.strategy) || ['@upsell_goi_y', '@goi_ydon_thuoc', '@tra_cuu_san_pham'].includes($json.intent) }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "route-strategy",
+      "name": "Route Strategy",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=symptom:{{ $('LIB NormalizeInput').first().json.normalizedMessage.toLowerCase().trim() }}"
+      },
+      "id": "redis-get-cache",
+      "name": "Redis Get Symptom Cache",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        50
+      ],
+      "credentials": {
+        "redis": {
+          "id": "wGBnl2LS07ZUbFrv",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cached = $input.first().json.redisValue;\nif (cached) {\n  try {\n    return [{ json: JSON.parse(cached) }];\n  } catch(e) {}\n}\nreturn [{ json: { status: 'cache_miss' } }];"
+      },
+      "id": "parse-cache-hit",
+      "name": "Parse Cache Hit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "success"
+            }
+          ]
+        }
+      },
+      "id": "check-cache-hit",
+      "name": "Check Cache Hit",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "method": "POST",
+        "url": "={{ $env.LLM_API_BASE ? $env.LLM_API_BASE : 'https://openrouter.ai/api/v1' }}/embeddings",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{ $('LIB NormalizeInput').first().json.normalizedMessage }}\",\n  \"model\": \"openai/text-embedding-3-small\"\n}"
+      },
+      "id": "openai-embeddings-symptom",
+      "name": "OpenAI Embeddings Symptom",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2000,
+        150
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "NUWWHWYzGHV6GY0g",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333' }}/collections/medstand-products/points/search",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vector\": {{ JSON.stringify($json.data[0].embedding) }},\n  \"limit\": 10,\n  \"with_payload\": true,\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"status\",\n        \"match\": {\n          \"value\": \"Approved\"\n        }\n      }\n    ]\n  }\n}"
+      },
+      "id": "qdrant-search-symptom",
+      "name": "Qdrant Search Symptom",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2200,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const userQuery = ($('LIB NormalizeInput').first().json.rawMessage || '').toLowerCase();\nconst results = $input.first().json.result || [];\nif (results.length === 0) return [{ json: { items: [] } }];\n\nconst bestScore = results[0].score;\nconst threshold = Math.max(bestScore * 0.85, 0.65);\nconst filtered = results.filter(r => r.score >= threshold);\n\nconst reRanked = filtered.map(p => {\n  const payload = p.payload || {};\n  const itemName = (payload.itemName || payload.title || '').toLowerCase();\n  const keywords = (payload.keywords || '').toLowerCase();\n  \n  let scoreBoost = 0;\n  if (userQuery.includes(itemName) || itemName.includes(userQuery)) {\n    scoreBoost += 0.15;\n  }\n  const kwList = keywords.split(',').map(k => k.trim().toLowerCase());\n  kwList.forEach(kw => {\n    if (kw && userQuery.includes(kw)) {\n      scoreBoost += 0.10;\n    }\n  });\n  \n  return {\n    itemId: payload.itemId || p.id,\n    itemName: payload.itemName || payload.title || 'Sản phẩm',\n    ingredients: payload.ingredients || '',\n    mainUses: payload.mainUses || '',\n    usageInstructions: payload.usageInstructions || '',\n    score: p.score,\n    finalScore: p.score + scoreBoost\n  };\n});\n\nreRanked.sort((a, b) => b.finalScore - a.finalScore);\nreturn [{ json: { items: reRanked } }];"
+      },
+      "id": "rerank-threshold-symptom",
+      "name": "Rerank & Threshold Symptom",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.items.length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-found-symptom",
+      "name": "If Found Symptom",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    I.ItemID, \n    I.ItemName, \n    I.Unit, \n    COALESCE(I.NguyenGia, 0) AS Price,\n    COALESCE(S.QuantityinStock, 0) AS TonKho\nFROM CF_ItemTbl I\nLEFT JOIN IV_StockTbl S ON I.ItemID = S.ItemID\nWHERE I.ItemID IN ({{ $json.items.length > 0 ? $json.items.map(i => \"'\" + i.itemId.replace(/'/g, \"''\") + \"'\").join(',') : \"''\" }})"
+      },
+      "id": "sql-stock-price-symptom",
+      "name": "SQL Stock & Price Symptom",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        100
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "oltuZlv17pevRi6M",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sqlResults = $input.all().map(item => item.json);\nconst qdrantResults = $('Rerank & Threshold Symptom').first().json.items || [];\n\nif (qdrantResults.length === 0) {\n  return [{ json: { status: 'success', message: 'Dạ, em không tìm thấy sản phẩm nào phù hợp với triệu chứng sếp hỏi ạ.', data: [], count: 0, apiCode: '@upsell_goi_y' } }];\n}\n\nconst sqlMap = {};\nsqlResults.forEach(r => {\n  if (r.ItemID) sqlMap[r.ItemID.trim().toUpperCase()] = r;\n});\n\nlet replyText = 'Dạ, em tìm thấy các sản phẩm phù hợp với triệu chứng của sếp:\\n\\n';\nconst dataPayload = [];\n\nqdrantResults.forEach((q, index) => {\n  const itemId = q.itemId.trim().toUpperCase();\n  const sqlInfo = sqlMap[itemId] || {};\n  \n  const price = sqlInfo.Price ? Number(sqlInfo.Price).toLocaleString('vi-VN') + 'đ' : 'Chưa cập nhật';\n  const stock = sqlInfo.TonKho ? `Còn ${Number(sqlInfo.TonKho)} ${sqlInfo.Unit || 'sản phẩm'}` : 'Hết hàng';\n  \n  replyText += `${index + 1}. **${sqlInfo.ItemName || q.itemName} (Mã: ${q.itemId})**\\n`;\n  replyText += `   - Giá bán: ${price}\\n`;\n  replyText += `   - Tồn kho: ${stock}\\n`;\n  if (q.ingredients) replyText += `   - Thành phần: ${q.ingredients}\\n`;\n  if (q.mainUses) replyText += `   - Công dụng: ${q.mainUses}\\n`;\n  if (q.usageInstructions) replyText += `   - Cách dùng: ${q.usageInstructions}\\n`;\n  replyText += '\\n';\n  \n  dataPayload.push({\n    ItemID: q.itemId,\n    ItemName: sqlInfo.ItemName || q.itemName,\n    Unit: sqlInfo.Unit || 'sản phẩm',\n    Price: sqlInfo.Price || 0,\n    TonKho: sqlInfo.TonKho || 0,\n    Ingredients: q.ingredients,\n    MainUses: q.mainUses,\n    UsageInstructions: q.usageInstructions\n  });\n});\n\nconst suggestions = qdrantResults.slice(0, 3).map(q => `Sản phẩm ${q.itemName}`);\nreplyText += `<suggest>${suggestions.join(' | ')}</suggest>`;\n\nreturn [{\n  json: {\n    status: 'success',\n    message: replyText,\n    data: dataPayload,\n    count: dataPayload.length,\n    apiCode: '@upsell_goi_y'\n  }\n}];"
+      },
+      "id": "generate-symptom-response",
+      "name": "Generate Symptom Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "=symptom:{{ $('LIB NormalizeInput').first().json.normalizedMessage.toLowerCase().trim() }}",
+        "value": "={{ JSON.stringify($json) }}",
+        "ttl": 900
+      },
+      "id": "redis-set-cache",
+      "name": "Redis Set Symptom Cache",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        100
+      ],
+      "credentials": {
+        "redis": {
+          "id": "wGBnl2LS07ZUbFrv",
+          "name": "Redis account"
+        }
+      }
     }
   ],
   "connections": {
@@ -537,7 +740,7 @@
       "main": [
         [
           {
-            "node": "LIB ValidateParams",
+            "node": "Route Strategy",
             "type": "main",
             "index": 0
           }
@@ -659,6 +862,148 @@
       ]
     },
     "LIB SaveContext": {
+      "main": [
+        [
+          {
+            "node": "Respond Fast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Strategy": {
+      "main": [
+        [
+          {
+            "node": "Redis Get Symptom Cache",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LIB ValidateParams",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Get Symptom Cache": {
+      "main": [
+        [
+          {
+            "node": "Parse Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Check Cache Hit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cache Hit": {
+      "main": [
+        [
+          {
+            "node": "Respond Fast",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OpenAI Embeddings Symptom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Embeddings Symptom": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Search Symptom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Search Symptom": {
+      "main": [
+        [
+          {
+            "node": "Rerank & Threshold Symptom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rerank & Threshold Symptom": {
+      "main": [
+        [
+          {
+            "node": "If Found Symptom",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Found Symptom": {
+      "main": [
+        [
+          {
+            "node": "SQL Stock & Price Symptom",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call RAG Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL Stock & Price Symptom": {
+      "main": [
+        [
+          {
+            "node": "Generate Symptom Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Symptom Response": {
+      "main": [
+        [
+          {
+            "node": "Redis Set Symptom Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Set Symptom Cache": {
       "main": [
         [
           {
