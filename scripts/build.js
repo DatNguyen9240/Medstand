@@ -35,6 +35,12 @@ async function build() {
         const fullTag = match[0];
         const scriptPathWithQuery = match[1];
         const realPath = scriptPathWithQuery.split('?')[0];
+        
+        // Bỏ qua theme.js để nó chạy độc lập trong head tránh lỗi giật màn hình và thiếu Cash.js ($)
+        if (realPath.includes('theme.js')) {
+            continue;
+        }
+
         scriptPaths.push(realPath);
         scriptTags.push(fullTag);
     }
@@ -42,6 +48,14 @@ async function build() {
     console.log(`Đã phát hiện ${scriptPaths.length} scripts nội bộ để đóng gói.`);
 
     let concatenatedJS = '';
+
+    // Đưa cấu hình env.js vào đầu bundle JS để ẩn giấu và làm rối toàn bộ
+    const envJsPath = path.join(__dirname, '../env.js');
+    if (fs.existsSync(envJsPath)) {
+        concatenatedJS += `\n/* --- BUNDLED JS: env.js --- */\n`;
+        concatenatedJS += fs.readFileSync(envJsPath, 'utf-8') + '\n';
+    }
+
     for (const p of scriptPaths) {
         const absolutePath = path.join(__dirname, '..', p);
         if (fs.existsSync(absolutePath)) {
@@ -74,6 +88,49 @@ async function build() {
     const jsBundleOutputPath = path.join(jsOutputDir, 'app.bundle.min.js');
     fs.writeFileSync(jsBundleOutputPath, terserResult.code, 'utf-8');
     console.log(`✅ Đã đóng gói JS: ${jsBundleOutputPath} (${(terserResult.code.length / 1024).toFixed(2)} KB)`);
+
+    // ─── 1.2 ĐÓNG GÓI CHO CÁC TRANG AUTH (LOGIN, REGISTER, FORGOT-PASSWORD) ───
+    console.log('\nĐang tiến hành đóng gói JS cho các trang Auth...');
+    const authScripts = [
+        'env.js',
+        'src/js/services/http.js',
+        'src/js/services/auth.service.js',
+        'src/js/components/Alert.js',
+        'src/js/components/AuthThemeToggle.js',
+        'src/js/components/PasswordToggle.js'
+    ];
+
+    let concatenatedAuthJS = '';
+    for (const p of authScripts) {
+        const absolutePath = path.join(__dirname, '..', p);
+        if (fs.existsSync(absolutePath)) {
+            concatenatedAuthJS += `\n/* --- BUNDLED JS: ${p} --- */\n`;
+            concatenatedAuthJS += fs.readFileSync(absolutePath, 'utf-8') + '\n';
+        } else {
+            console.warn(`Cảnh báo: Không tìm thấy file ${absolutePath}`);
+        }
+    }
+
+    console.log('Đang tiến hành làm rối và nén JS Auth...');
+    const terserAuthResult = await minify(concatenatedAuthJS, {
+        compress: {
+            drop_console: false,
+            passes: 2
+        },
+        mangle: true,
+        format: {
+            comments: false
+        }
+    });
+
+    if (terserAuthResult.error) {
+        console.error('Lỗi nén code Terser cho Auth:', terserAuthResult.error);
+        process.exit(1);
+    }
+
+    const authBundleOutputPath = path.join(jsOutputDir, 'auth.bundle.min.js');
+    fs.writeFileSync(authBundleOutputPath, terserAuthResult.code, 'utf-8');
+    console.log(`✅ Đã đóng gói JS Auth: ${authBundleOutputPath} (${(terserAuthResult.code.length / 1024).toFixed(2)} KB)`);
 
     // ─── 2. ĐÓNG GÓI CSS ───
     // Tìm các thẻ link stylesheet cục bộ (src/css/... hoặc chatbot-widget/css/...)
@@ -129,6 +186,9 @@ async function build() {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
     });
+
+    // Loại bỏ thẻ env.js khỏi file production HTML vì đã gộp vào bundle
+    prodHtmlContent = prodHtmlContent.replace(/<script\s+src=["']env\.js["']><\/script>/gi, '');
 
     // Loại bỏ các dòng trống thừa
     prodHtmlContent = prodHtmlContent.replace(/\r?\n\s*\r?\n/g, '\n');

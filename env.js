@@ -20,6 +20,7 @@ window.API_CONFIG = {
     BASE_URL: ENV_VARS.API_BASE,
     N8N_BASE: ENV_VARS.N8N_BASE,
     CHAT_API_KEY: ENV_VARS.CHAT_API_KEY,
+    GATEWAY_URL: '/api/gateway', // Cổng API Gateway hợp nhất bảo mật
 
     ENDPOINTS: {
         AUTH: {

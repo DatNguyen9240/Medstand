@@ -4,6 +4,27 @@
  */
 const Http = (() => {
   const TIMEOUT_MS = 60000; // Tăng timeout lên 60s để các truy vấn báo cáo lớn có đủ thời gian chạy
+  
+  // ─── CIPHER HELPER (XOR + Base64) ───
+  const Cipher = {
+      encrypt: (str, key = 107) => {
+          const b64 = btoa(unescape(encodeURIComponent(str)));
+          let xor = '';
+          for (let i = 0; i < b64.length; i++) {
+              xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+          }
+          return btoa(xor);
+      },
+      decrypt: (b64Cipher, key = 107) => {
+          const xor = atob(b64Cipher);
+          let b64 = '';
+          for (let i = 0; i < xor.length; i++) {
+              b64 += String.fromCharCode(xor.charCodeAt(i) ^ key);
+          }
+          return decodeURIComponent(escape(atob(b64)));
+      }
+  };
+
   const CACHE_TTL_MS = 3 * 60 * 1000; // 3 phút
   const CACHE_PREFIX = '_hc_'; // prefix cho sessionStorage keys
 
@@ -154,21 +175,82 @@ const Http = (() => {
   const RETRY_DELAY_MS = 1000; // delay cơ bản, sẽ nhân đôi mỗi lần retry
 
   async function _fetchWithTimeout(url, options, retries = MAX_RETRIES) {
+    const gatewayUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.GATEWAY_URL) || '/api/gateway';
+    const bypassGateway = true; // Flag kiểm tra để hoàn toàn bỏ qua Gateway khi debug
+
+    // 1. Kiểm tra điều kiện bỏ qua (không qua Gateway)
+    const isGatewayCall = url === gatewayUrl;
+    const isExternalMap = url.includes('openstreetmap.org');
+    const isLocalHtml = url.endsWith('.html') || url.includes('.html?');
+    const isMultipart = options.body instanceof FormData;
+
+    let targetUrl = url;
+    let targetOptions = { ...options };
+
+    if (!isGatewayCall && !isExternalMap && !isLocalHtml && !isMultipart && !bypassGateway) {
+      // 2. Chuyển đổi endpoint tương đối
+      let relativeEndpoint = url;
+      const baseUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.BASE_URL) || '';
+      if (baseUrl && url.startsWith(baseUrl)) {
+        relativeEndpoint = url.substring(baseUrl.length);
+      }
+
+      // Đóng gói request payload
+      let reqBody = null;
+      if (options.body && typeof options.body === 'string') {
+        try { reqBody = JSON.parse(options.body); } catch(e) { reqBody = options.body; }
+      }
+
+      const payload = {
+        method: options.method || 'GET',
+        endpoint: relativeEndpoint,
+        body: reqBody
+      };
+
+      const encryptedData = Cipher.encrypt(JSON.stringify(payload));
+      
+      targetUrl = gatewayUrl;
+      targetOptions = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers?.Authorization ? { Authorization: options.headers.Authorization } : {})
+        },
+        body: JSON.stringify({ data: encryptedData }),
+        signal: options.signal
+      };
+    }
+
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), TIMEOUT_MS);
-        const res = await fetch(url, { ...options, signal: controller.signal });
+        const res = await fetch(targetUrl, { ...targetOptions, signal: controller.signal || targetOptions.signal });
         clearTimeout(tid);
         if (!res.ok && res.status >= 500) {
           throw new Error('Server error: ' + res.status);
         }
+        
+        // 3. Giải mã kết quả trả về từ Gateway
+        if (!isGatewayCall && !isExternalMap && !isLocalHtml && !isMultipart && !bypassGateway) {
+          const resJson = await res.json();
+          if (!resJson || !resJson.data) {
+             throw new Error('Cổng Gateway phản hồi dữ liệu không hợp lệ.');
+          }
+          const decryptedText = Cipher.decrypt(resJson.data);
+          
+          return new Response(decryptedText, {
+             status: res.status,
+             statusText: res.statusText,
+             headers: res.headers
+          });
+        }
+
         return res;
       } catch (err) {
         console.warn(`[HTTP] Attempt ${attempt}/${retries} failed:`, err.message);
         
         const isTimeout = err.name === 'AbortError';
-        // Nếu là lỗi Timeout (AbortError), dừng retry ngay để tránh "Retry Storm" gây quá tải máy chủ
         if (isTimeout || attempt === retries) {
           const msg = isTimeout
             ? 'Kết nối quá thời gian chờ (Timeout). Vui lòng thử lại sau.'
@@ -176,7 +258,6 @@ const Http = (() => {
           _alert('error', msg);
           throw new Error(msg);
         }
-        // Chờ trước khi retry (exponential backoff)
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
       }
     }

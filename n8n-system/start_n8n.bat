@@ -205,6 +205,10 @@ if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul
 :: 9. EXECUTOR: GỌI HỆ SINH THÁI PM2
 :: ============================================================
 echo.
+echo [INFO] Dang tu dong dong goi va toi uu hoa tai nguyen Web...
+"%NODE_EXE%" "%BASE_DIR%\..\scripts\build.js"
+
+echo.
 echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...
 call "%NPM_GLOBAL_DIR%\pm2.cmd" start "%BASE_DIR%\ecosystem.config.js" --update-env
 
