@@ -45,6 +45,8 @@ function initDashboard() {
     }
   } catch (e) { }
 
+
+
   // ── Default targets ──
   var TARGET_ORDERS = 150;
   var TARGET_CUSTOMERS = 400;
@@ -91,6 +93,38 @@ function initDashboard() {
   function getFromDate() { return elFrom ? elFrom.value : defaultFrom; }
   function getToDate() { return elTo ? elTo.value : defaultTo; }
 
+  // ── Load Notification Count ──
+  function loadNotificationCount() {
+    var user = {};
+    try {
+      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch (e) {}
+    var userName = user.UserName || '';
+    if (!userName) return Promise.resolve();
+
+    return Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+      .then(function (res) {
+        var records = res.records || res.data || [];
+        if (!Array.isArray(records)) records = [];
+        var unreadCount = 0;
+        records.forEach(function (n) { if (!n.isView) unreadCount++; });
+        
+        var $headerBadge = $('#notif-badge');
+        var $heroBadge = $('#hero-notif-badge');
+        
+        if (unreadCount > 0) {
+          $headerBadge.text(unreadCount).prop('hidden', false);
+          $heroBadge.text(unreadCount).prop('hidden', false);
+        } else {
+          $headerBadge.prop('hidden', true);
+          $heroBadge.prop('hidden', true);
+        }
+      })
+      .catch(function (err) {
+        console.warn('[Dashboard loadNotificationCount Error]:', err);
+      });
+  }
+
   function loadAll() {
     var fromDate = getFromDate();
     var toDate = getToDate();
@@ -105,7 +139,8 @@ function initDashboard() {
     Promise.all([
       loadStats(fromDate, toDate),
       loadChartAndRevenue(fromDate, toDate),
-      loadBirthdays(fromDate, toDate)
+      loadBirthdays(fromDate, toDate),
+      loadNotificationCount()
     ]).finally(function() {
       setLoadingState(false);
     });
@@ -328,8 +363,21 @@ function initDashboard() {
           $('#birthday-count').text(items.length);
           $list.html(items.map(function (item) {
             var phone = item[DASHBOARD_SCHEMA.BIRTHDAY.phoneKey] || '';
+            var flowerSvg = '<svg viewBox="0 0 100 100" style="width:22px;height:22px;color:var(--color-primary);">' +
+              '  <defs>' +
+              '    <polygon id="medstand-petal-item" points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#ffffff" stroke-width="2.2"/>' +
+              '  </defs>' +
+              '  <use href="#medstand-petal-item"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(45 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(90 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(135 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(180 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(225 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(270 50 50)"/>' +
+              '  <use href="#medstand-petal-item" transform="rotate(315 50 50)"/>' +
+              '</svg>';
             return '<li class="birthday-item">' +
-              '  <div class="birthday-logo">✦</div>' +
+              '  <div class="birthday-logo">' + flowerSvg + '</div>' +
               '  <div class="birthday-info">' +
               '    <span class="birthday-name">' + (item.ObjectName || 'Không rõ tên') + '</span>' +
               '    <span class="birthday-addr">' + (item.ADDRESS || 'Địa chỉ không rõ') + '</span>' +
@@ -354,7 +402,8 @@ function initDashboard() {
 
   // Helper cập nhật Hero summary
   function updateHeroSummary(orders, birthdays) {
-    $('#hero-summary').html('Hôm nay có <strong>' + orders + ' đơn hàng</strong>, <strong>' + birthdays + ' khách hàng sinh nhật</strong>');
+    // Keep static text to match the premium screenshot
+    $('#hero-summary').text('Chúc bạn một ngày làm việc hiệu quả!');
   }
 
   // ── Render Chart ──

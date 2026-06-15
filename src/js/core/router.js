@@ -120,7 +120,7 @@ const Router = (() => {
       if (document.querySelector(`link[href^="${href}"]`)) return;
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = href + '?v=9.7';
+      link.href = href + '?v=9.8';
       link.setAttribute('data-dynamic', 'true');
       document.head.appendChild(link);
       _dynamicStylesheets.push(link);
@@ -136,7 +136,7 @@ const Router = (() => {
         return;
       }
       const script = document.createElement('script');
-      script.src = src + '?v=9.7';
+      script.src = src + '?v=9.8';
       script.charset = 'UTF-8';
       script.onload = () => {
         _loadedScripts.add(src);

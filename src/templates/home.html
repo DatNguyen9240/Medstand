@@ -25,134 +25,23 @@
   <!-- ══════════════════════════════════════
        HERO BANNER — nền trắng xanh nhạt
        ══════════════════════════════════════ -->
-  <div class="home-hero">
-    <!-- Flower watermark logo in the center-left background -->
-    <div class="hero-watermark-bg" aria-hidden="true">
-      <svg viewBox="0 0 100 100" fill="none" stroke="rgba(11, 138, 67, 0.025)" stroke-width="1.2">
-        <circle cx="50" cy="50" r="8"/>
-        <ellipse cx="50" cy="25" rx="6" ry="20"/>
-        <ellipse cx="50" cy="75" rx="6" ry="20"/>
-        <ellipse cx="25" cy="50" rx="20" ry="6"/>
-        <ellipse cx="75" cy="50" rx="20" ry="6"/>
-        <g transform="rotate(30, 50, 50)">
-          <ellipse cx="50" cy="25" rx="6" ry="20"/>
-          <ellipse cx="50" cy="75" rx="6" ry="20"/>
-          <ellipse cx="25" cy="50" rx="20" ry="6"/>
-          <ellipse cx="75" cy="50" rx="20" ry="6"/>
-        </g>
-        <g transform="rotate(60, 50, 50)">
-          <ellipse cx="50" cy="25" rx="6" ry="20"/>
-          <ellipse cx="50" cy="75" rx="6" ry="20"/>
-          <ellipse cx="25" cy="50" rx="20" ry="6"/>
-          <ellipse cx="75" cy="50" rx="20" ry="6"/>
-        </g>
-      </svg>
-    </div>
-
+  <div class="hero-banner">
     <!-- Cột trái: Lời chào -->
     <div class="hero-left">
-      <p class="hero-greeting" id="greeting-text">Chào buổi sáng,</p>
-      <h1 class="hero-name" id="user-name">Test App</h1>
-      <p class="hero-subtitle" id="hero-summary">Chúc bạn một ngày làm việc hiệu quả!</p>
-      <div class="hero-date-badge">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-        <span id="today-date">--</span>
-      </div>
-    </div>
-
-    <!-- Cột phải: Slogan + illustration -->
-    <div class="hero-right">
-      <div class="hero-slogan-text">
-        <span class="slogan-main">BỀN GAN</span>
-        <span class="slogan-main">VỮNG CHÍ</span>
-        <span class="slogan-sub">VƯỢT SÓNG VƯƠN XA</span>
-      </div>
-      <!-- SVG illustration: sóng + ngọn hải đăng -->
-      <div class="hero-illustration" aria-hidden="true">
-        <svg viewBox="0 0 420 180" fill="none" xmlns="http://www.w3.org/2000/svg" class="hero-svg">
-          <defs>
-            <linearGradient id="wave-grad-1" x1="0" y1="180" x2="420" y2="100" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#0b8a43" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="#34c877" stop-opacity="0.08"/>
-            </linearGradient>
-            <linearGradient id="wave-grad-2" x1="0" y1="180" x2="420" y2="120" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#0b8a43" stop-opacity="0.35"/>
-              <stop offset="100%" stop-color="#10b981" stop-opacity="0.12"/>
-            </linearGradient>
-            <linearGradient id="wave-grad-3" x1="0" y1="180" x2="420" y2="135" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#097a3b" stop-opacity="0.45"/>
-              <stop offset="100%" stop-color="#059669" stop-opacity="0.18"/>
-            </linearGradient>
-            <linearGradient id="lighthouse-body-grad" x1="378" y1="50" x2="400" y2="50" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#097a3b"/>
-              <stop offset="70%" stop-color="#0b8a43"/>
-              <stop offset="100%" stop-color="#059669"/>
-            </linearGradient>
-            <radialGradient id="light-beam-glow" cx="389" cy="38" r="80" fx="389" fy="38" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stop-color="#fff59d" stop-opacity="0.4"/>
-              <stop offset="100%" stop-color="#fff59d" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          
-          <!-- Sky / background glow -->
-          <circle cx="389" cy="40" r="90" fill="#f0faf4" opacity="0.8"/>
-          <ellipse cx="330" cy="70" rx="90" ry="50" fill="#eaf7f0" opacity="0.6"/>
-          
-          <!-- Birds -->
-          <path d="M250 25 Q254 22 258 25" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.5"/>
-          <path d="M265 17 Q269 14 273 17" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
-          <path d="M280 29 Q283 26 286 29" stroke="#0b8a43" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.3"/>
-          <path d="M305 20 Q309 17 313 20" stroke="#0b8a43" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.45"/>
-
-          <!-- Modern city skyline (sleek silhouettes) -->
-          <path d="M220 150 L220 110 L230 110 L230 150 Z" fill="#cbd5e1" opacity="0.25"/>
-          <path d="M232 150 L232 95 L242 95 L242 150 Z" fill="#94a3b8" opacity="0.2"/>
-          <path d="M244 150 L244 105 L256 105 L256 150 Z" fill="#cbd5e1" opacity="0.25"/>
-          <path d="M258 150 L258 85 L268 85 L268 150 Z" fill="#94a3b8" opacity="0.25"/>
-          <path d="M270 150 L270 115 L280 115 L280 150 Z" fill="#cbd5e1" opacity="0.2"/>
-          
-          <!-- Sailboat silhouette -->
-          <path d="M290 135 L297 135 L294 125 Z" fill="#0b8a43" opacity="0.4"/>
-          <path d="M288 135 L299 135 L296 137 L291 137 Z" fill="#0b8a43" opacity="0.5"/>
-
-          <!-- Lighthouse Base -->
-          <path d="M365 148 L415 148 L405 140 L375 140 Z" fill="#1e293b" opacity="0.15"/>
-          <rect x="370" y="138" width="38" height="12" rx="2" fill="#334155" opacity="0.8"/>
-          
-          <!-- Lighthouse Body -->
-          <path d="M378 138 L382 50 L396 50 L400 138 Z" fill="url(#lighthouse-body-grad)"/>
-          <path d="M378 138 L382 50 L385 50 L380 138 Z" fill="#fff" opacity="0.15"/> <!-- Highlight -->
-          
-          <!-- Lighthouse horizontal stripes -->
-          <path d="M379.8 98 L398.2 98 L397.6 112 L380.4 112 Z" fill="#fff" opacity="0.95"/>
-          <path d="M381.1 70 L396.9 70 L396.3 84 L381.7 84 Z" fill="#fff" opacity="0.95"/>
-          
-          <!-- Gallery / Top deck -->
-          <rect x="376" y="44" width="26" height="6" rx="1" fill="#1e293b"/>
-          
-          <!-- Glass room (Lantern room) -->
-          <rect x="382" y="32" width="14" height="12" fill="#fff" opacity="0.3"/>
-          <line x1="389" y1="32" x2="389" y2="44" stroke="#1e293b" stroke-width="1.5"/>
-          
-          <!-- Dome / Roof -->
-          <path d="M380 32 C380 20 398 20 398 32 Z" fill="#097a3b"/>
-          <circle cx="389" cy="20" r="2" fill="#097a3b"/>
-
-          <!-- Glowing Light Beam -->
-          <path d="M389 38 L180 80 L195 120 Z" fill="url(#light-beam-glow)"/>
-          
-          <!-- Dynamic Ocean waves (emerald gradient layers) -->
-          <path d="M0 132 Q60 120 120 132 T240 132 T360 132 T420 128 L420 180 L0 180 Z" fill="url(#wave-grad-1)"/>
-          <path d="M0 144 Q70 132 140 144 T280 144 T420 138 L420 180 L0 180 Z" fill="url(#wave-grad-2)"/>
-          <path d="M0 156 Q80 142 160 156 T320 156 T420 148 L420 180 L0 180 Z" fill="url(#wave-grad-3)"/>
-          
-          <!-- Wave highlights / foam peaks -->
-          <path d="M10 133 C40 125 70 125 100 133" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"/>
-          <path d="M130 145 C170 135 210 135 250 145" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.35"/>
-          <path d="M290 157 C330 147 370 147 410 157" stroke="#fff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.3"/>
+      <p class="greeting" id="greeting-text">Chào buổi sáng,</p>
+      <h1 class="user-name" id="user-name">Test App</h1>
+      <p class="subtitle" id="hero-summary">Chúc bạn một ngày làm việc hiệu quả!</p>
+      <div class="date-chip">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 15H5V9h14v10z"/>
         </svg>
+        <span id="today-date">Thứ Tư, 11/06/2026</span>
       </div>
     </div>
+
+    <!-- Cột phải: Slogan & Background artwork -->
+    <div class="hero-right"></div>
+  </div>
   </div>
 
   <!-- ══════════════════════════════════════
