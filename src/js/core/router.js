@@ -272,14 +272,42 @@ const Router = (() => {
         if ($header) {
           const $actions = $header.querySelector('.header-actions');
           if ($actions && !$actions.querySelector('.header-ai-btn')) {
-            const aiBtnHTML = `<button type="button" class="header-icon header-ai-btn" aria-label="Trợ lý AI" onclick="navigate('chatbot')">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="11" width="18" height="10" rx="2"/>
-                <circle cx="9" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-                <circle cx="15" cy="16" r="1.5" fill="currentColor" stroke="none"/>
-                <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
-                <line x1="12" y1="3" x2="12" y2="1"/>
-                <circle cx="12" cy="1" r="1" fill="currentColor" stroke="none"/>
+            const aiBtnHTML = `<button type="button" class="header-icon ai-chat-btn header-ai-btn" aria-label="Trợ lý AI" onclick="navigate('chatbot')">
+              <svg class="ai-robot" width="28" height="28" viewBox="0 0 48 48" fill="none">
+                <defs>
+                  <linearGradient id="hd-head-grad" x1="14" y1="12" x2="34" y2="36">
+                    <stop offset="0%" stop-color="#6366f1"></stop>
+                    <stop offset="100%" stop-color="#3c50e0"></stop>
+                  </linearGradient>
+                  <radialGradient id="hd-eye-glow" cx="50%" cy="40%" r="50%">
+                    <stop offset="0%" stop-color="#fff"></stop>
+                    <stop offset="100%" stop-color="#c7d2fe"></stop>
+                  </radialGradient>
+                </defs>
+                <line x1="24" y1="5" x2="24" y2="12" stroke="#6366f1" stroke-width="2" stroke-linecap="round"></line>
+                <circle cx="24" cy="4" r="3" fill="#818cf8">
+                  <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"></animate>
+                </circle>
+                <rect x="6" y="20" width="5" height="8" rx="2.5" fill="#6366f1" opacity="0.5"></rect>
+                <rect x="37" y="20" width="5" height="8" rx="2.5" fill="#6366f1" opacity="0.5"></rect>
+                <rect x="10" y="12" width="28" height="24" rx="7" fill="url(#hd-head-grad)"></rect>
+                <rect x="14" y="16" width="20" height="16" rx="5" fill="#eef2ff" opacity="0.95"></rect>
+                <ellipse cx="19.5" cy="23" rx="3" ry="3.2" fill="url(#hd-eye-glow)"></ellipse>
+                <circle cx="19.5" cy="23.5" r="1.8" fill="#3c50e0"></circle>
+                <circle cx="18.8" cy="22.5" r="0.7" fill="#fff"></circle>
+                <ellipse cx="28.5" cy="23" rx="3" ry="3.2" fill="url(#hd-eye-glow)"></ellipse>
+                <circle cx="28.5" cy="23.5" r="1.8" fill="#3c50e0"></circle>
+                <circle cx="27.8" cy="22.5" r="0.7" fill="#fff"></circle>
+                <circle cx="16" cy="27" r="2" fill="#f9a8d4" opacity="0.5"></circle>
+                <circle cx="32" cy="27" r="2" fill="#f9a8d4" opacity="0.5"></circle>
+                <path d="M21 29 Q24 32.5 27 29" stroke="#3c50e0" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
+                <g class="ai-hand" transform-origin="40 30">
+                  <path d="M38 28 Q42 22 44 18" stroke="#6366f1" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+                  <circle cx="44" cy="16" r="3.5" fill="#818cf8"></circle>
+                  <line x1="42" y1="14" x2="41" y2="11" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                  <line x1="44" y1="13" x2="44" y2="10" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                  <line x1="46" y1="14" x2="47" y2="11" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                </g>
               </svg>
             </button>`;
             $actions.insertAdjacentHTML('afterbegin', aiBtnHTML);
