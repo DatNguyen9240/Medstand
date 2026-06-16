@@ -71,6 +71,14 @@
   color: var(--color-primary);
 }
 
+.header-ai-btn {
+  color: var(--color-primary);
+}
+
+.header-ai-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
+}
+
 /* ── Dark Mode Toggle ── */
 .theme-toggle {
   width: 40px;

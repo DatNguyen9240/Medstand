@@ -266,34 +266,24 @@ const Router = (() => {
       const html = await _fetchTemplate(route.template);
       if ($content) $content.innerHTML = html;
       
-      // Dynamic injection of global AI Search Bar into .app-header (except on chatbot page itself)
+      // Dynamic injection of AI chatbot icon into .header-actions (except on chatbot page itself)
       if (path !== 'chatbot') {
         const $header = document.querySelector('.app-header');
-        if ($header && !$header.querySelector('.header-search-ai')) {
+        if ($header) {
           const $actions = $header.querySelector('.header-actions');
-          const searchHTML = `
-            <div class="header-search-ai">
-              <div class="search-ai-wrap">
-                <span class="search-ai-icon">✦</span>
-                <input type="text" class="ai-global-search" placeholder="Hỏi AI về doanh số, khách hàng, báo cáo..." autocomplete="off">
-              </div>
-            </div>
-          `;
-          if ($actions) {
-            $actions.insertAdjacentHTML('beforebegin', searchHTML);
-          } else {
-            $header.insertAdjacentHTML('beforeend', searchHTML);
+          if ($actions && !$actions.querySelector('.header-ai-btn')) {
+            const aiBtnHTML = `<button type="button" class="header-icon header-ai-btn" aria-label="Trợ lý AI" onclick="navigate('chatbot')">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2"/>
+                <circle cx="9" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+                <circle cx="15" cy="16" r="1.5" fill="currentColor" stroke="none"/>
+                <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                <line x1="12" y1="3" x2="12" y2="1"/>
+                <circle cx="12" cy="1" r="1" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>`;
+            $actions.insertAdjacentHTML('afterbegin', aiBtnHTML);
           }
-          
-          // Bind Enter key to trigger AI navigation
-          $header.querySelector('.ai-global-search').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-              const val = this.value.trim();
-              if (val) {
-                navigate('chatbot?q=' + encodeURIComponent(val));
-              }
-            }
-          });
         }
       }
     } catch (e) {
