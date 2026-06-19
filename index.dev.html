@@ -25,56 +25,7 @@
     }
   </script>
 
-  <!-- ── Security: DevTools Blocker (F12 Blocker) ── -->
-  <script>
-    (function () {
-      var isLocal = window.location.hostname === 'localhost' || 
-                    window.location.hostname === '127.0.0.1' || 
-                    window.location.hostname === '[::1]';
-      var isDevParam = window.location.search.indexOf('dev=true') > -1 || 
-                       window.location.search.indexOf('debug=true') > -1 ||
-                       window.location.hash.indexOf('dev=true') > -1 ||
-                       window.location.hash.indexOf('debug=true') > -1;
-      
-      if (isLocal || isDevParam) {
-        console.log('%c🛡️ MEDSTAND SECURITY: DevTools Blocker is BYPASSED (Local or Developer mode).', 'color: #00ff00; font-weight: bold; font-family: monospace;');
-        return;
-      }
 
-      // Disable Right Click
-      document.addEventListener('contextmenu', function (e) {
-        e.preventDefault();
-      });
-
-      // Disable Keyboard Shortcuts
-      document.addEventListener('keydown', function (e) {
-        // F12
-        if (e.keyCode === 123) {
-          e.preventDefault();
-          return false;
-        }
-        // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
-        if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
-          e.preventDefault();
-          return false;
-        }
-        // Ctrl+U (View Source)
-        if (e.ctrlKey && e.keyCode === 85) {
-          e.preventDefault();
-          return false;
-        }
-      });
-
-      // Debugger Loop (Debugger Trap)
-      setInterval(function () {
-        (function () {
-          return false;
-        }
-        .constructor('debugger')
-        .call());
-      }, 100);
-    })();
-  </script>
   <meta charset="UTF-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
