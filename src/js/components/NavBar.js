@@ -12,7 +12,16 @@ var THEME_ICONS = {
   moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
 };
 
-function getNavTabs(activeTab) {
+function getSidebarTabs(activeTab) {
+  return [
+    { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
+    { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: '#/routes' },
+    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: '#/orders' },
+    { id: 'account', label: 'Tài khoản', icon: NAV_ICONS.account, href: '#/account' }
+  ];
+}
+
+function getMobileTabs(activeTab) {
   return [
     { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
     { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: '#/routes' },
@@ -23,39 +32,96 @@ function getNavTabs(activeTab) {
 
 function renderSidebar(activeTab, base) {
   activeTab = activeTab || 'home';
-  base = base || '';
-  var tabs = getNavTabs(activeTab, base);
+  var tabs = getSidebarTabs(activeTab);
   var collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
-  return '<aside class="app-sidebar' + (collapsed ? ' collapsed' : '') + '" aria-label="Sidebar navigation">' +
-    '<button type="button" class="sidebar-toggle" aria-label="Thu gọn sidebar" onclick="toggleSidebar()">' +
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
-    '</button>' +
+  // Get current user info from localStorage
+  var user = {};
+  try {
+    user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+  } catch (e) {}
+  var displayName = user.DisplayName || user.UserName || 'Trình dược viên';
+  var avatarSrc = '';
+  if (user.Avatar) {
+    avatarSrc = user.Avatar.startsWith('data:') ? user.Avatar : 'data:image/jpeg;base64,' + user.Avatar;
+  } else {
+    avatarSrc = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(displayName) + '&background=0b8a43&color=fff';
+  }
+
+  var backdropHTML = '<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebarMobile()"></div>';
+
+  return backdropHTML +
+    '<aside class="app-sidebar' + (collapsed ? ' collapsed' : '') + '" aria-label="Sidebar navigation">' +
+    '<div class="sidebar-brand-wrapper">' +
+    '  <div class="sidebar-brand">' +
+    '    <img src="images/logo/medstand-logo.png" alt="Medstand Pharma" style="height: 36px; max-width: 175px; object-fit: contain; flex-shrink: 0;">' +
+    '  </div>' +
+    '  <button type="button" class="sidebar-toggle" aria-label="Thu gọn sidebar" onclick="toggleSidebar()">' +
+    '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
+    '  </button>' +
+    '</div>' +
     '<div class="sidebar-heading">MENU</div>' +
     '<nav class="sidebar-nav">' +
     tabs.map(function (t) {
-      return '<a href="' + t.href + '" class="sidebar-item ' + (t.id === activeTab ? 'active' : '') + '" data-tab="' + t.id + '" title="' + t.label + '">' +
+      // Map active states based on path/id
+      var isActive = (t.id === activeTab);
+      if (activeTab === 'customer-management' && t.id === 'customers') isActive = true;
+      if (activeTab === 'revenue' && t.id === 'reports') isActive = true;
+      if (activeTab === 'rag-admin' && t.id === 'library') isActive = true;
+      
+      return '<a href="' + t.href + '" class="sidebar-item ' + (isActive ? 'active' : '') + '" data-tab="' + t.id + '" title="' + t.label + '" onclick="if(window.innerWidth<768)closeSidebarMobile()">' +
         '<span class="sidebar-icon">' + t.icon + '</span>' +
         '<span class="sidebar-label">' + t.label + '</span>' +
         '</a>';
     }).join('') +
     '</nav>' +
+    '<div class="sidebar-footer">' +
+    '  <div class="sidebar-user">' +
+    '    <img src="' + avatarSrc + '" class="sidebar-user-avatar" alt="">' +
+    '    <div class="sidebar-user-info">' +
+    '      <div class="sidebar-user-name">' + displayName + '</div>' +
+    '      <div class="sidebar-user-role">Trình dược viên</div>' +
+    '    </div>' +
+    '  </div>' +
+    '  <button class="sidebar-logout-btn" onclick="AuthService.logout()">' +
+    '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+    '    <span>Đăng xuất</span>' +
+    '  </button>' +
+    '</div>' +
     '</aside>';
 }
 
 function toggleSidebar() {
   var $sidebar = $('.app-sidebar');
   if (!$sidebar.length) return;
-  $sidebar.toggleClass('collapsed');
-  var isCollapsed = $sidebar.hasClass('collapsed');
-  localStorage.setItem('sidebar-collapsed', isCollapsed);
 
-  // Update body class for header/main transitions
-  if (isCollapsed) {
-    $('body').addClass('sidebar-collapsed');
+  if (window.innerWidth < 768) {
+    // Mobile: slide-in drawer with backdrop
+    var isOpen = $sidebar.hasClass('open');
+    if (isOpen) {
+      closeSidebarMobile();
+    } else {
+      $sidebar.addClass('open');
+      $('#sidebar-backdrop').addClass('active');
+      document.body.style.overflow = 'hidden';
+    }
   } else {
-    $('body').removeClass('sidebar-collapsed');
+    // Desktop: collapse/expand icon-only mode
+    $sidebar.toggleClass('collapsed');
+    var isCollapsed = $sidebar.hasClass('collapsed');
+    localStorage.setItem('sidebar-collapsed', isCollapsed);
+    if (isCollapsed) {
+      $('body').addClass('sidebar-collapsed');
+    } else {
+      $('body').removeClass('sidebar-collapsed');
+    }
   }
+}
+
+function closeSidebarMobile() {
+  $('.app-sidebar').removeClass('open');
+  $('#sidebar-backdrop').removeClass('active');
+  document.body.style.overflow = '';
 }
 
 // Apply saved collapsed state on load
@@ -70,9 +136,13 @@ $(function () {
 
 function renderNavBar(activeTab, base) {
   activeTab = activeTab || 'home';
-  base = base || '';
-  var tabs = getNavTabs(activeTab, base);
+  var tabs = getMobileTabs(activeTab);
+  var menuBtnIcon = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
   return '<nav class="app-nav" aria-label="Bottom navigation">' +
+    '<button type="button" class="nav-item" onclick="toggleSidebar()" aria-label="Menu">' +
+    '<span class="nav-icon">' + menuBtnIcon + '</span>' +
+    '<span>Menu</span>' +
+    '</button>' +
     tabs.map(function (t) {
       return '<a href="' + t.href + '" class="nav-item ' + (t.id === activeTab ? 'active' : '') + '" data-tab="' + t.id + '">' +
         '<span class="nav-icon">' + t.icon + '</span>' +

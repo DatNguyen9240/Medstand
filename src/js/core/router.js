@@ -9,7 +9,7 @@ const Router = (() => {
     // See: login.html, register.html, forgot-password.html
 
     // Main app pages (need auth + nav)
-    { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: [], auth: true, nav: 'home', title: 'Trang chủ' },
+    { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: ['src/css/pages/home.css'], auth: true, nav: 'home', title: 'Trang chủ' },
     { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
     { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot.bundle.min.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
@@ -208,6 +208,37 @@ const Router = (() => {
     $el.style.transition = 'opacity 200ms ease';
   }
 
+  function _updateNotificationBadgeGlobal() {
+    const $badge = document.getElementById('notif-badge');
+    if (!$badge) return;
+    if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined') return;
+
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch (e) {}
+    const userName = user ? (user.UserName || user.Username || '') : '';
+    if (!userName) return;
+
+    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+      .then(res => {
+        const records = res?.records || res?.data || [];
+        if (Array.isArray(records)) {
+          let unreadCount = 0;
+          records.forEach(n => { if (!n.isView) unreadCount++; });
+          if (unreadCount > 0) {
+            $badge.textContent = unreadCount;
+            $badge.removeAttribute('hidden');
+            $badge.style.display = '';
+          } else {
+            $badge.setAttribute('hidden', '');
+            $badge.style.display = 'none';
+          }
+        }
+      })
+      .catch(err => console.warn('[Router] Failed to fetch notification count:', err));
+  }
+
   async function _handleRoute() {
     const { path, params } = _parseHash();
     const route = _findRoute(path);
@@ -265,6 +296,86 @@ const Router = (() => {
     try {
       const html = await _fetchTemplate(route.template);
       if ($content) $content.innerHTML = html;
+
+      const $header = document.querySelector('.app-header');
+      if ($header) {
+        // Dynamic header upgrade: if a template has #theme-toggle-container but lacks .header-actions,
+        // wrap it in a .header-actions container so it gains the notification bell and supports AI chatbot icon injection.
+        let $actions = $header.querySelector('.header-actions');
+        if (!$actions) {
+          const $oldThemeContainer = $header.querySelector('#theme-toggle-container');
+          if ($oldThemeContainer) {
+            const styleAttr = $oldThemeContainer.getAttribute('style') || '';
+            const isAbsolute = styleAttr.includes('absolute');
+            const wrapperStyle = isAbsolute 
+              ? 'position:absolute;right:16px;display:flex;align-items:center;gap:4px' 
+              : 'margin-left:auto;display:flex;align-items:center;gap:4px';
+            
+            const actionsHTML = `
+              <div class="header-actions" style="${wrapperStyle}">
+                <button type="button" class="header-icon header-notification" id="btn-notif" aria-label="Thông báo">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  <span class="notification-badge" id="notif-badge" hidden>0</span>
+                </button>
+                <span id="theme-toggle-container"></span>
+              </div>
+            `;
+            $oldThemeContainer.outerHTML = actionsHTML;
+          }
+        }
+      }
+      
+      // Dynamic injection of AI chatbot icon into .header-actions (except on chatbot page itself)
+      if (path !== 'chatbot') {
+        const $upgradedHeader = document.querySelector('.app-header');
+        if ($upgradedHeader) {
+          const $actions = $upgradedHeader.querySelector('.header-actions');
+          if ($actions && !$actions.querySelector('.header-ai-btn')) {
+            const aiBtnHTML = `<button type="button" class="header-icon ai-chat-btn header-ai-btn" aria-label="Trợ lý AI" onclick="navigate('chatbot')">
+              <svg class="ai-robot" width="28" height="28" viewBox="0 0 48 48" fill="none">
+                <defs>
+                  <linearGradient id="hd-head-grad" x1="14" y1="12" x2="34" y2="36">
+                    <stop offset="0%" stop-color="#6366f1"></stop>
+                    <stop offset="100%" stop-color="#3c50e0"></stop>
+                  </linearGradient>
+                  <radialGradient id="hd-eye-glow" cx="50%" cy="40%" r="50%">
+                    <stop offset="0%" stop-color="#fff"></stop>
+                    <stop offset="100%" stop-color="#c7d2fe"></stop>
+                  </radialGradient>
+                </defs>
+                <line x1="24" y1="5" x2="24" y2="12" stroke="#6366f1" stroke-width="2" stroke-linecap="round"></line>
+                <circle cx="24" cy="4" r="3" fill="#818cf8">
+                  <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"></animate>
+                </circle>
+                <rect x="6" y="20" width="5" height="8" rx="2.5" fill="#6366f1" opacity="0.5"></rect>
+                <rect x="37" y="20" width="5" height="8" rx="2.5" fill="#6366f1" opacity="0.5"></rect>
+                <rect x="10" y="12" width="28" height="24" rx="7" fill="url(#hd-head-grad)"></rect>
+                <rect x="14" y="16" width="20" height="16" rx="5" fill="#eef2ff" opacity="0.95"></rect>
+                <ellipse cx="19.5" cy="23" rx="3" ry="3.2" fill="url(#hd-eye-glow)"></ellipse>
+                <circle cx="19.5" cy="23.5" r="1.8" fill="#3c50e0"></circle>
+                <circle cx="18.8" cy="22.5" r="0.7" fill="#fff"></circle>
+                <ellipse cx="28.5" cy="23" rx="3" ry="3.2" fill="url(#hd-eye-glow)"></ellipse>
+                <circle cx="28.5" cy="23.5" r="1.8" fill="#3c50e0"></circle>
+                <circle cx="27.8" cy="22.5" r="0.7" fill="#fff"></circle>
+                <circle cx="16" cy="27" r="2" fill="#f9a8d4" opacity="0.5"></circle>
+                <circle cx="32" cy="27" r="2" fill="#f9a8d4" opacity="0.5"></circle>
+                <path d="M21 29 Q24 32.5 27 29" stroke="#3c50e0" stroke-width="1.5" fill="none" stroke-linecap="round"></path>
+                <g class="ai-hand" transform-origin="40 30">
+                  <path d="M38 28 Q42 22 44 18" stroke="#6366f1" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+                  <circle cx="44" cy="16" r="3.5" fill="#818cf8"></circle>
+                  <line x1="42" y1="14" x2="41" y2="11" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                  <line x1="44" y1="13" x2="44" y2="10" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                  <line x1="46" y1="14" x2="47" y2="11" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round"></line>
+                </g>
+              </svg>
+            </button>`;
+            $actions.insertAdjacentHTML('afterbegin', aiBtnHTML);
+          }
+        }
+      }
     } catch (e) {
       console.error('[Router] Template load error:', e);
       _hideSpinner($content);
@@ -325,6 +436,9 @@ const Router = (() => {
     // Hide spinner & fade in
     _hideSpinner($content);
     if ($content) _fadeIn($content);
+
+    // Sync notification badge count dynamically
+    _updateNotificationBadgeGlobal();
 
     // Focus management (a11y) — move focus to main content
     if ($content) {
@@ -391,6 +505,15 @@ const Router = (() => {
         }
       });
     }
+
+    // ── Global: click on notification bell → navigate ──
+    document.addEventListener('click', function (e) {
+      var $btn = e.target.closest('#btn-notif');
+      if ($btn) {
+        e.preventDefault();
+        navigate('notifications');
+      }
+    });
 
     // Listen for hash changes (wrap async in error handler)
     window.addEventListener('hashchange', function () {

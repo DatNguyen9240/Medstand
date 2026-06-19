@@ -11,7 +11,7 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  z-index: 100;
+  z-index: 301;
   gap: var(--spacing-md);
 }
 
@@ -69,6 +69,14 @@
 .header-icon:hover {
   background: var(--color-background);
   color: var(--color-primary);
+}
+
+.header-ai-btn {
+  color: var(--color-primary);
+}
+
+.header-ai-btn:hover {
+  background: rgba(var(--color-primary-rgb), 0.08);
 }
 
 /* ── Dark Mode Toggle ── */

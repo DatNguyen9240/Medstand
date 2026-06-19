@@ -4783,21 +4783,21 @@
 
 
 
-    $btnClear.addEventListener('click', function () {
-        if (!chatHistory.length) return;
-        chatHistory = [];
-        _clearCache();
-        var uname = _user();
-        var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
-        sessionStorage.removeItem(key); // Clear backend memory too
-        $messages.innerHTML = '';
-        $welcome.style.display = '';
-
-        _clearFiles();
-
-        _mentionHide();
-
-    });
+    if ($btnClear) {
+        $btnClear.addEventListener('click', function () {
+            if (!chatHistory.length) return;
+            if (!confirm('Sếp có chắc chắn muốn xóa sạch toàn bộ lịch sử trò chuyện này không?')) return;
+            chatHistory = [];
+            _clearCache();
+            var uname = _user();
+            var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+            sessionStorage.removeItem(key);
+            $messages.innerHTML = '';
+            $welcome.style.display = '';
+            _clearFiles();
+            _mentionHide();
+        });
+    }
 
     if ($btnTheme) {
         var moon = document.getElementById('chatbot-icon-moon');
@@ -5075,6 +5075,23 @@
         chatHistory = loadedHistory || [];
         _renderHistory();
         _updateChipsVisibility();
+        
+        // Auto-run search query parameter 'q' if passed
+        var q = window._routeParams && window._routeParams.q;
+        if (!q) {
+            var hash = location.hash || '';
+            var qMatch = hash.match(/[?&]q=([^&]*)/);
+            if (qMatch) q = decodeURIComponent(qMatch[1]);
+        }
+        if (q) {
+            if (window._routeParams) delete window._routeParams.q;
+            var cleanHash = location.hash.split('?')[0];
+            history.replaceState(null, null, cleanHash);
+            
+            $input.value = q;
+            _updateSendBtn();
+            _send();
+        }
     });
 
     // _initSuggestionBar(); // ã ẩn thanh gợi ý the user

@@ -252,7 +252,7 @@ var _dec = function(b64) {
     // Thay thế các thẻ CSS bằng 1 thẻ duy nhất
     cssTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<link rel="stylesheet" href="src/css/dist/app.bundle.min.css">');
+            prodHtmlContent = prodHtmlContent.replace(tag, '<link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=9.8">');
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
@@ -261,7 +261,7 @@ var _dec = function(b64) {
     // Thay thế các thẻ JS bằng 1 thẻ duy nhất
     scriptTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<script src="src/js/dist/app.bundle.min.js"></script>');
+            prodHtmlContent = prodHtmlContent.replace(tag, '<script src="src/js/dist/app.bundle.min.js?v=9.8"></script>');
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }

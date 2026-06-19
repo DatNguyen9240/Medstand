@@ -1,94 +1,297 @@
-<!-- Home Template -->
+<!-- Home Template — Medstand Operational Dashboard v3 -->
 <header class="app-header">
-    <img src="https://ui-avatars.com/api/?name=User&background=e2e8f0&color=64748b" alt="" class="header-avatar" width="40"
-        height="40">
-    <div class="header-info">
-        <p class="header-greeting">Xin chào</p>
-        <p class="header-username">Tài khoản test app</p>
-    </div>
-    <div class="header-actions">
-        <span id="theme-toggle-container"></span>
-        <span id="ai-chat-btn-container"></span>
-        <div class="header-notification">
-            <button type="button" class="header-icon" aria-label="Thông báo" id="btn-notif">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                </svg>
-                <span class="notification-badge" id="notif-badge" hidden>0</span>
-            </button>
-        </div>
-    </div>
+  <span class="header-home-title" style="color:var(--color-primary);font-weight:600;font-size:var(--font-size-md)">Trang chủ</span>
+  <!-- AI search bar will be injected here by router -->
+  <div class="header-actions" style="margin-left:auto">
+    <button type="button" class="header-icon header-notification" id="btn-notif" aria-label="Thông báo">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+      </svg>
+      <span class="notification-badge" id="notif-badge" hidden>0</span>
+    </button>
+    <span id="theme-toggle-container"></span>
+  </div>
 </header>
+<div class="app-content" id="home-page">
 
-<div class="app-content">
-    <div class="top-row">
-        <div id="stats-container">
-            <div class="stats-row" id="stats-skeleton" aria-busy="true">
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-                <div class="stat-card skeleton">
-                    <div class="skeleton-text"></div>
-                    <div class="skeleton-text" style="width:50%"></div>
-                </div>
-            </div>
-            <div class="stats-row" id="stats-content" hidden aria-busy="false"></div>
-        </div>
+  <!-- ══════════════════════════════════════
+       HERO BANNER — full-width, no header
+       ══════════════════════════════════════ -->
+  <div class="hero-banner">
 
-        <div class="revenue-section">
-            <div class="revenue-top-row">
-                <p class="revenue-title">Doanh số tháng</p>
-                <p class="revenue-value" id="revenue-value" hidden>—</p>
-                <div class="skeleton skeleton-text" id="revenue-skeleton"
-                    style="width:140px;height:28px;border-radius:6px"></div>
-            </div>
-            <div class="revenue-date-row" id="revenue-date-container">
-                <!-- Rendered by Input.renderDate in home.js -->
-            </div>
-        </div>
+    <!-- Cột trái: Lời chào -->
+    <div class="hero-left">
+      <p class="greeting" id="greeting-text">Chào buổi sáng,</p>
+      <h1 class="user-name" id="user-name">Test App</h1>
+      <p class="subtitle" id="hero-summary">Chúc bạn một ngày làm việc hiệu quả!</p>
+      <div class="date-chip">
+        <svg width="18" height="18" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 15H5V9h14v10z"/>
+        </svg>
+        <span id="today-date">Thứ Tư, 11/06/2026</span>
+      </div>
     </div>
 
-    <div class="chart-section">
-        <div class="chart-header">
-            <div class="chart-header-left">
-                <h3 class="chart-title">Biểu đồ doanh số</h3>
-                <p class="chart-subtitle">Theo ngày trong kỳ</p>
+    <!-- Cột phải: Background artwork (banner-sea.jpg shows through from parent) -->
+    <div class="hero-right">
+      <img class="hero-sea-img" src="/images/banner-sea.jpg" alt="" aria-hidden="true">
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       KPI CARDS — 4 card ngang
+       ══════════════════════════════════════ -->
+  <div class="home-kpi-grid">
+
+    <!-- Card 1: Đơn hàng -->
+    <div class="kpi-card" id="kpi-orders">
+      <div class="kpi-header">
+        <span class="kpi-label">ĐƠN HÀNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-orders-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-orders-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-orders-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 2: Khách hàng giao dịch -->
+    <div class="kpi-card" id="kpi-customers">
+      <div class="kpi-header">
+        <span class="kpi-label">KHÁCH HÀNG GIAO DỊCH</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-customers-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-customers-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-customers-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 3: Độ phủ ngành hàng -->
+    <div class="kpi-card" id="kpi-coverage">
+      <div class="kpi-header">
+        <span class="kpi-label">ĐỘ PHỦ NGÀNH HÀNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value" id="kpi-coverage-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-coverage-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-coverage-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+    <!-- Card 4: Doanh số tháng -->
+    <div class="kpi-card" id="kpi-revenue">
+      <div class="kpi-header">
+        <span class="kpi-label">DOANH SỐ THÁNG</span>
+        <span class="kpi-icon" aria-hidden="true">✦</span>
+      </div>
+      <div class="kpi-value kpi-value-green" id="kpi-revenue-value">--</div>
+      <div class="kpi-meta">
+        <span class="kpi-delta positive" id="kpi-revenue-delta"></span>
+      </div>
+      <div class="kpi-progress-wrap">
+        <div class="kpi-progress-bar">
+          <div class="kpi-progress-fill" id="kpi-revenue-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="kpi-underline"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       ANALYTICS ROW — Chart (2/3) + Sinh nhật (1/3)
+       ══════════════════════════════════════ -->
+  <div class="home-analytics-row">
+
+    <!-- Chart card -->
+    <div class="home-analytics-card">
+      <div class="analytics-header">
+        <div class="analytics-title">
+          <h2>Biểu đồ doanh số</h2>
+          <p class="analytics-subtitle">Theo ngày trong kỳ</p>
+        </div>
+        <div class="analytics-actions-wrap">
+          <div class="analytics-tabs">
+            <button type="button" class="tab-btn active" data-tab="day">Ngày</button>
+            <button type="button" class="tab-btn" data-tab="week">Tuần</button>
+            <button type="button" class="tab-btn" data-tab="month">Tháng</button>
+            <button type="button" class="tab-btn" data-tab="quarter">Quý</button>
+          </div>
+          <div id="revenue-date-container" class="date-filter-group">
+            <!-- Inject date inputs from home.js -->
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrapper">
+        <canvas id="revenue-chart"></canvas>
+      </div>
+
+      <!-- Quick Stats Bar -->
+      <div class="quick-stats-bar">
+        <div class="qs-item">
+          <span class="qs-label">Doanh số cao nhất</span>
+          <div class="qs-value-wrap">
+            <span class="qs-value" id="qs-max-value">--</span>
+            <span class="qs-date" id="qs-max-date">(--)</span>
+          </div>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Doanh số thấp nhất</span>
+          <div class="qs-value-wrap">
+            <span class="qs-value" id="qs-min-value">--</span>
+            <span class="qs-date" id="qs-min-date">(--)</span>
+          </div>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Doanh số trung bình</span>
+          <span class="qs-value" id="qs-avg-value">--</span>
+        </div>
+        <div class="qs-item">
+          <span class="qs-label">Tổng doanh số</span>
+          <span class="qs-value qs-total" id="qs-total-value">--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sinh nhật sidebar — wrapper giữ col height, widget absolute fill vào -->
+    <div class="birthday-col">
+    <div class="widget-card widget-birthdays">
+      <div class="widget-header">
+        <span class="widget-icon" aria-hidden="true">🎂</span>
+        <h3>Sinh nhật hôm nay</h3>
+        <span class="widget-badge" id="birthday-count">0</span>
+      </div>
+      <div id="birthdays-container">
+        <ul class="birthday-list" id="birthdays-skeleton">
+          <li class="birthday-item-skeleton">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="skeleton-info">
+              <div class="skeleton skeleton-text" style="width:65%"></div>
+              <div class="skeleton skeleton-text" style="width:45%"></div>
             </div>
-        </div>
-        <div id="chart-skeleton" class="skeleton skeleton-chart"></div>
-        <div class="chart-wrapper">
-            <canvas id="revenue-chart" style="display:none"></canvas>
-        </div>
-    </div>
-
-    <div class="section-header">
-        <span class="section-line"></span>
-        <h3 class="section-title">Sinh nhật</h3>
-        <span class="section-badge" id="birthday-count" hidden>🎁 0</span>
-    </div>
-
-    <div id="birthdays-container">
-        <ul class="list" id="birthdays-skeleton">
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
-            <li class="skeleton-list-item">
-                <div class="skeleton skeleton-avatar"></div>
-                <div class="skeleton" style="flex:1;height:2em"></div>
-            </li>
+          </li>
+          <li class="birthday-item-skeleton">
+            <div class="skeleton skeleton-avatar"></div>
+            <div class="skeleton-info">
+              <div class="skeleton skeleton-text" style="width:55%"></div>
+              <div class="skeleton skeleton-text" style="width:40%"></div>
+            </div>
+          </li>
         </ul>
-        <ul class="list" id="birthdays-list" hidden></ul>
+        <ul class="birthday-list" id="birthdays-list" style="display:none"></ul>
+      </div>
+      <a href="#/customer-management" class="widget-see-all">Xem tất cả <span>›</span></a>
     </div>
+    </div><!-- /.birthday-col -->
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       CÔNG VIỆC HÔM NAY — 4 cột ngang
+       ══════════════════════════════════════ -->
+  <div class="widget-card widget-tasks">
+    <div class="widget-header">
+      <h3>Khách cần ghé hôm nay</h3>
+    </div>
+    <div class="tasks-grid" id="tasks-grid">
+      <!-- Inject bởi home.js -->
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       BOTTOM GRID — 2 cột widget phụ
+       ══════════════════════════════════════ -->
+  <div class="home-bottom-grid">
+
+    <!-- Cột trái: Quick Actions -->
+    <div class="home-col-left">
+      <div class="widget-card widget-quick-actions">
+        <div class="widget-header">
+          <h3>Thao tác nhanh</h3>
+        </div>
+        <div class="quick-actions-grid">
+          <a href="#/create-order" class="qa-btn qa-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Tạo đơn hàng
+          </a>
+          <a href="#/customer-management" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Khách hàng mới
+          </a>
+          <a href="#/revenue" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            Xem báo cáo
+          </a>
+          <a href="#/order-report" class="qa-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            Báo cáo đơn hàng
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cột phải: Tiến độ chỉ tiêu tháng -->
+    <div class="home-col-right">
+      <div class="widget-card widget-target-progress">
+        <div class="widget-header">
+          <h3>Tiến độ chỉ tiêu</h3>
+        </div>
+        <div class="target-progress-wrap">
+          <div class="target-donut-wrap">
+            <canvas id="target-donut-chart"></canvas>
+            <div class="target-donut-center">
+              <span class="target-donut-pct" id="target-pct">--</span>
+              <span class="target-donut-label">đạt KH</span>
+            </div>
+          </div>
+          <div class="target-metrics">
+            <div class="target-metric-item">
+              <div class="target-metric-header">
+                <span class="target-metric-name">Doanh số</span>
+                <span class="target-metric-pct" id="target-revenue-pct">--%</span>
+              </div>
+              <div class="target-metric-bar">
+                <div class="target-metric-fill tm-revenue" id="target-revenue-fill" style="width:0%"></div>
+              </div>
+              <span class="target-metric-sub" id="target-revenue-sub">-- / --</span>
+            </div>
+            <div class="target-metric-item">
+              <div class="target-metric-header">
+                <span class="target-metric-name">Khách GD</span>
+                <span class="target-metric-pct" id="target-customers-pct">--%</span>
+              </div>
+              <div class="target-metric-bar">
+                <div class="target-metric-fill tm-customers" id="target-customers-fill" style="width:0%"></div>
+              </div>
+              <span class="target-metric-sub" id="target-customers-sub">-- / --</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
 </div>

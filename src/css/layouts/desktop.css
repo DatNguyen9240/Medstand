@@ -7,7 +7,7 @@
   }
 
   .app-sidebar {
-    display: block !important;
+    display: flex !important;
   }
 
   .app-nav {
