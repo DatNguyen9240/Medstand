@@ -874,46 +874,6 @@
 
     }
 
-    if ($btnClear) {
-        $btnClear.addEventListener('click', function () {
-            if (confirm('Sếp có chắc chắn muốn xóa sạch toàn bộ lịch sử trò chuyện này không?')) {
-                _clearCache();
-                var uname = _user();
-                var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
-                sessionStorage.removeItem(key); // Xóa session ngầm
-                chatHistory = [];
-                _renderHistory();
-            }
-        });
-    }
-
-    if ($btnTheme) {
-        $btnTheme.addEventListener('click', function () {
-            try {
-                var currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-                var isDark = currentTheme === 'dark';
-                var nextTheme = isDark ? 'light' : 'dark';
-                
-                document.documentElement.setAttribute('data-theme', nextTheme);
-                document.body.classList.toggle('dark-theme', !isDark);
-                document.body.classList.toggle('dark', !isDark);
-                if ($container) $container.classList.toggle('dark-theme', !isDark);
-                localStorage.setItem('ai_chat_theme', nextTheme);
-
-                var moonIcon = document.getElementById('chatbot-icon-moon');
-                var sunIcon = document.getElementById('chatbot-icon-sun');
-                if (moonIcon && sunIcon) {
-                    if (isDark) {
-                        moonIcon.style.display = '';
-                        sunIcon.style.display = 'none';
-                    } else {
-                        moonIcon.style.display = 'none';
-                        sunIcon.style.display = '';
-                    }
-                }
-            } catch(e) {}
-        });
-    }
 
     $btnAttach.addEventListener('click', function () { $fileInput.click(); });
 
@@ -4758,21 +4718,21 @@
 
 
 
-    $btnClear.addEventListener('click', function () {
-        if (!chatHistory.length) return;
-        chatHistory = [];
-        _clearCache();
-        var uname = _user();
-        var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
-        sessionStorage.removeItem(key); // Clear backend memory too
-        $messages.innerHTML = '';
-        $welcome.style.display = '';
-
-        _clearFiles();
-
-        _mentionHide();
-
-    });
+    if ($btnClear) {
+        $btnClear.addEventListener('click', function () {
+            if (!chatHistory.length) return;
+            if (!confirm('Sếp có chắc chắn muốn xóa sạch toàn bộ lịch sử trò chuyện này không?')) return;
+            chatHistory = [];
+            _clearCache();
+            var uname = _user();
+            var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+            sessionStorage.removeItem(key);
+            $messages.innerHTML = '';
+            $welcome.style.display = '';
+            _clearFiles();
+            _mentionHide();
+        });
+    }
 
     if ($btnTheme) {
         var moon = document.getElementById('chatbot-icon-moon');

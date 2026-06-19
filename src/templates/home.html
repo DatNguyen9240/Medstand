@@ -133,9 +133,10 @@
         </div>
         <div class="analytics-actions-wrap">
           <div class="analytics-tabs">
-            <button type="button" class="tab-btn active" data-tab="day">Theo ngày</button>
-            <button type="button" class="tab-btn" data-tab="week">Theo tuần</button>
-            <button type="button" class="tab-btn tab-more">•••</button>
+            <button type="button" class="tab-btn active" data-tab="day">Ngày</button>
+            <button type="button" class="tab-btn" data-tab="week">Tuần</button>
+            <button type="button" class="tab-btn" data-tab="month">Tháng</button>
+            <button type="button" class="tab-btn" data-tab="quarter">Quý</button>
           </div>
           <div id="revenue-date-container" class="date-filter-group">
             <!-- Inject date inputs from home.js -->
@@ -251,21 +252,42 @@
       </div>
     </div>
 
-    <!-- Cột phải: Biểu đồ độ phủ khu vực (donut) -->
+    <!-- Cột phải: Tiến độ chỉ tiêu tháng -->
     <div class="home-col-right">
-      <div class="widget-card widget-coverage-chart">
+      <div class="widget-card widget-target-progress">
         <div class="widget-header">
-          <h3>Độ phủ khu vực</h3>
+          <h3>Tiến độ chỉ tiêu</h3>
         </div>
-        <div class="coverage-chart-wrap">
-          <div class="coverage-donut-wrap">
-            <canvas id="coverage-chart"></canvas>
-            <div class="coverage-donut-center">
-              <span class="coverage-donut-avg" id="coverage-avg">--</span>
-              <span class="coverage-donut-label">Trung bình</span>
+        <div class="target-progress-wrap">
+          <div class="target-donut-wrap">
+            <canvas id="target-donut-chart"></canvas>
+            <div class="target-donut-center">
+              <span class="target-donut-pct" id="target-pct">--</span>
+              <span class="target-donut-label">đạt KH</span>
             </div>
           </div>
-          <ul class="coverage-legend" id="coverage-legend"></ul>
+          <div class="target-metrics">
+            <div class="target-metric-item">
+              <div class="target-metric-header">
+                <span class="target-metric-name">Doanh số</span>
+                <span class="target-metric-pct" id="target-revenue-pct">--%</span>
+              </div>
+              <div class="target-metric-bar">
+                <div class="target-metric-fill tm-revenue" id="target-revenue-fill" style="width:0%"></div>
+              </div>
+              <span class="target-metric-sub" id="target-revenue-sub">-- / --</span>
+            </div>
+            <div class="target-metric-item">
+              <div class="target-metric-header">
+                <span class="target-metric-name">Khách GD</span>
+                <span class="target-metric-pct" id="target-customers-pct">--%</span>
+              </div>
+              <div class="target-metric-bar">
+                <div class="target-metric-fill tm-customers" id="target-customers-fill" style="width:0%"></div>
+              </div>
+              <span class="target-metric-sub" id="target-customers-sub">-- / --</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -65,10 +65,13 @@ function initDashboard() {
 
 
 
-  // ── Default targets ──
-  var TARGET_ORDERS = 150;
-  var TARGET_CUSTOMERS = 400;
-  var TARGET_REVENUE = 1000000000; // 1 Tỷ
+  // ── Shared state cho widget tiến độ (targets lấy từ API_KeHoachBanHang) ──
+  var _progress = {
+    revenue: 0,      orders: 0,       customers: 0,
+    revenueTarget: 0, customersTarget: 0,
+    planRevenuePct: -1,   // -1 = chưa load xong
+    planCustPct:    -1
+  };
 
   // ── Default dates: đầu tháng → hôm nay ──
   var now = new Date();
@@ -159,7 +162,8 @@ function initDashboard() {
       loadChartAndRevenue(fromDate, toDate),
       loadBirthdays(fromDate, toDate),
       loadNotificationCount(),
-      loadTodayRoutes()
+      loadTodayRoutes(),
+      loadSalesPlan(fromDate, toDate)
     ]).finally(function() {
       setLoadingState(false);
     });
@@ -170,24 +174,34 @@ function initDashboard() {
   if (elTo) elTo.addEventListener('change', loadAll);
 
   // ── Khi thay đổi tab biểu đồ ──
-  $('.analytics-tabs').on('click', '.tab-btn', function (e) {
+  $('.analytics-tabs').on('click', '.tab-btn', function () {
     var $btn = $(this);
-    if ($btn.hasClass('tab-more')) {
-      return;
-    }
     if ($btn.hasClass('active')) return;
 
     $('.analytics-tabs .tab-btn').removeClass('active');
     $btn.addClass('active');
     
     currentTab = $btn.attr('data-tab') || 'day';
-    
-    if (currentTab === 'week') {
-      $('.analytics-subtitle').text('Theo tuần trong kỳ');
-    } else {
-      $('.analytics-subtitle').text('Theo ngày trong kỳ');
+
+    var subtitleMap = {
+      day: 'Theo ngày trong kỳ',
+      week: 'Theo tuần trong kỳ',
+      month: 'Theo tháng trong năm',
+      quarter: 'Theo quý trong năm'
+    };
+    $('.analytics-subtitle').text(subtitleMap[currentTab] || 'Theo ngày trong kỳ');
+
+    // Tự động mở rộng khoảng ngày khi xem theo tháng/quý
+    if ((currentTab === 'month' || currentTab === 'quarter') && elFrom && elTo) {
+      var nowD = new Date();
+      var yearFrom = nowD.getFullYear() + '-01-01';
+      var yearTo = nowD.getFullYear() + '-'
+        + String(nowD.getMonth() + 1).padStart(2, '0') + '-'
+        + String(nowD.getDate()).padStart(2, '0');
+      if (elFrom.value !== yearFrom) elFrom.value = yearFrom;
+      if (elTo.value !== yearTo) elTo.value = yearTo;
     }
-    
+
     loadChartAndRevenue(getFromDate(), getToDate());
   });
 
@@ -210,26 +224,24 @@ function initDashboard() {
         // 1. Đơn hàng
         var ordersStr = (record['DonHang'] || '').toString().replace(/,/g, '');
         var orders = parseInt(ordersStr) || 0;
-        if (orders === 0) orders = 125; // fallback demo
+        _progress.orders = orders;
         $('#kpi-orders-value').text(orders.toLocaleString('vi-VN'));
-        $('#kpi-orders-delta').text('↑ 12% so với tháng trước').addClass('positive');
-        $('#kpi-orders-bar').css('width', Math.min((orders / TARGET_ORDERS) * 100, 100) + '%');
+        // Bar cập nhật sau khi loadSalesPlan xong (trong renderTargetProgress)
 
         // 2. Khách hàng
         var customersStr = (record['KhachHangGD'] || '').toString();
         var customers = 0;
-        var totalCustomers = TARGET_CUSTOMERS;
+        var totalCustomersDB = 1;
         if (customersStr.indexOf('/') !== -1) {
           var parts = customersStr.split('/');
           customers = parseInt(parts[0].trim().replace(/,/g, '')) || 0;
-          totalCustomers = parseInt(parts[1].trim().replace(/,/g, '')) || TARGET_CUSTOMERS;
+          totalCustomersDB = parseInt(parts[1].trim().replace(/,/g, '')) || 1;
         } else {
           customers = parseInt(customersStr.replace(/,/g, '')) || 0;
         }
-        if (customers === 0) customers = 352; // fallback demo
+        _progress.customers = customers;
         $('#kpi-customers-value').text(customers.toLocaleString('vi-VN'));
-        $('#kpi-customers-delta').text('↑ 8% so với tháng trước').addClass('positive');
-        $('#kpi-customers-bar').css('width', Math.min((customers / totalCustomers) * 100, 100) + '%');
+        $('#kpi-customers-bar').css('width', Math.min((customers / Math.max(totalCustomersDB, 1)) * 100, 100) + '%');
 
         // 3. Độ phủ
         var coverageStr = (record['TyLe'] || '').toString();
@@ -242,12 +254,10 @@ function initDashboard() {
         } else {
           coverageVal = parseFloat(coverageStr.replace('%', '')) || 0;
         }
-        if (coverageVal === 0) coverageVal = 68; // fallback demo
         $('#kpi-coverage-value').text(coverageVal + '%');
-        $('#kpi-coverage-delta').text('↑ 5% so với tháng trước').addClass('positive');
         $('#kpi-coverage-bar').css('width', Math.min(coverageVal, 100) + '%');
 
-        // Cập nhật hero summary
+        renderTargetProgress();
         updateHeroSummary();
       })
       .catch(function (err) {
@@ -259,6 +269,47 @@ function initDashboard() {
         $('#kpi-customers-bar').css('width', '0%');
         $('#kpi-coverage-bar').css('width', '0%');
       });
+  }
+
+  // ── Kế hoạch bán hàng → lấy chỉ tiêu thực tế ──
+  function loadSalesPlan(fromDate, toDate) {
+    return Http.get(API_CONFIG.ENDPOINTS.SALES.PLAN, {
+      q: JSON.stringify({ FromDate: fromDate, ToDate: toDate })
+    }).then(function (res) {
+      var data = res.data || res;
+      var records = data.records || [];
+      if (!records.length) return;
+
+      // Lấy % đã tính sẵn từ BE (PhanTramThucHienDS, PhanTramDoPhuKH)
+      // Nếu nhiều records (manager): tính trung bình có trọng số theo DoanhSoKeHoach
+      var totalRevTarget = 0, totalCustTarget = 0;
+      var weightedRevPct = 0, weightedCustPct = 0;
+      records.forEach(function (r) {
+        var rt  = parseFloat(r.DoanhSoKeHoach) || 0;
+        var ct  = parseInt(r.DoPhuKhachHang)   || 0;
+        var rp  = parseFloat(r.PhanTramThucHienDS) || 0;
+        var cp  = parseFloat(r.PhanTramDoPhuKH)    || 0;
+        totalRevTarget  += rt;
+        totalCustTarget += ct;
+        weightedRevPct  += rp * (rt || 1);
+        weightedCustPct += cp * (ct || 1);
+      });
+
+      _progress.planRevenuePct = totalRevTarget > 0
+        ? Math.min(Math.round(weightedRevPct / totalRevTarget), 999)
+        : Math.min(Math.round(weightedRevPct / records.length), 999);
+
+      _progress.planCustPct = totalCustTarget > 0
+        ? Math.min(Math.round(weightedCustPct / totalCustTarget), 999)
+        : Math.min(Math.round(weightedCustPct / records.length), 999);
+
+      if (totalRevTarget  > 0) _progress.revenueTarget   = totalRevTarget;
+      if (totalCustTarget > 0) _progress.customersTarget  = totalCustTarget;
+
+      renderTargetProgress();
+    }).catch(function () {
+      // Giữ nguyên fallback mặc định
+    });
   }
 
   // ── Chart & Revenue ──
@@ -275,28 +326,13 @@ function initDashboard() {
         var startD = new Date(fromDate);
         var endD = new Date(toDate);
 
-        // Fallback demo data khi API trả về rỗng
-        if (total === 0 && records.length === 0) {
-          var demoLabels = ['01/06','02/06','03/06','04/06','05/06','06/06','07/06','08/06','09/06','10/06','11/06'];
-          var demoValues = [520000000, 680000000, 750000000, 890000000, 1105000000, 960000000, 820000000, 320000000, 670000000, 950000000, 881000000];
-          total = demoValues.reduce(function(s, v) { return s + v; }, 0);
-          $('#kpi-revenue-value')
-            .attr('title', Number(total).toLocaleString('vi-VN') + ' đ')
-            .text(formatRevenue(total));
-          $('#kpi-revenue-delta').text('↑ 15% so với tháng trước').addClass('positive');
-          $('#kpi-revenue-bar').css('width', Math.min((total / TARGET_REVENUE) * 100, 100) + '%');
-          
-          demoLabels.forEach(function (lbl, idx) {
-            dayValues[lbl] = demoValues[idx];
-          });
-        } else {
-          $('#kpi-revenue-value')
-            .attr('title', Number(total).toLocaleString('vi-VN') + ' đ')
-            .text(formatRevenue(total));
-          $('#kpi-revenue-delta').text('↑ 15% so với tháng trước').addClass('positive');
-          $('#kpi-revenue-target').text('Mục tiêu: ' + formatRevenue(TARGET_REVENUE));
-          $('#kpi-revenue-bar').css('width', Math.min((total / TARGET_REVENUE) * 100, 100) + '%');
+        _progress.revenue = total;
+        $('#kpi-revenue-value')
+          .attr('title', Number(total).toLocaleString('vi-VN') + ' đ')
+          .text(formatRevenue(total));
+        // Bar cập nhật sau khi loadSalesPlan xong (trong renderTargetProgress)
 
+        if (records.length > 0) {
           // 2. Tạo mảng liên tục các ngày từ fromDate đến toDate với giá trị 0
           if (!isNaN(startD) && !isNaN(endD) && startD <= endD) {
             for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
@@ -373,34 +409,22 @@ function initDashboard() {
 
         if (currentTab === 'week') {
           var weekValues = {};
-          
-          // Pre-populate week intervals from fromDate to toDate to maintain order and show 0s
+
           if (!isNaN(startD) && !isNaN(endD) && startD <= endD) {
             for (var d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
               var wLabel = getWeekRangeLabel(d);
               weekValues[wLabel] = 0;
             }
-          } else {
-            // Fallback for demo
-            var d1 = new Date(2026, 5, 1);
-            var d2 = new Date(2026, 5, 11);
-            for (var d = new Date(d1); d <= d2; d.setDate(d.getDate() + 1)) {
-              var wLabel = getWeekRangeLabel(d);
-              weekValues[wLabel] = 0;
-            }
           }
 
-          // Map dayValues into weekValues
           for (var dayStr in dayValues) {
             var parts = dayStr.split('/');
             if (parts.length === 2) {
               var dayVal = parseInt(parts[0]);
               var monthVal = parseInt(parts[1]);
-              var yearVal = !isNaN(startD) ? startD.getFullYear() : 2026;
-              var monthIndex = !isNaN(startD) ? startD.getMonth() : 5;
-              if (monthVal < monthIndex + 1) {
-                yearVal++;
-              }
+              var yearVal = !isNaN(startD) ? startD.getFullYear() : new Date().getFullYear();
+              var monthIndex = !isNaN(startD) ? startD.getMonth() : new Date().getMonth();
+              if (monthVal < monthIndex + 1) yearVal++;
               var rDate = new Date(yearVal, monthVal - 1, dayVal);
               var wLabel = getWeekRangeLabel(rDate);
               weekValues[wLabel] = (weekValues[wLabel] || 0) + dayValues[dayStr];
@@ -409,6 +433,66 @@ function initDashboard() {
 
           finalLabels = Object.keys(weekValues);
           finalValues = finalLabels.map(function(k) { return weekValues[k]; });
+
+        } else if (currentTab === 'month') {
+          var monthValues = {};
+
+          if (!isNaN(startD) && !isNaN(endD)) {
+            var curM = new Date(startD.getFullYear(), startD.getMonth(), 1);
+            var endM = new Date(endD.getFullYear(), endD.getMonth(), 1);
+            while (curM <= endM) {
+              var mLabel = 'T' + (curM.getMonth() + 1) + '/' + curM.getFullYear();
+              monthValues[mLabel] = 0;
+              curM.setMonth(curM.getMonth() + 1);
+            }
+          }
+
+          for (var dayStr in dayValues) {
+            var parts = dayStr.split('/');
+            if (parts.length === 2) {
+              var mo = parseInt(parts[1]);
+              var yr = !isNaN(startD) ? startD.getFullYear() : new Date().getFullYear();
+              var mLabel = 'T' + mo + '/' + yr;
+              if (monthValues[mLabel] !== undefined) {
+                monthValues[mLabel] += dayValues[dayStr];
+              }
+            }
+          }
+
+          finalLabels = Object.keys(monthValues);
+          finalValues = finalLabels.map(function(k) { return monthValues[k]; });
+
+        } else if (currentTab === 'quarter') {
+          var quarterValues = {};
+
+          if (!isNaN(startD) && !isNaN(endD)) {
+            var startY = startD.getFullYear(), endY = endD.getFullYear();
+            var startQ = Math.ceil((startD.getMonth() + 1) / 3);
+            var endQ = Math.ceil((endD.getMonth() + 1) / 3);
+            for (var qy = startY; qy <= endY; qy++) {
+              var firstQ = (qy === startY) ? startQ : 1;
+              var lastQ = (qy === endY) ? endQ : 4;
+              for (var q = firstQ; q <= lastQ; q++) {
+                quarterValues['Q' + q + '/' + qy] = 0;
+              }
+            }
+          }
+
+          for (var dayStr in dayValues) {
+            var parts = dayStr.split('/');
+            if (parts.length === 2) {
+              var mo = parseInt(parts[1]);
+              var yr = !isNaN(startD) ? startD.getFullYear() : new Date().getFullYear();
+              var qLabel = 'Q' + Math.ceil(mo / 3) + '/' + yr;
+              if (quarterValues[qLabel] !== undefined) {
+                quarterValues[qLabel] += dayValues[dayStr];
+              }
+            }
+          }
+
+          finalLabels = Object.keys(quarterValues);
+          finalValues = finalLabels.map(function(k) { return quarterValues[k]; });
+
         } else {
           finalLabels = Object.keys(dayValues);
           finalValues = finalLabels.map(function(k) { return dayValues[k]; });
@@ -444,6 +528,7 @@ function initDashboard() {
         $('#qs-total-value').text(formatRevenue(total));
 
         renderChart({ labels: finalLabels, values: finalValues });
+        renderTargetProgress();
         updateHeroSummary();
       })
       .catch(function () {
@@ -472,14 +557,12 @@ function initDashboard() {
           var calendarIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
           var phoneIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.71 12 19.79 19.79 0 0 1 1.64 3.47 2 2 0 0 1 3.62 1.27h3a2 2 0 0 1 2 1.72c.13.96.35 1.9.65 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.18 6.18l.91-.91a2 2 0 0 1 2.11-.45c.91.3 1.85.52 2.81.65A2 2 0 0 1 22 16.92z"/></svg>';
           var flowerSvg = '<svg viewBox="0 0 100 100" width="20" height="20" style="color:#0b8a43">' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(45 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(90 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(135 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(180 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(225 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(270 50 50)"/>' +
-            '<polygon points="50,50 50,10 60.72,24.13 78.28,21.72" fill="currentColor" stroke="#fff" stroke-width="2" transform="rotate(315 50 50)"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(60 50 50)"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(120 50 50)"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(180 50 50)"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(240 50 50)"/>' +
+            '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(300 50 50)"/>' +
             '</svg>';
           $list.html(items.map(function (item) {
             var phone = item[DASHBOARD_SCHEMA.BIRTHDAY.phoneKey] || '';
@@ -549,11 +632,81 @@ function initDashboard() {
     });
   }
 
-  var regionCoverage = [
-    { name: 'Long Xuyên', pct: 68 },
-    { name: 'Châu Đốc', pct: 54 },
-    { name: 'Tân Châu', pct: 48 }
-  ];
+  // ── Render tiến độ chỉ tiêu ──
+  function renderTargetProgress() {
+    // Chờ loadSalesPlan xong (planRevenuePct = -1 khi chưa load)
+    if (_progress.planRevenuePct < 0 || _progress.planCustPct < 0) return;
+
+    // Doanh số: ưu tiên % từ plan, fallback tính từ thực tế / chỉ tiêu
+    var hasRevTarget = _progress.revenueTarget > 0;
+    var revenuePct = 0;
+    var hasRevPct = false;
+    if (_progress.planRevenuePct > 0) {
+      revenuePct = Math.min(_progress.planRevenuePct, 100);
+      hasRevPct = true;
+    } else if (hasRevTarget && _progress.revenue > 0) {
+      revenuePct = Math.min(Math.round((_progress.revenue / _progress.revenueTarget) * 100), 100);
+      hasRevPct = true;
+    }
+
+    var custPct = Math.min(_progress.planCustPct, 100);
+    var hasCustPct = _progress.planCustPct > 0 || _progress.customersTarget > 0;
+
+    // Donut: chỉ tính dựa trên dữ liệu có sẵn
+    var sumPct = 0, divisor = 0;
+    if (hasRevPct) { sumPct += revenuePct * 2; divisor += 2; }
+    if (hasCustPct) { sumPct += custPct; divisor += 1; }
+    var avgPct = divisor > 0 ? Math.round(sumPct / divisor) : 0;
+    $('#target-pct').text(avgPct + '%');
+
+    // Row doanh số
+    if (hasRevPct) {
+      $('#target-revenue-pct').text(revenuePct + '%').show();
+      $('#target-revenue-fill').css('width', revenuePct + '%');
+    } else {
+      $('#target-revenue-pct').text('—').show();
+      $('#target-revenue-fill').css('width', '0%');
+    }
+    var revSub = formatRevenue(_progress.revenue);
+    if (hasRevTarget) revSub += ' / ' + formatRevenue(_progress.revenueTarget);
+    else if (!hasRevPct) revSub += ' — Chưa có chỉ tiêu';
+    $('#target-revenue-sub').text(revSub);
+
+    // Row khách GD
+    $('#target-customers-pct').text(hasCustPct ? custPct + '%' : '—');
+    $('#target-customers-fill').css('width', hasCustPct ? custPct + '%' : '0%');
+    var custSub = _progress.customers.toLocaleString('vi-VN');
+    if (_progress.customersTarget > 0) custSub += ' / ' + _progress.customersTarget.toLocaleString('vi-VN') + ' KH';
+    $('#target-customers-sub').text(custSub);
+
+    // KPI revenue bar
+    if (hasRevPct) $('#kpi-revenue-bar').css('width', revenuePct + '%');
+
+    // Donut chart
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var remaining = Math.max(0, 100 - avgPct);
+    var canvas = document.getElementById('target-donut-chart');
+    if (!canvas) return;
+    if (canvas._chartInstance) { canvas._chartInstance.destroy(); }
+    canvas._chartInstance = new Chart(canvas.getContext('2d'), {
+      type: 'doughnut',
+      data: {
+        datasets: [{
+          data: [avgPct, remaining],
+          backgroundColor: ['#0b8a43', isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)'],
+          borderWidth: 0,
+          hoverOffset: 0
+        }]
+      },
+      options: {
+        cutout: '75%',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        animation: { duration: 700, easing: 'easeInOutQuart' }
+      }
+    });
+  }
 
   function renderTasks(tasks, total) {
     var $widget = $('.widget-tasks');
@@ -593,57 +746,6 @@ function initDashboard() {
     }
   }
 
-  function renderCoverageChart(regions) {
-    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    var colors = ['#0b8a43', '#34c877', '#6ee7a0', '#a7f3c8', '#d1fae5'];
-    var avg = Math.round(regions.reduce(function(s, r) { return s + r.pct; }, 0) / regions.length);
-
-    $('#coverage-avg').text(avg + '%');
-
-    // Legend
-    $('#coverage-legend').html(regions.map(function(r, i) {
-      return '<li class="cov-legend-item">' +
-             '<span class="cov-legend-dot" style="background:' + (colors[i] || colors[0]) + '"></span>' +
-             '<span class="cov-legend-name">' + r.name + '</span>' +
-             '<span class="cov-legend-pct">' + r.pct + '%</span>' +
-             '</li>';
-    }).join(''));
-
-    // Donut chart
-    var canvas = document.getElementById('coverage-chart');
-    if (!canvas) return;
-    if (canvas._chartInstance) { canvas._chartInstance.destroy(); }
-
-    canvas._chartInstance = new Chart(canvas.getContext('2d'), {
-      type: 'doughnut',
-      data: {
-        labels: regions.map(function(r) { return r.name; }),
-        datasets: [{
-          data: regions.map(function(r) { return r.pct; }),
-          backgroundColor: colors.slice(0, regions.length),
-          borderWidth: 3,
-          borderColor: isDark ? '#1c2536' : '#ffffff',
-          hoverOffset: 6
-        }]
-      },
-      options: {
-        cutout: '72%',
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function(ctx) { return ' ' + ctx.label + ': ' + ctx.parsed + '%'; }
-            }
-          }
-        }
-      }
-    });
-  }
-
-  // ── Khởi tạo render widgets tĩnh ──
-  renderCoverageChart(regionCoverage);
 
   // ── Initial load ──
   loadAll();

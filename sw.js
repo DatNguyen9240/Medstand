@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v35'; // Tăng phiên bản để kích hoạt cập nhật cache mới tức thì
+const CACHE_VERSION = 'medstand-v36'; // Tăng phiên bản để kích hoạt cập nhật cache mới tức thì
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -37,6 +37,7 @@ const PRECACHE_URLS = [
 
   // Assets
   '/images/logo/medstand-logo.png',
+  '/images/logo/medstand-icon.png',
   '/src/pwa/manifest.json',
   '/src/pwa/pwa-register.js',
 

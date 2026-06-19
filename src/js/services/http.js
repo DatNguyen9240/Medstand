@@ -160,13 +160,6 @@ const Http = (() => {
       throw new Error(msg);
     }
 
-    // Kiểm tra response có records rỗng
-    const records = data.records || data.data?.records;
-    if (Array.isArray(records) && records.length === 0) {
-      console.log('[HTTP] Response trả về danh sách rỗng.');
-      _alert('warning', 'Không có dữ liệu.');
-    }
-
     return data;
   }
 

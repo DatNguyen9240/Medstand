@@ -208,6 +208,37 @@ const Router = (() => {
     $el.style.transition = 'opacity 200ms ease';
   }
 
+  function _updateNotificationBadgeGlobal() {
+    const $badge = document.getElementById('notif-badge');
+    if (!$badge) return;
+    if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined') return;
+
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    } catch (e) {}
+    const userName = user ? (user.UserName || user.Username || '') : '';
+    if (!userName) return;
+
+    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+      .then(res => {
+        const records = res?.records || res?.data || [];
+        if (Array.isArray(records)) {
+          let unreadCount = 0;
+          records.forEach(n => { if (!n.isView) unreadCount++; });
+          if (unreadCount > 0) {
+            $badge.textContent = unreadCount;
+            $badge.removeAttribute('hidden');
+            $badge.style.display = '';
+          } else {
+            $badge.setAttribute('hidden', '');
+            $badge.style.display = 'none';
+          }
+        }
+      })
+      .catch(err => console.warn('[Router] Failed to fetch notification count:', err));
+  }
+
   async function _handleRoute() {
     const { path, params } = _parseHash();
     const route = _findRoute(path);
@@ -265,12 +296,43 @@ const Router = (() => {
     try {
       const html = await _fetchTemplate(route.template);
       if ($content) $content.innerHTML = html;
+
+      const $header = document.querySelector('.app-header');
+      if ($header) {
+        // Dynamic header upgrade: if a template has #theme-toggle-container but lacks .header-actions,
+        // wrap it in a .header-actions container so it gains the notification bell and supports AI chatbot icon injection.
+        let $actions = $header.querySelector('.header-actions');
+        if (!$actions) {
+          const $oldThemeContainer = $header.querySelector('#theme-toggle-container');
+          if ($oldThemeContainer) {
+            const styleAttr = $oldThemeContainer.getAttribute('style') || '';
+            const isAbsolute = styleAttr.includes('absolute');
+            const wrapperStyle = isAbsolute 
+              ? 'position:absolute;right:16px;display:flex;align-items:center;gap:4px' 
+              : 'margin-left:auto;display:flex;align-items:center;gap:4px';
+            
+            const actionsHTML = `
+              <div class="header-actions" style="${wrapperStyle}">
+                <button type="button" class="header-icon header-notification" id="btn-notif" aria-label="Thông báo">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                  </svg>
+                  <span class="notification-badge" id="notif-badge" hidden>0</span>
+                </button>
+                <span id="theme-toggle-container"></span>
+              </div>
+            `;
+            $oldThemeContainer.outerHTML = actionsHTML;
+          }
+        }
+      }
       
       // Dynamic injection of AI chatbot icon into .header-actions (except on chatbot page itself)
       if (path !== 'chatbot') {
-        const $header = document.querySelector('.app-header');
-        if ($header) {
-          const $actions = $header.querySelector('.header-actions');
+        const $upgradedHeader = document.querySelector('.app-header');
+        if ($upgradedHeader) {
+          const $actions = $upgradedHeader.querySelector('.header-actions');
           if ($actions && !$actions.querySelector('.header-ai-btn')) {
             const aiBtnHTML = `<button type="button" class="header-icon ai-chat-btn header-ai-btn" aria-label="Trợ lý AI" onclick="navigate('chatbot')">
               <svg class="ai-robot" width="28" height="28" viewBox="0 0 48 48" fill="none">
@@ -375,6 +437,9 @@ const Router = (() => {
     _hideSpinner($content);
     if ($content) _fadeIn($content);
 
+    // Sync notification badge count dynamically
+    _updateNotificationBadgeGlobal();
+
     // Focus management (a11y) — move focus to main content
     if ($content) {
       $content.setAttribute('tabindex', '-1');
@@ -440,6 +505,15 @@ const Router = (() => {
         }
       });
     }
+
+    // ── Global: click on notification bell → navigate ──
+    document.addEventListener('click', function (e) {
+      var $btn = e.target.closest('#btn-notif');
+      if ($btn) {
+        e.preventDefault();
+        navigate('notifications');
+      }
+    });
 
     // Listen for hash changes (wrap async in error handler)
     window.addEventListener('hashchange', function () {
