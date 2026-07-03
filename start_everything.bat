@@ -3,7 +3,7 @@ set "BASE_DIR=%~dp0"
 if "%BASE_DIR:~-1%"=="\" set "BASE_DIR=%BASE_DIR:~0,-1%"
 
 echo =======================================================
-2: echo          MEDSTAND ONE-CLICK SYSTEM STARTER            
+echo          MEDSTAND ONE-CLICK SYSTEM STARTER            
 echo =======================================================
 echo.
 echo [SYSTEM] Dang khoi dong toan bo he thong Medstand...

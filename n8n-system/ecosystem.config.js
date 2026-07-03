@@ -1,7 +1,8 @@
 const path = require('path');
 
-// PM2 se ke thua bien moi truong (env variables) tu file .bat
-const nodeExe = process.env.NODE_EXE || 'node';
+// Duong dan tuyet doi den Node.js Portable (khong phu thuoc bien moi truong)
+const NODE_DIR = path.join(__dirname, '.bin', 'node-v22.14.0-win-x64');
+const nodeExe = path.join(NODE_DIR, 'node.exe');
 const n8nDir = process.env.N8N_USER_FOLDER || path.join(__dirname, 'n8n_data');
 
 module.exports = {

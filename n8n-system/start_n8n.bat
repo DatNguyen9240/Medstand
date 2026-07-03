@@ -208,6 +208,9 @@ echo [INFO] Dang tu dong dong goi va toi uu hoa tai nguyen Web...
 
 echo.
 echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...
+:: Export bien NODE_EXE de ecosystem.config.js doc duoc
+set "NODE_EXE=%NODE_EXE%"
+set "N8N_USER_FOLDER=%N8N_USER_FOLDER%"
 call "%NPM_GLOBAL_DIR%\pm2.cmd" start "%BASE_DIR%\ecosystem.config.js" --update-env
 
 :: Save config
