@@ -3,12 +3,21 @@ GO
 
 
 CREATE PROCEDURE API_SanPhamTrongTam_AI
-    @Username   VARCHAR(50),
+    @Username   VARCHAR(50) = '',
     @MaKhachHang  VARCHAR(50) = '', -- Mã khách hàng
     @TopN       INT = 500         
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- LOG FOR AUDITING
+    EXEC AI_WriteAuditLog
+        @Username     = @Username,
+        @ActionType   = 'AI_QUERY',
+        @TargetEntity = 'API_SanPhamTrongTam_AI',
+        @TargetID     = @MaKhachHang,
+        @TargetName   = NULL,
+        @ExtraInfo    = NULL;
 
     -- Defend against NULL or non-positive bounds passed by web server binders
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 500;
@@ -109,7 +118,8 @@ BEGIN
     FROM AR_SanPhamTrongTamDetailTbl D
     JOIN CF_ItemTbl I ON D.ItemID = I.ItemID
     WHERE D.DocumentID = @ProgramID
-      AND ISNULL(I.ItemGroupID, '') = 'HH1'
+      AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+      AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
     ORDER BY I.ItemName ASC;
 END
 GO

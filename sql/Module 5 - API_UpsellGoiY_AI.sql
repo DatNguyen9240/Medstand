@@ -62,8 +62,8 @@ BEGIN
               AND (ISNULL(@SYSBranchID, '') = '' OR O.BranchID = @SYSBranchID)
             ORDER BY ISNULL(I.Cnt, 0) DESC;
               
-            -- Fallback tìm toàn quốc
-            IF @ResolvedID = ''
+            -- Fallback tìm toàn quốc (chỉ chạy cho admin)
+            IF @ResolvedID = '' AND @SYSBranchID = ''
             BEGIN
                 SELECT TOP 1 @ResolvedID = O.ObjectID 
                 FROM CF_ObjectTbl O
@@ -93,6 +93,24 @@ BEGIN
         SELECT N'Không tìm thấy mã khách hàng này trong hệ thống.' AS Msg, 1 AS MsgType
         RETURN;
     END
+
+    -- RLS GUARD: Reuse ERP permission system (AR_GetObjectByUserFnc) to handle branch/manager hierarchy securely
+    IF @MaKhachHang <> '' AND @Username <> '' AND NOT EXISTS (
+        SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @MaKhachHang
+    )
+    BEGIN
+        SELECT N'Bạn không có quyền xem thông tin của khách hàng này.' AS Msg, 1 AS MsgType
+        RETURN;
+    END
+
+    -- LOG FOR AUDITING
+    EXEC AI_WriteAuditLog
+        @Username     = @Username,
+        @ActionType   = 'AI_QUERY',
+        @TargetEntity = 'API_UpsellGoiY_AI',
+        @TargetID     = @MaKhachHang,
+        @TargetName   = @timkiem,
+        @ExtraInfo    = NULL;
 
     -- ═══ 1. Xác định chương trình đang hoạt động ═══
     SELECT TOP 1 @ProgramID = DocumentID 

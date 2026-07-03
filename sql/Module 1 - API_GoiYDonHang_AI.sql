@@ -132,8 +132,8 @@ BEGIN
                     LEN(ObjectName) ASC;
             END
 
-            -- 3. Fast Path (Nationwide fallback)
-            IF @ResolvedID = ''
+            -- 3. Fast Path (Nationwide fallback - Only for admin/cross-branch user)
+            IF @ResolvedID = '' AND @SYS_BranchID = ''
             BEGIN
                 SELECT TOP 1 @ResolvedID = ObjectID 
                 FROM CF_ObjectTbl WITH (NOLOCK)
@@ -148,8 +148,8 @@ BEGIN
                     LEN(ObjectName) ASC;
             END
 
-            -- 4. Slow Path (Nationwide fallback, final)
-            IF @ResolvedID = ''
+            -- 4. Slow Path (Nationwide fallback, final - Only for admin/cross-branch user)
+            IF @ResolvedID = '' AND @SYS_BranchID = ''
             BEGIN
                 SELECT TOP 1 @ResolvedID = ObjectID 
                 FROM CF_ObjectTbl WITH (NOLOCK)
@@ -190,6 +190,15 @@ BEGIN
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
     BEGIN
         SELECT 'N/A' AS [Mã SP], N'Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
+        RETURN;
+    END
+
+    -- RLS GUARD: Reuse ERP permission system (AR_GetObjectByUserFnc) to handle branch/manager hierarchy securely
+    IF @MaKhachHang <> '' AND @Username <> '' AND NOT EXISTS (
+        SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @MaKhachHang
+    )
+    BEGIN
+        SELECT 'N/A' AS [Mã SP], N'Bạn không có quyền xem thông tin của khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
         RETURN;
     END
 

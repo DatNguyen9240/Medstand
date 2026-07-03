@@ -10,6 +10,15 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- LOG FOR AUDITING
+    EXEC AI_WriteAuditLog
+        @Username     = @Username,
+        @ActionType   = 'AI_QUERY',
+        @TargetEntity = 'API_TraCuuSanPham_AI',
+        @TargetID     = NULL,
+        @TargetName   = @timkiem,
+        @ExtraInfo    = NULL;
+
     -- Xử lý triệt để dấu câu và khoảng trắng dư thừa cho từ khóa tìm kiếm gốc
     SET @timkiem = LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, '.', ''), ',', ''), '-', ''), '"', ''), '''', '')));
 
@@ -41,8 +50,8 @@ BEGIN
         I.ItemID,
         I.ItemName,
         CASE 
-          WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 100
-          WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 80
+          WHEN REPLACE(I.ItemName, ' ', '') COLLATE Vietnamese_CI_AS LIKE REPLACE(@timkiem, ' ', '') + N'%' THEN 100
+          WHEN REPLACE(I.ItemName, ' ', '') COLLATE Vietnamese_CI_AS LIKE N'%' + REPLACE(@timkiem, ' ', '') + N'%' THEN 80
           WHEN ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' THEN 80
           ELSE (
               SELECT COUNT(DISTINCT T.Term) * 10 
@@ -59,6 +68,7 @@ BEGIN
           I.ItemID LIKE @timkiem + '%' OR
           I.ItemID LIKE '%' + @timkiem + '%' OR
           I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
+          REPLACE(I.ItemName, ' ', '') COLLATE Vietnamese_CI_AS LIKE N'%' + REPLACE(@timkiem, ' ', '') + N'%' OR
           ISNULL(I.TuKhoa, '') COLLATE Vietnamese_CI_AS LIKE N'%' + @timkiem + N'%' OR
           EXISTS (
               SELECT 1 FROM @Terms T 
@@ -66,7 +76,8 @@ BEGIN
                  OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
           )
       )
-      AND ISNULL(I.ItemGroupID, '') = 'HH1';
+      AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
+      AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%';
 
     DECLARE @MaxScore INT = 0;
     SELECT @MaxScore = MAX(MatchScore) FROM #MatchedItems;
@@ -145,9 +156,16 @@ BEGIN
             I.ItemID AS [Mã sp],
             I.ItemName AS [Sản Phẩm],
             CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho]
+            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho],
+            K.Ingredients AS [Thành Phần],
+            K.MainUses AS [Công Dụng],
+            K.TargetPatients AS [Đối Tượng],
+            K.UsageInstructions AS [Cách Dùng],
+            K.Contraindications AS [Chống Chỉ Định],
+            K.SideEffects AS [Tác Dụng Phụ]
         FROM #Items I
         LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID
+        LEFT JOIN dbo.AI_ProductKnowledgeTbl K ON I.ItemID = K.ItemID
         ORDER BY I.OrderIndex ASC;
     END
 

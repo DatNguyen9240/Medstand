@@ -5,7 +5,7 @@
       position: fixed;
       inset: 0;
       background: rgba(0, 0, 0, .45);
-      z-index: 150;
+      z-index: 500;
       align-items: center;
       justify-content: center;
     }

@@ -4,7 +4,8 @@ GO
 -- 1. API BẮT ĐẦU (START)
 -- FE gửi: User, DocumentID, Title, ThoiGianBatDau, ThoiGianLamBai, SoCauHoi
 CREATE OR ALTER PROCEDURE [dbo].[API_BatDauBaiKhaoSat]
-    @User VARCHAR(50),
+    @User VARCHAR(50) = '',
+    @Username VARCHAR(50) = '',
     @DocumentID VARCHAR(50) = '',
     @Title NVARCHAR(200) = '',
     @ThoiGianBatDau DATETIME = NULL,
@@ -15,6 +16,7 @@ CREATE OR ALTER PROCEDURE [dbo].[API_BatDauBaiKhaoSat]
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF ISNULL(@User, '') = '' SET @User = @Username;
     DECLARE @NewID VARCHAR(50) = CASE WHEN ISNULL(@DocumentID,'') = '' THEN CAST(NEWID() AS VARCHAR(50)) ELSE @DocumentID END;
     
     IF NOT EXISTS (SELECT 1 FROM AR_DotKhaoSatTbl WHERE DocumentID = @NewID)
@@ -32,11 +34,13 @@ GO
 -- FE gửi: User, DocumentID
 CREATE OR ALTER PROCEDURE [dbo].[API_ChiTietBaiKhaoSat]
     @User VARCHAR(50) = '',
+    @Username VARCHAR(50) = '',
     @DocumentID VARCHAR(50) = '',
     @BranchID VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF ISNULL(@User, '') = '' SET @User = @Username;
     
     WITH LatestQuestions AS (
         SELECT TOP 3 
@@ -52,13 +56,15 @@ GO
 -- 3. API NỘP BÀI (SUBMIT_QUIZ)
 -- FE gửi: User, DocumentID
 CREATE OR ALTER PROCEDURE [dbo].[API_NopBaiKhaoSat]
-    @User VARCHAR(50),
-    @DocumentID VARCHAR(50),
+    @User VARCHAR(50) = '',
+    @Username VARCHAR(50) = '',
+    @DocumentID VARCHAR(50) = '',
     @JsonKetQua NVARCHAR(MAX) = '',
     @BranchID VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF ISNULL(@User, '') = '' SET @User = @Username;
     
     IF ISNULL(@JsonKetQua, '') <> ''
     BEGIN
@@ -117,12 +123,14 @@ GO
 
 -- 5. API KIỂM TRA NGÀY (CHECK_DAILY)
 CREATE OR ALTER PROCEDURE [dbo].[API_KiemTraKhaoSatNgay]
-    @User VARCHAR(50),
+    @User VARCHAR(50) = '',
+    @Username VARCHAR(50) = '',
     @BranchID VARCHAR(50) = '',
     @Ngay DATETIME = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF ISNULL(@User, '') = '' SET @User = @Username;
     IF EXISTS (
         SELECT 1 
         FROM AR_DotKhaoSatTbl 
@@ -139,10 +147,12 @@ GO
 -- 6. API LỊCH SỬ BÀI KHẢO SÁT (HISTORY)
 -- FE gửi: User
 CREATE OR ALTER PROCEDURE [dbo].[API_LichSuBaiKhaoSat]
-    @User VARCHAR(50) = ''
+    @User VARCHAR(50) = '',
+    @Username VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF ISNULL(@User, '') = '' SET @User = @Username;
     SELECT 
         DocumentID,
         ISNULL(Title, N'Bài khảo sát') AS Title,
