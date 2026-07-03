@@ -131,10 +131,35 @@ if not exist "C:\Windows\System32\vcruntime140.dll" (
 )
 
 :: ============================================================
-:: 6. HỆ THỐNG PHỤ TRỢ (PM2 SẼ ĐẢM NHẬN NHƯNG KIỂM TRA TRƯỚC)
+:: 6. KIỂM TRA VÀ TẢI CÁC BINARY PHỤ TRỢ (REDIS, QDRANT)
 :: ============================================================
 echo.
-echo [INFO] Cac dich vu phu se do PM2 dam nhan (Redis, Qdrant)...
+if not exist "%BASE_DIR%\redis" mkdir "%BASE_DIR%\redis"
+if not exist "%BASE_DIR%\qdrant" mkdir "%BASE_DIR%\qdrant"
+
+if not exist "%BASE_DIR%\redis\redis-server.exe" (
+    echo [SETUP] Chua co Redis. Dang tai tu dong...
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/tporadowski/redis/releases/download/v5.0.14.1/Redis-x64-5.0.14.1.zip' -OutFile '%BASE_DIR%\redis.zip' -UseBasicParsing; Expand-Archive -Path '%BASE_DIR%\redis.zip' -DestinationPath '%BASE_DIR%\redis_temp' -Force; Move-Item '%BASE_DIR%\redis_temp\redis-server.exe' -Destination '%BASE_DIR%\redis\redis-server.exe' -Force; Remove-Item '%BASE_DIR%\redis.zip' -Force; Remove-Item '%BASE_DIR%\redis_temp' -Recurse -Force"
+    if exist "%BASE_DIR%\redis\redis-server.exe" (
+        echo [OK] Redis da tai xong.
+    ) else (
+        echo [WARN] Tai Redis that bai. Cache se khong hoat dong.
+    )
+) else (
+    echo [INFO] Redis: OK.
+)
+
+if not exist "%BASE_DIR%\qdrant\qdrant.exe" (
+    echo [SETUP] Chua co Qdrant. Dang tai tu dong...
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/qdrant/qdrant/releases/download/v1.8.4/qdrant-x86_64-pc-windows-msvc.zip' -OutFile '%BASE_DIR%\qdrant.zip' -UseBasicParsing; Expand-Archive -Path '%BASE_DIR%\qdrant.zip' -DestinationPath '%BASE_DIR%\qdrant_temp' -Force; Move-Item '%BASE_DIR%\qdrant_temp\qdrant.exe' -Destination '%BASE_DIR%\qdrant\qdrant.exe' -Force; Remove-Item '%BASE_DIR%\qdrant.zip' -Force; Remove-Item '%BASE_DIR%\qdrant_temp' -Recurse -Force"
+    if exist "%BASE_DIR%\qdrant\qdrant.exe" (
+        echo [OK] Qdrant da tai xong.
+    ) else (
+        echo [WARN] Tai Qdrant that bai. AI Vector Search se khong hoat dong.
+    )
+) else (
+    echo [INFO] Qdrant: OK.
+)
 
 :: ============================================================
 :: 7. TẢI VÀ CHUYỂN TIẾP MẠNG QUA CLOUDFLARE (TỰ ĐỘNG)
