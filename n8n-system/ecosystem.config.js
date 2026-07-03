@@ -29,9 +29,8 @@ module.exports = {
     },
     {
       name: "Medstand_N8N",
-      script: path.join(n8nDir, 'npm_global', 'node_modules', 'n8n', 'bin', 'n8n'),
+      script: "run_n8n.js",
       interpreter: nodeExe,
-      args: "start",
       cwd: __dirname,
       watch: false,
       max_memory_restart: "2G"

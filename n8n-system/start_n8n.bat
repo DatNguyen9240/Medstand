@@ -67,11 +67,8 @@ set "PATH=%NPM_GLOBAL_DIR%;%PATH%"
 :: Sua loi registry cho thu vien SheetJS
 call "%npm_cmd%" config set @sheetjs:registry https://cdn.sheetjs.com/ > nul 2>&1
 
-:: CAI N8N GLOBAL MOT LAN VA MAI MAI (THU MUC PORTABLE)
-if exist "%NPM_GLOBAL_DIR%\n8n.cmd" goto SKIP_N8N_INSTALL
-echo.
-echo [SETUP] Chua co base n8n. Dang khoi tao cai dat (30s - 1 Phut)...
-call "%npm_cmd%" install -g n8n
+:: CAI N8N GLOBAL MOT LAN VA MAI MAI (Bypass de dung npx)
+goto SKIP_N8N_INSTALL
 
 :SKIP_N8N_INSTALL
 

@@ -151,8 +151,15 @@
 }
 
 @keyframes flower-ripple-out {
-  0%   { transform: scale(0.55); opacity: 0.85; }
-  100% { transform: scale(1.85); opacity: 0; }
+  0% {
+    transform: scale(0.55);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
 }
 
 .chat-welcome-title {
@@ -226,6 +233,7 @@
 
 .chat-bubble {
   max-width: 82%;
+  width: fit-content;
   padding: 10px 14px;
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
@@ -359,13 +367,16 @@
 .chat-bubble.ai .ai-table-wrap::-webkit-scrollbar {
   height: 5px;
 }
+
 .chat-bubble.ai .ai-table-wrap::-webkit-scrollbar-track {
   background: transparent;
 }
+
 .chat-bubble.ai .ai-table-wrap::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
 }
+
 .chat-bubble.ai .ai-table-wrap::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
@@ -390,7 +401,8 @@
   max-width: none;
   min-width: 100%;
   border-collapse: collapse;
-  font-size: 0.88em; /* Kích thước tối ưu dễ đọc trên di động */
+  font-size: 0.88em;
+  /* Kích thước tối ưu dễ đọc trên di động */
   table-layout: auto !important;
 }
 
@@ -423,7 +435,8 @@
 .chat-bubble.ai .ai-table th.ai-num-col,
 .chat-bubble.ai .ai-table td.ai-num-col {
   text-align: right;
-  font-variant-numeric: tabular-nums; /* Giúp các con số thẳng hàng đơn vị tăm tắp */
+  font-variant-numeric: tabular-nums;
+  /* Giúp các con số thẳng hàng đơn vị tăm tắp */
 }
 
 .chat-bubble.ai .ai-table th {
@@ -431,8 +444,10 @@
   font-size: 0.78em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #475569; /* Tiêu đề xám đậm rõ ràng */
-  background: #f8fafc; /* Nền xám nhạt nhẹ nhàng */
+  color: #475569;
+  /* Tiêu đề xám đậm rõ ràng */
+  background: #f8fafc;
+  /* Nền xám nhạt nhẹ nhàng */
   border-bottom: 1px solid #cbd5e1;
   position: sticky;
   top: 0;
@@ -496,14 +511,16 @@
 .chat-bubble.ai .ai-table-detail-label {
   font-weight: 600;
   font-size: 0.7em;
-  color: #64748b; /* Nhãn nhạt màu */
+  color: #64748b;
+  /* Nhãn nhạt màu */
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
 }
 
 .chat-bubble.ai .ai-table-detail-value {
-  color: #0f172a; /* Giá trị in đậm đen cực kỳ rõ ràng */
+  color: #0f172a;
+  /* Giá trị in đậm đen cực kỳ rõ ràng */
   font-size: 0.88em;
   font-weight: 700;
   word-break: break-word;
@@ -528,62 +545,62 @@
     border-color: #3f3f46;
     background: #18181b;
   }
-  
+
   .chat-bubble.ai .ai-table-wrap::-webkit-scrollbar-thumb {
     background: #3f3f46;
   }
-  
+
   .chat-bubble.has-table .ai-table-wrap {
     border-color: #3f3f46;
   }
-  
+
   .chat-bubble.ai .ai-table th,
   .chat-bubble.ai .ai-table td {
     border-bottom-color: #27272a;
   }
-  
+
   .chat-bubble.ai .ai-table th {
     color: #a1a1aa;
     background: #27272a;
     border-bottom-color: #3f3f46;
     box-shadow: inset 0 -1px 0 #3f3f46;
   }
-  
+
   .chat-bubble.ai .ai-table tbody tr:nth-child(even) {
     background: #202023;
   }
-  
+
   .chat-bubble.ai .ai-table tbody tr:hover {
     background: #27272a !important;
   }
-  
+
   .chat-bubble.ai .ai-table tbody tr.expanded {
     background: #18181b !important;
   }
-  
+
   .chat-bubble.ai .ai-table tbody tr.ai-table-detail-row,
   .chat-bubble.ai .ai-table tbody tr.ai-table-detail-row:hover {
     background: #111116 !important;
     border-bottom-color: #3f3f46;
   }
-  
+
   .chat-bubble.ai .ai-table tbody tr.ai-table-detail-row td {
     border-bottom-color: #3f3f46;
   }
-  
+
   .chat-bubble.ai .ai-table-detail-item {
     background: #202024;
     border-color: #2d2d30;
   }
-  
+
   .chat-bubble.ai .ai-table-detail-label {
     color: #a1a1aa;
   }
-  
+
   .chat-bubble.ai .ai-table-detail-value {
     color: #f4f4f5;
   }
-  
+
   .chat-bubble.ai .ai-badge-recommend {
     background: #27272a !important;
     color: #f4f4f5 !important;
@@ -613,14 +630,17 @@
   height: 6px;
   border-right: 2px solid #64748b;
   border-bottom: 2px solid #64748b;
-  transform: rotate(-45deg); /* Mặc định chỉ sang phải (Đóng) */
+  transform: rotate(-45deg);
+  /* Mặc định chỉ sang phải (Đóng) */
   transition: transform 0.15s ease;
   vertical-align: middle;
-  margin-top: -2px; /* Điều chỉnh tâm sau khi xoay */
+  margin-top: -2px;
+  /* Điều chỉnh tâm sau khi xoay */
 }
 
 tr.expanded .ai-row-toggle::before {
-  transform: rotate(45deg); /* Xoay xuống (Mở) */
+  transform: rotate(45deg);
+  /* Xoay xuống (Mở) */
 }
 
 .chat-bubble.ai .ai-hr {
@@ -2049,7 +2069,8 @@ tr.expanded .ai-row-toggle::before {
 }
 
 .ai-sales-filter-chip.active {
-  background: #475569; /* Màu xám đậm trung tính, không rực rỡ */
+  background: #475569;
+  /* Màu xám đậm trung tính, không rực rỡ */
   color: #ffffff;
   border-color: #475569;
 }
@@ -2945,7 +2966,8 @@ tr.expanded .ai-row-toggle::before {
   justify-content: center;
   cursor: pointer;
   color: var(--color-text, #334155);
-  pointer-events: auto; /* Cho phép nhận sự kiện click chuột */
+  pointer-events: auto;
+  /* Cho phép nhận sự kiện click chuột */
 }
 
 .chat-header-actions .chat-clear-btn:hover {
