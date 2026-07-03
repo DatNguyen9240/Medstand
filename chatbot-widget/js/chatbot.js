@@ -2291,29 +2291,34 @@
 
         var html = '';
 
-        if (headerMsg) html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
-
-
+        if (headerMsg) {
+            // Chuẩn hóa chuỗi "Tìm thấy X kết quả." sang "Kết quả tìm kiếm (X)"
+            var match = headerMsg.match(/Tìm thấy\s+(\d+)\s+kết quả\.?/i);
+            if (match) {
+                headerMsg = 'Kết quả tìm kiếm (' + match[1] + ')';
+            }
+            html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
+        }
 
         if (activeGroups.length > 1) {
 
             // Render Tabs
 
-            html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; border-bottom: 2px solid var(--color-border); padding-bottom: 8px;">';
+            html += '<div class="ai-tabs" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:16px; border-bottom: 1px solid var(--color-border); padding-bottom: 0;">';
 
             var tabsId = 'tabs-' + (++_modalIdCounter);
 
             activeGroups.forEach(function (g, idx) {
 
-                var bg = (idx === 0) ? 'var(--color-primary)' : 'var(--color-surface)';
+                var borderBottom = (idx === 0) ? '2px solid var(--color-primary)' : '2px solid transparent';
 
-                var cl = (idx === 0) ? '#fff' : 'var(--color-text)';
+                var cl = (idx === 0) ? 'var(--color-primary)' : 'var(--color-text-muted)';
 
-                var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.background='var(--color-surface)'; b.style.color='var(--color-text)';}); this.style.background='var(--color-primary)'; this.style.color='#fff'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
+                var clickJs = "var tp = this.parentElement.parentElement; tp.querySelectorAll('.ai-tab-pane-" + tabsId + "').forEach(function(p){p.style.display='none';}); tp.querySelectorAll('.ai-tab-btn-" + tabsId + "').forEach(function(b){b.style.borderBottom='2px solid transparent'; b.style.color='var(--color-text-muted)';}); this.style.borderBottom='2px solid var(--color-primary)'; this.style.color='var(--color-primary)'; tp.querySelector('#" + tabsId + "-pane-" + idx + "').style.display='block';";
 
                 var icon = '';
 
-                html += '<button class="ai-tab-btn-' + tabsId + '" onclick="' + clickJs + '" style="padding:6px 14px; border:none; border-radius:20px; font-weight:600; font-size:13px; background:' + bg + '; color:' + cl + '; cursor:pointer; outline:none; transition: background 0.2s;">' + icon + _esc(g.label) + ' (' + g.rows.length + ')</button>';
+                html += '<button class="ai-tab-btn-' + tabsId + '" onclick="' + clickJs + '" style="padding:10px 16px; border:none; background:none; font-weight:600; font-size:13px; border-bottom:' + borderBottom + '; color:' + cl + '; cursor:pointer; outline:none; transition: all 0.2s; border-radius:0; margin-bottom:-1px;">' + icon + _esc(g.label) + ' (' + g.rows.length + ')</button>';
 
             });
 
@@ -2772,6 +2777,11 @@
             'tongno': 'Tổng nợ',
             'makh': 'Mã KH',
             'phanloai': 'Phân loại',
+            // Survey translations (API_DanhSachCauHoiKhaoSat_AI)
+            'macauhoi': 'Mã câu hỏi',
+            'tencauhoi': 'Tên câu hỏi',
+            'noidung': 'Nội dung',
+            'noidungcauhoi': 'Nội dung câu hỏi',
             // Tuyen ban hang translations (API_TuyenBanHang_AI)
             'tuyen': 'Tuyến',
             'lichghe': 'Lịch Ghé',

@@ -90,6 +90,22 @@
   scroll-behavior: smooth;
 }
 
+/* Custom scrollbar — mảnh, hiện đại, thống nhất */
+.chat-container::-webkit-scrollbar {
+  width: 5px;
+}
+.chat-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+
 /* ── Welcome screen ── */
 .chat-welcome {
   display: flex;
@@ -358,7 +374,7 @@
   -webkit-overflow-scrolling: touch;
   margin: 12px 0 6px 0;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #eef2f7;
   background: #ffffff;
   width: 100%;
 }
@@ -384,7 +400,7 @@
 /* Khi bubble có class has-table, wrap lấy hết chiều rộng */
 .chat-bubble.has-table .ai-table-wrap {
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #eef2f7;
 }
 
 .chat-bubble.has-table .ai-table-wrap+.ai-para,
@@ -408,9 +424,9 @@
 
 .chat-bubble.ai .ai-table th,
 .chat-bubble.ai .ai-table td {
-  padding: 10px 12px;
+  padding: 9px 12px;
   text-align: left;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid #eef2f7;
   text-overflow: clip !important;
   overflow: visible !important;
 }
@@ -440,19 +456,17 @@
 }
 
 .chat-bubble.ai .ai-table th {
-  font-weight: 700;
+  font-weight: 600;
   font-size: 0.78em;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #475569;
-  /* Tiêu đề xám đậm rõ ràng */
+  color: #64748b;
   background: #f8fafc;
-  /* Nền xám nhạt nhẹ nhàng */
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid #eef2f7;
   position: sticky;
   top: 0;
   z-index: 10;
-  box-shadow: inset 0 -1px 0 #cbd5e1;
+  box-shadow: inset 0 -1px 0 #eef2f7;
 }
 
 .chat-bubble.ai .ai-table tbody tr:last-child td {
@@ -460,11 +474,20 @@
 }
 
 .chat-bubble.ai .ai-table tbody tr:nth-child(even) {
-  background: #f8fafc;
+  background: #fafbfc;
+}
+
+.chat-bubble.ai .ai-table tbody tr:not(.ai-table-detail-row) {
+  cursor: pointer;
 }
 
 .chat-bubble.ai .ai-table tbody tr:hover {
-  background: #f1f5f9 !important;
+  background: #f7f9fc !important;
+}
+
+.chat-bubble.ai .ai-table tbody tr:hover .ai-row-toggle::before {
+  border-right-color: var(--color-primary, #1d4ed8);
+  border-bottom-color: var(--color-primary, #1d4ed8);
 }
 
 /* Cực kỳ đơn giản khi mở rộng hàng */
@@ -626,16 +649,15 @@
 .chat-bubble.ai .ai-row-toggle::before {
   content: '';
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-right: 2px solid #64748b;
-  border-bottom: 2px solid #64748b;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
   transform: rotate(-45deg);
   /* Mặc định chỉ sang phải (Đóng) */
-  transition: transform 0.15s ease;
+  transition: transform 0.2s ease, border-color 0.15s ease;
   vertical-align: middle;
-  margin-top: -2px;
-  /* Điều chỉnh tâm sau khi xoay */
+  margin-top: -3px;
 }
 
 tr.expanded .ai-row-toggle::before {
@@ -1463,11 +1485,12 @@ tr.expanded .ai-row-toggle::before {
 /* Result header — dòng tiêu đề kết quả */
 .ai-result-header {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  font-weight: 600;
   color: var(--color-text);
-  padding: 4px 2px 10px;
+  padding: 6px 2px 12px;
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  letter-spacing: 0.01em;
 }
 
 /* Card list container */
