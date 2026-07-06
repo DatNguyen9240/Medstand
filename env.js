@@ -8,7 +8,7 @@
 // 1. Tham số môi trường (Environment Variables)
 // Đã chuyển toàn bộ thông tin nhạy cảm về Server Proxy để giấu hoàn toàn khỏi trình duyệt F12
 const ENV_VARS = {
-    N8N_BASE: '', // Chạy qua Server Proxy nội bộ (ẩn link Cloudflare thật)
+    N8N_BASE: 'http://localhost:5678', // Local n8n instance
     API_BASE: '', // Chạy qua Server Proxy nội bộ (ẩn link backend thật)
     CHAT_API_KEY: '' // Khóa bí mật do Server Proxy tự động chèn ở phía backend
 };
@@ -41,7 +41,7 @@ window.API_CONFIG = {
             REVENUE: '/api/Dashboard/Revenue',
             CHART1: '/api/API_DoanhSo_AI',
             CHART2: '/api/API_Dashboard_Chart2',
-            BIRTHDAYS: '/api/API_Dashboard_SinhNhat',
+            BIRTHDAYS: '/api/API_Dashboard_SinhNhat_AI',
             INFORMATIONS: '/api/API_Dashboard_ThongTin',
         },
         ROUTES: {

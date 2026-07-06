@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const compression = require('compression');
 
 // ============================================================
 //  MEDSTAND — TỰ ĐỘNG ĐỌC BẢN CẤU HÌNH CỤC BỘ .ENV
@@ -29,28 +30,71 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json()); // Enable JSON body parsing
 
+// ─── PRODUCTION OPTIMIZATION & SECURITY HEADERS ───
+app.use(compression());
+
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
+    // Content-Security-Policy (CSP) - Tối ưu cho SPA Medstand
+    res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; " +
+        "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self' https:; " +
+        "font-src 'self' https://fonts.gstatic.com; " +
+        "frame-src 'none';"
+    );
+    next();
+});
+
+// ─── DEFENSE-IN-DEPTH: CHẶN TRUY CẬP TRỰC TIẾP FILE NGUỒN THÔ ───
+app.use((req, res, next) => {
+    const url = req.path.toLowerCase();
+    
+    // Ngăn chặn các thư mục mã nguồn thô nhạy cảm
+    const sensitiveFolders = [
+        '/src/js/pages/',
+        '/src/js/core/',
+        '/src/js/services/',
+        '/src/js/utils/',
+        '/src/js/components/',
+        '/src/js/config/',
+        '/src/js/schemas/',
+        '/chatbot-widget/js/core/',
+        '/chatbot-widget/js/utils/',
+        '/scripts/',
+        '/n8n-system/'
+    ];
+    
+    const isSensitiveFolder = sensitiveFolders.some(folder => url.startsWith(folder.toLowerCase()) || url.includes(folder.toLowerCase()));
+    
+    // Ngăn chặn các file backend/config của hệ thống
+    const isSensitiveFile = [
+        '/server.js',
+        '/package.json',
+        '/package-lock.json',
+        '/.env',
+        '/start_everything.bat',
+        '/env.js'
+    ].includes(url);
+    
+    if (isSensitiveFolder || isSensitiveFile) {
+        console.warn(`[Security Alert] Chặn truy cập trực tiếp vào file nhạy cảm: ${req.url}`);
+        return res.status(403).send('Forbidden: Access denied.');
+    }
+    
+    next();
+});
+
 // Backend URLs ẩn hoàn toàn phía server
 const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms79.com';
 
 const getN8nUrl = () => {
-    let url = process.env.N8N_BASE;
-    const envPath = path.join(__dirname, '.env');
-    if (fs.existsSync(envPath)) {
-        try {
-            const envContent = fs.readFileSync(envPath, 'utf-8');
-            const match = envContent.match(/^N8N_BASE\s*=\s*(https:\/\/[^\s#]+)/m);
-            if (match) url = match[1].trim();
-        } catch (e) {}
-    }
-    const cfLogPath = path.join(__dirname, 'n8n-system', '.logs', 'cf_tunnel.log');
-    if (fs.existsSync(cfLogPath)) {
-        try {
-            const logContent = fs.readFileSync(cfLogPath, 'utf-8');
-            const match = logContent.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-            if (match) url = match[0];
-        } catch (e) {}
-    }
-    return url || 'https://realized-comfortable-oxygen-played.trycloudflare.com';
+    return 'http://127.0.0.1:5678';
 };
 
 // ─── CIPHER HELPER (XOR + Base64) ───
@@ -89,6 +133,12 @@ app.post('/api/gateway', async (req, res) => {
             return res.status(400).json({ error: 'Thiếu endpoint xử lý.' });
         }
 
+        // Khóa chức năng tự đăng ký tài khoản tự do theo đặc tả phân quyền hệ thống
+        if (endpoint === '/api/API_UserRegister') {
+            console.warn('[Security Warning] Chặn yêu cầu đăng ký tài khoản mới tự do qua endpoint /api/API_UserRegister');
+            return res.status(403).json({ error: 'Tính năng đăng ký tài khoản tự do bị vô hiệu hóa theo tài liệu đặc tả phân quyền.' });
+        }
+
         // 2. Định tuyến đến máy chủ đích thật
         const isN8n = endpoint.startsWith('/webhook');
         const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
@@ -118,11 +168,17 @@ app.post('/api/gateway', async (req, res) => {
         const contentType = response.headers.get('content-type') || '';
         let resDataText = '';
 
-        if (contentType.includes('application/json')) {
-            const json = await response.json();
-            resDataText = JSON.stringify(json);
+        const text = await response.text();
+        if (contentType.includes('application/json') && text.trim()) {
+            try {
+                const json = JSON.parse(text);
+                resDataText = JSON.stringify(json);
+            } catch (e) {
+                console.error('[Proxy Gateway JSON Parse Error 1]:', e.message);
+                resDataText = text;
+            }
         } else {
-            resDataText = await response.text();
+            resDataText = text;
         }
 
         console.log(`[Proxy Gateway] Response status: ${response.status}`);
@@ -154,7 +210,15 @@ app.post('/api/chat', async (req, res) => {
 
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
-            const data = await response.json();
+            const text = await response.text();
+            let data = {};
+            if (text.trim()) {
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('[Proxy Gateway JSON Parse Error 2]:', e.message);
+                }
+            }
             res.status(response.status).json(data);
         } else {
             const text = await response.text();
@@ -287,7 +351,15 @@ app.all('/webhook/*all', async (req, res) => {
         const contentType = response.headers.get('content-type') || '';
 
         if (contentType.includes('application/json')) {
-            const data = await response.json();
+            const text = await response.text();
+            let data = {};
+            if (text.trim()) {
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('[Proxy Gateway JSON Parse Error 3]:', e.message);
+                }
+            }
             res.status(response.status).json(data);
         } else {
             const text = await response.text();
@@ -297,6 +369,20 @@ app.all('/webhook/*all', async (req, res) => {
         console.error('[Proxy Gateway Error]:', error);
         res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
     }
+});
+
+// Thiết lập Cache-Control dài hạn (1 năm, immutable) cho các tệp đã đóng gói (.min.js, .min.css)
+app.use((req, res, next) => {
+    const url = req.path.toLowerCase();
+    if (url.endsWith('.min.js') || url.endsWith('.min.css')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    next();
+});
+
+// Chuyển hướng trang đăng ký cũ về trang đăng nhập kèm cờ cảnh báo theo đặc tả phân quyền
+app.get('/pages/register.html', (req, res) => {
+    res.redirect('/pages/login.html?register=disabled');
 });
 
 // Serve static files from the root directory (Tắt tự động trả về index.html mặc định)

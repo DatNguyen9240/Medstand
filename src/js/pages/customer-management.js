@@ -95,15 +95,10 @@ custForm
   .addList({
     id: 'type', label: 'Loại khách hàng', required: true, placeholder: 'Loại khách hàng',
     loadFn: function (done) {
-      Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, { q: JSON.stringify({}) })
-        .then(function (res) {
-          var records = (res.data || res).records || res.data || res || [];
-          done(records.map(function (r) {
-            var lbl = r.ObjectName || r.Name || '';
-            if (!lbl) { for (var k in r) { if (typeof r[k] === 'string' && r[k].length > 1) { lbl = r[k]; break; } } }
-            return { value: r.ObjectID || r.ID || '', label: lbl };
-          }));
-        }).catch(function () { done([]); });
+      done([
+        { value: 'OTC', label: 'OTC' },
+        { value: 'ETC', label: 'ETC' }
+      ]);
     }
   })
   .addInput({ id: 'bankAcc', label: 'Số tài khoản ngân hàng', placeholder: 'Số tài khoản ngân hàng' })
@@ -322,6 +317,8 @@ $('#btn-confirm-customer').on('click', function () {
   var isEdit = !!_editingObjectID;
   var endpoint = isEdit ? API_CONFIG.ENDPOINTS.CUSTOMER.UPDATE : API_CONFIG.ENDPOINTS.CUSTOMER.CREATE;
   var payload;
+
+  var provinceName = (custForm._fields['province'] && custForm._fields['province'].labelText) || v.province;
 
   if (isEdit) {
     payload = {

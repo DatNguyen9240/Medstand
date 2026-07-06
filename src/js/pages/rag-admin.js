@@ -17,21 +17,41 @@ $(function() {
     $fileInput.click();
   });
 
-  // Handle Drag & Drop
+  // Chặn trình duyệt tự động mở file khi kéo thả trượt ra ngoài vùng dropzone
+  $(document).on('dragover drop', function(e) {
+    e.preventDefault();
+  });
+
+  // Handle Drag & Drop sử dụng bộ đếm dragCounter chống nhấp nháy UI
+  let dragCounter = 0;
+
+  $dropzone.on('dragenter', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter++;
+    $dropzone.css('border-color', 'var(--color-primary)');
+    $dropzone.css('background', 'rgba(0, 0, 0, 0.03)');
+  });
+
   $dropzone.on('dragover', function(e) {
     e.preventDefault();
-    $dropzone.css('border-color', '#000000');
-    $dropzone.css('background', 'rgba(0, 0, 0, 0.03)');
+    e.stopPropagation();
   });
 
   $dropzone.on('dragleave', function(e) {
     e.preventDefault();
-    $dropzone.css('border-color', 'var(--color-border)');
-    $dropzone.css('background', 'transparent');
+    e.stopPropagation();
+    dragCounter--;
+    if (dragCounter === 0) {
+      $dropzone.css('border-color', 'var(--color-border)');
+      $dropzone.css('background', 'transparent');
+    }
   });
 
   $dropzone.on('drop', function(e) {
     e.preventDefault();
+    e.stopPropagation();
+    dragCounter = 0;
     $dropzone.css('border-color', 'var(--color-border)');
     $dropzone.css('background', 'transparent');
     

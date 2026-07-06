@@ -7,9 +7,12 @@
     "build": "node scripts/build.js"
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
-    "sqlite3": "^6.0.1"
+    "sqlite3": "^6.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "terser": "^5.48.0"

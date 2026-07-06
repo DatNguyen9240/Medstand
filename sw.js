@@ -12,7 +12,6 @@ const PRECACHE_URLS = [
 
   // Standalone auth pages
   '/pages/login.html',
-  '/pages/register.html',
   '/pages/forgot-password.html',
 
   // Templates (loaded by router)

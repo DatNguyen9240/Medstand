@@ -106,7 +106,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
+        "responseBody": "={{ $json }}",
         "options": {
           "responseCode": 200
         }

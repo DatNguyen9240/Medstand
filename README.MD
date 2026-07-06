@@ -64,3 +64,20 @@ Công cụ đồng bộ dữ liệu chuyên nghiệp từ máy chủ Medstand sa
 *   **PWA & Service Worker Cache:** Lưu trữ tài nguyên tĩnh thông minh trên thiết bị, hỗ trợ truy cập ứng dụng mượt mà và hoạt động ở chế độ ngoại tuyến (Offline Mode) khi mất kết nối mạng.
 *   **Rate Limiting & Timeout Control:** Ngăn chặn lỗi "Retry Storm" (cơn bão gửi lại request khi database phản hồi chậm) bằng cách kiểm soát thời gian chờ 60 giây và chống spam hiệu quả.
 *   **Redis Cache & Vector Database (Qdrant):** Tích hợp bộ nhớ đệm Redis để tối ưu hóa hiệu năng, giảm thời gian phản hồi của chatbot và Qdrant để lưu trữ tri thức RAG cho LLM.
+
+---
+
+## 🔑 Thông tin Quản trị & Đăng nhập
+
+### Tài khoản n8n (Môi trường Local/Portable):
+*   **Đường dẫn:** [http://localhost:5678](http://localhost:5678)
+*   **Email:** `admin@example.com`
+*   **Mật khẩu:** `AdminD308!`
+
+### Tài khoản Microsoft SQL Server (Database từ xa):
+*   **Server:** `z5.bms79.com`
+*   **Port:** `17456`
+*   **Database:** `medtest`
+*   **User:** `medtest`
+*   **Password:** `medtest@2026`
+

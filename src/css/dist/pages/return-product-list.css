@@ -1,0 +1,1 @@
+.product-card{background:var(--color-surface);border-radius:var(--radius-md);border:1px solid var(--color-border);padding:var(--spacing-md);margin-bottom:var(--spacing-md)}.product-card .row{display:flex;justify-content:space-between;margin-bottom:var(--spacing-xs);font-size:var(--font-size-sm)}.product-card .amount{color:var(--color-primary)}

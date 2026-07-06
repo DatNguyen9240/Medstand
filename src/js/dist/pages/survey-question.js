@@ -1,0 +1,1 @@
+var _dec=function(e){for(var r=107,t=atob(e),o="",a=0;a<t.length;a++)o+=String.fromCharCode(t.charCodeAt(a)^r);return decodeURIComponent(escape(atob(o)))};function selectAnswer(e){var r;e.parentNode.querySelectorAll(".answer-item").forEach(e=>e.classList.remove("selected")),e.classList.add("selected")}

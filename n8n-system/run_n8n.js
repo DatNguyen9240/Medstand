@@ -1,7 +1,30 @@
-// n8n-system/run_n8n.js
-const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+
+// Force local portable environment variables
+process.env.N8N_USER_FOLDER = path.join(__dirname, 'n8n_data');
+process.env.PM2_HOME = path.join(process.env.N8N_USER_FOLDER, '.pm2');
+process.env.N8N_PORT = "5678";
+process.env.N8N_HOST = "0.0.0.0";
+process.env.N8N_LISTEN_ADDRESS = "0.0.0.0";
+process.env.N8N_PROTOCOL = "http";
+process.env.N8N_DEFAULT_CORS = "true";
+process.env.N8N_CORS_ALLOWED_ORIGINS = "*";
+process.env.N8N_CORS_ALLOWED_METHODS = "GET,POST,PUT,DELETE,OPTIONS,HEAD";
+process.env.N8N_CORS_ALLOWED_HEADERS = "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key";
+process.env.EXECUTIONS_DATA_MAX_AGE = "72";
+process.env.EXECUTIONS_DATA_PRUNE = "true";
+process.env.GENERIC_TIMEZONE = "Asia/Ho_Chi_Minh";
+process.env.N8N_LOG_LEVEL = "debug";
+process.env.N8N_LOG_OUTPUT = "console";
+process.env.N8N_VERSION_NOTIFICATIONS_ENABLED = "false";
+process.env.N8N_DIAGNOSTICS_ENABLED = "false";
+process.env.N8N_HIRING_BANNER_ENABLED = "false";
+process.env.N8N_BASIC_AUTH_ACTIVE = "false";
+process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = "false";
+process.env.N8N_DISABLE_TASK_RUNNERS = "true";
+
+const { spawn } = require('child_process');
 
 // Duong dan tuyet doi den Node.js Portable
 const NODE_DIR = path.join(__dirname, '.bin', 'node-v22.14.0-win-x64');
@@ -28,7 +51,7 @@ if (n8nOk) {
 
 const child = spawn(cmd, args, {
   stdio: 'inherit',
-  shell: false,
+  shell: true,
   windowsHide: true,
   cwd: path.join(__dirname, '..')
 });

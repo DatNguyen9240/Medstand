@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="../src/css/pages/auth.css">
 
   <!-- Theme (before body) -->
-  <script src="../src/js/utils/theme.js"></script>
+  <script src="../src/js/dist/theme.min.js?v=11.1"></script>
 
 
 
@@ -116,7 +116,7 @@
     </form>
 
     <div class="auth-footer">
-      Chưa có tài khoản? <a href="register.html" class="link">Đăng ký ngay</a>
+      Liên hệ Quản trị viên để nhận tài khoản
     </div>
   </div>
 
@@ -137,6 +137,18 @@
       if (match && match[1]) {
         window.location.href = '../index.html#/home';
         return;
+      }
+    })();
+
+    // Kiểm tra cờ báo khóa đăng ký tài khoản tự do
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get('register') === 'disabled') {
+        var errEl = document.getElementById('login-error');
+        if (errEl) {
+          errEl.textContent = 'Đăng ký tài khoản tự do đã bị khóa theo đặc tả phân quyền. Vui lòng liên hệ Quản trị viên để nhận tài khoản.';
+          errEl.style.display = 'block';
+        }
       }
     })();
 
