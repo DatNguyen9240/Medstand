@@ -115,7 +115,7 @@
             }
           ]
         },
-        "combineConditions": "ANY"
+        "combineOperation": "any"
       },
       "id": "route-by-type",
       "name": "Route by File Type",
@@ -182,7 +182,7 @@
             }
           ]
         },
-        "combineConditions": "ANY"
+        "combineOperation": "any"
       },
       "id": "if-image-type",
       "name": "If Image Type",
@@ -208,7 +208,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first();\n// FIX FOR FILESYSTEM BINARY STORE\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst base64Data = buffer.toString('base64');\nconst mimeType = item.binary.file.mimeType || 'image/png';\n\nconst systemPrompt = `Bạn là công cụ trích xuất văn bản (OCR) siêu việt. Hãy trích xuất chính xác 100% các chữ có trong ảnh. Tuyệt đối không tự tóm tắt, không tự sáng tạo nội dung, không giải thích hình ảnh. Giả định bạn đang làm việc với tờ rơi/catalog sản phẩm y khoa, hãy phân tích bố cục và trả về dữ liệu dưới định dạng JSON có cấu trúc chính xác như sau:\n{\n  \"product_name\": \"Tên sản phẩm chính (ví dụ: 'Thymopath Gold', 'Argelomag')\",\n  \"item_id\": \"Mã sản phẩm nếu có ghi rõ trên ảnh (ví dụ: 'T005', 'A008'), nếu không có hãy ghi null\",\n  \"ingredients\": \"Thành phần và hàm lượng chi tiết của sản phẩm\",\n  \"main_uses\": \"Công dụng chính nổi bật của sản phẩm\",\n  \"target_patients\": \"Đối tượng sử dụng phù hợp\",\n  \"usage_instructions\": \"Cách dùng, liều dùng chi tiết cho từng đối tượng\",\n  \"contraindications\": \"Chống chỉ định, lưu ý khi dùng nếu có, không có ghi 'Không'\",\n  \"side_effects\": \"Tác dụng phụ nếu có, không có ghi 'Không'\",\n  \"keywords\": \"Từ khóa các triệu chứng bệnh, chỉ định liên quan đến sản phẩm để phục vụ tìm kiếm sau này (ví dụ: 'ho, viêm họng, đề kháng yếu')\",\n  \"confidence\": \"Mức độ tự tin trích xuất: HIGH hoặc MEDIUM hoặc LOW\",\n  \"content\": \"Toàn bộ nội dung thô trích xuất từ ảnh sản phẩm\"\n}`;\n\nreturn [{ json: {\n  model: \"openai/gpt-4o-mini\",\n  response_format: { type: \"json_object\" },\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: [\n        { type: \"text\", text: \"Hãy trích xuất thông tin dưới dạng JSON:\" },\n        { type: \"image_url\", image_url: { url: 'data:' + mimeType + ';base64,' + base64Data } }\n    ] }\n  ]\n}}];"
+        "jsCode": "const item = $input.first();\n// FIX FOR FILESYSTEM BINARY STORE\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst base64Data = buffer.toString('base64');\nconst mimeType = item.binary.file.mimeType || 'image/png';\n\nconst systemPrompt = `Bạn là công cụ trích xuất văn bản (OCR) siêu việt. Hãy trích xuất chính xác 100% các chữ có trong ảnh. Tuyệt đối không tự tóm tắt, không tự sáng tạo nội dung, không giải thích hình ảnh. Giả định bạn đang làm việc với tờ rơi/catalog sản phẩm y khoa, hãy phân tích bố cục và trả về dữ liệu dưới định dạng JSON có cấu trúc chính xác như sau:\n{\n  \"product_name\": \"Tên sản phẩm chính (ví dụ: 'Thymopath Gold', 'Argelomag')\",\n  \"item_id\": \"Mã sản phẩm nếu có ghi rõ trên ảnh (ví dụ: 'T005', 'A008'), nếu không có hãy ghi null\",\n  \"ingredients\": \"Thành phần và hàm lượng chi tiết của sản phẩm\",\n  \"main_uses\": \"Công dụng chính nổi bật của sản phẩm\",\n  \"target_patients\": \"Đối tượng sử dụng phù hợp\",\n  \"usage_instructions\": \"Cách dùng, liều dùng chi tiết cho từng đối tượng\",\n  \"contraindications\": \"Chống chỉ định, lưu ý khi dùng nếu có, không có ghi 'Không'\",\n  \"side_effects\": \"Tác dụng phụ nếu có, không có ghi 'Không'\",\n  \"keywords\": \"Từ khóa các triệu chứng bệnh, chỉ định liên quan đến sản phẩm để phục vụ tìm kiếm sau này (ví dụ: 'ho, viêm họng, đề kháng yếu')\",\n  \"confidence\": \"Mức độ tự tin trích xuất: HIGH hoặc MEDIUM hoặc LOW\",\n  \"content\": \"Toàn bộ nội dung thô trích xuất từ ảnh sản phẩm\"\n}`;\n\nreturn [{ json: {\n  model: \"openai/gpt-4o-mini\",\n  messages: [\n    { role: \"system\", content: systemPrompt },\n    { role: \"user\", content: [\n        { type: \"text\", text: \"Hãy trích xuất thông tin dưới dạng JSON:\" },\n        { type: \"image_url\", image_url: { url: 'data:' + mimeType + ';base64,' + base64Data } }\n    ] }\n  ]\n}}];"
       },
       "id": "prep-vision",
       "name": "Prep Vision Body",
@@ -452,7 +452,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $input.first().json;\nconst documentText = `[SẢN PHẨM: ${item.ItemName}]\nMã sản phẩm: ${item.ItemID}\nThành phần: ${item.Ingredients || 'Chưa cập nhật'}\nCông dụng chính: ${item.MainUses || 'Chưa cập nhật'}\nĐối tượng sử dụng: ${item.TargetPatients || 'Chưa cập nhật'}\nHướng dẫn sử dụng: ${item.UsageInstructions || 'Chưa cập nhật'}\nChống chỉ định: ${item.Contraindications || 'Chưa cập nhật'}\nTác dụng phụ: ${item.SideEffects || 'Chưa cập nhật'}\nTừ khóa tìm kiếm: ${item.Keywords || 'Chưa cập nhật'}\nPhiên bản: ${item.VersionNo || 1}\nMức tin cậy: ${item.Confidence || 'HIGH'}`;\n\nconst textBuffer = Buffer.from(documentText, 'utf8');\n\nreturn [{\n  json: {\n    itemId: item.ItemID,\n    itemName: item.ItemName,\n    status: item.Status,\n    version: item.VersionNo,\n    confidence: item.Confidence || 'HIGH',\n    keywords: item.Keywords || '',\n    approvedDate: new Date().toISOString(),\n    title: item.ItemName\n  },\n  binary: {\n    file: {\n      data: textBuffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.ItemID}_spec.txt`\n    }\n  }\n}];"
+        "jsCode": "const item = $input.first().json;\nconst documentText = `[SẢN PHẨM: ${item.ItemName}]\nMã sản phẩm: ${item.ItemID}\nThành phần: ${item.Ingredients || 'Chưa cập nhật'}\nCông dụng chính: ${item.MainUses || 'Chưa cập nhật'}\nĐối tượng sử dụng: ${item.TargetPatients || 'Chưa cập nhật'}\nHướng dẫn sử dụng: ${item.UsageInstructions || 'Chưa cập nhật'}\nChống chỉ định: ${item.Contraindications || 'Chưa cập nhật'}\nTác dụng phụ: ${item.SideEffects || 'Chưa cập nhật'}\nTừ khóa tìm kiếm: ${item.Keywords || 'Chưa cập nhật'}\nPhiên bản: ${item.VersionNo || 1}\nMức tin cậy: ${item.Confidence || 'HIGH'}`;\n\nconst textBuffer = Buffer.from(documentText, 'utf8');\n\nreturn [{\n  json: {\n    itemId: item.ItemID,\n    itemName: item.ItemName,\n    status: item.Status,\n    version: item.VersionNo,\n    confidence: item.Confidence || 'HIGH',\n    keywords: item.Keywords || '',\n    approvedDate: new Date().toISOString(),\n    title: item.ItemName,\n    specText: documentText\n  },\n  binary: {\n    file: {\n      data: textBuffer.toString('base64'),\n      mimeType: 'text/plain',\n      fileName: `${item.ItemID}_spec.txt`\n    }\n  }\n}];"
       },
       "id": "prepare-qdrant-doc",
       "name": "Prepare Qdrant Document",
@@ -464,7 +464,13 @@
       ]
     },
     {
-      "parameters": {},
+      "parameters": {
+        "dataType": "json",
+        "jsonMode": "allInputData",
+        "options": {
+          "pointers": "/specText"
+        }
+      },
       "id": "document-loader-sync",
       "name": "Document Loader Sync",
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
@@ -480,6 +486,7 @@
         "qdrantCollection": "medstand-products",
         "options": {}
       },
+      "onError": "continueRegularInfo",
       "id": "qdrant-vector-store-sync",
       "name": "Qdrant Vector Sync",
       "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
@@ -498,7 +505,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Phê duyệt danh mục sản phẩm và đồng bộ Vector Qdrant thành công!\",\n  \"itemId\": \"{{ $('execute-approve-db').first().json.ItemID }}\",\n  \"status_db\": \"{{ $('execute-approve-db').first().json.Status }}\"\n}",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Phê duyệt danh mục sản phẩm và đồng bộ Vector Qdrant thành công!\",\n  \"itemId\": \"{{ $('Execute Approve DB').first().json.ItemID }}\",\n  \"status_db\": \"{{ $('Execute Approve DB').first().json.Status }}\"\n}",
         "options": {
           "responseCode": 200
         }
@@ -804,7 +811,7 @@
       "main": [
         [
           {
-            "node": "Document Loader Sync",
+            "node": "Qdrant Vector Sync",
             "type": "main",
             "index": 0
           }
@@ -812,15 +819,6 @@
       ]
     },
     "Document Loader Sync": {
-      "main": [
-        [
-          {
-            "node": "Qdrant Vector Sync",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ],
       "ai_document": [
         [
           {

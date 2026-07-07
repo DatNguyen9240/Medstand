@@ -79,11 +79,11 @@ $(function() {
   });
 
   function handleFile(file) {
-    const validExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx'];
+    const validExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
     const ext = file.name.split('.').pop().toLowerCase();
     
     if (!validExts.includes(ext)) {
-      alert('Vui lòng chọn file văn bản (.pdf, .doc, .xlsx...)');
+      alert('Vui lòng chọn file văn bản (.pdf, .doc, .xlsx, .txt...)');
       return;
     }
 

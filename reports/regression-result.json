@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-07-06T10:53:13.811Z",
+  "generatedAt": "2026-07-07T09:44:37.118Z",
   "summary": {
     "total": 9,
-    "passed": 8,
-    "failed": 1,
+    "passed": 7,
+    "failed": 2,
     "skipped": 0,
     "warning": 0,
-    "passRate": "88.9"
+    "passRate": "77.8"
   },
   "results": [
     {
@@ -14,25 +14,25 @@
       "suite": "chatbot",
       "name": "Chatbot định danh vai trò người dùng",
       "status": "PASSED",
-      "elapsedMs": 350,
+      "elapsedMs": 526,
       "error": null,
-      "responseSnippet": "{\"status\":\"info\",\"message\":\"Dạ, Sếp là **Đoàn Văn Thế**, đang đăng nhập với vai trò **Trình dược viên** thuộc chi nhánh **MB** ạ!\",\"data\":[],\"count\":0,\"apiCode\":\"ASK_CLARIFICATION\"}"
+      "responseSnippet": "{\"status\":\"info\",\"message\":\"Dạ, Sếp là **Đoàn Văn Thế**, đang đăng nhập với vai trò **Trình dược viên** thuộc chi nhánh **Miền bắc** ạ!\",\"data\":[],\"count\":0,\"apiCode\":\"ASK_CLARIFICATION\"}"
     },
     {
       "id": 2,
       "suite": "chatbot",
       "name": "Lệnh nhanh @tuyen_ban_hang tự động nhận diện bối cảnh",
       "status": "PASSED",
-      "elapsedMs": 1426,
+      "elapsedMs": 1462,
       "error": null,
-      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 8 ket qua.\",\"data\":[{\"ObjectID\":\"HPA200\",\"TenCuaHang\":\"Hộ Kinh Doanh Nhà Thuốc 28 Cơ sở 3\",\"ObjectName\":\"Hộ Kinh Doanh Nhà Thuốc 28 Cơ sở 3\",\"Phone\":\"0977135881"
+      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 8 ket qua.\",\"data\":[{\"ObjectID\":\"NDB096\",\"TenCuaHang\":\"Quầy Thuốc Hiền Tiến 1\",\"ObjectName\":\"Quầy Thuốc Hiền Tiến 1\",\"Phone\":\"0963658613\",\"Address\":\"Xóm 2, Xã G"
     },
     {
       "id": 4,
       "suite": "chatbot",
       "name": "Lệnh @tra_cuu_san_pham trả về chi tiết sản phẩm Argelomag",
       "status": "PASSED",
-      "elapsedMs": 1164,
+      "elapsedMs": 1167,
       "error": null,
       "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 1 ket qua.\",\"data\":[{\"STT\":\"1\",\"Mã sp\":\"A004\",\"Sản Phẩm\":\"Argelomag (15 ml)\",\"Đơn Giá\":\"0\",\"Tồn Kho\":0,\"Thành Phần\":null,\"Công Dụng\":null,\"Đối Tượng\":null,\"Cách"
     },
@@ -41,25 +41,25 @@
       "suite": "chatbot",
       "name": "Lệnh nhanh @bao_cao_cuoi_ngay tự động tổng hợp số liệu",
       "status": "PASSED",
-      "elapsedMs": 1097,
+      "elapsedMs": 1019,
       "error": null,
-      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 1 ket qua.\",\"data\":[{\"STT\":\"1\",\"Từ Ngày\":\"06/07/2026\",\"Đến Ngày\":\"06/07/2026\",\"Mã KH\":\"HPA191\",\"Tên Khách Hàng\":\"Hiệu thuốc Thuỷ Nguyên\",\"Doanh Số\":\"10,000,000\""
+      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 32 ket qua.\",\"data\":[{\"STT\":\"1\",\"Từ Ngày\":\"07/07/2026\",\"Đến Ngày\":\"07/07/2026\",\"Mã KH\":\"HPA515\",\"Tên Khách Hàng\":\"Quầy Thuốc Thu Thủy\",\"Doanh Số\":\"62,470,000\"},"
     },
     {
       "id": 7,
       "suite": "chatbot",
       "name": "Lệnh nhanh @tich_luy tự động nhận diện bối cảnh",
       "status": "PASSED",
-      "elapsedMs": 2517,
+      "elapsedMs": 1958,
       "error": null,
-      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 1190 ket qua.\",\"data\":[{\"ProgramID\":\"MOCK_CTKM_THANG5\",\"ObjectID\":\"HDA107\",\"TenCuaHang\":\"Nhà Thuốc Minh Nguyên\",\"TichLuyDatDuoc\":\"343425000\",\"QuaDaDat\":\"200 hộp"
+      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 1199 ket qua.\",\"data\":[{\"ProgramID\":\"MOCK_CTKM_THANG5\",\"ObjectID\":\"HPA515\",\"TenCuaHang\":\"Quầy Thuốc Thu Thủy\",\"TichLuyDatDuoc\":\"413575000\",\"QuaDaDat\":\"200 hộp q"
     },
     {
       "id": 8,
       "suite": "chatbot",
       "name": "Lỗi lệnh @upsell_goi_y gợi ý bán thêm",
       "status": "PASSED",
-      "elapsedMs": 368,
+      "elapsedMs": 415,
       "error": null,
       "responseSnippet": "{\"status\":\"info\",\"message\":\"Dạ, Sếp muốn xem gợi ý bán thêm cho nhà thuốc nào ạ?\",\"data\":[],\"count\":0,\"apiCode\":\"VALIDATION_ERROR\"}"
     },
@@ -68,16 +68,16 @@
       "suite": "chatbot",
       "name": "Tính năng lệnh @danh_sach_cau_hoi_khao_sat chưa được cấu hình",
       "status": "PASSED",
-      "elapsedMs": 1030,
+      "elapsedMs": 911,
       "error": null,
-      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 4 ket qua.\",\"data\":[{\"DocumentID\":\"C4FB530F-DCCC-42F2-9439-8ED3C6F216A9\",\"Title\":\"Khảo sát khách hàng HPA515\",\"SoCauHoi\":3,\"ThoiGianLamBai\":\"\",\"HanThi\":\"13/07/2"
+      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 4 ket qua.\",\"data\":[{\"DocumentID\":\"D15DBBE9-2BE5-4690-97CF-5D1B0628DA6C\",\"Title\":\"Khảo sát khách hàng HPA515\",\"SoCauHoi\":3,\"ThoiGianLamBai\":\"\",\"HanThi\":\"14/07/2"
     },
     {
       "id": 10,
       "suite": "chatbot",
       "name": "Tính năng Sản phẩm trọng tâm tháng (@san_pham_trong_tam)",
       "status": "FAILED",
-      "elapsedMs": 3388,
+      "elapsedMs": 3192,
       "error": "AI không hiển thị danh sách hàng hóa mục tiêu thúc đẩy bán hàng. Phản hồi thực tế: \"{\"status\":\"success\",\"message\":\"Tim thay 108 ket qua.\",\"data\":[{\"Chương Trình\":\"CHƯƠNG TRÌNH TRỌNG TÂM THÁNG 5 NĂM 2026\",\"Từ Ngày\":\"2026-05-01T00:00:00\"",
       "responseSnippet": null
     },
@@ -85,10 +85,10 @@
       "id": 11,
       "suite": "chatbot",
       "name": "Lệnh nhanh @cham_diem_k_h tự động nhận diện bối cảnh",
-      "status": "PASSED",
-      "elapsedMs": 3513,
-      "error": null,
-      "responseSnippet": "{\"status\":\"success\",\"message\":\"Tim thay 2466 ket qua.\",\"data\":[{\"ObjectID\":\"BNB161\",\"TenCuaHang\":\"Quầy Thuốc Thu Thủy\",\"Phone\":\"0374259425\",\"Nhom\":\"A\",\"PhanLoai\":\"Khách VIP (Top 20%)\",\"DiemTongHop\":77"
+      "status": "FAILED",
+      "elapsedMs": 10517,
+      "error": "AI báo thiếu thông tin thay vì nhận diện bối cảnh (Forbidden: \"xin vui lòng cung cấp thêm thông tin để tôi có thể hỗ trợ bạn tốt hơn\" was found in \"{\"status\":\"info\",\"message\":\"Xin vui lòng cung cấp thêm thông tin để tôi có thể hỗ trợ bạn tốt hơn.\",...\")",
+      "responseSnippet": null
     }
   ]
 }

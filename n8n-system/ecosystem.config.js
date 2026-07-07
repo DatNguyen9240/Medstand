@@ -38,10 +38,13 @@ module.exports = {
     },
     {
       name: "Medstand_WebGateway",
-      script: path.join(__dirname, '..', 'server.js'),
-      interpreter: nodeExe,
-      cwd: path.join(__dirname, '..'),
-      watch: false
+      script: 'd:/HoangDang/IT/Medstand/server.js',
+      interpreter: 'node',
+      cwd: 'd:/HoangDang/IT/Medstand',
+      watch: false,
+      env: {
+        NODE_PATH: 'd:/HoangDang/IT/Medstand/node_modules'
+      }
     }
   ]
 };

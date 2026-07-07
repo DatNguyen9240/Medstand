@@ -4,6 +4,7 @@ const fs = require('fs');
 // Force local portable environment variables
 process.env.N8N_USER_FOLDER = path.join(__dirname, 'n8n_data');
 process.env.PM2_HOME = path.join(process.env.N8N_USER_FOLDER, '.pm2');
+process.env.NODE_PATH = path.join(__dirname, 'n8n_data', 'npm_global', 'node_modules');
 process.env.N8N_PORT = "5678";
 process.env.N8N_HOST = "0.0.0.0";
 process.env.N8N_LISTEN_ADDRESS = "0.0.0.0";
