@@ -5,6 +5,9 @@ const NODE_DIR = path.join(__dirname, '.bin', 'node-v22.14.0-win-x64');
 const nodeExe = path.join(NODE_DIR, 'node.exe');
 const n8nDir = process.env.N8N_USER_FOLDER || path.join(__dirname, 'n8n_data');
 
+// Duong dan den thu muc goc cua du an
+const rootDir = path.resolve(__dirname, '..');
+
 module.exports = {
   apps: [
     {
@@ -38,12 +41,12 @@ module.exports = {
     },
     {
       name: "Medstand_WebGateway",
-      script: 'd:/HoangDang/IT/Medstand/server.js',
-      interpreter: 'node',
-      cwd: 'd:/HoangDang/IT/Medstand',
+      script: path.join(rootDir, 'server.js'),
+      interpreter: nodeExe,
+      cwd: rootDir,
       watch: false,
       env: {
-        NODE_PATH: 'd:/HoangDang/IT/Medstand/node_modules'
+        NODE_PATH: path.join(rootDir, 'node_modules')
       }
     }
   ]
