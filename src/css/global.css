@@ -28,13 +28,20 @@ body {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-accent);
   text-decoration: none;
-  transition: color var(--transition-fast);
+  transition: color var(--duration-normal) var(--ease-default);
 }
 
 a:hover {
-  color: var(--color-primary-hover);
+  color: var(--color-accent-hover);
+}
+
+/* ── Accessibility: Focus Ring ──────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
 }
 
 img {
@@ -82,8 +89,8 @@ img {
 }
 
 .form-control:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.15);
 }
 
 select.form-control {
@@ -104,11 +111,18 @@ select.form-control {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   padding: 10px 20px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: none;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: background var(--duration-normal) var(--ease-default),
+              box-shadow var(--duration-normal) var(--ease-default),
+              transform var(--duration-fast) var(--ease-default);
   line-height: 1.5;
+  user-select: none;
+}
+
+.btn:active {
+  transform: scale(0.98);
 }
 
 .btn-primary {
@@ -119,6 +133,16 @@ select.form-control {
 .btn-primary:hover {
   background: var(--color-primary-hover);
   box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.3);
+}
+
+.btn-accent {
+  background: var(--color-accent);
+  color: #ffffff;
+}
+
+.btn-accent:hover {
+  background: var(--color-accent-hover);
+  box-shadow: 0 4px 12px rgba(var(--color-accent-rgb), 0.3);
 }
 
 .btn-cancel,
@@ -238,7 +262,7 @@ select.form-control {
   left: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #0b8a43; /* Brand green */
+  color: var(--color-primary); /* Brand green */
   font-size: 1.1rem;
   pointer-events: none;
   font-family: inherit;
@@ -260,9 +284,9 @@ select.form-control {
 }
 
 .ai-global-search:focus {
-  border-color: #0b8a43;
+  border-color: var(--color-accent);
   background: var(--color-surface);
-  box-shadow: 0 0 0 3px rgba(11, 138, 67, 0.15);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.15);
 }
 
 .search-ai-wrap:focus-within .search-ai-icon {

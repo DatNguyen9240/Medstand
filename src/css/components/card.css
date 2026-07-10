@@ -24,13 +24,16 @@
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
-    background-color var(--transition-normal);
+  transition: border-color var(--duration-normal) var(--ease-default),
+              box-shadow var(--duration-normal) var(--ease-default),
+              transform var(--duration-normal) var(--ease-default),
+              background-color var(--duration-normal) var(--ease-default);
 }
 
 .stat-card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), 0.12);
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .stat-card.highlighted {
@@ -266,9 +269,9 @@
 }
 
 .date-input:focus {
-  border-color: var(--color-primary);
+  border-color: var(--color-accent);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.15);
 }
 
 /* ---------- Section Headers ---------- */
@@ -295,8 +298,8 @@
 }
 
 .section-header .section-badge {
-  background: rgba(var(--color-primary-rgb), 0.08);
-  color: var(--color-primary);
+  background: var(--color-accent-surface);
+  color: var(--color-accent);
   padding: 4px 12px;
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);

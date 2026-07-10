@@ -1,14 +1,24 @@
 /* ═══════════════════════════════════════════
-   Design Tokens — TailAdmin‑inspired
+   Design Tokens — Medstand Design System v2
+   Green (brand) + Indigo (accent/interactive)
    Supports Light / Dark via [data-theme="dark"]
    ═══════════════════════════════════════════ */
 
 /* ---------- Light (default) ---------- */
 :root {
-  /* Brand */
+  /* ─── Brand (Green — Medical identity) ─── */
   --color-primary: #0b8a43;
   --color-primary-hover: #066533;
   --color-primary-rgb: 11, 138, 67;
+  --color-primary-surface: #ecfdf5;   /* Tint nhẹ cho bg */
+
+  /* ─── Accent (Indigo — interactive states) ─── */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #3730a3;
+  --color-accent-rgb: 79, 70, 229;
+  --color-accent-surface: #eef2ff;    /* Tint indigo cho active bg */
+
+  /* ─── Semantic Colors ─── */
   --color-success: #10b981;
   --color-success-bg: #d1fae5;
   --color-success-text: #065f46;
@@ -22,74 +32,118 @@
   --color-info-bg: #dbeafe;
   --color-info-text: #1e40af;
 
-  /* Surfaces */
+  /* ─── Revenue / Red accent ─── */
+  --color-revenue: #ef4444;
+
+  /* ─── Surfaces ─── */
   --color-background: #f4f6fa;
   --color-surface: #ffffff;
   --color-sidebar: #ffffff;
   --color-header: #ffffff;
 
-  /* Text */
+  /* ─── Text ─── */
   --color-text: #1b2a24;
   --color-text-secondary: #4a5a54;
-  --color-text-muted: #6c7d75;
+  --color-text-muted: #6b7280;
 
-  /* Borders */
+  /* ─── Borders ─── */
   --color-border: #e7f2eb;
   --color-border-strong: #cbd5e1;
 
-  /* Revenue / Red accent */
-  --color-revenue: #ef4444;
-
-  /* Phone / green */
+  /* ─── Phone / green utility ─── */
   --color-phone-bg: #ecfdf5;
   --color-phone-icon: #10b981;
 
-  /* Skeleton */
+  /* ─── Skeleton ─── */
   --color-skeleton: #e2e8f0;
   --color-skeleton-shine: #f1f5f9;
 
-  /* Premium Border Radius */
+  /* ════════════════════════════════════
+     TYPOGRAPHY — Đầy đủ scale
+     ════════════════════════════════════ */
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Size scale */
+  --font-size-xs:   0.75rem;    /* 12px — label, badge, caption */
+  --font-size-sm:   0.875rem;   /* 14px — body, table, input */
+  --font-size-md:   1rem;       /* 16px — default body */
+  --font-size-lg:   1.125rem;   /* 18px — subtitle, card title */
+  --font-size-xl:   1.25rem;    /* 20px — section heading */
+  --font-size-2xl:  1.5rem;     /* 24px — page title */
+  --font-size-3xl:  2rem;       /* 32px — KPI value hero */
+  --font-size-title: 1.5rem;    /* Alias */
+
+  /* Weight scale */
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+  --font-weight-extrabold: 800;
+
+  /* Line height */
+  --line-height-tight:  1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Letter spacing */
+  --letter-spacing-tight: -0.01em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide:  0.025em;
+  --letter-spacing-wider: 0.05em;
+
+  /* ════════════════════════════════════
+     SPACING — Vertical Rhythm chuẩn 4px
+     ════════════════════════════════════ */
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+
+  /* Legacy aliases — giữ để không break code cũ */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 48px;
+
+  /* ════════════════════════════════════
+     BORDER RADIUS — Đồng bộ theo layer
+     ════════════════════════════════════ */
+  --radius-xs:   4px;
+  --radius-sm:   6px;    /* tag, chip nhỏ */
+  --radius-md:   8px;    /* input, button nhỏ */
+  --radius-lg:   12px;   /* button lớn, dropdown */
+  --radius-xl:   16px;   /* card */
+  --radius-2xl:  20px;   /* card lớn, KPI */
+  --radius-3xl:  24px;   /* drawer, modal, panel */
+  --radius-full: 9999px; /* pill, avatar */
+
+  /* Legacy aliases */
   --radius-kpi: 20px;
   --radius-card-large: 24px;
   --radius-button: 14px;
 
-  /* Premium Shadows */
-  --shadow-premium: 0 8px 24px rgba(0, 0, 0, 0.04);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.02);
+  /* ════════════════════════════════════
+     SHADOW — Nhẹ, hiện đại (không nặng)
+     ════════════════════════════════════ */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm:  0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-md:  0 4px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.10);
+  --shadow-xl:  0 16px 40px rgba(0, 0, 0, 0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-premium: 0 8px 24px rgba(0, 0, 0, 0.08);
 
-  /* Spacing */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.875rem;
-  --font-size-md: 1rem;
-  --font-size-lg: 1.125rem;
-  --font-size-xl: 1.25rem;
-  --font-size-title: 1.5rem;
-  --font-weight-normal: 400;
-  --font-weight-medium: 500;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
-
-  /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-full: 9999px;
-
-  /* Layout */
+  /* ════════════════════════════════════
+     LAYOUT
+     ════════════════════════════════════ */
   --content-max-width: 800px;
   --content-max-width-desktop: 1280px;
   --sidebar-width: 280px;
@@ -98,10 +152,23 @@
   --header-height: 64px;
   --nav-height: 64px;
 
-  /* Transitions */
-  --transition-fast: 0.15s ease;
+  /* ════════════════════════════════════
+     MOTION — Micro-interactions
+     ════════════════════════════════════ */
+  --ease-default:   cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:       cubic-bezier(0.0, 0, 0.2, 1);
+  --ease-in:        cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --duration-fast:   100ms;
+  --duration-normal: 200ms;
+  --duration-slow:   300ms;
+  --duration-drawer: 250ms;
+
+  /* Legacy aliases */
+  --transition-fast:   0.15s ease;
   --transition-normal: 0.25s ease;
-  --transition-slow: 0.35s ease;
+  --transition-slow:   0.35s ease;
 }
 
 /* ---------- Dark ---------- */
@@ -115,8 +182,11 @@
   --color-text-secondary: #a1aec0;
   --color-text-muted: #8a99af;
 
+  --color-primary-surface: rgba(11, 138, 67, 0.12);
+  --color-accent-surface: rgba(79, 70, 229, 0.15);
+
   --color-success-bg: rgba(16, 185, 129, 0.15);
-  --color-success-text: #34d399; 
+  --color-success-text: #34d399;
   --color-warning-bg: rgba(245, 158, 11, 0.15);
   --color-warning-text: #fbbf24;
   --color-danger-bg: rgba(239, 68, 68, 0.15);
@@ -133,9 +203,25 @@
   --color-skeleton: #2e3a47;
   --color-skeleton-shine: #3d4d5f;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm:  0 2px 4px rgba(0, 0, 0, 0.35);
+  --shadow-md:  0 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-xl:  0 16px 40px rgba(0, 0, 0, 0.5);
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ════════════════════════════════════
+   ACCESSIBILITY — Reduced Motion
+   ════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:   0ms;
+    --duration-normal: 0ms;
+    --duration-slow:   0ms;
+    --duration-drawer: 0ms;
+    --transition-fast:   0s;
+    --transition-normal: 0s;
+    --transition-slow:   0s;
+  }
 }
