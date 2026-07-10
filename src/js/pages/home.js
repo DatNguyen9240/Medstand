@@ -216,6 +216,9 @@ function initDashboard() {
       .then(function (res) {
         var data = res.data || res;
         var records = data.records || [];
+        var hasData = records.length > 0;
+        $('#revenue-chart-empty').prop('hidden', hasData);
+        $('#revenue-chart').prop('hidden', !hasData);
         var record = {};
         DASHBOARD_SCHEMA.STATS.forEach(function (item, i) {
           record[item.key] = (records[i] && records[i].Value) || '';
