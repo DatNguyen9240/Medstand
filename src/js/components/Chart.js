@@ -78,7 +78,9 @@ function drawLineChart(canvasId, labels, values, options = {}) {
           displayColors: false,
           callbacks: {
             title: function (items) {
-              return items[0].label;
+              return options.tooltipLabels && options.tooltipLabels[items[0].dataIndex]
+                ? options.tooltipLabels[items[0].dataIndex]
+                : items[0].label;
             },
             label: function (context) {
               const v = context.parsed.y;
@@ -115,8 +117,10 @@ function drawLineChart(canvasId, labels, values, options = {}) {
             font: { size: 11 },
             padding: 8,
             callback: function (value) {
-              if (value >= 1000000) return (value / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
-              if (value >= 1000)    return (value / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + 'k';
+              var absValue = Math.abs(value);
+              if (absValue >= 1000000000) return (value / 1000000000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' Tỷ';
+              if (absValue >= 1000000) return (value / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' Tr';
+              if (absValue >= 1000)    return (value / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + 'k';
               return value;
             }
           }

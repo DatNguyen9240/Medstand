@@ -128,7 +128,7 @@
     <div class="home-analytics-card">
       <div class="analytics-header">
         <div class="analytics-title">
-          <h2>Biểu đồ doanh số</h2>
+          <h2>Biểu đồ doanh số thuần</h2>
           <p class="analytics-subtitle">Theo ngày trong kỳ</p>
         </div>
         <div class="analytics-actions-wrap">
@@ -218,8 +218,25 @@
     <div class="widget-header">
       <h3>Khách cần ghé hôm nay</h3>
     </div>
-    <div class="tasks-grid" id="tasks-grid">
-      <!-- Inject bởi home.js -->
+    <div class="visit-sections">
+      <section class="visit-section" id="route-visit-section">
+        <div class="visit-section-header">
+          <h4>Theo lịch tuyến</h4>
+          <span class="widget-badge" id="route-total">0</span>
+        </div>
+        <div class="tasks-grid" id="tasks-grid">
+          <!-- Inject bởi home.js -->
+        </div>
+      </section>
+      <section class="visit-section" id="care-visit-section">
+        <div class="visit-section-header">
+          <h4>Đề xuất chăm sóc</h4>
+          <span class="widget-badge" id="care-total">0</span>
+        </div>
+        <div class="tasks-grid" id="care-tasks-grid">
+          <!-- Inject bởi home.js when the care API is available -->
+        </div>
+      </section>
     </div>
   </div>
 
