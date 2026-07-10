@@ -54,10 +54,13 @@ function renderSidebar(activeTab, base) {
     '<aside class="app-sidebar' + (collapsed ? ' collapsed' : '') + '" aria-label="Sidebar navigation">' +
     '<div class="sidebar-brand-wrapper">' +
     '  <div class="sidebar-brand">' +
-    '    <img src="images/logo/medstand-logo.png" alt="Medstand Pharma" style="height: 36px; max-width: 175px; object-fit: contain; flex-shrink: 0;">' +
+    '    <img src="images/logo/medstand-icon.png" class="sidebar-logo" alt="Medstand Logo">' +
+    '    <span class="sidebar-brand-text">MEDSTAND</span>' +
     '  </div>' +
-    '  <button type="button" class="sidebar-toggle" aria-label="Thu gọn sidebar" onclick="toggleSidebar()">' +
-    '    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
+    '  <button type="button" class="sidebar-toggle" aria-label="Điều khiển thanh điều hướng" onclick="toggleSidebar()">' +
+    '    <svg class="icon-collapse" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>' +
+    '    <svg class="icon-expand" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>' +
+    '    <svg class="icon-close" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
     '  </button>' +
     '</div>' +
     '<div class="sidebar-heading">MENU</div>' +
@@ -137,12 +140,7 @@ $(function () {
 function renderNavBar(activeTab, base) {
   activeTab = activeTab || 'home';
   var tabs = getMobileTabs(activeTab);
-  var menuBtnIcon = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
   return '<nav class="app-nav" aria-label="Bottom navigation">' +
-    '<button type="button" class="nav-item" onclick="toggleSidebar()" aria-label="Menu">' +
-    '<span class="nav-icon">' + menuBtnIcon + '</span>' +
-    '<span>Menu</span>' +
-    '</button>' +
     tabs.map(function (t) {
       return '<a href="' + t.href + '" class="nav-item ' + (t.id === activeTab ? 'active' : '') + '" data-tab="' + t.id + '">' +
         '<span class="nav-icon">' + t.icon + '</span>' +

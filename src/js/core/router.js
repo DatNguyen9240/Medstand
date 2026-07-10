@@ -299,6 +299,19 @@ const Router = (() => {
 
       const $header = document.querySelector('.app-header');
       if ($header) {
+        // Prepend mobile hamburger menu button if not present
+        if (!$header.querySelector('.header-menu-toggle')) {
+          const menuBtnHTML = `
+            <button type="button" class="header-icon header-menu-toggle" aria-label="Mở thanh điều hướng" onclick="toggleSidebar()">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+          `;
+          $header.insertAdjacentHTML('afterbegin', menuBtnHTML);
+        }
         // Dynamic header upgrade: if a template has #theme-toggle-container but lacks .header-actions,
         // wrap it in a .header-actions container so it gains the notification bell and supports AI chatbot icon injection.
         let $actions = $header.querySelector('.header-actions');
