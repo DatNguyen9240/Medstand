@@ -98,6 +98,8 @@ function drawLineChart(canvasId, labels, values, options = {}) {
           ticks: {
             color: tickColor,
             font: { size: 11 },
+            autoSkip: true,
+            maxTicksLimit: 12,
             maxRotation: 45
           }
         },
