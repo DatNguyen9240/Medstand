@@ -57,7 +57,7 @@ body.ae-panel-open::before {
     right: 0;
     bottom: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 1000;
+    z-index: 9990;
     backdrop-filter: blur(2px);
     animation: aeFadeIn 0.2s ease;
 }
@@ -119,6 +119,8 @@ body.ae-panel-open::before {
     left: 50%;
     transform: translate(-50%, -50%);
     width: calc(100% - 24px);
+    max-height: calc(100dvh - var(--header-height, 64px) - 32px);
+    box-sizing: border-box;
     /* Trừ ra margin 12px 2 bên (giống từ attach đến send) */
     max-width: var(--content-max-width, 768px);
     background: var(--ae-bg);
@@ -127,10 +129,11 @@ body.ae-panel-open::before {
     padding: 0 16px;
     font-family: 'Inter', 'Segoe UI', sans-serif;
     /* overflow: visible; SỬA LẠI: Vô tình để visible làm overflow nội dung đè lên form */
-    z-index: 1001;
+    z-index: 9991;
     /* Lớn hơn backdrop (1000) */
     pointer-events: none;
     opacity: 0;
+    overflow: hidden;
     transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -199,8 +202,23 @@ body.ae-panel-open::before {
 
 .ae-panel-fields {
     flex: 1;
-    overflow-y: visible;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
     /* Cho dropdown menu vượt ranh giới if needed */
+}
+
+@media (max-width: 767px) {
+    .ae-panel {
+        top: max(12px, env(safe-area-inset-top, 0px));
+        transform: translateX(-50%);
+        max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    }
+
+    .ae-panel.active {
+        transform: translateX(-50%) scale(1);
+    }
 }
 
 /* Controls */
@@ -322,7 +340,7 @@ body.ae-panel-open::before {
     border-radius: 12px;
     z-index: 1002;
     /* Nổi lên trên panel */
-    max-height: 280px;
+    max-height: 240px;
     overflow-y: auto;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     /* Thêm box-shadow cho nó nổi bật hơn */
@@ -356,10 +374,17 @@ body.ae-panel-open::before {
 .ae-sug-row {
     display: flex;
     align-items: flex-start;
+    width: 100%;
     padding: 12px 16px;
     cursor: pointer;
     border-bottom: 1px solid var(--ae-border);
     transition: background 0.15s;
+    border-left: 0;
+    border-right: 0;
+    border-top: 0;
+    background: var(--ae-bg);
+    text-align: left;
+    font: inherit;
 }
 
 .ae-sug-row:hover {
@@ -390,6 +415,9 @@ body.ae-panel-open::before {
     font-size: 12px;
     line-height: 1.4;
     display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* Selection card shown after picking an entity */
@@ -617,3 +645,15 @@ body.ae-panel-open::before {
 .ae-panel-draft-btn:hover { background: var(--ae-accent-soft); }
 .ae-panel-footer { display: flex; justify-content: space-between; width: 100%; }
 .ae-panel-send-btn { flex: 1; }
+
+.ae-customer-create-panel { width: min(760px, calc(100vw - 32px)); max-height: min(86vh, 820px); }
+.ae-customer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; padding:18px 20px; overflow-y:auto; }
+.ae-customer-field { display:flex; flex-direction:column; gap:6px; min-width:0; color:var(--ae-text); font-size:13px; font-weight:600; }
+.ae-customer-field input,.ae-customer-field select { width:100%; box-sizing:border-box; min-height:42px; padding:9px 11px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-weight:400; outline:none; }
+.ae-customer-field input:focus,.ae-customer-field select:focus { border-color:var(--ae-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ae-accent) 16%,transparent); }
+.ae-customer-field select:disabled { opacity:.65; cursor:not-allowed; }
+.ae-customer-full { grid-column:1/-1; }
+.ae-customer-error { min-height:18px; color:#dc2626; font-size:13px; font-weight:600; }
+.ae-customer-review { display:flex; flex-direction:column; gap:4px; padding:12px; border:1px solid var(--ae-accent); border-radius:10px; background:var(--ae-accent-soft); color:var(--ae-text); }
+.ae-customer-back-btn { flex:0 0 auto; min-height:42px; padding:0 18px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; }
+@media (max-width:640px) { .ae-customer-create-panel { width:100%; max-height:92vh; } .ae-customer-form { grid-template-columns:1fr; padding:14px; } .ae-customer-full { grid-column:auto; } }

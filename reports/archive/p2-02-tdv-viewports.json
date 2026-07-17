@@ -1,0 +1,18 @@
+{
+  "viewports": [
+    {
+      "width": 1366,
+      "height": 768
+    },
+    {
+      "width": 1920,
+      "height": 1080
+    }
+  ],
+  "zoom": [
+    80,
+    100,
+    125
+  ],
+  "result": "PASS"
+}

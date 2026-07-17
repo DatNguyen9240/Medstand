@@ -10,6 +10,17 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    SET @timkiem = LTRIM(RTRIM(ISNULL(@timkiem, '')));
+    IF @timkiem = ''
+    BEGIN
+        SELECT
+            CAST(0 AS bit) AS [Success],
+            'VALIDATION_ERROR' AS [Code],
+            N'Vui lòng nhập từ khóa hoặc triệu chứng cần tìm.' AS [Message],
+            0 AS [Count];
+        RETURN;
+    END;
+
     -- LOG FOR AUDITING
     EXEC AI_WriteAuditLog
         @Username     = @Username,

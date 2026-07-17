@@ -1,7 +1,12 @@
-IF OBJECT_ID('API_TuyenBanHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_TuyenBanHang_AI;
+USE medtest;
 GO
 
-CREATE PROCEDURE API_TuyenBanHang_AI
+-- =========================================================================
+-- 1. NÂNG CẤP STORED PROCEDURE API_TuyenBanHang_AI:
+-- Bổ sung cột ObjectName, Latitude và Longitude bằng cách LEFT JOIN với CF_ObjectMapTbl.
+-- =========================================================================
+
+CREATE OR ALTER PROCEDURE [dbo].[API_TuyenBanHang_AI]
     @Username      VARCHAR(50)   = '',
     @MaKhachHang   NVARCHAR(100) = '',
     @SoNgayVangMat INT           = 45,
@@ -25,12 +30,6 @@ BEGIN
     SET DATEFIRST 7  -- Chủ nhật = 1, Thứ 2 = 2, ..., Thứ 7 = 7
     DECLARE @TuNgay DATETIME = CASE WHEN @NgayTarget = '' THEN GETDATE() ELSE TRY_CAST(@NgayTarget AS DATETIME) END
     IF @TuNgay IS NULL SET @TuNgay = GETDATE()
-    
-    -- Live UAT Weekend Shift Guard: If UAT is run on a Sunday, auto-shift to Monday to ensure mock route data is loaded!
-    IF DATEPART(dw, @TuNgay) = 1 AND @NgayTarget = ''
-    BEGIN
-        SET @TuNgay = DATEADD(DAY, 1, @TuNgay)
-    END
     
     DECLARE @ThuHomNay VARCHAR(1) = CAST(DATEPART(dw, @TuNgay) AS VARCHAR)
     DECLARE @TenThuHomNay NVARCHAR(20) = ''
@@ -150,7 +149,7 @@ BEGIN
       )
     GROUP BY T.ObjectID
 
-    -- 6. TÍNH CHU KỲ MUA TRUNG BÌNH (6 tháng gần nhất)
+    -- 6. TÍNH CHU KÝ MUA TRUNG BÌNH (6 tháng gần nhất)
     SELECT
         I.ObjectID,
         CASE
@@ -210,7 +209,7 @@ BEGIN
     -- 8. KẾT QUẢ CUỐI CÙNG: LỌC CỨNG THEO TUYẾN NGÀY HỎI (Hoặc xem chi tiết 1 khách cụ thể)
     SELECT TOP (@TopN)
         KH.ObjectID, 
-        KH.ObjectName AS TenCuaHang, 
+        KH.ObjectName AS TenCuaHang,
         KH.Phone AS [Phone], 
         KH.Address AS [Address],
         KH.ZoneID AS [Tuyen], 
@@ -229,9 +228,20 @@ BEGIN
                 ELSE N'Theo lịch ghé'
             END,
             CASE WHEN KH.ZoneID IS NULL THEN N' | Ngoài tuyến' ELSE '' END
-        ) AS [LyDoGhe]
+        ) AS [LyDoGhe],
+        CAST(@TuNgay AS DATE) AS [WorkDate],
+        @TenThuHomNay AS [AppliedWeekday],
+        @SYSBranchID AS [ScopeBranchID],
+        M.Latitude AS [Latitude],
+        M.Longitude AS [Longitude]
     FROM CF_ObjectTbl KH
     JOIN #Logic L ON KH.ObjectID = L.ObjectID
+    OUTER APPLY (
+        SELECT TOP (1) Map.Latitude, Map.Longitude
+        FROM dbo.CF_ObjectMapTbl Map
+        WHERE Map.ObjectID = KH.ObjectID
+        ORDER BY Map.MapDate DESC, Map.UserAutoID DESC
+    ) M
     WHERE (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)
       AND (
           -- Nếu tra cứu 1 khách hàng cụ thể thì trả về luôn không lọc Thứ
@@ -239,8 +249,75 @@ BEGIN
           -- Hoặc lọc cứng đúng tuyến ngày cần đi
           OR KH.ThuTrongTuan LIKE '%' + @TenThuHomNay + '%'
       )
-    ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC;
+    ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC, KH.ObjectID ASC;
 
     DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic; DROP TABLE #AllowedObjects;
 END
 GO
+
+
+-- =========================================================================
+-- 2. THÊM TỌA ĐỘ MOCK CHO 8 KHÁCH HÀNG TRÊN UAT (QUANH TRUNG TÂM HÀ NỘI):
+-- Để Sales có thể thấy hiển thị marker và chạy thử tính năng vẽ đường.
+-- =========================================================================
+-- Dữ liệu mock bị vô hiệu hóa trong script triển khai chính để không ghi đè
+-- tọa độ thật. Chỉ bật thủ công trong một script seed UAT riêng khi cần.
+IF 1 = 0
+BEGIN
+
+-- QANB347 (Quầy Thuốc Tây Mỹ Liên 2)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'QANB347')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'QANB347', 21.0305, 105.8522, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0305, Longitude = 105.8522 WHERE ObjectID = 'QANB347';
+
+-- DONA0733 (Nhà thuốc tiện lợi Medophar)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'DONA0733')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'DONA0733', 21.0265, 105.8562, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0265, Longitude = 105.8562 WHERE ObjectID = 'DONA0733';
+
+-- NAA123 (Shop Mẹ và Bé Changs House)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'NAA123')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'NAA123', 21.0295, 105.8502, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0295, Longitude = 105.8502 WHERE ObjectID = 'NAA123';
+
+-- NAC158 (Quầy Thuốc Thành Mùi)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'NAC158')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'NAC158', 21.0315, 105.8552, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0315, Longitude = 105.8552 WHERE ObjectID = 'NAC158';
+
+-- HPA191 (Hiệu thuốc Thuỷ Nguyên)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'HPA191')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'HPA191', 21.0255, 105.8522, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0255, Longitude = 105.8522 WHERE ObjectID = 'HPA191';
+
+-- SGGV0211 (Nhà Thuốc Hương Nhi)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'SGGV0211')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'SGGV0211', 21.0275, 105.8582, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0275, Longitude = 105.8582 WHERE ObjectID = 'SGGV0211';
+
+-- DOTA0029 (Quầy thuốc Thanh Tuấn)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'DOTA0029')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'DOTA0029', 21.0325, 105.8512, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0325, Longitude = 105.8512 WHERE ObjectID = 'DOTA0029';
+
+-- YBA063 (Nhà Thuốc Huyền Yến)
+IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectMapTbl WHERE ObjectID = 'YBA063')
+    INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
+    VALUES (CAST(NEWID() AS VARCHAR(50)), 'YBA063', 21.0245, 105.8532, GETDATE());
+ELSE
+    UPDATE dbo.CF_ObjectMapTbl SET Latitude = 21.0245, Longitude = 105.8532 WHERE ObjectID = 'YBA063';
+END

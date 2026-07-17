@@ -1,0 +1,30 @@
+{
+  "baselineRequestId": "req-3275-mrnksi5g",
+  "baselineCount": 8,
+  "attempts": [
+    {
+      "field": "@EmployeeID",
+      "status": 200,
+      "code": "OK",
+      "requestId": "req-3277-mrnksjez",
+      "rowCount": 8,
+      "sameAsScopedBaseline": true
+    },
+    {
+      "field": "@BranchID",
+      "status": 200,
+      "code": "OK",
+      "requestId": "req-3279-mrnkskfu",
+      "rowCount": 8,
+      "sameAsScopedBaseline": true
+    },
+    {
+      "field": "@Username",
+      "status": 200,
+      "code": "OK",
+      "requestId": "req-3281-mrnkslfz",
+      "rowCount": 8,
+      "sameAsScopedBaseline": true
+    }
+  ]
+}

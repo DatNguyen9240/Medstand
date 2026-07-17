@@ -52,12 +52,6 @@
             $list.html('<li class="notif-page-item" style="text-align:center;color:var(--color-text-muted);padding:24px;">Không thể tải thông báo</li>').prop('hidden', false);
         });
 
-    // Mark all as read
-    $('#btn-mark-read').on('click', function () {
-        $('.notif-page-item.unread').removeClass('unread');
-        $('#notif-badge').prop('hidden', true);
-    });
-
     // Helper: escape HTML
     function _esc(s) {
         var d = document.createElement('div');

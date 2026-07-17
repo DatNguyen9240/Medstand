@@ -54,7 +54,15 @@ const InvoiceService = (() => {
   const EP = API_CONFIG.ENDPOINTS.INVOICES;
 
   function getList(filters = {}) {
-    return Http.get(EP.LIST, { q: JSON.stringify(filters) });
+    // API_HoaDon_AI only accepts these four user filters; Username is injected
+    // by the authenticated API layer. Do not forward UI-only paging fields.
+    const apiFilters = {
+      TuNgay: filters.TuNgay !== undefined ? filters.TuNgay : filters.FromDate,
+      DenNgay: filters.DenNgay !== undefined ? filters.DenNgay : filters.ToDate,
+      timkiem: filters.timkiem !== undefined ? filters.timkiem : (filters.SearchText || ''),
+      MaKhachHang: filters.MaKhachHang !== undefined ? filters.MaKhachHang : (filters.ObjectID || '')
+    };
+    return Http.get(EP.LIST, { q: JSON.stringify(apiFilters) });
   }
 
   function getDetail(invoiceId) {

@@ -1,7 +1,4 @@
-IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
-GO
-
-CREATE PROCEDURE API_TichLuy_AI
+CREATE OR ALTER PROCEDURE API_TichLuy_AI
    @Username   VARCHAR(50)   = '',
    @MaKhachHang  NVARCHAR(100) = '',
    @ProgramID  VARCHAR(50)   = '',
@@ -13,12 +10,21 @@ BEGIN
    SET NOCOUNT ON
     
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
    
     -- 1. KIỂM TRA QUYỀN
     IF NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
+    END
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
     END
 
 

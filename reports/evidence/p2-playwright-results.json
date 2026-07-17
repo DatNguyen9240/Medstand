@@ -1,0 +1,214 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--grep",
+      "authorization fails closed before SQL"
+    ],
+    "configFile": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\playwright.config.ts",
+    "rootDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/tests/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\tests\\global-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "guest",
+        "name": "guest",
+        "testDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/tests/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/guest\\.spec\\.ts/"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "manager",
+        "name": "manager",
+        "testDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/tests/e2e",
+        "testIgnore": [
+          "/guest\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "tdv",
+        "name": "tdv",
+        "testDir": "C:/Users/Legion/Desktop/AI Nhà Thuốc/Medstand/tests/e2e",
+        "testIgnore": [
+          "/guest\\.spec\\.ts/"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "line",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "reports/p2-playwright-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "cart-sandbox.spec.ts",
+      "file": "cart-sandbox.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "@mutation authorization fails closed before SQL for read-only roles",
+          "ok": true,
+          "tags": [
+            "mutation"
+          ],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "manager",
+              "projectName": "manager",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5214,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-16T14:00:43.922Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "p2-04-manager-mutation-denied",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhcGlDb2RlIjogIkBjYXBfbmhhdF9rZXRfcXVhX2toYW9fc2F0IiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJBUElfTk9UX0FMTE9XTElTVEVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyODQtbXJua3R4aG8iCiAgfSwKICB7CiAgICAiYXBpQ29kZSI6ICJAa2hhY2hfaGFuZ19pbnNlcnQiLAogICAgInN0YXR1cyI6IDQwMywKICAgICJjb2RlIjogIkNBUEFCSUxJVFlfUkVRVUlSRUQiLAogICAgInJlcXVlc3RJZCI6ICJyZXEtMzI4Ni1tcm5rdHlmdCIKICB9LAogIHsKICAgICJhcGlDb2RlIjogIkBzYW5fcGhhbV90cm9uZ190YW1faW1wb3J0IiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJDQVBBQklMSVRZX1JFUVVJUkVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyODgtbXJua3R6MHciCiAgfSwKICB7CiAgICAiYXBpQ29kZSI6ICJAbGFwX2Rvbl9oYW5nIiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJDQVBBQklMSVRZX1JFUVVJUkVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyOTAtbXJua3UweTIiCiAgfQpd"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "dc5be2f9cfccad84634c-551cbfa66dce987a0039",
+          "file": "cart-sandbox.spec.ts",
+          "line": 32,
+          "column": 5
+        },
+        {
+          "title": "@mutation authorization fails closed before SQL for read-only roles",
+          "ok": true,
+          "tags": [
+            "mutation"
+          ],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "tdv",
+              "projectName": "tdv",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3893,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-07-16T14:00:49.447Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "p2-04-tdv-mutation-denied",
+                      "contentType": "application/json",
+                      "body": "WwogIHsKICAgICJhcGlDb2RlIjogIkBjYXBfbmhhdF9rZXRfcXVhX2toYW9fc2F0IiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJBUElfTk9UX0FMTE9XTElTVEVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyOTItbXJua3UxcjMiCiAgfSwKICB7CiAgICAiYXBpQ29kZSI6ICJAa2hhY2hfaGFuZ19pbnNlcnQiLAogICAgInN0YXR1cyI6IDQwMywKICAgICJjb2RlIjogIkNBUEFCSUxJVFlfUkVRVUlSRUQiLAogICAgInJlcXVlc3RJZCI6ICJyZXEtMzI5NC1tcm5rdTM0bSIKICB9LAogIHsKICAgICJhcGlDb2RlIjogIkBzYW5fcGhhbV90cm9uZ190YW1faW1wb3J0IiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJDQVBBQklMSVRZX1JFUVVJUkVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyOTYtbXJua3UzbzEiCiAgfSwKICB7CiAgICAiYXBpQ29kZSI6ICJAbGFwX2Rvbl9oYW5nIiwKICAgICJzdGF0dXMiOiA0MDMsCiAgICAiY29kZSI6ICJDQVBBQklMSVRZX1JFUVVJUkVEIiwKICAgICJyZXF1ZXN0SWQiOiAicmVxLTMyOTgtbXJua3U0NzMiCiAgfQpd"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "dc5be2f9cfccad84634c-d399c2c709a779803008",
+          "file": "cart-sandbox.spec.ts",
+          "line": 32,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-07-16T14:00:43.624Z",
+    "duration": 9758.643,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

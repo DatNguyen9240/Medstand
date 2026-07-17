@@ -7,21 +7,15 @@ const testCases = require('./test_cases');
 const jsonReporter = require('./reporters/json_reporter');
 const markdownReporter = require('./reporters/markdown_reporter');
 
-async function testLogin(username) {
-    try {
-        const res = await fetch('https://medtest.bms79.com/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: username, password: '123456' })
-        });
-        if (res.status === 200) {
-            const json = await res.json();
-            if (json && json.code === 0 && json.access_token) {
-                return `Bearer ${json.access_token}`;
-            }
-        }
-    } catch (e) {
-        console.error(`Login failed for ${username}:`, e.message);
+function getMissingTokenReason(testCase) {
+    if (testCase.suite === 'chatbot' && !config.SIMULATED_TOKEN) {
+        return 'Thiếu UAT_NORTH_TOKEN/UAT_TDV_TOKEN cho ca chatbot.';
+    }
+    if (testCase.id === 5 && (!config.ACCOUNTS.NORTH.Token || !config.ACCOUNTS.CENTRAL.Token)) {
+        return 'Thiếu UAT_NORTH_TOKEN/UAT_TDV_TOKEN hoặc UAT_CENTRAL_TOKEN cho ca kiểm thử RLS.';
+    }
+    if (testCase.id === 12 && !config.ACCOUNTS.ADMIN.Token) {
+        return 'Thiếu UAT_ADMIN_TOKEN/UAT_MANAGER_TOKEN cho ca API quản trị.';
     }
     return null;
 }
@@ -79,26 +73,13 @@ async function run() {
         warning: 0
     };
 
-    console.log('🔑 Đang đăng nhập lấy token thực tế từ UAT server...');
-    const adminToken = await testLogin('admin');
-    const northToken = await testLogin('NAMDINHB.MED');
-    const centralToken = await testLogin('HUEB.MED');
-    const southToken = await testLogin('CanThoA');
-
-    if (adminToken) {
-        config.ACCOUNTS.ADMIN.Token = adminToken;
-    }
-    if (northToken) {
-        config.SIMULATED_TOKEN = northToken;
-        config.ACCOUNTS.NORTH.Token = northToken;
-    }
-    if (centralToken) {
-        config.ACCOUNTS.CENTRAL.Token = centralToken;
-    }
-    if (southToken) {
-        config.ACCOUNTS.SOUTH.Token = southToken;
-    }
-    console.log('✅ Đã nhận được các token UAT thực tế.');
+    const configuredTokenCount = [
+        config.ACCOUNTS.ADMIN.Token,
+        config.ACCOUNTS.NORTH.Token,
+        config.ACCOUNTS.CENTRAL.Token,
+        config.ACCOUNTS.SOUTH.Token
+    ].filter(Boolean).length;
+    console.log(`🔑 Đã nạp ${configuredTokenCount}/4 token UAT từ biến môi trường (không tự đăng nhập).`);
 
     console.log('========================================================================');
     console.log(`🚀 BẮT ĐẦU CHẠY KIỂM THỬ HỒI QUY MEDSTAND AI`);
@@ -108,6 +89,23 @@ async function run() {
     // 3. Thực thi từng kịch bản kiểm thử
     for (const tc of selectedCases) {
         console.log(`[CASE #${tc.id}] [${tc.suite.toUpperCase()}] ${tc.name}...`);
+
+        const missingTokenReason = getMissingTokenReason(tc);
+        if (missingTokenReason) {
+            summary.skipped++;
+            console.log(`   ⚪ SKIPPED - Lý do: ${missingTokenReason}`);
+            console.log('------------------------------------------------------------------------');
+            results.push({
+                id: tc.id,
+                suite: tc.suite,
+                name: tc.name,
+                status: 'SKIPPED',
+                elapsedMs: 0,
+                error: missingTokenReason,
+                responseSnippet: null
+            });
+            continue;
+        }
         
         let status = 'PENDING';
         let elapsedMs = 0;
@@ -208,4 +206,11 @@ async function run() {
     console.log(`📁 File báo cáo Markdown: ${mdFile}\n`);
 }
 
-module.exports = { run };
+if (require.main === module) {
+    run().catch((error) => {
+        console.error(`Regression runner failed: ${error.message}`);
+        process.exitCode = 1;
+    });
+}
+
+module.exports = { run, getMissingTokenReason };

@@ -425,6 +425,27 @@
             text.indexOf('ai-catalog-') !== -1
         );
         if (hasCard) cls += ' has-table';
+        if (role === 'ai' && text.indexOf('ai-sales-dashboard') !== -1) {
+            cls += ' chat-message--data chat-message--dashboard';
+        } else if (hasCard) {
+            cls += ' chat-message--data';
+        } else {
+            cls += ' chat-message--text';
+        }
+
+        // Doanh số là ngữ cảnh báo cáo; hiển thị câu truy vấn như một chip lọc
+        // gọn thay vì một toast xanh lớn tách khỏi dashboard.
+        if (role === 'user' && /(?:@doanh_so|doanh\s*số)/i.test(String(processedContent || ''))) {
+            cls += ' chat-query-sales';
+        }
+
+        var isErrorMessage = role === 'ai' && typeof processedContent === 'string' && (
+            processedContent.indexOf('Xin lỗi, tôi không thể phản hồi') !== -1 ||
+            processedContent.indexOf('Lỗi kết nối') !== -1 ||
+            processedContent.indexOf('Lỗi hệ thống') !== -1 ||
+            processedContent.indexOf('Không thể tải') !== -1
+        );
+        if (isErrorMessage) cls += ' error';
 
         var fileTag = '';
         if (fileName) {
@@ -1665,7 +1686,7 @@
 
                 if (cleanData.length === 0) {
                     var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1 || res.message.indexOf('ket qua') > -1);
-                    var warnMsg = 'Dạ, hệ thống hiện không tìm thấy dữ liệu nào (hoặc dữ liệu trống) cho yêu cầu này ạ. Sếp kiểm tra lại giúp em nhé!';
+                    var warnMsg = 'Không có dữ liệu phù hợp với điều kiện tra cứu.';
                     
                     var isNoDebt = (res.apiCode === '@cong_no_chi_tiet' || (res.message && (res.message.indexOf('nợ') > -1 || res.message.indexOf('hóa đơn') > -1)));
                     
@@ -1675,7 +1696,7 @@
                     }
                     
                     if (isSuccessMsg || !res.message) {
-                        warnMsg = 'Không tìm thấy dữ liệu hoặc tài khoản của bạn không có quyền truy cập thông tin chéo vùng miền (Miền Bắc/Trung/Nam).';
+                        warnMsg = 'Không có dữ liệu phù hợp với điều kiện tra cứu.';
                     } else {
                         warnMsg = res.message;
                     }
@@ -1698,13 +1719,15 @@
 
                 var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
 
-                var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
+                var renderFn = apiCode === '@doanh_so'
+                    ? _renderSalesDashboard
+                    : (_UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView);
 
                 // 4. Render — truyn meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
 
-                var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode };
+                var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode, queryParams: Object.assign({}, res.intentParams || {}) };
 
-                var cardHtml = renderFn(cleanData, res.message, khCode || apiCode, renderMeta);
+                var cardHtml = renderFn(cleanData, res.message, apiCode, renderMeta);
 
                 _addHtmlMessage(cardHtml, '📊 Kết quả');
 
@@ -2131,6 +2154,372 @@
 
     }
 
+    function _renderSalesDashboard(rows, headerMsg, apiCode, meta) {
+        function normalizeKey(value) {
+            return String(value || '').toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]/g, '');
+        }
+
+        function findKey(preferred, valueType) {
+            var keys = _getKeys(rows);
+            for (var p = 0; p < preferred.length; p++) {
+                for (var k = 0; k < keys.length; k++) {
+                    if (normalizeKey(keys[k]) === preferred[p]) return keys[k];
+                }
+            }
+            for (var i = 0; i < keys.length; i++) {
+                for (var r = 0; r < rows.length; r++) {
+                    var value = rows[r][keys[i]];
+                    if (valueType === 'number' && value !== '' && value !== null && isFinite(Number(String(value).replace(/,/g, '')))) return keys[i];
+                    if (valueType === 'date' && /\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/.test(String(value || ''))) return keys[i];
+                }
+            }
+            return '';
+        }
+
+        function numberValue(value) {
+            var parsed = Number(String(value == null ? '' : value).replace(/,/g, ''));
+            return isFinite(parsed) ? parsed : 0;
+        }
+
+        function currentUserIsManager() {
+            try {
+                var raw = localStorage.getItem('auth_user') || localStorage.getItem('currentUser');
+                var user = raw ? JSON.parse(raw) : {};
+                var role = normalizeKey(user.role || user.Role || user.roleName || user.RoleName || user.roleCode || user.RoleCode || '');
+                var group = normalizeKey(user.UserGroupID || user.userGroupID || user.UserGroup || '');
+                return role.indexOf('manager') !== -1 || role.indexOf('quanly') !== -1 || role.indexOf('admin') !== -1 ||
+                    group.indexOf('admin') !== -1 || Number(user.Manager || user.manager) === 1 ||
+                    user.IsManager === true || Number(user.IsManager || user.isManager) === 1 ||
+                    (user.EmployeeID && user.ManagerID && String(user.EmployeeID).toLowerCase() === String(user.ManagerID).toLowerCase());
+            } catch (e) {
+                return false;
+            }
+        }
+
+        var resultKeys = _getKeys(rows);
+        var normalizedResultKeys = resultKeys.map(function (key) { return normalizeKey(key); });
+        var reportMode = normalizedResultKeys.some(function (key) { return /tenkhachhang|objectname|customername/.test(key); }) ? 'customer' :
+            (normalizedResultKeys.some(function (key) { return /tennhanvien|tennv|employeename/.test(key); }) ? 'employee' :
+                (normalizedResultKeys.some(function (key) { return /tensanpham|itemname|productname/.test(key); }) ? 'product' :
+                    (normalizedResultKeys.indexOf('nhom') !== -1 && normalizedResultKeys.indexOf('ten') !== -1 ? 'mixed' : 'daily')));
+        var isBreakdownReport = reportMode !== 'daily';
+        var exactDateKey = resultKeys.find(function (key) {
+            return ['documentdate', 'ngay', 'date', 'ngaylap', 'columndate'].indexOf(normalizeKey(key)) !== -1;
+        }) || '';
+        var dateKey = exactDateKey || (!isBreakdownReport ? findKey(['documentdate', 'ngay', 'date', 'ngaylap', 'columndate'], 'date') : '');
+        var revenueKey = findKey(['doanhso', 'doanhthu', 'basetotal', 'amount', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri'], 'number');
+        var orderKey = findKey(['sodonhang', 'ordercount', 'soluongdon', 'donhang'], '');
+        var isManager = currentUserIsManager();
+        var total = 0;
+        var dashboardTotal = 0;
+        var orderTotal = 0;
+
+        rows.forEach(function (row) {
+            var amount = revenueKey ? numberValue(row[revenueKey]) : 0;
+            if (!isBreakdownReport) {
+                total += amount;
+                if (orderKey) orderTotal += numberValue(row[orderKey]);
+            }
+        });
+        dashboardTotal = total;
+
+        var dashboardUid = Date.now() + '-' + (++_modalIdCounter) + '-' + Math.random().toString(36).slice(2, 8);
+        var relatedId = 'sales-dashboard-related-' + dashboardUid;
+        var orderKpiId = 'sales-dashboard-orders-' + dashboardUid;
+        var averageOrderKpiId = 'sales-dashboard-average-order-' + dashboardUid;
+        var reportOrderKpiId = 'sales-report-orders-' + dashboardUid;
+        var reportAverageOrderKpiId = 'sales-report-average-order-' + dashboardUid;
+        var reportTotalKpiId = 'sales-report-total-' + dashboardUid;
+        var reportTargetKpiId = 'sales-report-target-' + dashboardUid;
+        var reportTargetBarId = 'sales-report-target-bar-' + dashboardUid;
+        var reportTargetMetaId = 'sales-report-target-meta-' + dashboardUid;
+        function toIsoDate(value) {
+            var raw = String(value || '').trim();
+            var match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (match) return match[1] + '-' + match[2] + '-' + match[3];
+            match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+            if (match) return match[3] + '-' + match[2] + '-' + match[1];
+            return '';
+        }
+
+        var fromDateKey = resultKeys.find(function (key) { return ['tungay', 'fromdate'].indexOf(normalizeKey(key)) !== -1; });
+        var toDateKey = resultKeys.find(function (key) { return ['denngay', 'todate'].indexOf(normalizeKey(key)) !== -1; });
+        var dateValues = dateKey ? rows.map(function (row) { return toIsoDate(row[dateKey]); }).filter(Boolean).sort() : [];
+        var fromDate = dateValues.length ? dateValues[0] : '';
+        var toDate = dateValues.length ? dateValues[dateValues.length - 1] : fromDate;
+        if (isBreakdownReport && rows[0]) {
+            fromDate = toIsoDate(fromDateKey ? rows[0][fromDateKey] : '') || fromDate;
+            toDate = toIsoDate(toDateKey ? rows[0][toDateKey] : '') || fromDate;
+        }
+
+        function displayDate(value) {
+            var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return match ? match[3] + '/' + match[2] + '/' + match[1] : String(value || '');
+        }
+
+        function formatCompactMoney(value) {
+            var amount = numberValue(value);
+            var abs = Math.abs(amount);
+            if (abs >= 1000000000) return (amount / 1000000000).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' tỷ';
+            if (abs >= 1000000) return (amount / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 2 }) + ' triệu';
+            return _fmtCellVal(amount) + ' ₫';
+        }
+
+        function exactResultKey(preferred) {
+            for (var p = 0; p < preferred.length; p++) {
+                for (var k = 0; k < resultKeys.length; k++) {
+                    if (normalizeKey(resultKeys[k]) === preferred[p]) return resultKeys[k];
+                }
+            }
+            return '';
+        }
+
+        function buildManagementDetail() {
+            if (!rows.length || reportMode === 'daily') {
+                return { intro: '', table: _buildInlineTable(rows, resultKeys, apiCode) };
+            }
+
+            var groupKey = exactResultKey(['nhom', 'reportgroup', 'group']);
+            var codeKey = exactResultKey(['ma', 'entityid', 'manv', 'manhanvien', 'employeeid', 'makh', 'objectid', 'masp', 'itemid']);
+            var nameKey = exactResultKey(['ten', 'displayname', 'tennv', 'tennhanvien', 'employeename', 'tenkhachhang', 'objectname', 'tensanpham', 'itemname']);
+            var quantityKey = exactResultKey(['soluong', 'quantity', 'qty']);
+            if (!nameKey || !revenueKey) {
+                return { intro: '', table: _buildInlineTable(rows, resultKeys, apiCode) };
+            }
+
+            var defaultGroup = reportMode === 'employee' ? 'Nhân viên' :
+                (reportMode === 'customer' ? 'Khách hàng' : (reportMode === 'product' ? 'Sản phẩm' : 'Khác'));
+            var groupTotals = {};
+            var groupCounts = {};
+            rows.forEach(function (row) {
+                var group = String(groupKey ? row[groupKey] : defaultGroup || 'Khác').trim() || defaultGroup || 'Khác';
+                groupTotals[group] = (groupTotals[group] || 0) + numberValue(row[revenueKey]);
+                groupCounts[group] = (groupCounts[group] || 0) + 1;
+            });
+
+            var detailedRows = rows.map(function (row) {
+                var group = String(groupKey ? row[groupKey] : defaultGroup || 'Khác').trim() || defaultGroup || 'Khác';
+                var amount = numberValue(row[revenueKey]);
+                var share = groupTotals[group] ? amount / groupTotals[group] * 100 : 0;
+                return {
+                    'Nhóm phân tích': group,
+                    'Mã đối tượng': codeKey ? row[codeKey] : '—',
+                    'Tên đối tượng': row[nameKey],
+                    'Số lượng bán': quantityKey && row[quantityKey] != null && String(row[quantityKey]).trim() !== '' ? row[quantityKey] : '—',
+                    'Doanh số': formatCompactMoney(amount),
+                    'Tỷ trọng trong danh sách': share.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + '%',
+                    showallcols: true
+                };
+            });
+
+            var groupNames = Object.keys(groupTotals);
+            var activeGroup = reportMode === 'mixed' && groupNames.length ? groupNames[0] : '';
+            var groupSummary = groupNames.map(function (group, index) {
+                return '<button type="button" class="ai-sales-group-card' + (index === 0 && activeGroup ? ' active' : '') + '" data-sales-group="' + _esc(group) + '" aria-pressed="' + (index === 0 && activeGroup ? 'true' : 'false') + '"><strong>' + _esc(group) + '</strong><small>' + groupCounts[group] + ' đối tượng · Bấm để xem chi tiết</small></button>';
+            }).join('');
+            var intro = '<div class="ai-sales-breakdown-explainer"><p><strong>Cách đọc:</strong> Chọn một nhóm bên dưới để xem ai/bên nào/mặt hàng nào tạo ra doanh số. Tỷ trọng được tính trên các dòng API trả về trong nhóm đang chọn; số tổng chính thức nằm ở KPI Tổng doanh số phía trên.</p><div class="ai-sales-breakdown-groups">' + groupSummary + '</div></div>';
+            var initiallyVisibleRows = activeGroup ? detailedRows.filter(function (row) { return row['Nhóm phân tích'] === activeGroup; }) : detailedRows;
+            return {
+                intro: intro,
+                table: _buildInlineTable(initiallyVisibleRows, Object.keys(detailedRows[0]), apiCode, detailedRows),
+                initialLabel: activeGroup ? activeGroup + ': ' + initiallyVisibleRows.length + ' dòng' : detailedRows.length + ' dòng'
+            };
+        }
+
+        var periodDays = 0;
+        if (fromDate && toDate) {
+            var fromTime = new Date(fromDate + 'T00:00:00').getTime();
+            var toTime = new Date(toDate + 'T00:00:00').getTime();
+            if (!isNaN(fromTime) && !isNaN(toTime)) periodDays = Math.floor((toTime - fromTime) / 86400000) + 1;
+        }
+        var rangeText = fromDate ? ' (' + displayDate(fromDate) + (toDate && toDate !== fromDate ? ' – ' + displayDate(toDate) : '') + ')' : '';
+        var roleClass = isManager ? 'manager' : 'tdv';
+        var html = '<section class="ai-sales-dashboard ' + roleClass + '" data-dashboard-role="' + roleClass + '">';
+        var scopeTitle = isManager ? 'Doanh số đội ngũ' : 'Doanh số cá nhân';
+        var scopeDescription = isManager ? 'Theo dõi kết quả kinh doanh của đội ngũ trong kỳ' : 'Theo dõi kết quả doanh số cá nhân trong kỳ';
+        var updatedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        html += '<header class="ai-sales-report-header"><div class="ai-sales-report-heading"><span class="ai-sales-dashboard-eyebrow">' + _esc(scopeTitle) + '</span><h3>' + _esc(scopeTitle) + '</h3><p>' + _esc(scopeDescription) + '</p></div>';
+        html += '<div class="ai-sales-report-meta"><span class="ai-sales-dashboard-role">' + (isManager ? 'Manager' : 'Trình dược viên') + '</span><span class="ai-sales-updated">Cập nhật lúc ' + updatedAt + '</span></div>';
+        html += '<div class="ai-sales-report-filter"><span>Khoảng thời gian</span><strong>' + _esc(displayDate(fromDate) + (toDate && toDate !== fromDate ? ' → ' + displayDate(toDate) : '')) + '</strong><em>Dữ liệu thực tế</em></div></header>';
+        html += '<div class="ai-sales-dashboard-card ai-sales-report-summary"><div class="ai-sales-card-title"><strong>Tổng quan ' + (periodDays > 0 && periodDays <= 7 ? 'tuần' : 'kỳ') + _esc(rangeText) + '</strong><span>Dữ liệu thực tế</span></div><div class="ai-sales-kpi-grid">';
+        html += '<div class="ai-sales-kpi"><span class="ai-sales-kpi-icon">₫</span><span>Tổng doanh số</span><strong id="' + reportTotalKpiId + '" title="' + _esc(isBreakdownReport ? '' : _fmtCellVal(total) + ' ₫') + '">' + (isBreakdownReport ? 'Đang tải…' : _esc(formatCompactMoney(total))) + '</strong><small>Toàn bộ phạm vi báo cáo</small></div>';
+        html += '<div class="ai-sales-kpi"><span class="ai-sales-kpi-icon">#</span><span>Số lượng đơn hàng</span><strong id="' + reportOrderKpiId + '">' + (orderKey ? _esc(_fmtCellVal(orderTotal)) : 'Đang tải…') + '</strong><small>Đơn thực tế</small></div>';
+        html += '<div class="ai-sales-kpi"><span class="ai-sales-kpi-icon">↗</span><span>Đơn trung bình</span><strong id="' + reportAverageOrderKpiId + '">' + (orderKey && orderTotal ? _esc(formatCompactMoney(Math.round(total / orderTotal))) : 'Đang tải…') + '</strong><small>Doanh số / đơn</small></div>';
+        html += '<div class="ai-sales-kpi ai-sales-target-kpi"><span class="ai-sales-kpi-icon">✓</span><span>Hoàn thành chỉ tiêu</span><strong id="' + reportTargetKpiId + '">Đang tải…</strong><div class="ai-sales-target-progress"><i id="' + reportTargetBarId + '"></i></div><small id="' + reportTargetMetaId + '">Đang tải chỉ tiêu…</small></div></div></div>';
+        html += '<div id="' + relatedId + '" class="ai-sales-related"' + (isManager ? ' hidden' : '') + '>' + (isManager ? '' : '<div class="ai-sales-dashboard-card ai-sales-related-loading">Đang tải dữ liệu liên quan…</div>') + '</div>';
+
+        var detailTitle = reportMode === 'customer' ? 'Top ' + rows.length + ' khách hàng theo doanh số' :
+            (reportMode === 'employee' ? 'Top ' + rows.length + ' nhân viên theo doanh số' :
+                (reportMode === 'product' ? 'Top ' + rows.length + ' sản phẩm theo doanh số' :
+                    (reportMode === 'mixed' ? 'Chi tiết nguồn tạo doanh số' : 'Chi tiết doanh số theo ngày')));
+        var managementDetail = buildManagementDetail();
+        if (isManager || rows.length > 1 || isBreakdownReport) html += '<div class="ai-sales-dashboard-card ai-sales-management-detail' + (reportMode === 'product' ? ' ai-sales-show-quantity' : '') + '"><div class="ai-sales-card-title"><strong>' + _esc(detailTitle) + '</strong><span class="ai-sales-detail-count">' + _esc(managementDetail.initialLabel || rows.length + ' dòng phân tích') + '</span></div>' + managementDetail.intro + managementDetail.table + '</div>';
+        if (!isManager) {
+            html += '<div class="ai-sales-dashboard-card ai-sales-next"><div class="ai-sales-card-title"><strong>Gợi ý tiếp theo</strong></div><div class="ai-sales-next-grid">';
+            html += '<button type="button" onclick="document.getElementById(\'chat-input\').value=\'@don_hang \';document.getElementById(\'chat-input\').focus()">Xem đơn hàng</button>';
+            html += '<button type="button" onclick="document.getElementById(\'chat-input\').value=\'@danh_sach_tonkho \';document.getElementById(\'chat-input\').focus()">Kiểm tra tồn kho</button>';
+            html += '</div></div>';
+        }
+        html += '</section>';
+
+        setTimeout(function () {
+            var target = document.getElementById(relatedId);
+            if (!target || !window.ApiEngine || typeof window.ApiEngine.queryData !== 'function') return;
+
+            function loadSalesPlan() {
+                try {
+                    if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined' || !API_CONFIG.ENDPOINTS || !API_CONFIG.ENDPOINTS.SALES || !API_CONFIG.ENDPOINTS.SALES.PLAN) return Promise.resolve([]);
+                    return Http.get(API_CONFIG.ENDPOINTS.SALES.PLAN, {
+                        q: JSON.stringify({ FromDate: fromDate, ToDate: toDate })
+                    }).then(function (response) {
+                        var data = response && (response.data || response);
+                        return data && Array.isArray(data.records) ? data.records : [];
+                    }).catch(function () { return []; });
+                } catch (e) {
+                    return Promise.resolve([]);
+                }
+            }
+
+            function loadDailySummary() {
+                if (!isBreakdownReport) return Promise.resolve(rows);
+                if (!fromDate || !toDate) return Promise.resolve([]);
+                var summaryParams = {};
+                var originalParams = meta && meta.queryParams ? meta.queryParams : {};
+                Object.keys(originalParams).forEach(function (key) {
+                    var normalized = normalizeKey(key);
+                    if (String(key).charAt(0) === '@' && ['tungay', 'denngay', 'fromdate', 'todate', 'loaibaocao', 'topn'].indexOf(normalized) === -1) {
+                        summaryParams[key] = originalParams[key];
+                    }
+                });
+                summaryParams['@FromDate'] = fromDate;
+                summaryParams['@ToDate'] = toDate;
+                summaryParams['@LoaiBaoCao'] = 'TatCa';
+                return window.ApiEngine.queryData('@doanh_so', summaryParams).catch(function () { return []; });
+            }
+
+            function findRecordKey(records, preferred) {
+                if (!records.length) return '';
+                var keys = Object.keys(records[0]);
+                for (var p = 0; p < preferred.length; p++) {
+                    var matched = keys.find(function (key) { return normalizeKey(key) === preferred[p]; });
+                    if (matched) return matched;
+                }
+                return '';
+            }
+
+            function updateDailyDashboard(dailyRows) {
+                var records = Array.isArray(dailyRows) ? dailyRows : [];
+                var totalEl = document.getElementById(reportTotalKpiId);
+                var dailyDateKey = findRecordKey(records, ['ngay', 'documentdate', 'date', 'ngaylap', 'columndate']);
+                var dailyRevenueKey = findRecordKey(records, ['amount', 'doanhso', 'doanhthu', 'basetotal', 'thanhtien', 'tongtien', 'value', 'giatri']);
+                if (!dailyDateKey || !dailyRevenueKey) {
+                    if (totalEl && isBreakdownReport) {
+                        totalEl.textContent = '—';
+                        totalEl.title = 'Không tải được dữ liệu tổng hợp theo ngày';
+                    }
+                    return;
+                }
+                dashboardTotal = 0;
+                records.forEach(function (row) {
+                    var amount = numberValue(row[dailyRevenueKey]);
+                    dashboardTotal += amount;
+                });
+                if (totalEl) {
+                    totalEl.textContent = formatCompactMoney(dashboardTotal);
+                    totalEl.title = _fmtCellVal(dashboardTotal) + ' ₫';
+                }
+            }
+
+            function updateTargetKpi(plans) {
+                var targetEl = document.getElementById(reportTargetKpiId);
+                var barEl = document.getElementById(reportTargetBarId);
+                var metaEl = document.getElementById(reportTargetMetaId);
+                if (!targetEl || !barEl || !metaEl) return;
+                var records = Array.isArray(plans) ? plans : [];
+                var planKeys = records.length ? Object.keys(records[0]) : [];
+                var targetKey = planKeys.find(function (key) { return /doanhsokehoach|target|quota|muctieu/i.test(normalizeKey(key)); });
+                var actualKey = planKeys.find(function (key) { return /doanhsothuchien|actual/i.test(normalizeKey(key)); });
+                var percentKey = planKeys.find(function (key) { return /phantramthuchiends|completion|progress/i.test(normalizeKey(key)); });
+                var targetTotal = targetKey ? records.reduce(function (sum, row) { return sum + numberValue(row[targetKey]); }, 0) : 0;
+                var actualTotal = actualKey ? records.reduce(function (sum, row) { return sum + numberValue(row[actualKey]); }, 0) : dashboardTotal;
+                var weightedPercent = percentKey ? records.reduce(function (sum, row) {
+                    var percent = numberValue(row[percentKey]);
+                    var weight = targetKey ? numberValue(row[targetKey]) : 1;
+                    return sum + percent * (weight || 1);
+                }, 0) : 0;
+                var completion = targetTotal > 0 ? (percentKey ? weightedPercent / targetTotal : actualTotal / targetTotal * 100) : (percentKey && records.length ? weightedPercent / records.length : 0);
+                if (!targetTotal && !percentKey) {
+                    targetEl.textContent = '—';
+                    barEl.style.width = '0%';
+                    metaEl.textContent = 'Chưa có chỉ tiêu từ API';
+                    return;
+                }
+                completion = Math.max(0, Math.round(completion));
+                targetEl.textContent = completion + '%';
+                barEl.style.width = Math.min(completion, 100) + '%';
+                metaEl.textContent = targetTotal > 0 ? 'Mục tiêu: ' + formatCompactMoney(targetTotal) : 'Theo dữ liệu thực tế từ API';
+            }
+
+            function updateOrderKpis(invoices) {
+                var orderCount = Array.isArray(invoices) ? invoices.length : 0;
+                if (orderCount && invoices[0]) {
+                    var totalRowsKey = Object.keys(invoices[0]).find(function (key) {
+                        return /totalrows|tongdong|tongso/i.test(normalizeKey(key));
+                    });
+                    if (totalRowsKey) orderCount = numberValue(invoices[0][totalRowsKey]) || orderCount;
+                }
+                var orderElement = document.getElementById(orderKpiId);
+                var averageElement = document.getElementById(averageOrderKpiId);
+                var reportOrderElement = document.getElementById(reportOrderKpiId);
+                var reportAverageElement = document.getElementById(reportAverageOrderKpiId);
+                if (orderElement) orderElement.textContent = _fmtCellVal(orderCount);
+                if (averageElement) averageElement.textContent = orderCount ? _fmtCellVal(Math.round(dashboardTotal / orderCount)) : '—';
+                if (reportOrderElement) reportOrderElement.textContent = _fmtCellVal(orderCount);
+                if (reportAverageElement) reportAverageElement.textContent = orderCount ? formatCompactMoney(Math.round(dashboardTotal / orderCount)) : '—';
+            }
+
+            var dailySummaryReady = loadDailySummary().then(function (dailyRows) {
+                if (isBreakdownReport) updateDailyDashboard(dailyRows);
+                return dailyRows;
+            });
+
+            if (isManager) {
+                Promise.all([
+                    window.ApiEngine.queryData('@hoa_don', { '@TuNgay': fromDate, '@DenNgay': toDate }).catch(function () { return []; }),
+                    loadSalesPlan(),
+                    dailySummaryReady
+                ]).then(function (result) {
+                    updateOrderKpis(result[0]);
+                    updateTargetKpi(result[1]);
+                    target.innerHTML = '';
+                }).catch(function () {
+                    updateOrderKpis([]);
+                    updateTargetKpi([]);
+                    target.innerHTML = '';
+                });
+            } else {
+                Promise.all([
+                    window.ApiEngine.queryData('@hoa_don', { '@TuNgay': fromDate, '@DenNgay': toDate }).catch(function () { return []; }),
+                    loadSalesPlan(),
+                    dailySummaryReady
+                ]).then(function (result) {
+                    var invoices = result[0];
+                    updateOrderKpis(invoices);
+                    updateTargetKpi(result[1]);
+                    var invoiceHtml = '<div class="ai-sales-dashboard-card"><div class="ai-sales-card-title"><strong>Chi tiết đơn hàng ' + (fromDate === toDate ? 'hôm nay' : 'trong kỳ') + '</strong><span>' + invoices.length + ' đơn</span></div>';
+                    invoiceHtml += invoices.length ? _buildInlineTable(invoices, _getKeys(invoices), '@hoa_don') : '<p class="ai-sales-empty">Không có đơn hàng trong thời gian này.</p>';
+                    invoiceHtml += '</div>';
+                    target.innerHTML = invoiceHtml;
+                }).catch(function () {
+                    updateOrderKpis([]);
+                    target.innerHTML = '<div class="ai-sales-dashboard-card"><p class="ai-sales-empty">Không thể tải chi tiết đơn hàng.</p></div>';
+                });
+            }
+        }, 120);
+        return html;
+    }
+
 
 
     /**
@@ -2142,6 +2531,10 @@
     function _renderCardView(rows, headerMsg, apiCode, meta) {
 
         if (!rows || rows.length === 0) return '';
+
+        if (String(apiCode || '').toLowerCase() === '@doanh_so') {
+            return _renderSalesDashboard(rows, headerMsg, apiCode, meta);
+        }
 
 
 
@@ -2760,6 +3153,16 @@
             'phone': 'Số ĐT',
             'address': 'Địa chỉ',
             'username': 'Tài khoản',
+            // Inventory columns
+            'storehouseid': 'Mã kho',
+            'storehousename': 'Tên kho',
+            'lot': 'Số lô',
+            'expiredate': 'Hạn sử dụng',
+            'nhap': 'Nhập',
+            'xuat': 'Xuất',
+            'toncuoi': 'Tồn cuối',
+            'tonkho': 'Tồn kho',
+            'donvitinh': 'Đơn vị tính',
             // Order & general document columns translations
             'documentid': 'Mã đơn',
             'documentdate': 'Ngày đặt',
@@ -2806,13 +3209,14 @@
         }
 
         var HIGH_PRIORITY = [
-            'itemname', 'title', 'name', 'customername', 'custname',
+            'itemid', 'masp', 'itemname', 'sanpham', 'title', 'name', 'customername', 'custname',
             'canhbaoai', 'canh_bao_ai', 'trend', 'percent',
-            'money', 'amount', 'price', 'quantity',
+            'money', 'amount', 'price', 'dongia', 'quantity', 'tonkho',
             // Vietnamese normalized equivalents
             'tennv', 'tenkh', 'tensanpham', 'tenkhachhang', 'tendoitac', 'tencuahang', 'tennhanvien',
             'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
             'xuhuong', 'trangthai', 'tiendo', 'muctieu',
+            'risklevel', 'diemtonghop', 'lydochinh',
             // Order & general document columns
             'documentid', 'documentdate', 'objectname', 'basetotal', 'statusname', 'employeename', 'docno'
         ];
@@ -2832,7 +3236,7 @@
                 .replace(/[ỳýỵỷỹ]/g, 'y')
                 .replace(/đ/g, 'd');
 
-            if (HIGH_PRIORITY.indexOf(normalized) !== -1 || HIGH_PRIORITY.indexOf(lower) !== -1) {
+            if (normalized !== 'stt' && (HIGH_PRIORITY.indexOf(normalized) !== -1 || HIGH_PRIORITY.indexOf(lower) !== -1)) {
                 primary.push(k);
             } else {
                 secondary.push(k);
@@ -2844,7 +3248,7 @@
             secondary = keys.slice(1);
         }
 
-        var MAX_PRIMARY = 3;
+        var MAX_PRIMARY = 4;
         if (primary.length > MAX_PRIMARY) {
             var extra = primary.slice(MAX_PRIMARY);
             primary = primary.slice(0, MAX_PRIMARY);
@@ -2878,7 +3282,7 @@
 
      */
 
-    function _buildInlineTable(rows, keys) {
+    function _buildInlineTable(rows, keys, apiCode, cacheRows) {
 
         // Ẩn các cột nội bộ không nên hiển thị cho user
         var HIDDEN_COLS = [
@@ -2895,19 +3299,20 @@
             'statusbackcolor', 'StatusBackColor',
             'msg', 'Msg', 'msgtype', 'MsgType',
             'objectid', 'ObjectID',
-            // Các cột điểm số nội bộ (RFM/Scoring) không cần thiết hiển thị cho user
-            'r_score', 'f_score', 'm_score', 'c_score',
-            'rscore', 'fscore', 'mscore', 'cscore',
-            'diemtonghop', 'diem_tong_hop'
+            'totalrows', 'TotalRows', 'page', 'Page', 'pagesize', 'PageSize'
         ];
 
         // Phát hiện cờ ép hiển thị toàn bộ cột từ SQL trả về (ví dụ cột 'showallcols' hoặc 'fulltable' hoặc 'showall')
         var forceShowAll = false;
         var filteredKeys = [];
+        var hasAmountColumn = keys.some(function (key) { return String(key).toLowerCase() === 'amount'; });
         keys.forEach(function (k) {
             var lowerK = k.toLowerCase().replace(/_/g, '');
+            var normalizedK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
             if (lowerK === 'showallcols' || lowerK === 'fulltable' || lowerK === 'showall') {
                 forceShowAll = true;
+            } else if (String(apiCode || '').toLowerCase() === '@doanh_so' && (normalizedK === 'ngayban' || (normalizedK === 'doanhso' && hasAmountColumn))) {
+                return;
             } else if (HIDDEN_COLS.indexOf(k) === -1 && HIDDEN_COLS.indexOf(k.toLowerCase()) === -1) {
                 filteredKeys.push(k);
             }
@@ -2967,7 +3372,8 @@
 
         chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
 
-        if (rows.length > 12) {
+        var filterRowCount = cacheRows ? cacheRows.length : rows.length;
+        if (filterRowCount > 12) {
             html += '<div class="ai-sales-filter-bar ai-inline-filter">'
                 + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
                 + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
@@ -2978,7 +3384,9 @@
 
         // ── Table ──
 
-        html += '<div class="ai-inline-table-wrap">';
+        var tableWrapClass = 'ai-inline-table-wrap';
+        if (String(apiCode || '').toLowerCase() === '@doanh_so' && filterRowCount > 10) tableWrapClass += ' ai-inline-table-scroll';
+        html += '<div class="' + tableWrapClass + '">';
 
         html += '<table class="ai-table"><thead><tr>';
 
@@ -2990,14 +3398,18 @@
         if (hasDetails) {
             html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
         }
+        if (apiCode === '@hoa_don') {
+            html += '<th style="width: 112px; text-align: center;">Thao tác</th>';
+        }
         primaryKeys.forEach(function (k) {
             var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
-            html += '<th' + thClass + '>' + _esc(_getFriendlyHeader(k)) + '</th>';
+            var friendlyHeader = String(apiCode || '').toLowerCase() === '@doanh_so' && String(k).toLowerCase() === 'amount' ? 'Doanh số' : _getFriendlyHeader(k);
+            html += '<th' + thClass + '>' + _esc(friendlyHeader) + '</th>';
         });
 
         html += '</tr></thead>';
 
-        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys, forceShowAll) + '</tbody>';
+        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys, forceShowAll, apiCode) + '</tbody>';
 
         html += '</table></div>';
 
@@ -3005,7 +3417,7 @@
 
         // Lưu data vào cache để filter handler dùng
 
-        _modalDataCache[tbodyId] = { rows: rows, keys: keys, badgeKey: badgeKeyFound, forceShowAll: forceShowAll };
+        _modalDataCache[tbodyId] = { rows: cacheRows || rows, keys: keys, badgeKey: badgeKeyFound, forceShowAll: forceShowAll, apiCode: apiCode };
 
 
 
@@ -3017,7 +3429,7 @@
 
 
 
-    function _renderTableBody(filteredRows, keys, forceShowAll) {
+    function _renderTableBody(filteredRows, keys, forceShowAll, apiCode) {
 
         var MAX = 50;
 
@@ -3029,7 +3441,8 @@
         var primaryKeys = split.primary;
         var secondaryKeys = split.secondary;
         var hasDetails = secondaryKeys.length > 0;
-        var colSpan = primaryKeys.length + (hasDetails ? 1 : 0);
+        var isInvoiceList = apiCode === '@hoa_don';
+        var colSpan = primaryKeys.length + (hasDetails ? 1 : 0) + (isInvoiceList ? 1 : 0);
 
         for (var i = 0; i < shown; i++) {
 
@@ -3053,6 +3466,11 @@
                 var tdClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
                 html += '<td' + tdClass + '>' + cellHtml + '</td>';
             });
+
+            if (isInvoiceList) {
+                var invoiceId = filteredRows[i].DocumentID || filteredRows[i].MaHoaDon || '';
+                html += '<td style="text-align:center"><button type="button" class="ai-table-btn ai-invoice-detail-btn" data-document-id="' + _esc(invoiceId) + '"' + (invoiceId ? '' : ' disabled') + '>Xem chi tiết</button></td>';
+            }
 
             html += '</tr>';
 
@@ -3145,7 +3563,58 @@
 
     // ── Click delegation cho accordion + modal + action bar ────────
 
+    function _applySalesManagementFilter(container) {
+        if (!container) return;
+        var tbody = container.querySelector('tbody');
+        var cached = tbody ? _modalDataCache[tbody.id] : null;
+        if (!tbody || !cached || !cached.rows || !cached.keys) return;
+        var activeCard = container.querySelector('.ai-sales-group-card.active');
+        var activeGroup = activeCard ? activeCard.getAttribute('data-sales-group') : '';
+        container.classList.toggle('ai-sales-show-quantity', activeGroup === 'Sản phẩm');
+        var searchInput = container.querySelector('.ai-sales-filter-input');
+        var searchText = searchInput ? searchInput.value : '';
+        var filtered = cached.rows.filter(function (row) {
+            return !activeGroup || String(row['Nhóm phân tích'] || '') === activeGroup;
+        });
+        filtered = _applyModalFilter(filtered, cached.keys, searchText, 'all', null);
+        tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode);
+        var count = container.querySelector('.ai-sales-detail-count');
+        if (count) count.textContent = (activeGroup ? activeGroup + ': ' : '') + filtered.length + ' dòng';
+        var filterCount = container.querySelector('.ai-sales-filter-count');
+        if (filterCount) filterCount.textContent = filtered.length + ' dòng';
+    }
+
     $messages.addEventListener('click', function (e) {
+        var salesGroupCard = e.target.closest('.ai-sales-group-card');
+        if (salesGroupCard) {
+            e.preventDefault();
+            var managementDetail = salesGroupCard.closest('.ai-sales-management-detail');
+            if (!managementDetail) return;
+            managementDetail.querySelectorAll('.ai-sales-group-card').forEach(function (card) {
+                var selected = card === salesGroupCard;
+                card.classList.toggle('active', selected);
+                card.setAttribute('aria-pressed', selected ? 'true' : 'false');
+            });
+            _applySalesManagementFilter(managementDetail);
+            return;
+        }
+        var invoiceDetailBtn = e.target.closest('.ai-invoice-detail-btn');
+        if (invoiceDetailBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var documentId = invoiceDetailBtn.getAttribute('data-document-id');
+            if (!documentId || !window.ApiEngine || typeof window.ApiEngine.execute !== 'function') return;
+
+            invoiceDetailBtn.disabled = true;
+            invoiceDetailBtn.textContent = 'Đang tải...';
+            Promise.resolve(window.ApiEngine.execute('@hoa_don_chi_tiet', {
+                '@DocumentID': documentId
+            })).finally(function () {
+                invoiceDetailBtn.disabled = false;
+                invoiceDetailBtn.textContent = 'Xem chi tiết';
+            });
+            return;
+        }
 
         // Table row detail toggle (Hỗ trợ click cả dòng cực nhạy trên Mobile)
         var targetTr = e.target.closest('tr');
@@ -3295,7 +3764,7 @@
 
                                     var filtered = _applyModalFilter(allRows, keysF, curSearch, curFilter, curBadgeKey);
 
-                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF);
+                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF, cached && cached.forceShowAll, cached && cached.apiCode);
 
                                     if (countEl2) countEl2.textContent = filtered.length + ' dòng';
 
@@ -3374,6 +3843,12 @@
 
         }
 
+    });
+
+    $messages.addEventListener('input', function (e) {
+        if (!e.target.classList.contains('ai-sales-filter-input')) return;
+        var managementDetail = e.target.closest('.ai-sales-management-detail');
+        if (managementDetail) _applySalesManagementFilter(managementDetail);
     });
 
 
@@ -5123,6 +5598,10 @@
             renderCardView: function (rows, headerMsg, apiCode, meta) {
 
                 var uiTpl = (meta && meta.uiTemplate) ? meta.uiTemplate.toUpperCase() : 'DEFAULT';
+
+                if (String(apiCode || '').toLowerCase() === '@doanh_so') {
+                    return _renderSalesDashboard(rows, headerMsg, '@doanh_so', meta);
+                }
 
                 var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
 

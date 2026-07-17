@@ -70,6 +70,18 @@ BEGIN
         SELECT N'Vui lòng cung cấp mã khách hàng để xem chi tiết.' AS [Msg], 1 AS [MsgType]
         RETURN
     END
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.CF_ObjectTbl WITH (NOLOCK)
+        WHERE ObjectID = @MaKhachHang
+          AND ISNULL(isCustomer, 0) = 1
+          AND ISNULL(isDisable, 0) = 0
+    )
+    BEGIN
+        SELECT N'Mã khách hàng không hợp lệ hoặc không tồn tại.' AS [Msg], 1 AS [MsgType]
+        RETURN
+    END
      
 
      IF UPPER(@SYSUserGroupID) <> 'ADMIN'

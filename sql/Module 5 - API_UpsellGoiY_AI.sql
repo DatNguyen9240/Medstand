@@ -1,9 +1,4 @@
-USE medtest;
-GO
-
-IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
-GO
-CREATE PROCEDURE API_UpsellGoiY_AI
+CREATE OR ALTER PROCEDURE API_UpsellGoiY_AI
     @Username     VARCHAR(50)   = '',
     @MaKhachHang  NVARCHAR(100) = '',
     @timkiem      NVARCHAR(50)  = '',      
@@ -23,7 +18,16 @@ BEGIN
     END
 
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
+    END
 
     DECLARE @DoanhSoHienTai FLOAT = 0
     DECLARE @MucTarget      FLOAT = 0
@@ -63,7 +67,7 @@ BEGIN
             ORDER BY ISNULL(I.Cnt, 0) DESC;
               
             -- Fallback tìm toàn quốc (chỉ chạy cho admin)
-            IF @ResolvedID = '' AND @SYSBranchID = ''
+            IF @ResolvedID = '' AND UPPER(@SYSUserGroupID) = 'ADMIN'
             BEGIN
                 SELECT TOP 1 @ResolvedID = O.ObjectID 
                 FROM CF_ObjectTbl O

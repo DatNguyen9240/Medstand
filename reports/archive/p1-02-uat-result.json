@@ -1,0 +1,32 @@
+﻿[
+    {
+        "apiCode":  "@cong_no_chi_tiet",
+        "field":  "@MaKhachHang",
+        "version":  "2026.07.15.1",
+        "checksumPresent":  true,
+        "required":  true,
+        "sourceOfTruth":  "USER_INPUT",
+        "validationRule":  "REQUIRED;DATASOURCE_ID_IN_SCOPE",
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@hoa_don_chi_tiet",
+        "field":  "@DocumentID",
+        "version":  "2026.07.15.1",
+        "checksumPresent":  true,
+        "required":  true,
+        "sourceOfTruth":  "USER_INPUT",
+        "validationRule":  "REQUIRED;NON_EMPTY",
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@khao_sat360",
+        "field":  "@ObjectID",
+        "version":  "2026.07.15.1",
+        "checksumPresent":  true,
+        "required":  true,
+        "sourceOfTruth":  "USER_INPUT",
+        "validationRule":  "REQUIRED;DATASOURCE_ID_IN_SCOPE",
+        "result":  "PASS"
+    }
+]

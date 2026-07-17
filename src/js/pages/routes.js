@@ -4,6 +4,27 @@
     var _filterDate = '';
     var _routeData = [];
 
+    function localDateString(date) {
+      var d = date || new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function currentWorkDate() {
+      return _filterDate || localDateString(new Date());
+    }
+
+    function customerName(record) {
+      return record.ObjectName || record.TenCuaHang || record.ObjectID || '';
+    }
+
+    function updateScopeSummary(records) {
+      var first = records && records[0] || {};
+      var employee = user.DisplayName || user.EmployeeName || user.UserName || 'Chưa xác định';
+      var branch = first.ScopeBranchID || user.BranchName || user.BranchID || 'Chưa xác định';
+      var weekday = first.AppliedWeekday ? ' · ' + first.AppliedWeekday : '';
+      $('#route-scope-summary').text('Ngày làm việc: ' + currentWorkDate() + weekday + ' · Nhân viên: ' + employee + ' · Chi nhánh: ' + branch);
+    }
+
     var filter = new FilterComponent({
       container: '#search-container',
       storageKey: 'routes',
@@ -56,6 +77,8 @@
       }
     });
 
+    updateScopeSummary([]);
+
     function loadRoutes() {
       var $list = $('#tab-list');
       $list.html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Đang tải...</p>');
@@ -63,7 +86,7 @@
       Http.get(API_CONFIG.ENDPOINTS.ROUTES.YOUR_ROUTES, {
         q: JSON.stringify({
           User: user.UserName || '',
-          DocumentDate: _filterDate || new Date().toISOString(),
+          DocumentDate: currentWorkDate(),
           StatusID: _filterValues.status ? parseInt(_filterValues.status) : null,
           LoaiKhachHang: _filterValues.loaiKhachHang || '',
           KenhBan: _filterValues.kenhBan || '',
@@ -72,11 +95,27 @@
       }).then(function (res) {
         var records = (res.data || res).records || res.data || res || [];
         if (!Array.isArray(records)) records = [];
+        var seen = {};
+        records = records.filter(function (r) {
+          var key = [r.ObjectID || '', r.RouteID || r.Tuyen || r.ThuDiTuyen || '', r.WorkDate || currentWorkDate()].join('|');
+          if (seen[key]) return false;
+          seen[key] = true;
+          return true;
+        }).sort(function (a, b) {
+          var ao = Number(a.VisitOrder || a.ThuTuGhe || 0);
+          var bo = Number(b.VisitOrder || b.ThuTuGhe || 0);
+          if (ao && bo && ao !== bo) return ao - bo;
+          if (ao && !bo) return -1;
+          if (!ao && bo) return 1;
+          return String(a.ObjectID || '').localeCompare(String(b.ObjectID || ''));
+        });
         _routeData = records;
+        updateScopeSummary(records);
         renderList(records);
         renderMapMarkers(records);
       }).catch(function (err) {
-        $list.html('<p style="text-align:center;color:var(--color-danger);padding:48px 0">Lỗi tải dữ liệu</p>');
+        updateScopeSummary([]);
+        $list.html('<p style="text-align:center;color:var(--color-danger);padding:48px 0">Không thể tải tuyến. Vui lòng thử lại; nếu lỗi tiếp tục, kiểm tra quyền và cấu hình tài khoản.</p>');
         console.error('Routes API error:', err);
       });
     }
@@ -84,16 +123,19 @@
     function renderList(records) {
       var $list = $('#tab-list');
       if (!records.length) {
-        $list.html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có dữ liệu để hiển thị</p>');
+        $list.html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có điểm bán được phân cho tài khoản trong ngày ' + currentWorkDate() + '.</p>');
         return;
       }
-      var html = records.map(function (r) {
-        var statusLabel = r.StatusID === 0 ? 'Chưa ghé' : (r.StatusID === 1 ? 'Đã ghé' : 'Trạng thái ' + r.StatusID);
-        var statusColor = r.StatusID === 0 ? 'var(--color-warning)' : 'var(--color-success)';
+      var html = records.map(function (r, index) {
+        var statusValue = r.VisitStatus != null ? r.VisitStatus : r.StatusID;
+        var statusLabel = statusValue === 0 || statusValue === '0' ? 'Chưa ghé' : (statusValue === 1 || statusValue === '1' ? 'Đã ghé' : 'Chưa có trạng thái ghé');
+        var statusColor = statusValue === 1 || statusValue === '1' ? 'var(--color-success)' : (statusValue === 0 || statusValue === '0' ? 'var(--color-warning)' : 'var(--color-text-muted)');
         var bgColor = r.LoaiKhachBackColor || 'transparent';
+        var visitOrder = r.VisitOrder || r.ThuTuGhe;
+        var routeName = r.RouteName || r.Tuyen || r.ThuDiTuyen || r.LichGhe || '';
         return '<div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:12px 16px;margin-bottom:8px;cursor:pointer" onclick="goToOrder(\'' + (r.ObjectID || '') + '\')">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-          '<span style="font-weight:600;color:var(--color-text);font-size:var(--font-size-sm)">' + (r.ObjectName || r.ObjectID || '') + '</span>' +
+          '<span style="font-weight:600;color:var(--color-text);font-size:var(--font-size-sm)">' + (visitOrder ? '#' + visitOrder + ' · ' : '') + customerName(r) + '</span>' +
           '<span style="font-size:var(--font-size-xs);color:' + statusColor + ';font-weight:600">' + statusLabel + '</span>' +
           '</div>' +
           '<div style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-bottom:4px">' + (r.Address || '') + '</div>' +
@@ -101,7 +143,7 @@
           (r.LoaiKhachHang ? '<span style="display:inline-block;padding:2px 8px;border-radius:var(--radius-sm);background:' + bgColor + ';font-size:10px">' + r.LoaiKhachHang + '</span>' : '<span></span>') +
           '<span>Đơn hàng: ' + (r.SoDonHang || 0) + '</span>' +
           '</div>' +
-          (r.ThuDiTuyen ? '<div style="font-size:10px;color:var(--color-text-muted);margin-top:4px">Tuyến: ' + r.ThuDiTuyen + '</div>' : '') +
+          (routeName ? '<div style="font-size:10px;color:var(--color-text-muted);margin-top:4px">Tuyến/Lịch: ' + routeName + '</div>' : '') +
           '</div>';
       }).join('');
       $list.html(html);
@@ -211,20 +253,21 @@
         records.forEach(function (r) {
           if (r.Latitude && r.Longitude && (r.Latitude !== 0 || r.Longitude !== 0)) {
             var marker = L.marker([r.Latitude, r.Longitude]);
-            marker.customerName = r.ObjectName || ''; // Store for search
+            marker.customerName = customerName(r); // Store for search
 
-            var statusLabel = r.StatusID === 0 ? '🔴 Chưa ghé' : '🟢 Đã ghé';
+            var mapStatus = r.VisitStatus != null ? r.VisitStatus : r.StatusID;
+            var statusLabel = mapStatus === 0 || mapStatus === '0' ? '🔴 Chưa ghé' : (mapStatus === 1 || mapStatus === '1' ? '🟢 Đã ghé' : '⚪ Chưa có trạng thái ghé');
             var phone = r.Phone || 'Không có';
             var address = r.Address || '';
             
             // Build rich popup HTML
             var popupContent = '<div class="map-popup-container">' +
-              '<strong>🏥 ' + (r.ObjectName || '') + '</strong><br>' +
+              '<strong>🏥 ' + customerName(r) + '</strong><br>' +
               '<span style="font-size:10px;color:var(--color-text-muted)">' + address + '</span><br>' +
               '<span style="font-size:10px">Trạng thái: <strong>' + statusLabel + '</strong></span><br>' +
               '<span style="font-size:10px">SĐT: <strong>' + phone + '</strong></span><br>' +
               (r.ThuDiTuyen ? '<span style="font-size:10px">Tuyến: ' + r.ThuDiTuyen + '</span><br>' : '') +
-              '<button class="map-popup-btn" onclick="drawRoute(' + r.Latitude + ',' + r.Longitude + ',\'' + (r.ObjectName || '').replace(/'/g, "\\'") + '\')">🧭 Dẫn đường (Mini Map)</button>' +
+              '<button class="map-popup-btn" onclick="drawRoute(' + r.Latitude + ',' + r.Longitude + ',\'' + customerName(r).replace(/'/g, "\\'") + '\')">🧭 Dẫn đường (Mini Map)</button>' +
               '<a class="map-popup-btn secondary" href="https://www.google.com/maps/dir/?api=1&origin=' +
                 (currentLocation.lat || '') + ',' + (currentLocation.lng || '') +
                 '&destination=' + r.Latitude + ',' + r.Longitude + '&travelmode=driving" target="_blank" rel="noopener noreferrer">🚗 Google Maps</a>' +

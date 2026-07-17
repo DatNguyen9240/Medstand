@@ -76,6 +76,8 @@ BEGIN
         OptionsJson      NVARCHAR(MAX)  NULL,
         DataSourceType   VARCHAR(50)    NULL,
         DataSourceValue  NVARCHAR(MAX)  NULL,
+        SourceOfTruth    VARCHAR(30)    NULL,
+        ValidationRule   NVARCHAR(500)  NULL,
         OrderIndex       INT            NOT NULL DEFAULT 0
     );
 END
@@ -85,6 +87,20 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OptionsJson' AND Object_I
 BEGIN
     ALTER TABLE dbo.API_Field ADD OptionsJson NVARCHAR(MAX) NULL;
 END
+GO
+
+IF COL_LENGTH('dbo.API_Field', 'SourceOfTruth') IS NULL
+    ALTER TABLE dbo.API_Field ADD SourceOfTruth VARCHAR(30) NULL;
+IF COL_LENGTH('dbo.API_Field', 'ValidationRule') IS NULL
+    ALTER TABLE dbo.API_Field ADD ValidationRule NVARCHAR(500) NULL;
+IF COL_LENGTH('dbo.API_Definition', 'ContractVersion') IS NULL
+    ALTER TABLE dbo.API_Definition ADD ContractVersion VARCHAR(40) NULL;
+IF COL_LENGTH('dbo.API_Definition', 'ContractChecksum') IS NULL
+    ALTER TABLE dbo.API_Definition ADD ContractChecksum VARCHAR(64) NULL;
+IF COL_LENGTH('dbo.API_Definition', 'ContractUpdatedAt') IS NULL
+    ALTER TABLE dbo.API_Definition ADD ContractUpdatedAt DATETIME2(0) NULL;
+IF COL_LENGTH('dbo.API_Definition', 'ContractUpdatedBy') IS NULL
+    ALTER TABLE dbo.API_Definition ADD ContractUpdatedBy VARCHAR(100) NULL;
 GO
 
 IF OBJECT_ID('dbo.API_Action_Field', 'U') IS NULL
@@ -142,6 +158,8 @@ BEGIN
         OptionsJson     NVARCHAR(MAX)  NULL,
         DataSourceType  VARCHAR(50)    NULL,
         DataSourceValue NVARCHAR(MAX)  NULL,
+        SourceOfTruth   VARCHAR(30)    NULL,
+        ValidationRule  NVARCHAR(500)  NULL,
         IsRequired      BIT            NOT NULL DEFAULT 0,
         OrderIndex      INT            NOT NULL DEFAULT 0
     );
@@ -152,6 +170,12 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'OptionsJson' AND Object_I
 BEGIN
     ALTER TABLE dbo.API_Filter ADD OptionsJson NVARCHAR(MAX) NULL;
 END
+GO
+
+IF COL_LENGTH('dbo.API_Filter', 'SourceOfTruth') IS NULL
+    ALTER TABLE dbo.API_Filter ADD SourceOfTruth VARCHAR(30) NULL;
+IF COL_LENGTH('dbo.API_Filter', 'ValidationRule') IS NULL
+    ALTER TABLE dbo.API_Filter ADD ValidationRule NVARCHAR(500) NULL;
 GO
 
 IF OBJECT_ID('dbo.API_Bulk_Config', 'U') IS NULL
@@ -228,6 +252,8 @@ BEGIN
         OptionsJson        NVARCHAR(MAX) NULL,
         DataSourceType     VARCHAR(50) NULL,
         DataSourceValue    NVARCHAR(MAX) NULL,
+        SourceOfTruth      VARCHAR(30) NULL,
+        ValidationRule     NVARCHAR(500) NULL,
         OrderIndex         INT NULL,
         IsVisible          BIT NULL,
         IsEditable         BIT NULL,
@@ -239,6 +265,12 @@ BEGIN
     CREATE UNIQUE INDEX UX_API_Metadata_Field_Override
         ON dbo.API_Metadata_Field_Override (StoredProcedure, FieldCode);
 END
+GO
+
+IF COL_LENGTH('dbo.API_Metadata_Field_Override', 'SourceOfTruth') IS NULL
+    ALTER TABLE dbo.API_Metadata_Field_Override ADD SourceOfTruth VARCHAR(30) NULL;
+IF COL_LENGTH('dbo.API_Metadata_Field_Override', 'ValidationRule') IS NULL
+    ALTER TABLE dbo.API_Metadata_Field_Override ADD ValidationRule NVARCHAR(500) NULL;
 GO
 
 IF OBJECT_ID('dbo.API_Metadata_Bulk_Override', 'U') IS NULL
@@ -288,7 +320,15 @@ BEGIN
         IsSystemParam = ISNULL(f.IsSystemParam, 0),
         DataSourceType = f.DataSourceType,
         DataSourceValue = f.DataSourceValue,
-        UiTemplate = (SELECT TOP 1 UiTemplate FROM dbo.API_Definition WHERE ApiID = @ApiID)
+        SourceOfTruth = f.SourceOfTruth,
+        ValidationRule = f.ValidationRule,
+        DataType = f.DataType,
+        DefaultValue = f.DefaultValue,
+        UiTemplate = (SELECT TOP 1 UiTemplate FROM dbo.API_Definition WHERE ApiID = @ApiID),
+        ContractVersion = (SELECT TOP 1 ContractVersion FROM dbo.API_Definition WHERE ApiID = @ApiID),
+        ContractChecksum = (SELECT TOP 1 ContractChecksum FROM dbo.API_Definition WHERE ApiID = @ApiID),
+        UpdatedAt = (SELECT TOP 1 ContractUpdatedAt FROM dbo.API_Definition WHERE ApiID = @ApiID),
+        UpdatedBy = (SELECT TOP 1 ContractUpdatedBy FROM dbo.API_Definition WHERE ApiID = @ApiID)
     FROM dbo.API_Field f
     WHERE f.ApiID = @ApiID
     ORDER BY f.OrderIndex;
@@ -381,8 +421,7 @@ BEGIN
         ALTER PROCEDURE dbo.API_DanhMuc_AI
             @Type NVARCHAR(50) = NULL,
             @timkiem NVARCHAR(255) = '''',
-            ' + @ProxyParams + '
-            @_Healed_ INT = 0
+            @Username VARCHAR(50) = ''''
         AS
         BEGIN
             EXEC dbo.API_DanhMuc_Core_AI @Type = @Type, @timkiem = @timkiem, @Username = @Username;
@@ -467,8 +506,9 @@ BEGIN
                 WHEN StoredProcedure LIKE '%TichLuy%'             THEN N'Tích lũy điểm'
                 WHEN StoredProcedure LIKE '%ChamDiemKH%'          THEN N'Chấm điểm khách hàng'
                 WHEN StoredProcedure LIKE '%TuyenBanHang%'        THEN N'Tuyến bán hàng'
-                WHEN StoredProcedure LIKE '%ThongBao%'            THEN N'Thông báo'
+                WHEN StoredProcedure LIKE '%ThongBao%'            THEN N'Xem thông báo'
                 WHEN StoredProcedure LIKE '%TimSanPhamTheoTrieuChung%' THEN N'Tìm thuốc theo triệu chứng'
+                WHEN StoredProcedure LIKE '%KhaoSat360%'          THEN N'Khảo sát 360 khách hàng'
                 WHEN StoredProcedure LIKE '%TraCuu%TongHop%'      THEN N'Tra cứu tổng hợp'
                 WHEN StoredProcedure LIKE '%GoiYDonThuoc%'        THEN N'Gợi ý đơn thuốc'
                 WHEN StoredProcedure LIKE '%UpsellGoiY%'          THEN N'Gợi ý bán kèm (Upsell)'
@@ -493,6 +533,9 @@ BEGIN
                 WHEN FieldCode = '@TenKhachHang' THEN N'Tên khách hàng'
                 WHEN FieldCode = '@ObjectName' THEN N'Tên khách hàng'
                 WHEN FieldCode = '@EmployeeID' THEN N'Mã nhân viên'
+                WHEN FieldCode = '@RiskLevel' THEN N'Mức độ nguy cơ'
+                WHEN FieldCode = '@Page' THEN N'Trang'
+                WHEN FieldCode = '@PageSize' THEN N'Số dòng mỗi trang'
                 WHEN FieldCode = '@TenNhanVien' THEN N'Tên nhân viên'
                 WHEN FieldCode = '@TenSanPham' THEN N'Tên sản phẩm'
                 WHEN FieldCode = '@SoDienThoai' OR FieldCode = '@DienThoai' THEN N'Số điện thoại'
@@ -504,7 +547,7 @@ BEGIN
                 WHEN FieldCode = '@ObjectGroupID' THEN N'Nhóm khách hàng'
                 WHEN FieldCode = '@SoNgayVangMat' THEN N'Số ngày vắng mặt'
                 WHEN FieldCode = '@NgayBaoDong' THEN N'Ngày báo động'
-                WHEN FieldCode = '@NgayTarget' THEN N'Ngày mục tiêu'
+                WHEN FieldCode = '@NgayTarget' THEN N'Ngày làm việc'
                 WHEN FieldCode = '@TuNgay' THEN N'Từ ngày'
                 WHEN FieldCode = '@DenNgay' THEN N'Đến ngày'
                 WHEN FieldCode = '@NgayGiao'   THEN N'Ngày giao hàng'
@@ -534,7 +577,8 @@ BEGIN
                 THEN 'tel'
                  WHEN FieldCode IN ('@MaKhachHang', '@ObjectID') OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN 'combobox'
                  WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'combobox'
-                 WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'combobox'
+                 WHEN FieldCode = '@EmployeeID' THEN 'combobox'
+                 WHEN FieldCode = '@Type' OR FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' OR FieldCode = '@RiskLevel' THEN 'combobox'
                 WHEN FieldCode IN ('@TuNgay', '@DenNgay') THEN 'date'
                 WHEN FieldCode LIKE '%Date'   OR FieldCode LIKE '%Ngay' THEN 'date'
                 WHEN DataType IN ('INT','BIGINT','DECIMAL','NUMERIC','FLOAT','REAL','MONEY','SMALLMONEY') THEN 'number'
@@ -546,6 +590,12 @@ BEGIN
                 WHEN FieldCode = '@User' THEN 1
                 WHEN FieldCode = '@BotType' THEN 1
                 WHEN FieldCode LIKE '@SYS%' THEN 1
+                WHEN StoredProcedure = 'API_DoanhSo_AI'
+                     AND FieldCode IN ('@User', '@FromDate', '@ToDate', '@ManagerID', '@BranchID', '@CeoID') THEN 1
+                WHEN StoredProcedure = 'API_DonHang_AI'
+                     AND FieldCode IN ('@User', '@FromDate', '@ToDate', '@ObjectID', '@SearchText', '@BranchID', '@page', '@limit') THEN 1
+                WHEN StoredProcedure = 'API_ChamDiemKH_AI'
+                     AND FieldCode IN ('@BranchID', '@W_Recency', '@W_Frequency', '@W_Monetary', '@W_Consumption') THEN 1
                 WHEN StoredProcedure = 'API_DanhMuc_AI' AND FieldCode NOT IN ('@Type', '@timkiem') THEN 1
                 ELSE 0 
             END AS IsSystemParam,
@@ -555,21 +605,25 @@ BEGIN
                 WHEN FieldCode IN ('@ItemID', '@TenSanPham') OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN 'APICODE'
                 WHEN FieldCode IN ('@timkiem', '@searchkey', '@searchtext', '@tensanpham', '@TenSanPham') THEN 'APICODE'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN 'APICODE'
-                WHEN FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' THEN 'STATIC'
+                WHEN FieldCode = '@EmployeeID' THEN 'APICODE'
+                WHEN FieldCode = '@NhomFilter' OR FieldCode = '@LoaiBaoCao' OR FieldCode = '@RiskLevel' THEN 'STATIC'
                 ELSE NULL
             END AS DataSourceType,
             CASE
                 WHEN FieldCode = '@MaKhachHang' OR FieldCode = '@ObjectID' OR FieldCode LIKE '%KhachHang%' OR FieldCode LIKE '%Customer%' OR FieldCode LIKE '%MaKH%' THEN '@danh_muc|@Type=khachhang|@timkiem={q}'
                 WHEN FieldCode = '@ItemID' OR FieldCode = '@TenSanPham' OR FieldCode LIKE '%ItemID%' OR FieldCode LIKE '%ItemName%' OR FieldCode LIKE '%MaSP%' OR FieldCode LIKE '%TenSP%' OR FieldCode LIKE '%MaSanPham%' OR FieldCode LIKE '%TenSanPham%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN FieldCode = '@Type'      THEN '@danh_muc|@timkiem={q}'
+                WHEN FieldCode = '@EmployeeID' THEN '@danh_muc|@Type=nhanvien|@timkiem={q}'
                 WHEN FieldCode LIKE '%ItemList%' OR FieldCode LIKE '%JsonItems%' OR FieldCode LIKE '%itemlist%' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN StoredProcedure LIKE '%GoiYDonThuoc%' AND FieldCode = '@timkiem' THEN '@danh_muc|@Type=sanpham|@timkiem={q}'
                 WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"KHÁCH VIP"},{"value":"B","label":"ỔN ĐỊNH"},{"value":"C","label":"NGUY CƠ"}]'
+                WHEN FieldCode = '@RiskLevel' THEN N'[{"value":"HIGH","label":"Nguy cơ cao"},{"value":"MEDIUM","label":"Nguy cơ trung bình"},{"value":"LOW","label":"Nguy cơ thấp"}]'
                 WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
                 ELSE NULL
             END AS DataSourceValue,
             CASE
                 WHEN FieldCode = '@NhomFilter' THEN N'[{"value":"A","label":"Khách VIP"},{"value":"B","label":"Ổn định"},{"value":"C","label":"Nguy cơ"}]'
+                WHEN FieldCode = '@RiskLevel' THEN N'[{"value":"HIGH","label":"Nguy cơ cao"},{"value":"MEDIUM","label":"Nguy cơ trung bình"},{"value":"LOW","label":"Nguy cơ thấp"}]'
                 WHEN FieldCode = '@LoaiBaoCao' THEN N'[{"value":"TatCa","label":"Tất cả"},{"value":"KhachHang","label":"Khách hàng"},{"value":"NhanVien","label":"Nhân viên"},{"value":"SanPham","label":"Sản phẩm"}]'
                 ELSE NULL
             END AS OptionsJson,
@@ -863,6 +917,8 @@ BEGIN
         f.OptionsJson = COALESCE(o.OptionsJson, f.OptionsJson),
         f.DataSourceType = COALESCE(o.DataSourceType, f.DataSourceType),
         f.DataSourceValue = COALESCE(o.DataSourceValue, f.DataSourceValue),
+        f.SourceOfTruth = COALESCE(o.SourceOfTruth, f.SourceOfTruth),
+        f.ValidationRule = COALESCE(o.ValidationRule, f.ValidationRule),
         f.OrderIndex = COALESCE(o.OrderIndex, f.OrderIndex)
     FROM dbo.API_Field f
     JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
@@ -1069,7 +1125,8 @@ USING (VALUES
     -- Chỉ liệt kê những SP có ApiCode bị gen sai
 
     -- DanhsachTonKho → auto-gen: @danh_sach_ton_kho | cần: @danh_sach_tonkho
-    ('API_DanhsachTonKho_AI', '@danh_sach_tonkho')
+    ('API_DanhsachTonKho_AI', '@danh_sach_tonkho'),
+    ('API_HoaDonChiTiet_AI', '@hoa_don_chi_tiet')
 
     /* ── THÊM PROJECT MỚI TẠI ĐÂY ─────────────────────────────────────
        ,('API_TenSPKhac_AI', '@ten_api_dung')
@@ -1081,6 +1138,16 @@ WHEN MATCHED THEN
 WHEN NOT MATCHED THEN
     INSERT (StoredProcedure, ApiCode)
     VALUES (s.StoredProcedure, s.ApiCode);
+GO
+
+/*
+   API_TraCuu_TongHop_AI là endpoint điều phối nội bộ gồm nhiều nghiệp vụ,
+   không phải một form dành cho người dùng cuối. Các nghiệp vụ được công bố
+   bằng API riêng; KHAO_SAT_360 dùng wrapper API_KhaoSat360_AI.
+*/
+UPDATE dbo.API_Definition
+SET IsActive = 0
+WHERE StoredProcedure = 'API_TraCuu_TongHop_AI';
 GO
 
 /* =========================================================

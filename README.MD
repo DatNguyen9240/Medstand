@@ -1,5 +1,7 @@
 # 🏥 HỆ THỐNG MEDSTAND — CRM & AI ASSISTANT CHO TRÌNH DƯỢC VIÊN (TDV)
 
+Điểm bắt đầu: [`docs/README.md`](docs/README.md), [`sql/README.md`](sql/README.md), [`scripts/README.md`](scripts/README.md) và [`reports/README.md`](reports/README.md).
+
 Ứng dụng Web / PWA tích hợp Trợ lý ảo AI và công cụ quản lý bán hàng chuyên nghiệp dành cho Trình dược viên (TDV), Quản lý và Ban giám đốc trong ngành Dược phẩm.
 
 ---
@@ -69,15 +71,9 @@ Công cụ đồng bộ dữ liệu chuyên nghiệp từ máy chủ Medstand sa
 
 ## 🔑 Thông tin Quản trị & Đăng nhập
 
-### Tài khoản n8n (Môi trường Local/Portable):
-*   **Đường dẫn:** [http://localhost:5678](http://localhost:5678)
-*   **Email:** `admin@example.com`
-*   **Mật khẩu:** `AdminD308!`
+### Cấu hình cục bộ
 
-### Tài khoản Microsoft SQL Server (Database từ xa):
-*   **Server:** `z5.bms79.com`
-*   **Port:** `17456`
-*   **Database:** `medtest`
-*   **User:** `medtest`
-*   **Password:** `medtest@2026`
-
+- n8n local: [http://localhost:5678](http://localhost:5678).
+- Credential và cấu hình database chỉ lưu trong `.env`/`.env.uat.local`; không ghi giá trị thật vào tài liệu hoặc Git.
+- Dùng `.env.uat.example` làm danh sách biến cấu hình mẫu.
+

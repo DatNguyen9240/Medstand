@@ -6,7 +6,8 @@
 .chatbot-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - var(--header-height) - 64px - var(--nav-height));
+  height: calc(100dvh - 32px - var(--nav-height));
+  min-height: 0;
   overflow: hidden;
   background: var(--color-background);
 }
@@ -81,12 +82,14 @@
 
 /* ── Messages container ── */
 .chat-container {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  max-height: none;
+  margin: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-md) var(--spacing-md) 8px;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md);
   scroll-behavior: smooth;
 }
 
@@ -244,24 +247,31 @@
 .chat-messages {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: 12px;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: min-content;
+  margin-top: auto;
 }
 
 .chat-bubble {
-  max-width: 82%;
-  width: fit-content;
-  padding: 10px 14px;
-  border-radius: var(--radius-lg);
+  width: auto;
+  max-inline-size: min(72%, 620px);
+  flex: 0 0 auto;
+  padding: 12px 16px 10px;
+  border-radius: 14px;
   font-size: var(--font-size-sm);
-  line-height: 1.6;
-  word-break: break-word;
+  line-height: 1.55;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
   position: relative;
-  animation: bubble-in 0.25s ease-out;
+  animation: bubble-in 160ms ease-out;
 }
 
 /* Bubble mở rộng hết màn khi có bảng */
 .chat-bubble.has-table {
-  max-width: 100%;
+  max-inline-size: 100%;
   width: 100%;
   padding: 10px 0;
   background: transparent;
@@ -272,31 +282,64 @@
 @keyframes bubble-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.96);
+    transform: translateY(4px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-bubble {
+    animation: none;
   }
 }
 
 /* User bubble */
 .chat-bubble.user {
-  background: var(--color-primary);
+  max-inline-size: min(62%, 520px);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #3547d8 100%);
   color: var(--color-text-inverse, #fff);
   align-self: flex-end;
-  border-bottom-right-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom-right-radius: 5px;
+  box-shadow: 0 4px 14px rgba(60, 80, 224, 0.18);
+}
+
+.chat-bubble.user.chat-query-sales {
+  max-inline-size: min(72%, 720px);
+  padding: 9px 14px;
+  background: rgba(99, 102, 241, .08);
+  border: 1px solid rgba(99, 102, 241, .14);
+  border-radius: 10px;
+  color: #3344b8;
+  box-shadow: none;
 }
 
 /* AI bubble */
 .chat-bubble.ai {
   background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border-strong, #d7dee8);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
   color: var(--color-text);
   align-self: flex-start;
-  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-left-radius: 5px;
+}
+
+.chat-bubble.ai.error {
+  background: #fffafa;
+  border-color: #fecaca;
+  border-left: 4px solid #ef4444;
+  color: #7f1d1d;
+  box-shadow: 0 3px 12px rgba(239, 68, 68, 0.08);
+}
+
+[data-theme="dark"] .chat-bubble.ai.error {
+  background: rgba(127, 29, 29, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
 }
 
 /* ── AI Markdown styles ── */
@@ -685,6 +728,7 @@ tr.expanded .ai-row-toggle::before {
   color: var(--color-text-muted);
   margin-top: 4px;
   display: block;
+  white-space: nowrap;
 }
 
 .chat-bubble.user .chat-bubble-time {
@@ -739,23 +783,25 @@ tr.expanded .ai-row-toggle::before {
 
 /* ── Input bar ── */
 .chat-input-bar {
-  position: fixed;
-  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom, 0px));
-  left: 0;
-  right: 0;
+  position: sticky;
+  bottom: 0;
+  width: min(calc(100% - 32px), 960px);
+  align-self: center;
+  flex: 0 0 auto;
+  margin: 16px 0 0;
   z-index: 95;
   display: flex;
   flex-direction: column;
-  padding: 8px var(--spacing-md) 10px;
-  background: linear-gradient(to top, var(--color-background) 70%, transparent);
+  padding: 0;
+  background: transparent;
 }
 
 .chat-input-wrap {
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  max-width: var(--content-max-width);
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   width: 100%;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1112,25 +1158,25 @@ tr.expanded .ai-row-toggle::before {
 
 /* ── Desktop adjustments ── */
 @media (min-width: 768px) {
+  .chatbot-page {
+    height: calc(100dvh - 32px);
+  }
+
   .chat-container {
-    max-width: var(--content-max-width);
+    width: min(100%, 1240px);
+    max-width: 1240px;
     margin: 0 auto;
+    padding-inline: clamp(24px, 2.4vw, 32px);
   }
 
   .chat-input-bar {
-    position: fixed;
+    position: sticky;
     bottom: 0;
-    left: 0;
-    right: 0;
-    width: auto;
+    width: min(calc(100% - 32px), 960px);
   }
 
-  body.has-sidebar .chat-input-bar {
-    left: var(--sidebar-width, 280px);
-  }
-
-  body.sidebar-collapsed .chat-input-bar {
-    left: var(--sidebar-collapsed-width, 80px);
+  .ai-sales-chips-bar {
+    max-width: 960px;
   }
 
 }
@@ -2359,6 +2405,38 @@ tr.expanded .ai-row-toggle::before {
   -webkit-overflow-scrolling: touch;
 }
 
+.ai-sales-dashboard .ai-inline-table-scroll {
+  max-height: 404px;
+  overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+}
+
+.ai-sales-dashboard .ai-inline-table-scroll .ai-table {
+  margin: 0;
+}
+
+.ai-sales-dashboard .ai-inline-table-scroll::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.ai-sales-dashboard .ai-inline-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ai-sales-dashboard .ai-inline-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #b8c5d6;
+}
+
+.ai-sales-dashboard .ai-inline-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 /* Filter bar trong inline (không sticky vì nằm trong scroll area bubble) */
 .ai-inline-filter {
   position: static !important;
@@ -3005,4 +3083,573 @@ tr.expanded .ai-row-toggle::before {
   border-color: rgba(var(--color-primary-rgb, 59, 130, 246), 0.4);
   color: var(--color-primary, #3b82f6);
   transform: translateY(-2px);
+}
+
+@media (max-width: 767px) {
+  .chat-bubble,
+  .chat-bubble.user {
+    max-inline-size: 88%;
+  }
+
+}
+
+/* Role-aware sales dashboard rendered from the real @doanh_so response. */
+.chat-bubble.has-table:has(.ai-sales-dashboard) {
+  max-inline-size: 100%;
+}
+
+.chat-bubble.chat-message--text {
+  max-inline-size: min(760px, 72%);
+}
+
+.chat-bubble.chat-message--data {
+  width: 100%;
+  max-inline-size: 1120px;
+  align-self: center;
+}
+
+.chat-bubble.chat-message--dashboard {
+  max-inline-size: 100%;
+}
+
+.chat-bubble.chat-message--dashboard:has(.ai-sales-dashboard.manager) {
+  max-width: 1180px;
+}
+
+.chat-bubble.chat-message--dashboard:has(.ai-sales-dashboard.tdv) {
+  max-width: 920px;
+}
+
+.ai-sales-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  color: var(--color-text);
+}
+
+/* Báo cáo doanh số dùng một header cố định trong luồng kết quả, không phải toast. */
+.ai-sales-dashboard-head {
+  display: none;
+}
+
+.ai-sales-report-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px 20px;
+  padding: 18px 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, .05);
+}
+
+.ai-sales-report-heading h3 {
+  margin: 4px 0 2px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.ai-sales-report-heading p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.ai-sales-report-meta {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-sales-updated {
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.ai-sales-report-filter {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.ai-sales-report-filter span {
+  color: var(--color-text-muted);
+}
+
+.ai-sales-report-filter strong {
+  color: var(--color-primary);
+  font-size: 13px;
+}
+
+.ai-sales-report-filter em {
+  margin-left: auto;
+  color: #15803d;
+  font-style: normal;
+  font-size: 11px;
+}
+
+.ai-sales-report-summary {
+  padding: 14px;
+}
+
+.ai-sales-summary-card {
+  display: none;
+}
+
+.ai-sales-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-sales-dashboard-head h3 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.ai-sales-dashboard-eyebrow,
+.ai-sales-dashboard-role {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.ai-sales-dashboard-role {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(var(--color-primary-rgb), .09);
+  white-space: nowrap;
+}
+
+.ai-sales-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-sales-summary-card {
+  padding: 14px;
+}
+
+.ai-sales-summary-card .ai-sales-card-title strong {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+
+.ai-sales-summary-card .ai-sales-card-title {
+  margin-bottom: 10px;
+}
+
+.ai-sales-kpi,
+.ai-sales-dashboard-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 3px 14px rgba(15, 23, 42, .05);
+}
+
+.ai-sales-related-loading,
+.ai-sales-empty {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.ai-sales-related-loading {
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-sales-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 82px;
+  padding: 14px;
+}
+
+.ai-sales-report-summary .ai-sales-kpi {
+  position: relative;
+  min-height: 105px;
+  padding: 13px 14px 12px 48px;
+  justify-content: center;
+}
+
+.ai-sales-report-summary .ai-sales-kpi-icon {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), .10);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ai-sales-report-summary .ai-sales-kpi strong {
+  font-size: 20px;
+  letter-spacing: -.02em;
+}
+
+.ai-sales-report-summary .ai-sales-kpi small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.ai-sales-target-kpi .ai-sales-target-progress {
+  width: 100%;
+  height: 5px;
+  margin: 1px 0 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7edf2;
+}
+
+.ai-sales-target-kpi .ai-sales-target-progress i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #20ad78;
+  transition: width .45s ease;
+}
+
+.ai-sales-target-kpi .ai-sales-target-progress + small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-sales-summary-card .ai-sales-kpi {
+  box-shadow: none;
+}
+
+.ai-sales-kpi span,
+.ai-sales-card-title span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.ai-sales-kpi strong {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.ai-sales-dashboard-card {
+  padding: 14px;
+  overflow: hidden;
+}
+
+.ai-sales-breakdown-explainer {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(var(--color-primary-rgb), .16);
+  border-radius: 10px;
+  color: var(--color-text-muted);
+  background: rgba(var(--color-primary-rgb), .045);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.ai-sales-breakdown-explainer p {
+  margin: 0 0 10px;
+}
+
+.ai-sales-breakdown-explainer p strong {
+  color: var(--color-text);
+}
+
+.ai-sales-breakdown-groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-sales-group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+}
+
+.ai-sales-group-card:hover {
+  border-color: rgba(var(--color-primary-rgb), .32);
+  transform: translateY(-1px);
+}
+
+.ai-sales-group-card.active {
+  border-color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), .10);
+  box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), .06);
+}
+
+.ai-sales-group-card strong {
+  color: var(--color-text);
+  font-size: 11px;
+}
+
+.ai-sales-group-card small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.ai-sales-management-detail .ai-sales-filter-chips {
+  display: none;
+}
+
+.ai-sales-management-detail .ai-inline-table-scroll {
+  max-height: 520px;
+}
+
+.ai-sales-management-detail .ai-table {
+  min-width: 980px !important;
+}
+
+.ai-sales-management-detail:not(.ai-sales-show-quantity) .ai-table th:nth-child(4),
+.ai-sales-management-detail:not(.ai-sales-show-quantity) .ai-table td:nth-child(4) {
+  display: none;
+}
+
+.ai-sales-card-title {
+  margin-bottom: 12px;
+}
+
+.ai-sales-chart-wrap {
+  width: 100%;
+  height: 260px;
+  min-height: 260px;
+}
+
+.ai-sales-dashboard.manager .ai-sales-chart-wrap {
+  min-height: 260px;
+}
+
+.ai-sales-chart-subtitle {
+  display: block;
+  margin-top: 3px;
+}
+
+.ai-sales-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+
+.ai-sales-chart-controls .active {
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), .10);
+  font-weight: 700;
+}
+
+.ai-sales-dashboard .ai-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.chat-bubble.ai .ai-sales-dashboard .ai-table {
+  width: 100%;
+  min-width: 760px;
+}
+
+.ai-sales-manager-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ai-sales-ranking,
+.ai-sales-alerts {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.ai-sales-ranking li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-sales-ranking li:last-child {
+  border-bottom: 0;
+}
+
+.ai-sales-rank-number {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  border-radius: 50%;
+  color: var(--color-primary);
+  background: rgba(var(--color-primary-rgb), .10);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.ai-sales-rank-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ai-sales-rank-main strong,
+.ai-sales-rank-main small,
+.ai-sales-rank-value strong,
+.ai-sales-rank-value small {
+  display: block;
+}
+
+.ai-sales-rank-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.ai-sales-rank-main small,
+.ai-sales-rank-value small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.ai-sales-rank-value {
+  min-width: 110px;
+  text-align: right;
+}
+
+.ai-sales-rank-value strong {
+  font-size: 12px;
+}
+
+.ai-sales-rank-progress {
+  height: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfe6ef;
+}
+
+.ai-sales-rank-progress i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #20ad78;
+}
+
+.ai-sales-alerts li {
+  padding: 6px 0;
+}
+
+.ai-sales-next-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ai-sales-next-grid button {
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-sales-next-grid button:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+@media (max-width: 1100px) {
+  .ai-sales-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+
+  .ai-sales-report-header {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-sales-report-meta {
+    align-items: flex-start;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .ai-sales-report-filter em {
+    margin-left: 0;
+  }
+
+  .ai-sales-manager-grid,
+  .ai-sales-next-grid,
+  .ai-sales-breakdown-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-sales-dashboard-head {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .chat-container {
+    padding-inline: 12px;
+  }
+
+  .chat-bubble.chat-message--text,
+  .chat-bubble.chat-message--data,
+  .chat-bubble.chat-message--dashboard {
+    width: 100%;
+    max-inline-size: 100%;
+  }
+
+  .ai-sales-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-sales-chart-wrap,
+  .ai-sales-dashboard.manager .ai-sales-chart-wrap {
+    height: 280px;
+    min-height: 280px;
+  }
+
+  .ai-sales-rank-value {
+    min-width: 88px;
+  }
 }

@@ -23,6 +23,7 @@
 
     <!-- Cột trái: Lời chào -->
     <div class="hero-left">
+      <span class="dashboard-role-badge" id="dashboard-role-badge" hidden></span>
       <p class="greeting" id="greeting-text">Chào buổi sáng,</p>
       <h1 class="user-name" id="user-name">Test App</h1>
       <p class="subtitle" id="hero-summary">Chúc bạn một ngày làm việc hiệu quả!</p>
@@ -44,6 +45,13 @@
        KPI CARDS — 4 card ngang
        ══════════════════════════════════════ -->
   <div class="home-kpi-grid">
+
+    <div class="dashboard-context" aria-live="polite">
+      <span class="dashboard-context-manager">Tổng quan đội ngũ</span>
+      <span class="dashboard-context-tdv">Tổng quan cá nhân</span>
+      <small class="dashboard-context-hint dashboard-context-manager">Theo phạm vi quản lý và chi nhánh được phân quyền</small>
+      <small class="dashboard-context-hint dashboard-context-tdv">Theo khách hàng, tuyến và đơn hàng được phân công</small>
+    </div>
 
     <!-- Card 1: Đơn hàng -->
     <div class="kpi-card" id="kpi-orders">

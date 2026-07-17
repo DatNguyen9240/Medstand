@@ -146,6 +146,7 @@ BEGIN
              SELECT TOP 1 @ResolvedID = ObjectID 
              FROM dbo.CF_ObjectTbl 
              WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
+                OR REPLACE(dbo.ufn_clean_customer_name(ObjectName), ' ', '') LIKE '%' + REPLACE(@CleanSearch, ' ', '') + '%'
                 OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
              ORDER BY 
                  CASE WHEN ObjectID = @CleanSearch THEN 1
@@ -161,6 +162,15 @@ BEGIN
          BEGIN
              SET @MaKhachHang = @ResolvedID
          END
+     END
+
+     IF @MaKhachHang <> '' AND NOT EXISTS (
+         SELECT 1 FROM dbo.CF_ObjectTbl
+         WHERE ObjectID = @MaKhachHang AND ISNULL(isCustomer, 0) = 1 AND ISNULL(isDisable, 0) = 0
+     )
+     BEGIN
+         SELECT N'Mã khách hàng không hợp lệ hoặc không tồn tại.' AS Msg, 1 AS MsgType
+         RETURN
      END
 
     -- SMART AI ID ROUTING
@@ -235,24 +245,17 @@ BEGIN
         END
     END
 
-    -- =========================================================
-    -- SMART FALLBACK CHO BÁO CÁO MẶC ĐỊNH (TatCa)
-    -- Nếu là Admin hoặc Manager -> Mặc định xem danh sách Nhân Viên
-    -- Nếu là Sale/Nhân viên thường -> Mặc định xem danh sách Khách Hàng
-    -- =========================================================
-    IF @LoaiBaoCao = 'TatCa'
-    BEGIN
-        IF @SYSUserGroupID = 'Admin' OR @IsManager = 1
-            SET @LoaiBaoCao = 'NhanVien'
-        ELSE
-            SET @LoaiBaoCao = 'KhachHang'
-    END
+    -- TatCa giữ nguyên để trả đủ ba nhóm trong phạm vi phân quyền:
+    -- nhân viên, khách hàng và sản phẩm.
 
     -- =========================================================
     -- ĐẶC CÁCH CHO WEB DASHBOARD 
     -- Trả về đúng format ngày tháng để vẽ Biểu Đồ và Tính Tổng
     -- =========================================================
-    IF NULLIF(@User, '') IS NOT NULL OR @FromDate IS NOT NULL
+    -- @User cũng được API chatbot truyền để xác định tài khoản đăng nhập,
+    -- nên không được dùng riêng tham số này để nhận diện Dashboard.
+    IF (@FromDate IS NOT NULL OR @ToDate IS NOT NULL)
+       AND COALESCE(NULLIF(@LoaiBaoCao, ''), 'TatCa') = 'TatCa'
     BEGIN
         SELECT 
             DAY(DocumentDate) AS NgayBan,
@@ -397,12 +400,67 @@ BEGIN
         END
     END
 
-    -- Fallback for TatCa defaults to NhanVien to prevent Node Crash
-    SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, EmployeeName) AS STT, 
-            FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
-            EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], 
-            ManagerID AS [Mã Quản Lý], BranchID AS [Chi Nhánh],
-            FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
-        FROM @BC ORDER BY DoanhSo DESC
+    -- TatCa dùng một result set thống nhất để n8n không làm mất nhóm thứ 2/3.
+    -- FE dựa vào cột [Nhóm] để chia thành Nhân viên / Khách hàng / Sản phẩm.
+    IF @LoaiBaoCao = 'TatCa'
+    BEGIN
+        SELECT
+            ROW_NUMBER() OVER (
+                PARTITION BY X.ReportGroup
+                ORDER BY X.DoanhSoValue DESC, X.DisplayName
+            ) AS STT,
+            FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày],
+            FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
+            X.ReportGroup AS [Nhóm],
+            X.EntityID AS [Mã],
+            X.DisplayName AS [Tên],
+            CASE WHEN X.ReportGroup = N'Sản phẩm'
+                 THEN FORMAT(X.QuantityValue, '#,##0.##')
+                 ELSE NULL END AS [Số Lượng],
+            FORMAT(X.DoanhSoValue, '#,##0') AS [Doanh Số]
+        FROM (
+            SELECT
+                N'Nhân viên' AS ReportGroup,
+                EmployeeID AS EntityID,
+                EmployeeName AS DisplayName,
+                CAST(NULL AS DECIMAL(18, 2)) AS QuantityValue,
+                DoanhSo AS DoanhSoValue
+            FROM (
+                SELECT TOP (@TopN) EmployeeID, EmployeeName, DoanhSo
+                FROM @BC
+                ORDER BY DoanhSo DESC, EmployeeName
+            ) E
+
+            UNION ALL
+
+            SELECT
+                N'Khách hàng', ObjectID, ObjectName,
+                CAST(NULL AS DECIMAL(18, 2)), DoanhSo
+            FROM (
+                SELECT TOP (@TopN) ObjectID, ObjectName, DoanhSo
+                FROM @BC2
+                ORDER BY DoanhSo DESC, ObjectName
+            ) C
+
+            UNION ALL
+
+            SELECT
+                N'Sản phẩm', ItemID, ItemName,
+                CAST(SoLuong AS DECIMAL(18, 2)), DoanhSo
+            FROM (
+                SELECT TOP (@TopN) ItemID, ItemName, SoLuong, DoanhSo
+                FROM @BC3
+                ORDER BY DoanhSo DESC, ItemName
+            ) P
+        ) X
+        ORDER BY
+            CASE X.ReportGroup
+                WHEN N'Nhân viên' THEN 1
+                WHEN N'Khách hàng' THEN 2
+                ELSE 3
+            END,
+            X.DoanhSoValue DESC;
+        RETURN;
+    END
 END
 GO

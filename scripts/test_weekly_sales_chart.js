@@ -1,15 +1,30 @@
 const sql = require('mssql');
+const path = require('path');
+const { loadLocalEnv } = require('./lib/load-local-env');
+
+loadLocalEnv(path.resolve(__dirname, '..'));
 
 const config = {
-  server: 'z5.bms79.com',
-  port: 17456,
-  database: 'medtest',
-  user: 'medtest',
-  password: 'medtest@2026',
+  server: process.env.TEST_DB_SERVER,
+  port: Number(process.env.TEST_DB_PORT || 1433),
+  database: process.env.TEST_DB_DATABASE,
+  user: process.env.TEST_DB_USER,
+  password: process.env.TEST_DB_PASSWORD,
   options: { encrypt: false, trustServerCertificate: true },
   connectionTimeout: 10000,
   requestTimeout: 60000,
 };
+
+const missingDbConfig = Object.entries({
+  TEST_DB_SERVER: config.server,
+  TEST_DB_DATABASE: config.database,
+  TEST_DB_USER: config.user,
+  TEST_DB_PASSWORD: config.password,
+}).filter(([, value]) => !value).map(([name]) => name);
+
+if (missingDbConfig.length > 0) {
+  throw new Error(`Missing test database configuration: ${missingDbConfig.join(', ')}`);
+}
 
 function monday(date) {
   const d = new Date(date + 'T00:00:00');

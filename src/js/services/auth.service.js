@@ -6,6 +6,7 @@
  */
 const AuthService = (() => {
   const EP = API_CONFIG.ENDPOINTS.AUTH;
+  let isLoggingOut = false;
 
   // ── Cookie helpers ──────────────────────────────────────────────────────
   function setCookie(name, value, days) {
@@ -21,7 +22,38 @@ const AuthService = (() => {
   }
 
   function deleteCookie(name) {
-    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    var expired = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;Max-Age=0;SameSite=Strict;path=';
+    document.cookie = expired + '/';
+    document.cookie = expired + '/pages';
+    document.cookie = expired + (window.location.pathname.replace(/\/[^/]*$/, '') || '/');
+    document.cookie = expired + '/;domain=' + window.location.hostname;
+  }
+
+  function mergeIdentityFields(userInfo, loginData) {
+    var merged = Object.assign({}, userInfo || {});
+    var fields = [
+      'RoleName', 'UserRoleName', 'GroupName', 'UserGroupName',
+      'UserGroupID', 'UserGroup', 'Manager', 'IsManager',
+      'manager', 'isManager', 'EmployeeID', 'ManagerID', 'BranchID'
+    ];
+    fields.forEach(function (field) {
+      if ((merged[field] === undefined || merged[field] === null || merged[field] === '') &&
+          loginData && loginData[field] !== undefined) {
+        merged[field] = loginData[field];
+      }
+    });
+    // Chuẩn hóa hồ sơ để các màn hình dùng cùng một hợp đồng quyền hạn.
+    // Đây chỉ là metadata phía UI; API/SQL vẫn là lớp kiểm soát quyền cuối.
+    var roleText = String(merged.RoleName || merged.UserRoleName || merged.GroupName || merged.UserGroupName || '').trim();
+    var groupText = String(merged.UserGroupID || merged.UserGroup || '').trim();
+    var managerFlag = Number(merged.Manager !== undefined ? merged.Manager : (merged.IsManager !== undefined ? merged.IsManager : 0)) === 1;
+    var isAdmin = /admin|quản trị|quan tri/i.test(roleText + ' ' + groupText);
+    merged.roleCode = merged.roleCode || merged.RoleCode || (isAdmin ? 'ADMIN' : (managerFlag ? 'MANAGER' : 'TDV'));
+    merged.roleName = merged.roleName || roleText || (isAdmin ? 'Quản trị viên' : (managerFlag ? 'Quản lý' : 'Trình dược viên'));
+    merged.employeeId = merged.employeeId || merged.EmployeeID || '';
+    merged.managerId = merged.managerId || merged.ManagerID || '';
+    merged.branchId = merged.branchId || merged.BranchID || '';
+    return merged;
   }
 
   // ── Public API ──────────────────────────────────────────────────────────
@@ -55,21 +87,21 @@ const AuthService = (() => {
       try {
         const infoRes = await Http.post(EP.USER_INFO);
         if (infoRes && infoRes.code === 0 && infoRes.records && infoRes.records.length > 0) {
-          const userInfo = infoRes.records[0];
+          const userInfo = mergeIdentityFields(infoRes.records[0], data);
           localStorage.setItem('auth_user', JSON.stringify(userInfo));
         } else {
           // Fallback nếu không lấy được info chi tiết
-          localStorage.setItem('auth_user', JSON.stringify({
+          localStorage.setItem('auth_user', JSON.stringify(mergeIdentityFields({
             UserName: data.UserName || username,
             DisplayName: data.DisplayName || username
-          }));
+          }, data)));
         }
       } catch (infoErr) {
         console.error('[Auth] Failed to fetch user info:', infoErr);
-        localStorage.setItem('auth_user', JSON.stringify({
+        localStorage.setItem('auth_user', JSON.stringify(mergeIdentityFields({
           UserName: data.UserName || username,
           DisplayName: data.DisplayName || username
-        }));
+        }, data)));
       }
 
       return data;
@@ -81,13 +113,29 @@ const AuthService = (() => {
 
   /** Đăng xuất, xóa token */
   async function logout() {
+    if (isLoggingOut) return;
+    isLoggingOut = true;
+    window.__isLoggingOut = true;
+    $('.sidebar-logout-btn').prop('disabled', true);
+    // Server còn giữ cookie phiên HttpOnly, vì vậy cần gọi logout trước. Timeout bảo đảm
+    // gateway chậm không khóa nút đăng xuất vô thời hạn.
     try {
-      await Http.post(EP.LOGOUT);
+      await Promise.race([
+        Http.post(EP.LOGOUT),
+        new Promise(function (resolve) { setTimeout(resolve, 3000); })
+      ]);
+    } catch (error) {
+      console.warn('[Auth] Server logout failed:', error);
     } finally {
       deleteCookie('auth_token');
       localStorage.removeItem('auth_user');
-      localStorage.removeItem('survey_doc_id'); // Xóa để acc mới không bị lẫn bài cũ
-      window.location.href = 'pages/login.html?v=' + Date.now();
+      localStorage.removeItem('survey_doc_id');
+      if (typeof Http !== 'undefined' && Http.clearCache) Http.clearCache();
+      sessionStorage.clear();
+      if (window.Swal) Swal.close();
+      $('.picker-overlay, .picker-sheet, .filter-overlay, .filter-modal, .select-modal').remove();
+      $('body').css('overflow', '').removeClass('has-total-bar');
+      window.location.replace(window.location.origin + '/pages/login.html?v=' + Date.now());
     }
   }
 

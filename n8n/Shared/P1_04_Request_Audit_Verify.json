@@ -1,0 +1,62 @@
+{
+  "id": "p104AuditVerifyV1",
+  "name": "P1-04 · Verify Request Audit",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "p104-verify-trigger",
+      "name": "Run P1-04 Audit Verify",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @AuditReader VARCHAR(50);\nSELECT TOP (1) @AuditReader = UserName\nFROM dbo.SY_User\nWHERE UPPER(ISNULL(UserGroupID, '')) IN ('ADMIN', 'SECURITY', 'QA')\n  AND COALESCE(Disable, 0) = 0\nORDER BY CASE UPPER(UserGroupID) WHEN 'QA' THEN 1 WHEN 'SECURITY' THEN 2 ELSE 3 END, UserName;\nIF @AuditReader IS NULL THROW 51242, 'No active Security/QA/Admin audit reader exists.', 1;\nEXEC dbo.API_ReadRequestAudit_AI @Username = @AuditReader, @TopN = 100;"
+      },
+      "id": "p104-verify-query",
+      "name": "Read Safe Audit Rows",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        260,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Run P1-04 Audit Verify": {
+      "main": [
+        [
+          {
+            "node": "Read Safe Audit Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "0042c4c9-80b8-4865-afec-32da66a49902",
+  "tags": []
+}

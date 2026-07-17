@@ -1,4 +1,5 @@
 {
+  "id": "fCJwiyAT9r6eh1ys",
   "name": "K0-C · Execute API",
   "nodes": [
     {
@@ -6,7 +7,9 @@
         "httpMethod": "POST",
         "path": "api-execute",
         "responseMode": "responseNode",
-        "options": {}
+        "options": {
+          "allowedOrigins": "http://localhost:3000,http://127.0.0.1:3000,https://medtest.bms79.com"
+        }
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
@@ -20,7 +23,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const inputJson = $json || {};\n// --- TÍCH HỢP TƯƠNG THÍCH AGENT ---\nlet body = inputJson.body || {};\nconst isAgent = (inputJson.sessionId && inputJson.intent) || (body.sessionId && body.intent) || inputJson._isAgent || body._isAgent;\nlet headers = inputJson.headers || {};\nlet method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\nif (isAgent) {\n    body = { ...inputJson, ...body };\n    body.ApiCode = body.intent || inputJson.intent; // Agent gọi tool dùng intent\n    body.params = { ...inputJson, ...body.params };\n    method = 'POST'; // Bỏ qua OPTIONS check\n    if (inputJson.authorization || body.authorization) headers.authorization = inputJson.authorization || body.authorization;\n    if (inputJson.cookie || body.cookie) headers.cookie = inputJson.cookie || body.cookie;\n}\n// ---------------------------------\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\n\n\nif (!headers.authorization || headers.authorization.trim() === '' || headers.authorization.includes('empty') || headers.authorization.includes('null')) {\n  if (headers.cookie) {\n    const m = headers.cookie.match(/(?:^|; )auth_token=([^;]+)/);\n    if (m) headers.authorization = 'Bearer ' + m[1];\n  }\n}\n\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) {\n  apiCode = '@invalid_code';\n}\n\nconst params = body.params || {};\nlet username = body.username || '';\nif (!username) {\n  try {\n    const authH = headers.authorization || headers.Authorization || '';\n    const tm = authH.match(/Bearer (.+)/);\n    if (tm) {\n      const token = tm[1];\n      \n      // --- 1. LOCAL EXPIRATION CHECK FOR JWT ---\n      if (token.includes('.')) {\n        try {\n          const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');\n          const pad = (4 - b64.length % 4) % 4;\n          const pl = JSON.parse(Buffer.from(b64 + '='.repeat(pad), 'base64').toString('utf8'));\n          if (pl && pl.exp) {\n            const nowSecs = Math.floor(Date.now() / 1000);\n            if (nowSecs > pl.exp) {\n              throw new Error(\"SECURITY_ALERT: Token đăng nhập đã hết hạn (Expired). Vui lòng đăng nhập lại!\");\n            }\n          }\n        } catch(e) {\n          if (e.message && e.message.includes('SECURITY_ALERT')) throw e;\n        }\n      }\n      \n      // --- 2. VERIFY SIGNATURE (API_UserInfo) OR CACHE ---\n      // We NEVER trust the JWT payload's username directly. \n      // It MUST be validated by the backend at least once to ensure signature is correct.\n      try {\n        const staticData = $getWorkflowStaticData('global');\n        if (!staticData.uuidCache) staticData.uuidCache = {};\n\n        // W4 FIX: Cleanup uuidCache entries quá TTL 8 giờ (tránh memory leak)\n        const UUID_TTL = 8 * 3600 * 1000;\n        const nowMs = Date.now();\n        if (!staticData.uuidCacheTs) staticData.uuidCacheTs = {};\n        for (const tk of Object.keys(staticData.uuidCacheTs)) {\n          if ((nowMs - staticData.uuidCacheTs[tk]) > UUID_TTL) {\n            delete staticData.uuidCache[tk];\n            delete staticData.uuidCacheTs[tk];\n          }\n        }\n\n        if (staticData.uuidCache[token] && staticData.uuidCacheTs[token] && (nowMs - staticData.uuidCacheTs[token]) < UUID_TTL) {\n            username = staticData.uuidCache[token]; // Already verified by backend previously\n        } else {\n            // Cache miss hoặc expired → gọi lại API_UserInfo để verify\n            delete staticData.uuidCache[token];\n            delete staticData.uuidCacheTs[token];\n            inputJson._uuidToken = token;\n        }\n      } catch(err) {\n        inputJson._uuidToken = token;\n      }\n    }\n  } catch(e) { \n    if (e.message && e.message.includes('SECURITY_ALERT')) throw e;\n    username = '';\n  }\n}\n\nif (username && !params['@Username']) {\n  params['@Username'] = username;\n}\n\n\n// --- BẮT ĐẦU VÁ BẢO MẬT: REGEX VALIDATOR ---\nconst sqlBlacklist = /(\\bDROP\\s+TABLE\\b|\\bTRUNCATE\\s+TABLE\\b|\\bUNION\\s+SELECT\\b)/i;\nfor (const key in params) {\n  if (Object.prototype.hasOwnProperty.call(params, key)) {\n    const val = String(params[key]);\n    if (sqlBlacklist.test(val)) {\n      apiCode = '@invalid_code'; // Đổi mã thành invalid để chặn lệnh SQL\n      params['@SecurityBlock'] = 'Phát hiện từ khóa nghi ngờ SQL Injection: ' + val;\n    }\n  }\n}\n// --- KẾT THÚC VÁ BẢO MẬT ---\n\nconst paramsSafeStr = JSON.stringify(params).replace(/'/g, \"''\");\n\nreturn [{ json: { _isAgent: isAgent, ...inputJson, headers: headers, body: {...body, ApiCode: apiCode, params: params}, _paramsSafeStr: paramsSafeStr, _method: method.toUpperCase() } }];"
+        "jsCode": "const inputJson = $json || {};\nlet body = inputJson.body || {};\nconst isAgent = (inputJson.sessionId && inputJson.intent) || (body.sessionId && body.intent) || inputJson._isAgent || body._isAgent;\nconst headers = { ...(inputJson.headers || {}) };\nlet method = inputJson.method || headers['x-forwarded-method'] || 'POST';\n\n\nconst incomingHint = String(headers['x-correlation-id'] || headers['x-request-id'] || '').trim();\nconst validHint = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,79}$/.test(incomingHint) ? incomingHint : '';\nconst incomingIdempotency = String(headers['idempotency-key'] || body.idempotencyKey || '').trim();\nconst validIdempotency = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(incomingIdempotency) ? incomingIdempotency : '';\nconst sha256Text = (value) => {\n  const ascii = unescape(encodeURIComponent(String(value || '')));\n  const rightRotate = (word, amount) => (word >>> amount) | (word << (32 - amount));\n  const maxWord = Math.pow(2, 32); const words = []; let result = '';\n  const bitLength = ascii.length * 8; const hash = []; const constants = []; const composite = {};\n  let primeCount = 0;\n  for (let candidate = 2; primeCount < 64; candidate++) {\n    if (!composite[candidate]) {\n      for (let multiple = candidate; multiple < 313; multiple += candidate) composite[multiple] = candidate;\n      hash[primeCount] = (Math.pow(candidate, 0.5) * maxWord) | 0;\n      constants[primeCount++] = (Math.pow(candidate, 1 / 3) * maxWord) | 0;\n    }\n  }\n  let padded = ascii + '\\x80';\n  while (padded.length % 64 !== 56) padded += '\\x00';\n  for (let index = 0; index < padded.length; index++) words[index >> 2] |= padded.charCodeAt(index) << ((3 - index) % 4) * 8;\n  words[words.length] = (bitLength / maxWord) | 0; words[words.length] = bitLength;\n  let state = hash.slice(0, 8);\n  for (let offset = 0; offset < words.length;) {\n    const schedule = words.slice(offset, offset += 16); const previous = state.slice(0); state = previous.slice(0);\n    for (let round = 0; round < 64; round++) {\n      const w15 = schedule[round - 15], w2 = schedule[round - 2]; const a = state[0], e = state[4];\n      const word = round < 16 ? schedule[round] : schedule[round] = ((rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) + schedule[round - 16] + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10)) + schedule[round - 7]) | 0;\n      const temp1 = (state[7] + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + ((e & state[5]) ^ (~e & state[6])) + constants[round] + word) | 0;\n      const temp2 = ((rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + ((a & state[1]) ^ (a & state[2]) ^ (state[1] & state[2]))) | 0;\n      state = [temp1 + temp2 | 0, state[0], state[1], state[2], state[3] + temp1 | 0, state[4], state[5], state[6]];\n    }\n    for (let index = 0; index < 8; index++) state[index] = state[index] + previous[index] | 0;\n  }\n  for (let index = 0; index < 8; index++) for (let shift = 3; shift >= 0; shift--) { const byte = state[index] >> (shift * 8) & 255; result += (byte < 16 ? '0' : '') + byte.toString(16); }\n  return result;\n};\nconst hashValue = (value) => value ? sha256Text(value) : null;\nconst requestExecutionId = (typeof $execution !== 'undefined' && $execution && $execution.id) ? String($execution.id) : Date.now().toString(36);\nconst serverRequestId = 'req-' + requestExecutionId + '-' + Date.now().toString(36);\nconst requestContext = {\n  requestId: serverRequestId,\n  correlationHintHash: hashValue(validHint),\n  idempotencyKeyHash: hashValue(validIdempotency),\n  startedAtEpochMs: Date.now(),\n  startedAtIso: new Date().toISOString(),\n  n8nExecutionId: requestExecutionId\n};\nif (isAgent) {\n  body = { ...inputJson, ...body };\n  body.ApiCode = body.intent || inputJson.intent;\n  body.params = { ...inputJson, ...(body.params || {}) };\n  method = 'POST';\n  if (inputJson.authorization || body.authorization) headers.authorization = inputJson.authorization || body.authorization;\n  if (inputJson.cookie || body.cookie) headers.cookie = inputJson.cookie || body.cookie;\n}\n\nif (!headers.authorization && headers.cookie) {\n  const match = String(headers.cookie).match(/(?:^|;\\s*)auth_token=([^;]+)/);\n  if (match) headers.authorization = 'Bearer ' + match[1];\n}\n\nlet apiCode = body.ApiCode || body.StoredProcedure || '';\nif (!/^@[a-zA-Z0-9_]+$/.test(apiCode)) apiCode = '@invalid_code';\n\nconst params = { ...(body.params || {}) };\ndelete params['@Username'];\ndelete params.Username;\ndelete params.username;\n\nconst sqlBlacklist = /(\\bDROP\\s+TABLE\\b|\\bTRUNCATE\\s+TABLE\\b|\\bUNION\\s+SELECT\\b)/i;\nfor (const key of Object.keys(params)) {\n  const value = String(params[key]);\n  if (sqlBlacklist.test(value)) {\n    apiCode = '@invalid_code';\n    params['@SecurityBlock'] = 'Blocked suspicious SQL input';\n  }\n}\n\nconst requestOrigin = String(headers.origin || headers.Origin || '').replace(/\\/$/, '');\nconst allowedOrigins = new Set([\"http://localhost:3000\",\"http://127.0.0.1:3000\",\"https://medtest.bms79.com\"]);\nconst corsOrigin = allowedOrigins.has(requestOrigin) ? requestOrigin : 'https://cors.invalid';\nreturn [{ json: {\n  _requestContext: requestContext,\n  ...inputJson,\n  _isAgent: Boolean(isAgent),\n  headers,\n  body: { ...body, ApiCode: apiCode, params },\n  _method: String(method).toUpperCase(),\n  _corsOrigin: corsOrigin\n} }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -72,15 +75,27 @@
             "entries": [
               {
                 "name": "Access-Control-Allow-Origin",
-                "value": "*"
+                "value": "={{ $('Check Method Execute').first().json._corsOrigin }}"
               },
               {
                 "name": "Access-Control-Allow-Methods",
-                "value": "GET, POST, OPTIONS"
+                "value": "POST, OPTIONS"
               },
               {
                 "name": "Access-Control-Allow-Headers",
                 "value": "Content-Type, Authorization, x-api-key"
+              },
+              {
+                "name": "Vary",
+                "value": "Origin"
+              },
+              {
+                "name": "X-Request-ID",
+                "value": "={{ $('Check Method Execute').first().json._requestContext?.requestId || $json.auth?.requestId || '' }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "X-Request-ID"
               }
             ]
           }
@@ -97,7 +112,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst execNode = $('Check Method Execute').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nlet paramsStr = execNode._paramsSafeStr || '{}';\n\nlet realUsername = '';\ntry {\n    let data = $json || {};\n    if (data.data) data = data.data;\n    if (data.Data) data = data.Data;\n    if (data.records && Array.isArray(data.records) && data.records.length > 0) data = data.records[0];\n    \n    realUsername = data.username || data.Username || data.UserName || data.name || data.sub || data.User || '';\n    if (realUsername && execNode._uuidToken) {\n        const staticData = $getWorkflowStaticData('global');\n        if (!staticData.uuidCache) staticData.uuidCache = {};\n        staticData.uuidCache[execNode._uuidToken] = realUsername;\n    }\n} catch(e) {}\n\n// ĐÃ XÓA FAILSAFE ADMIN ĐỂ ĐẢM BẢO BẢO MẬT TUYỆT ĐỐI\n\ntry {\n    let p = JSON.parse(paramsStr.replace(/''/g, \"'\")); // Un-escape first\n    \n    // XÓA CÁC THAM SỐ NULL ĐỂ KHÔNG LÀM HỎNG SQL\n    for (let k in p) {\n        if (p[k] === null) {\n            delete p[k];\n        }\n    }\n    \n    // CHỈ NẠP USERNAME KHI TOKEN THẬT SỰ CÓ DỮ LIỆU\n    if (realUsername) p['@Username'] = realUsername;\n    \n    paramsStr = JSON.stringify(p).replace(/'/g, \"''\"); // Re-escape\n} catch(e) {\n    if (realUsername) {\n        try {\n            const cleanStr = paramsStr.trim();\n            if (cleanStr.endsWith('}')) {\n                paramsStr = cleanStr.substring(0, cleanStr.length - 1) + \", \\\"@Username\\\":\\\"\" + realUsername.replace(/'/g, \"''\") + \"\\\"}\";\n            }\n        } catch(err) {}\n    }\n}\n\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = N'${paramsStr}';\n\n-- GLOBAL SMART CUSTOMER RESOLUTION (NAME TO ID)\nDECLARE @MaKhachHang NVARCHAR(100) = '';\nIF ISJSON(@ParamsJSON) = 1\nBEGIN\n    SELECT @MaKhachHang = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] IN ('@MaKhachHang', '@ObjectID');\nEND\n\nIF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)\nBEGIN\n    DECLARE @Username VARCHAR(100) = '';\n    IF ISJSON(@ParamsJSON) = 1\n    BEGIN\n        SELECT @Username = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] = '@Username';\n    END\n\n    DECLARE @ResolvedID VARCHAR(50) = ''\n    DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)\n\n    SELECT TOP 1 @ResolvedID = ObjectID \n    FROM dbo.CF_ObjectTbl \n    WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'\n       OR ObjectID LIKE '%' + @CleanSearch + '%')\n       AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)))\n    ORDER BY \n        CASE WHEN ObjectID = @CleanSearch THEN 1\n             WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2\n             WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3\n             ELSE 4\n        END,\n        COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,\n        LEN(ObjectName) ASC;\n\n    IF @ResolvedID <> ''\n    BEGIN\n        SET @ParamsJSON = JSON_MODIFY(@ParamsJSON, '$.\"@MaKhachHang\"', @ResolvedID);\n        SET @ParamsJSON = JSON_MODIFY(@ParamsJSON, '$.\"@ObjectID\"', @ResolvedID);\n    END\nEND\n\nIF @ApiCode = '@lap_don_hang'\nBEGIN\n    DECLARE @CartMaKH NVARCHAR(100) = '';\n    DECLARE @ItemList NVARCHAR(MAX) = '[]';\n    IF ISJSON(@ParamsJSON) = 1\n    BEGIN\n        SELECT @CartMaKH = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] IN ('@MaKhachHang', '@ObjectID');\n        SELECT @ItemList = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] = '@ItemList';\n    END\n\n    SELECT \n        0 AS [code], \n        N'Dạ, em đang chuẩn bị giỏ hàng lên đơn cho khách hàng. Sếp kiểm tra lại thông tin trong bảng nhé!' AS [msg], \n        'CART' AS [Metadata_UiTemplate],\n        @CartMaKH AS [MaKhachHang],\n        @ItemList AS [ItemList];\n    RETURN;\nEND\n\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = 'DEFAULT';\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, 'DEFAULT') FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, 'Missing para or Object not support' AS msg, 'DEFAULT' AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N'EXEC ' + QUOTENAME(@SPName) + N' ';\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + \n        CASE WHEN [type] = 0 THEN ' = NULL, '\n             ELSE N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', ' END\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%'\n      AND [key] COLLATE DATABASE_DEFAULT IN (SELECT name COLLATE DATABASE_DEFAULT FROM sys.parameters WHERE object_id = OBJECT_ID(@SPName));\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nEXEC sp_executesql @SQL;\n`.trim();\n\nreturn [{ json: { query, debug_username: realUsername, debug_api_response: $json } }];\n"
+        "jsCode": "const execNode = $('Enforce API Capability').first().json;\nconst apiCode = execNode.body.ApiCode || '@invalid_code';\nconst realUsername = String(execNode.verifiedIdentity?.internalUserId || '');\nif (!realUsername) throw new Error('AUTHORIZATION_REQUIRED');\nlet paramsStr = execNode._paramsSafeStr || '{}';\nconst context = execNode._requestContext || {};\nconst idempotencyKeyHash = /^[a-f0-9]{64}$/i.test(String(context.idempotencyKeyHash || '')) ? String(context.idempotencyKeyHash).toLowerCase() : '';\nconst verifiedUserHash = /^[a-f0-9]{64}$/i.test(String(execNode.verifiedIdentity?.auditSubjectHash || '')) ? String(execNode.verifiedIdentity.auditSubjectHash).toLowerCase() : '';\nconst requestId = /^req-[A-Za-z0-9._:-]{4,96}$/.test(String(context.requestId || '')) ? String(context.requestId) : '';\n\nconst query = `\nDECLARE @ApiCode VARCHAR(100) = '${apiCode}';\nDECLARE @ParamsJSON NVARCHAR(MAX) = N'${paramsStr}';\nDECLARE @IdempotencyKeyHash CHAR(64) = '${idempotencyKeyHash}';\nDECLARE @VerifiedUserHash CHAR(64) = '${verifiedUserHash}';\nDECLARE @RequestID VARCHAR(100) = '${requestId}';\nDECLARE @MutationReserved BIT = 0;\n\nIF @ApiCode IN ('@khach_hang_insert', '@san_pham_trong_tam_import')\nBEGIN\n    DECLARE @Reservation TABLE (Decision VARCHAR(20));\n    INSERT @Reservation EXEC dbo.AI_ReserveAPIMutation\n        @IdempotencyKeyHash=@IdempotencyKeyHash, @VerifiedUserHash=@VerifiedUserHash,\n        @ApiCode=@ApiCode, @RequestID=@RequestID;\n    DECLARE @ReservationDecision VARCHAR(20) = (SELECT TOP 1 Decision FROM @Reservation);\n    IF @ReservationDecision = 'REPLAY'\n    BEGIN\n        SELECT N'Yêu cầu này đã được xử lý trước đó.' AS Msg, 0 AS MsgType, 'IDEMPOTENCY_REPLAY' AS Severity;\n        RETURN;\n    END\n    IF @ReservationDecision = 'IN_PROGRESS'\n    BEGIN\n        SELECT N'Yêu cầu trùng đang được xử lý.' AS Msg, 1 AS MsgType, 'IDEMPOTENCY_IN_PROGRESS' AS Severity;\n        RETURN;\n    END\n    SET @MutationReserved = 1;\nEND\n\n-- GLOBAL SMART CUSTOMER RESOLUTION (NAME TO ID)\nDECLARE @MaKhachHang NVARCHAR(100) = '';\nIF ISJSON(@ParamsJSON) = 1\nBEGIN\n    SELECT @MaKhachHang = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] IN ('@MaKhachHang', '@ObjectID');\nEND\n\nIF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)\nBEGIN\n    DECLARE @Username VARCHAR(100) = '';\n    IF ISJSON(@ParamsJSON) = 1\n    BEGIN\n        SELECT @Username = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] = '@Username';\n    END\n\n    DECLARE @ResolvedID VARCHAR(50) = ''\n    DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)\n\n    SELECT TOP 1 @ResolvedID = ObjectID \n    FROM dbo.CF_ObjectTbl \n    WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'\n       OR ObjectID LIKE '%' + @CleanSearch + '%')\n       AND (@Username = '' OR ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)))\n    ORDER BY \n        CASE WHEN ObjectID = @CleanSearch THEN 1\n             WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2\n             WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3\n             ELSE 4\n        END,\n        COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,\n        LEN(ObjectName) ASC;\n\n    IF @ResolvedID <> ''\n    BEGIN\n        SET @ParamsJSON = JSON_MODIFY(@ParamsJSON, '$.\"@MaKhachHang\"', @ResolvedID);\n        SET @ParamsJSON = JSON_MODIFY(@ParamsJSON, '$.\"@ObjectID\"', @ResolvedID);\n    END\nEND\n\nIF @ApiCode = '@lap_don_hang'\nBEGIN\n    DECLARE @CartMaKH NVARCHAR(100) = '';\n    DECLARE @ItemList NVARCHAR(MAX) = '[]';\n    IF ISJSON(@ParamsJSON) = 1\n    BEGIN\n        SELECT @CartMaKH = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] IN ('@MaKhachHang', '@ObjectID');\n        SELECT @ItemList = [value] FROM OPENJSON(@ParamsJSON) WHERE [key] = '@ItemList';\n    END\n\n    SELECT \n        0 AS [code], \n        N'Dạ, em đang chuẩn bị giỏ hàng lên đơn cho khách hàng. Sếp kiểm tra lại thông tin trong bảng nhé!' AS [msg],\n        'CART' AS [Metadata_UiTemplate],\n        @CartMaKH AS [MaKhachHang],\n        @ItemList AS [ItemList];\n    RETURN;\nEND\n\nDECLARE @SPName NVARCHAR(MAX);\nDECLARE @UiTemplate VARCHAR(50) = 'DEFAULT';\n\nSELECT @SPName = StoredProcedure, @UiTemplate = ISNULL(UiTemplate, 'DEFAULT') FROM dbo.API_Definition WHERE ApiCode = @ApiCode AND IsActive = 1;\n\nIF @SPName IS NULL\nBEGIN\n    SELECT 2 AS code, 'Missing para or Object not support' AS msg, 'DEFAULT' AS uiTemplate FOR JSON PATH;\n    RETURN;\nEND\n\nSELECT @UiTemplate AS Metadata_UiTemplate; -- Meta set\n\nDECLARE @SQL NVARCHAR(MAX) = N'EXEC ' + QUOTENAME(@SPName) + N' ';\n\nIF @ParamsJSON IS NOT NULL AND @ParamsJSON != '' AND @ParamsJSON != '{}'\nBEGIN\n    SELECT @SQL = @SQL + [key] + \n        CASE WHEN [type] = 0 THEN ' = NULL, '\n             ELSE N' = N''' + REPLACE(CAST([value] AS NVARCHAR(MAX)), '''', '''''') + N''', ' END\n    FROM OPENJSON(@ParamsJSON)\n    WHERE [key] LIKE '@%'\n      AND [key] COLLATE DATABASE_DEFAULT IN (SELECT name COLLATE DATABASE_DEFAULT FROM sys.parameters WHERE object_id = OBJECT_ID(@SPName));\n\n    IF RIGHT(@SQL, 2) = ', ' SET @SQL = LEFT(@SQL, LEN(@SQL) - 1);\nEND\n\nBEGIN TRY\n    EXEC sp_executesql @SQL;\n    IF @MutationReserved = 1\n        EXEC dbo.AI_CompleteAPIMutation @IdempotencyKeyHash, @VerifiedUserHash, @ApiCode, @RequestID, 'COMPLETED';\nEND TRY\nBEGIN CATCH\n    IF @MutationReserved = 1\n    BEGIN TRY\n        EXEC dbo.AI_CompleteAPIMutation @IdempotencyKeyHash, @VerifiedUserHash, @ApiCode, @RequestID, 'FAILED';\n    END TRY\n    BEGIN CATCH\n    END CATCH;\n    IF ERROR_NUMBER() IN (201, 8144)\n        SELECT N'Yêu cầu đang thiếu hoặc thừa tham số bắt buộc.' AS Msg,\n               1 AS MsgType,\n               'MISSING_PARAMETER' AS Severity;\n    ELSE\n        SELECT N'Hệ thống chưa thể xử lý yêu cầu.' AS Msg,\n               1 AS MsgType,\n               'SYSTEM_ERROR' AS Severity;\nEND CATCH;\n`.trim();\n\nreturn [{ json: { query } }];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -123,8 +138,8 @@
       "name": "MS SQL Execute",
       "credentials": {
         "microsoftSql": {
-          "id": "oltuZlv17pevRi6M",
-          "name": "MS SQL account"
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
         }
       },
       "alwaysOutputData": true,
@@ -132,7 +147,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\nconst JSON_KEY = 'JSON_F52E2B61-18A1-11d1-B105-00805F49916B';\nlet payload = items.map(i => i.json);\n// --- UPDATE ENCODING: DECODE UTF-8 FROM LATIN1/WINDOWS-1252 ---\nfunction decodeUtf8(str) {\n  if (typeof str !== 'string') return str;\n  try {\n    return decodeURIComponent(escape(str));\n  } catch (e) {\n    return str;\n  }\n}\nfunction cleanRow(obj) {\n  if (!obj || typeof obj !== 'object') return obj;\n  const newObj = {};\n  for (const [k, v] of Object.entries(obj)) {\n    if (typeof v === 'string') {\n      newObj[k] = decodeUtf8(v);\n    } else if (Array.isArray(v)) {\n      newObj[k] = v.map(cleanRow);\n    } else if (typeof v === 'object' && v !== null) {\n      newObj[k] = cleanRow(v);\n    } else {\n      newObj[k] = v;\n    }\n  }\n  return newObj;\n}\npayload = payload.map(cleanRow);\n\n\n// 0. Extract Metadata\nlet uiTemplate = 'DEFAULT';\nconst metaIdx = payload.findIndex(r => r.Metadata_UiTemplate !== undefined);\nif (metaIdx !== -1) {\n  uiTemplate = payload[metaIdx].Metadata_UiTemplate;\n  if (uiTemplate === 'CART') {\n    payload[metaIdx] = { \n      success: true, \n      MaKhachHang: payload[metaIdx].MaKhachHang,\n      ItemList: payload[metaIdx].ItemList\n    };\n  } else {\n    payload.splice(metaIdx, 1);\n  }\n}\n\n// Xu ly SQL FOR JSON PATH output (khi SP khong tim thay trong API_Definition)\n// N8N MS SQL tra ve [{JSON_F52E...: '[{\"code\":2,\"msg\":\"...\"}]'}]\nif (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n  try {\n    const inner = JSON.parse(payload[0][JSON_KEY]);\n    if (Array.isArray(inner) && inner.length > 0) {\n      if (inner[0].code === 1 || inner[0].code === 2) {\n        return [{ json: { reply: inner[0].msg || 'ApiCode chua duoc dang ky trong he thong', status: 'error', data: [], uiTemplate: uiTemplate } }];\n      }\n      payload = inner;\n    }\n  } catch(e) {\n    return [{ json: { reply: 'Loi xu ly ket qua SQL', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n  if (payload.length === 1 && payload[0][JSON_KEY] !== undefined) {\n    return [{ json: { reply: 'Khong tim thay API phu hop', status: 'error', data: [], uiTemplate: uiTemplate } }];\n  }\n}\n\n// Kiem tra loi don gian {code, msg}\nif (payload.length === 1 && (payload[0].code === 1 || payload[0].code === 2 || payload[0].error)) {\n  return [{ json: { reply: payload[0].msg || payload[0].error || 'Loi khong xac dinh', status: 'error', data: [], uiTemplate: uiTemplate } }];\n}\n\n// Loc bo cac row con JSON_KEY hoac object rong do n8n MS SQL alwaysOutputData: true tra ve\npayload = payload.filter(r => {\n  if (!r) return false;\n  if (r[JSON_KEY] !== undefined) return false;\n  const keys = Object.keys(r).filter(k => k !== 'JSON_KEY');\n  return keys.length > 0;\n});\n\nif (payload.length === 0) {\n  return [{ json: { reply: 'Khong tim thay du lieu', status: 'success', count: 0, data: [], uiTemplate: uiTemplate } }];\n}\n\n// --- DATA BYPASS CỦA GIAI ĐOẠN 2 ---\nlet isAgent = false;\nlet sessionId = 'unknown';\ntry {\n    const checkNode = $('Check Method Execute').first();\n    if (checkNode && checkNode.json) {\n        if (checkNode.json._isAgent) isAgent = true;\n        if (checkNode.json.body && checkNode.json.body.sessionId) sessionId = checkNode.json.body.sessionId;\n    }\n} catch(e) {}\n\nif (isAgent) {\n    let cacheId = sessionId + '_' + Math.random().toString(36).substr(2, 9);\n    try {\n        const crypto = require('crypto');\n        cacheId = crypto.createHmac('sha256', 'Medstand_Enterprise_Secret').update(sessionId + '_' + ($execution ? $execution.id : 'local')).digest('hex');\n    } catch(e) { }\n    \n    const now = Date.now();\n    const TTL_MS = 30 * 60 * 1000;\n    \n    // 1. StaticData (Workflow Local)\n    try {\n        const staticData = $getWorkflowStaticData('global');\n        if (!staticData.dataCache) staticData.dataCache = {};\n        for (const key in staticData.dataCache) {\n            if (staticData.dataCache[key] && staticData.dataCache[key].timestamp && (now - staticData.dataCache[key].timestamp > TTL_MS)) {\n                delete staticData.dataCache[key];\n            }\n        }\n        staticData.dataCache[cacheId] = {\n            timestamp: now,\n            data: payload\n        };\n    } catch(e) {}\n    \n    // 2. Global Node.js Object (Cross-Workflow Memory)\n    try {\n        if (!global.__MEDSTAND_CACHE__) global.__MEDSTAND_CACHE__ = {};\n        for (const key in global.__MEDSTAND_CACHE__) {\n            if (global.__MEDSTAND_CACHE__[key] && global.__MEDSTAND_CACHE__[key].timestamp && (now - global.__MEDSTAND_CACHE__[key].timestamp > TTL_MS)) {\n                delete global.__MEDSTAND_CACHE__[key];\n            }\n        }\n        global.__MEDSTAND_CACHE__[cacheId] = {\n            timestamp: now,\n            data: payload\n        };\n    } catch(e) {}\n    \n    // 3. File System (Cross-Worker / Disk Backup)\n    try {\n        const fs = require('fs');\n        const path = require('path');\n        const os = require('os');\n        const cacheDir = path.join(os.tmpdir(), 'n8n_cache');\n        if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });\n        fs.writeFileSync(path.join(cacheDir, cacheId + '.json'), JSON.stringify(payload));\n    } catch(e) {}\n    \n    // Tính toán Tóm tắt nhanh cho AI (Mini Summary)\n    let tongTien = 0;\n    for(const r of payload) {\n        if(r.ThanhTien) tongTien += Number(r.ThanhTien);\n        if(r.TongTien) tongTien += Number(r.TongTien);\n        if(r.DoanhThu) tongTien += Number(r.DoanhThu);\n    }\n    \n    let summary = `Đã tìm thấy ${payload.length} kết quả.`;\n    if(tongTien > 0) summary += ` Tổng tiền tạm tính: ${tongTien}.`;\n    summary += ` Mã Ngăn Kéo: ${cacheId}`;\n    \n    // CHỈ TRẢ VỀ TÓM TẮT CHO AI ĐỌC\n    return [{ json: { status: 'success', Cache_ID: cacheId, summary: summary, count: payload.length, data: payload, uiTemplate: uiTemplate } }];\n}\n// ----------------------------------\n\nreturn [{ json: { \n  reply: 'Tim thay ' + payload.length + ' ket qua.', \n  status: 'success', \n  count: payload.length, \n  data: payload, uiTemplate: uiTemplate \n} }];"
+        "jsCode": "const items = $input.all();\nconst JSON_KEY = 'JSON_F52E2B61-18A1-11d1-B105-00805F49916B';\nlet uiTemplate = 'DEFAULT';\n\nfunction requestId() {\n  try { return $('Check Method Execute').first().json._requestContext?.requestId || $('Enforce API Capability').first().json.auth?.requestId || null; } catch (_) { return null; }\n}\n\nfunction envelope(success, code, message, data, httpStatus, extra) {\n  const rows = Array.isArray(data) ? data : [];\n  return [{ json: {\n    success,\n    code,\n    message,\n    data: rows,\n    count: rows.length,\n    requestId: requestId(),\n    _httpStatus: httpStatus,\n    uiTemplate,\n    ...(extra || {})\n  } }];\n}\n\nfunction decodeUtf8(value) {\n  if (typeof value !== 'string') return value;\n  try { return decodeURIComponent(escape(value)); } catch (_) { return value; }\n}\n\nfunction clean(value) {\n  if (Array.isArray(value)) return value.map(clean);\n  if (!value || typeof value !== 'object') return decodeUtf8(value);\n  return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, clean(child)]));\n}\n\nfunction messageOf(row) {\n  return row?.Msg ?? row?.msg ?? row?.Message ?? row?.message ?? null;\n}\n\nfunction isMessageRow(row) {\n  return Boolean(row && messageOf(row) !== null && (\n    row.MsgType !== undefined || row.msgType !== undefined ||\n    row.Severity !== undefined || row.severity !== undefined ||\n    row.Code !== undefined || row.code !== undefined\n  ));\n}\n\nfunction classifyMessage(row) {\n  const message = String(messageOf(row) || '');\n  const marker = String(row.Severity ?? row.severity ?? row.Code ?? row.code ?? '').toUpperCase();\n  const numericType = Number(row.MsgType ?? row.msgType ?? 0);\n  if (/IDEMPOTENCY_IN_PROGRESS/.test(marker)) return { code: 'IDEMPOTENCY_IN_PROGRESS', status: 409 };\n  if (/IDEMPOTENCY_REPLAY/.test(marker)) return { code: 'IDEMPOTENCY_REPLAY', status: 200 };\n  if (/SYSTEM|FATAL|EXCEPTION/.test(marker)) return { code: 'SYSTEM_ERROR', status: 500 };\n  if (/không có quyền|không được cấp|phân quyền|phạm vi|bị khóa|forbidden|permission/i.test(message)) {\n    return { code: 'FORBIDDEN', status: 403 };\n  }\n  if (/VALIDATION|MISSING_PARAMETER/.test(marker) || /vui lòng|thiếu|không hợp lệ|bắt buộc|cung cấp|chọn khách hàng/i.test(message)) {\n    return { code: 'VALIDATION_ERROR', status: 422 };\n  }\n  if (/WARNING|WARN/.test(marker)) return { code: 'WARNING', status: 200 };\n  if (numericType > 0 || /BUSINESS|ERROR/.test(marker)) return { code: 'BUSINESS_ERROR', status: 422 };\n  return { code: 'INFO', status: 200 };\n}\n\nlet payload = clean((items || []).map((item) => item.json));\n\nif (payload.length === 1 && payload[0]?.[JSON_KEY] !== undefined) {\n  try {\n    const parsed = JSON.parse(payload[0][JSON_KEY]);\n    payload = Array.isArray(parsed) ? clean(parsed) : [clean(parsed)];\n  } catch (_) {\n    return envelope(false, 'SYSTEM_ERROR', 'Không thể xử lý kết quả từ hệ thống.', [], 500);\n  }\n}\n\nconst metadataIndex = payload.findIndex((row) => row?.Metadata_UiTemplate !== undefined);\nif (metadataIndex !== -1) {\n  const metadata = payload.splice(metadataIndex, 1)[0];\n  uiTemplate = metadata.Metadata_UiTemplate || 'DEFAULT';\n  if (uiTemplate === 'CART') {\n    const cartData = [{ MaKhachHang: metadata.MaKhachHang, ItemList: metadata.ItemList }];\n    return envelope(true, 'OK', messageOf(metadata) || 'Đã chuẩn bị dữ liệu giỏ hàng.', cartData, 200);\n  }\n}\n\nconst messageRows = payload.filter(isMessageRow);\nconst replayMessage = messageRows.find((row) => /IDEMPOTENCY_REPLAY/i.test(String(row.Severity ?? row.severity ?? '')));\nif (replayMessage) return envelope(true, 'IDEMPOTENCY_REPLAY', String(messageOf(replayMessage)), [], 200, { transactionOutcome: 'NOT_STARTED' });\n\nconst errorMessage = messageRows\n  .map((row) => ({ row, result: classifyMessage(row) }))\n  .find((entry) => entry.result.status >= 400);\n\nif (errorMessage) {\n  const safeMessage = errorMessage.result.code === 'SYSTEM_ERROR'\n    ? 'Hệ thống chưa thể xử lý yêu cầu.'\n    : String(messageOf(errorMessage.row));\n  return envelope(false, errorMessage.result.code, safeMessage, [], errorMessage.result.status, { transactionOutcome: 'NOT_STARTED' });\n}\n\nconst dataRows = payload.filter((row) => {\n  if (!row || isMessageRow(row) || row[JSON_KEY] !== undefined || row.error) return false;\n  const keys = Object.keys(row).filter((key) => key !== 'JSON_KEY' && !key.startsWith('Metadata_'));\n  return keys.some((key) => row[key] !== null && row[key] !== undefined && String(row[key]).trim() !== '');\n});\n\nconst informational = messageRows[0];\nif (dataRows.length === 0) {\n  return envelope(true, informational ? 'INFO' : 'NO_DATA', informational ? String(messageOf(informational)) : 'Không tìm thấy dữ liệu.', [], 200);\n}\n\nlet extra = {};\nlet isAgent = false;\nlet sessionId = 'unknown';\ntry {\n  const request = $('Check Method Execute').first().json;\n  isAgent = Boolean(request?._isAgent);\n  sessionId = request?.body?.sessionId || sessionId;\n} catch (_) {}\n\nif (isAgent) {\n  let cacheId = sessionId + '_' + Math.random().toString(36).slice(2, 11);\n  try {\n    const crypto = require('crypto');\n    cacheId = crypto.createHmac('sha256', 'Medstand_Enterprise_Secret')\n      .update(sessionId + '_' + ($execution ? $execution.id : 'local')).digest('hex');\n  } catch (_) {}\n  const now = Date.now();\n  const ttl = 30 * 60 * 1000;\n  try {\n    const staticData = $getWorkflowStaticData('global');\n    staticData.dataCache ||= {};\n    for (const key of Object.keys(staticData.dataCache)) {\n      if (now - Number(staticData.dataCache[key]?.timestamp || 0) > ttl) delete staticData.dataCache[key];\n    }\n    staticData.dataCache[cacheId] = { timestamp: now, data: dataRows };\n  } catch (_) {}\n  try {\n    global.__MEDSTAND_CACHE__ ||= {};\n    global.__MEDSTAND_CACHE__[cacheId] = { timestamp: now, data: dataRows };\n  } catch (_) {}\n  extra = { Cache_ID: cacheId, summary: 'Đã tìm thấy ' + dataRows.length + ' kết quả. Mã Ngăn Kéo: ' + cacheId };\n}\n\nreturn envelope(true, 'OK', informational ? String(messageOf(informational)) : 'Tìm thấy ' + dataRows.length + ' kết quả.', dataRows, 200, extra);"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -146,18 +161,34 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify($json) }}",
+        "responseBody": "={{ JSON.stringify((({ _httpStatus, ...body }) => body)($('Format Execute Response').first().json)) }}",
         "options": {
-          "responseCode": 200,
+          "responseCode": "={{ $('Format Execute Response').first().json._httpStatus || 200 }}",
           "responseHeaders": {
             "entries": [
               {
                 "name": "Access-Control-Allow-Origin",
-                "value": "*"
+                "value": "={{ $('Check Method Execute').first().json._corsOrigin }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
               },
               {
                 "name": "Access-Control-Allow-Headers",
                 "value": "Content-Type, Authorization, x-api-key"
+              },
+              {
+                "name": "Vary",
+                "value": "Origin"
+              },
+              {
+                "name": "X-Request-ID",
+                "value": "={{ $('Check Method Execute').first().json._requestContext?.requestId || $json.auth?.requestId || '' }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "X-Request-ID"
               }
             ]
           }
@@ -185,47 +216,441 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json._uuidToken }}",
-              "operation": "isNotEmpty"
-            }
-          ]
-        }
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "9UxECqxRaPGMF8EM",
+          "mode": "list",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
+          "cachedResultUrl": "/workflow/9UxECqxRaPGMF8EM"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
       },
-      "id": "e0c9d913-e6cd-4491-8894-878af6e97a9b",
-      "name": "Is UUID Token?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
+      "id": "execute-shared-auth-guard",
+      "name": "Execute Shared Auth Guard",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
       "position": [
-        200,
+        280,
         200
       ]
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://medtest.bms79.com/api/API_UserInfo",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $json._uuidToken }}"
+              "leftValue": "={{ $json.auth.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
       },
-      "id": "c9d738a7-9fb3-4c27-a8cf-f14c9f71ca2e",
-      "name": "Resolve UUID",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "id": "if-authenticated-execute",
+      "name": "Is Authenticated? (Execute)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
       "position": [
-        400,
+        520,
         200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Check Method Execute').first().json;\nconst auth = $json.auth || {};\nconst verifiedIdentity = $json.verifiedIdentity;\nif (!auth.ok || !verifiedIdentity?.internalUserId) throw new Error('AUTHORIZATION_REQUIRED');\n\nconst rawParams = { ...(request.body?.params || {}) };\nconst reservedScopeKeys = new Set([\n  '@username', 'username', '@user', 'user',\n  '@employeeid', 'employeeid', '@sysemployeeid', 'sysemployeeid',\n  '@branchid', 'branchid', '@sysbranchid', 'sysbranchid',\n  '@managerid', 'managerid', '@sysmanagerid', 'sysmanagerid',\n  '@ceoid', 'ceoid', '@sysceoid', 'sysceoid'\n]);\nconst params = {};\nconst ignoredScopeParams = [];\nfor (const [key, value] of Object.entries(rawParams)) {\n  const normalized = String(key).toLowerCase();\n  if (reservedScopeKeys.has(normalized) || normalized.startsWith('@sys')) {\n    ignoredScopeParams.push(key);\n    continue;\n  }\n  params[key] = value;\n}\n\nparams['@Username'] = String(verifiedIdentity.internalUserId);\nparams['@User'] = String(verifiedIdentity.internalUserId);\nif (verifiedIdentity.employeeId) params['@SYSEmployeeID'] = String(verifiedIdentity.employeeId);\n\nreturn [{ json: {\n  ...request,\n  auth,\n  verifiedIdentity,\n  body: { ...request.body, params },\n  _ignoredScopeParams: ignoredScopeParams,\n  _paramsSafeStr: JSON.stringify(params).replace(/'/g, \"''\")\n} }];"
+      },
+      "id": "apply-verified-identity-execute",
+      "name": "Apply Verified Identity",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  code: $('Is Authenticated? (Execute)').first().json.auth?.code || 'UNAUTHORIZED',\n  message: $('Is Authenticated? (Execute)').first().json.auth?.message || 'Authentication failed.',\n  data: [],\n  count: 0,\n  requestId: $('Is Authenticated? (Execute)').first().json.auth?.requestId || null\n}) }}",
+        "options": {
+          "responseCode": "={{ $('Is Authenticated? (Execute)').first().json.auth?.httpStatus || 401 }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ $('Check Method Execute').first().json._corsOrigin }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              },
+              {
+                "name": "Vary",
+                "value": "Origin"
+              },
+              {
+                "name": "X-Request-ID",
+                "value": "={{ $('Check Method Execute').first().json._requestContext?.requestId || $json.auth?.requestId || '' }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "X-Request-ID"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-auth-error-execute",
+      "name": "Respond Auth Error (Execute)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Apply Verified Identity').first().json;\nconst apiCode = String(input.body?.ApiCode || '@invalid_code').toLowerCase();\nconst identity = input.verifiedIdentity || {};\nconst granted = new Set((identity.capabilities || []).map(value => String(value).trim().toLowerCase()).filter(Boolean));\n\nconst readApis = new Set([\n  '@doanh_so', '@hoa_don', '@hoa_don_chi_tiet', '@don_hang',\n  '@cham_diem_kh', '@cong_no_khach_hang', '@cong_no_chi_tiet',\n  '@tich_luy', '@tuyen_ban_hang', '@goi_ydon_hang', '@upsell_goi_y',\n  '@goi_ydon_thuoc', '@danh_sach_tonkho', '@tra_cuu_san_pham',\n  '@san_pham_trong_tam', '@de_xuat_khuyen_mai', '@danh_muc',\n  '@khach_hang_list', '@dashboard_sinh_nhat', '@khao_sat360',\n  '@danh_sach_cau_hoi_khao_sat', '@kiem_tra_khao_sat',\n  '@kiem_tra_khao_sat_ngay', '@lich_su_khao_sat', '@thong_bao',\n  '@tim_san_pham_theo_trieu_chung'\n]);\nconst mutationPolicy = {\n  '@lap_don_hang': 'orders.write',\n  '@khach_hang_insert': 'customers.write',\n  '@san_pham_trong_tam_import': 'products.import'\n};\n\nlet operationType = 'DENY';\nlet requiredCapability = null;\nif (readApis.has(apiCode)) {\n  operationType = 'READ';\n  requiredCapability = 'api.read';\n} else if (mutationPolicy[apiCode]) {\n  operationType = 'MUTATION';\n  requiredCapability = mutationPolicy[apiCode];\n}\n\nconst apiSpecific = apiCode.slice(1).replace(/_/g, '.');\nconst allowedCapabilities = requiredCapability\n  ? [requiredCapability, operationType === 'READ' ? 'api.read.' + apiSpecific : requiredCapability + '.' + apiSpecific]\n  : [];\nconst hasCapability = allowedCapabilities.some(capability => granted.has(capability))\n  || granted.has('*')\n  || granted.has('api:*');\nconst ok = operationType !== 'DENY' && hasCapability;\n\nreturn [{ json: {\n  ...input,\n  authorization: {\n    ok,\n    httpStatus: ok ? 200 : 403,\n    code: operationType === 'DENY' ? 'API_NOT_ALLOWLISTED' : 'CAPABILITY_REQUIRED',\n    message: operationType === 'DENY'\n      ? 'This API operation is not allowlisted.'\n      : 'The authenticated account does not have the required capability.',\n    apiCode,\n    operationType,\n    requiredCapability,\n    allowedCapabilities\n  }\n} }];"
+      },
+      "id": "enforce-api-capability-execute",
+      "name": "Enforce API Capability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.authorization.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-api-authorized-execute",
+      "name": "Is API Authorized? (Execute)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  code: $('Is API Authorized? (Execute)').first().json.authorization?.code || 'FORBIDDEN',\n  message: $('Is API Authorized? (Execute)').first().json.authorization?.message || 'Authorization failed.',\n  data: [],\n  count: 0,\n  requestId: $('Is API Authorized? (Execute)').first().json.auth?.requestId || null\n}) }}",
+        "options": {
+          "responseCode": "={{ $('Is API Authorized? (Execute)').first().json.authorization?.httpStatus || 403 }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ $('Check Method Execute').first().json._corsOrigin }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              },
+              {
+                "name": "Vary",
+                "value": "Origin"
+              },
+              {
+                "name": "X-Request-ID",
+                "value": "={{ $('Check Method Execute').first().json._requestContext?.requestId || $json.auth?.requestId || '' }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "X-Request-ID"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-api-authorization-error-execute",
+      "name": "Respond Authorization Error (Execute)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1480,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Enforce API Capability').first().json;\nconst apiCode = String(input.body?.ApiCode || '').toLowerCase();\nconst params = { ...(input.body?.params || {}) };\nconst normalized = Object.fromEntries(Object.entries(params).map(([key, value]) => [String(key).toLowerCase(), value]));\nconst errors = [];\nconst operationType = input.authorization?.operationType || 'UNKNOWN';\nconst idempotencyRequired = operationType === 'MUTATION' && apiCode !== '@lap_don_hang';\nif (idempotencyRequired && !input._requestContext?.idempotencyKeyHash) errors.push('@Idempotency-Key');\nconst empty = (value) => value === undefined || value === null || String(value).trim() === '';\nconst requireOne = (keys, label) => { if (!keys.some((key) => !empty(normalized[key]))) errors.push(label); };\n\nif (apiCode === '@cong_no_chi_tiet') requireOne(['@makhachhang', '@objectid'], '@MaKhachHang');\nif (apiCode === '@hoa_don_chi_tiet') requireOne(['@documentid'], '@DocumentID');\nif (apiCode === '@khao_sat360') requireOne(['@objectid'], '@ObjectID');\nif (apiCode === '@tim_san_pham_theo_trieu_chung') requireOne(['@keyword', '@timkiem'], '@Keyword');\n\nfor (const [key, value] of Object.entries(normalized)) {\n  if (empty(value)) continue;\n  if (['@topn', '@pagesize', '@limit'].includes(key)) {\n    const number = Number(value);\n    if (!Number.isInteger(number) || number < 1 || number > 200) errors.push(key);\n  }\n  if (['@page', '@pageindex'].includes(key)) {\n    const number = Number(value);\n    if (!Number.isInteger(number) || number < 1 || number > 10000) errors.push(key);\n  }\n  if (['@tungay', '@denngay', '@fromdate', '@todate', '@startdate', '@enddate'].includes(key)) {\n    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(String(value)) || Number.isNaN(Date.parse(String(value) + 'T00:00:00Z'))) errors.push(key);\n  }\n}\nconst from = normalized['@tungay'] || normalized['@fromdate'] || normalized['@startdate'];\nconst to = normalized['@denngay'] || normalized['@todate'] || normalized['@enddate'];\nif (!empty(from) && !empty(to) && Date.parse(from) > Date.parse(to)) errors.push('@dateRange');\n\nconst uniqueErrors = [...new Set(errors)];\nreturn [{ json: { ...input, validation: {\n  ok: uniqueErrors.length === 0,\n  httpStatus: uniqueErrors.length === 0 ? 200 : 422,\n  code: uniqueErrors.length === 0 ? 'OK' : 'VALIDATION_ERROR',\n  message: uniqueErrors.length === 0 ? 'Validation passed.' : 'Yêu cầu chứa tham số thiếu hoặc không hợp lệ.',\n  fields: uniqueErrors\n} } }];"
+      },
+      "id": "validate-api-request-execute",
+      "name": "Validate API Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.validation.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-api-request-valid-execute",
+      "name": "Is API Request Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: false,\n  code: $('Is API Request Valid?').first().json.validation?.code || 'VALIDATION_ERROR',\n  message: $('Is API Request Valid?').first().json.validation?.message || 'Validation failed.',\n  data: [], count: 0,\n  requestId: $('Is API Request Valid?').first().json.auth?.requestId || null\n}) }}",
+        "options": {
+          "responseCode": "={{ $('Is API Request Valid?').first().json.validation?.httpStatus || 422 }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "={{ $('Check Method Execute').first().json._corsOrigin }}"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization, x-api-key"
+              },
+              {
+                "name": "Vary",
+                "value": "Origin"
+              },
+              {
+                "name": "X-Request-ID",
+                "value": "={{ $('Check Method Execute').first().json._requestContext?.requestId || $json.auth?.requestId || '' }}"
+              },
+              {
+                "name": "Access-Control-Expose-Headers",
+                "value": "X-Request-ID"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-api-validation-error-execute",
+      "name": "Respond Validation Error (Execute)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1960,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Check Method Execute').first().json;\nconst authResult = $('Enforce API Capability').first().json;\nconst context = request._requestContext || authResult._requestContext || {};\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst hashOrNull = (value) => /^[a-f0-9]{64}$/i.test(String(value || '')) ? \"'\" + String(value).toLowerCase() + \"'\" : 'NULL';\nconst requestId = esc(context.requestId, 100);\nif (!/^req-[A-Za-z0-9._:-]{4,96}$/.test(requestId)) throw new Error('AUDIT_REQUEST_ID_INVALID');\nconst apiCode = esc(request.body?.ApiCode, 100) || '@unknown';\nconst operationType = esc(authResult.authorization?.operationType || 'UNKNOWN', 20) || 'UNKNOWN';\nconst resultCode = esc($json.code || 'OK', 60) || 'UNKNOWN';\nconst httpStatus = Number($json._httpStatus || 200) || 500;\nconst count = Math.max(0, Number($json.count || 0) || 0);\nconst rowCountBucket = count === 0 ? '0' : count === 1 ? '1' : count <= 10 ? '2-10' : count <= 100 ? '11-100' : '100+';\nconst durationMs = Math.max(0, Date.now() - Number(context.startedAtEpochMs || Date.now()));\nconst transactionOutcome = esc(authResult.authorization?.operationType === 'MUTATION' ? ($json.transactionOutcome || ($json.uiTemplate === 'CART' ? 'NAVIGATION_ONLY' : ($json.success ? 'COMMITTED' : 'ROLLED_BACK'))) : 'NOT_APPLICABLE', 30) || 'NOT_APPLICABLE';\nconst startedAt = /^\\d{4}-\\d{2}-\\d{2}T/.test(String(context.startedAtIso || '')) ? String(context.startedAtIso) : new Date().toISOString();\nconst query = `EXEC dbo.AI_WriteAPIRequestAudit\n  @RequestID='${requestId}',\n  @CorrelationHintHash=${hashOrNull(context.correlationHintHash)},\n  @VerifiedUserHash=${hashOrNull(authResult.verifiedIdentity?.auditSubjectHash)},\n  @ApiCode='${apiCode}',\n  @OperationType='${operationType}',\n  @ResultCode='${resultCode}',\n  @HttpStatus=${httpStatus},\n  @DurationMs=${durationMs},\n  @RowCountBucket='${rowCountBucket}',\n  @IdempotencyKeyHash=${hashOrNull(context.idempotencyKeyHash)},\n  @TransactionOutcome='${transactionOutcome}',\n  @N8nExecutionID='${esc(context.n8nExecutionId, 80)}',\n  @StartedAt='${esc(startedAt, 30)}';`;\nreturn [{ json: { query } }];"
+      },
+      "id": "p1-04-prepare-execute-success",
+      "name": "Prepare Audit - Execute Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "p1-04-write-execute-success",
+      "name": "Write Audit - Execute Success",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        -80
       ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Check Method Execute').first().json;\nconst authResult = $json;\nconst context = request._requestContext || authResult._requestContext || {};\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst hashOrNull = (value) => /^[a-f0-9]{64}$/i.test(String(value || '')) ? \"'\" + String(value).toLowerCase() + \"'\" : 'NULL';\nconst requestId = esc(context.requestId, 100);\nif (!/^req-[A-Za-z0-9._:-]{4,96}$/.test(requestId)) throw new Error('AUDIT_REQUEST_ID_INVALID');\nconst apiCode = esc(request.body?.ApiCode, 100) || '@unknown';\nconst operationType = esc('UNKNOWN', 20) || 'UNKNOWN';\nconst resultCode = esc($json.auth?.code || 'UNAUTHORIZED', 60) || 'UNKNOWN';\nconst httpStatus = Number($json.auth?.httpStatus || 401) || 500;\nconst count = Math.max(0, Number(0) || 0);\nconst rowCountBucket = count === 0 ? '0' : count === 1 ? '1' : count <= 10 ? '2-10' : count <= 100 ? '11-100' : '100+';\nconst durationMs = Math.max(0, Date.now() - Number(context.startedAtEpochMs || Date.now()));\nconst transactionOutcome = esc('NOT_STARTED', 30) || 'NOT_APPLICABLE';\nconst startedAt = /^\\d{4}-\\d{2}-\\d{2}T/.test(String(context.startedAtIso || '')) ? String(context.startedAtIso) : new Date().toISOString();\nconst query = `EXEC dbo.AI_WriteAPIRequestAudit\n  @RequestID='${requestId}',\n  @CorrelationHintHash=${hashOrNull(context.correlationHintHash)},\n  @VerifiedUserHash=${hashOrNull(authResult.verifiedIdentity?.auditSubjectHash)},\n  @ApiCode='${apiCode}',\n  @OperationType='${operationType}',\n  @ResultCode='${resultCode}',\n  @HttpStatus=${httpStatus},\n  @DurationMs=${durationMs},\n  @RowCountBucket='${rowCountBucket}',\n  @IdempotencyKeyHash=${hashOrNull(context.idempotencyKeyHash)},\n  @TransactionOutcome='${transactionOutcome}',\n  @N8nExecutionID='${esc(context.n8nExecutionId, 80)}',\n  @StartedAt='${esc(startedAt, 30)}';`;\nreturn [{ json: { query } }];"
+      },
+      "id": "p1-04-prepare-execute-auth",
+      "name": "Prepare Audit - Execute Auth Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "p1-04-write-execute-auth",
+      "name": "Write Audit - Execute Auth Error",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        980,
+        360
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Check Method Execute').first().json;\nconst authResult = $json;\nconst context = request._requestContext || authResult._requestContext || {};\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst hashOrNull = (value) => /^[a-f0-9]{64}$/i.test(String(value || '')) ? \"'\" + String(value).toLowerCase() + \"'\" : 'NULL';\nconst requestId = esc(context.requestId, 100);\nif (!/^req-[A-Za-z0-9._:-]{4,96}$/.test(requestId)) throw new Error('AUDIT_REQUEST_ID_INVALID');\nconst apiCode = esc(request.body?.ApiCode, 100) || '@unknown';\nconst operationType = esc($json.authorization?.operationType || 'UNKNOWN', 20) || 'UNKNOWN';\nconst resultCode = esc($json.authorization?.code || 'FORBIDDEN', 60) || 'UNKNOWN';\nconst httpStatus = Number($json.authorization?.httpStatus || 403) || 500;\nconst count = Math.max(0, Number(0) || 0);\nconst rowCountBucket = count === 0 ? '0' : count === 1 ? '1' : count <= 10 ? '2-10' : count <= 100 ? '11-100' : '100+';\nconst durationMs = Math.max(0, Date.now() - Number(context.startedAtEpochMs || Date.now()));\nconst transactionOutcome = esc($json.authorization?.operationType === 'MUTATION' ? 'NOT_STARTED' : 'NOT_APPLICABLE', 30) || 'NOT_APPLICABLE';\nconst startedAt = /^\\d{4}-\\d{2}-\\d{2}T/.test(String(context.startedAtIso || '')) ? String(context.startedAtIso) : new Date().toISOString();\nconst query = `EXEC dbo.AI_WriteAPIRequestAudit\n  @RequestID='${requestId}',\n  @CorrelationHintHash=${hashOrNull(context.correlationHintHash)},\n  @VerifiedUserHash=${hashOrNull(authResult.verifiedIdentity?.auditSubjectHash)},\n  @ApiCode='${apiCode}',\n  @OperationType='${operationType}',\n  @ResultCode='${resultCode}',\n  @HttpStatus=${httpStatus},\n  @DurationMs=${durationMs},\n  @RowCountBucket='${rowCountBucket}',\n  @IdempotencyKeyHash=${hashOrNull(context.idempotencyKeyHash)},\n  @TransactionOutcome='${transactionOutcome}',\n  @N8nExecutionID='${esc(context.n8nExecutionId, 80)}',\n  @StartedAt='${esc(startedAt, 30)}';`;\nreturn [{ json: { query } }];"
+      },
+      "id": "p1-04-prepare-execute-authorization",
+      "name": "Prepare Audit - Execute Authorization Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1480,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "p1-04-write-execute-authorization",
+      "name": "Write Audit - Execute Authorization Error",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1700,
+        340
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const request = $('Check Method Execute').first().json;\nconst authResult = $json;\nconst context = request._requestContext || authResult._requestContext || {};\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst hashOrNull = (value) => /^[a-f0-9]{64}$/i.test(String(value || '')) ? \"'\" + String(value).toLowerCase() + \"'\" : 'NULL';\nconst requestId = esc(context.requestId, 100);\nif (!/^req-[A-Za-z0-9._:-]{4,96}$/.test(requestId)) throw new Error('AUDIT_REQUEST_ID_INVALID');\nconst apiCode = esc(request.body?.ApiCode, 100) || '@unknown';\nconst operationType = esc($json.authorization?.operationType || 'UNKNOWN', 20) || 'UNKNOWN';\nconst resultCode = esc($json.validation?.code || 'VALIDATION_ERROR', 60) || 'UNKNOWN';\nconst httpStatus = Number($json.validation?.httpStatus || 422) || 500;\nconst count = Math.max(0, Number(0) || 0);\nconst rowCountBucket = count === 0 ? '0' : count === 1 ? '1' : count <= 10 ? '2-10' : count <= 100 ? '11-100' : '100+';\nconst durationMs = Math.max(0, Date.now() - Number(context.startedAtEpochMs || Date.now()));\nconst transactionOutcome = esc($json.authorization?.operationType === 'MUTATION' ? 'NOT_STARTED' : 'NOT_APPLICABLE', 30) || 'NOT_APPLICABLE';\nconst startedAt = /^\\d{4}-\\d{2}-\\d{2}T/.test(String(context.startedAtIso || '')) ? String(context.startedAtIso) : new Date().toISOString();\nconst query = `EXEC dbo.AI_WriteAPIRequestAudit\n  @RequestID='${requestId}',\n  @CorrelationHintHash=${hashOrNull(context.correlationHintHash)},\n  @VerifiedUserHash=${hashOrNull(authResult.verifiedIdentity?.auditSubjectHash)},\n  @ApiCode='${apiCode}',\n  @OperationType='${operationType}',\n  @ResultCode='${resultCode}',\n  @HttpStatus=${httpStatus},\n  @DurationMs=${durationMs},\n  @RowCountBucket='${rowCountBucket}',\n  @IdempotencyKeyHash=${hashOrNull(context.idempotencyKeyHash)},\n  @TransactionOutcome='${transactionOutcome}',\n  @N8nExecutionID='${esc(context.n8nExecutionId, 80)}',\n  @StartedAt='${esc(startedAt, 30)}';`;\nreturn [{ json: { query } }];"
+      },
+      "id": "p1-04-prepare-execute-validation",
+      "name": "Prepare Audit - Execute Validation Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "p1-04-write-execute-validation",
+      "name": "Write Audit - Execute Validation Error",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        2180,
+        300
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true,
       "onError": "continueErrorOutput"
     }
   ],
@@ -263,7 +688,7 @@
         ],
         [
           {
-            "node": "Is UUID Token?",
+            "node": "Execute Shared Auth Guard",
             "type": "main",
             "index": 0
           }
@@ -296,7 +721,7 @@
       "main": [
         [
           {
-            "node": "Respond Execute",
+            "node": "Prepare Audit - Execute Success",
             "type": "main",
             "index": 0
           }
@@ -314,29 +739,214 @@
         ]
       ]
     },
-    "Is UUID Token?": {
+    "Execute Shared Auth Guard": {
       "main": [
         [
           {
-            "node": "Resolve UUID",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Build Execute SQL",
+            "node": "Is Authenticated? (Execute)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Resolve UUID": {
+    "Is Authenticated? (Execute)": {
+      "main": [
+        [
+          {
+            "node": "Apply Verified Identity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Audit - Execute Auth Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Verified Identity": {
+      "main": [
+        [
+          {
+            "node": "Enforce API Capability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enforce API Capability": {
+      "main": [
+        [
+          {
+            "node": "Is API Authorized? (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is API Authorized? (Execute)": {
+      "main": [
+        [
+          {
+            "node": "Validate API Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Audit - Execute Authorization Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate API Request": {
+      "main": [
+        [
+          {
+            "node": "Is API Request Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is API Request Valid?": {
       "main": [
         [
           {
             "node": "Build Execute SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Audit - Execute Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit - Execute Success": {
+      "main": [
+        [
+          {
+            "node": "Write Audit - Execute Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Audit - Execute Success": {
+      "main": [
+        [
+          {
+            "node": "Respond Execute",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Execute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit - Execute Auth Error": {
+      "main": [
+        [
+          {
+            "node": "Write Audit - Execute Auth Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Audit - Execute Auth Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Auth Error (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Auth Error (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit - Execute Authorization Error": {
+      "main": [
+        [
+          {
+            "node": "Write Audit - Execute Authorization Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Audit - Execute Authorization Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Authorization Error (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Authorization Error (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit - Execute Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Write Audit - Execute Validation Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Audit - Execute Validation Error": {
+      "main": [
+        [
+          {
+            "node": "Respond Validation Error (Execute)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Validation Error (Execute)",
             "type": "main",
             "index": 0
           }

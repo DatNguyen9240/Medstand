@@ -5,7 +5,45 @@
     "start": "node server.js",
     "dev": "node server.js",
     "build": "node scripts/build.js",
-    "test:weekly-chart": "node scripts/test_weekly_sales_chart_regression.js"
+    "test:weekly-chart": "node scripts/test_weekly_sales_chart_regression.js",
+    "test:sales-dashboard-renderer": "node scripts/test_sales_dashboard_renderer_contract.js",
+    "test:api-menu-label": "node scripts/test_api_menu_label_contract.js",
+    "test:symptom-keyword-required": "node scripts/test_symptom_keyword_required_contract.js",
+    "test:shared-auth-guard": "node scripts/test_shared_auth_guard_contract.js",
+    "test:api-execute-auth": "node scripts/test_api_execute_fail_closed.js",
+    "test:api-execute-capability": "node scripts/test_api_execute_capability_gate.js",
+    "test:api-execute-envelope": "node scripts/test_api_execute_response_envelope.js",
+    "test:api-metadata-contract": "node scripts/test_api_metadata_contract.js",
+    "test:api-execute-validation": "node scripts/test_api_execute_validation.js",
+    "test:p1-04-request-audit": "node scripts/test_p1_04_request_audit.js",
+    "test:api-catalog-auth": "node scripts/test_api_catalog_auth_guard.js",
+    "test:api-cors-auth": "node scripts/test_api_cors_auth_contract.js",
+    "test:gateway-log-redaction": "node scripts/test_gateway_log_redaction.js",
+    "test:p0-05-uat-runner": "node scripts/test_p0_05_uat_runner_contract.js",
+    "test:regression-credential-safety": "node scripts/test_regression_credential_safety.js",
+    "test:regression": "node scripts/regression/test_runner.js",
+    "test:chatbot-auth-regression": "node scripts/test_chatbot_api_auth_regression.js",
+    "test:chatbot-auth-regression:contract": "node scripts/test_chatbot_api_auth_regression.js --contract-only",
+    "test:p0": "npm run test:shared-auth-guard && npm run test:api-execute-auth && npm run test:api-execute-capability && npm run test:api-execute-envelope && npm run test:api-metadata-contract && npm run test:api-execute-validation && npm run test:p1-04-request-audit && npm run test:api-catalog-auth && npm run test:api-cors-auth && npm run test:gateway-log-redaction && npm run test:p0-05-uat-runner && npm run test:regression-credential-safety && npm run test:chatbot-auth-regression:contract && npm run test:api-danh-muc-scope && npm run test:survey-daily-wrapper && npm run test:survey-history-wrapper",
+    "test:release-local": "npm run test:p0 && npm run test:p2-ui-contract && npm run test:weekly-chart && npm run build"
+    ,"test:guest": "playwright test --project=guest"
+    ,"test:manager": "playwright test --project=manager"
+    ,"test:tdv": "playwright test --project=tdv"
+    ,"test:chatbot": "playwright test --grep @chatbot"
+    ,"test:all": "npm run test:release-local && playwright test"
+    ,"test:p2": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_p2_uat.ps1"
+    ,"test:p2-ui-contract": "node scripts/test_p2_ui_catalog_contract.js"
+    ,"test:api-danh-muc-scope": "node scripts/test_api_danh_muc_scope_contract.js"
+    ,"test:survey-daily-wrapper": "node scripts/test_survey_daily_wrapper_contract.js"
+    ,"test:survey-history-wrapper": "node scripts/test_survey_history_wrapper_contract.js"
+    ,"test:p2-04-mutation-rollback": "node scripts/test_p2_04_mutation_rollback.js"
+    ,"test:p2-04-audit": "node scripts/test_p2_04_audit_trace.js"
+    ,"test:p2-04-idempotency": "node scripts/test_p2_04_idempotency_contract.js && node scripts/test_p2_04_idempotency_db.js"
+    ,"test:p2-04-cart-idempotency": "node scripts/test_p2_04_cart_idempotency_contract.js"
+    ,"test:p2-04-authorized-pipeline": "node scripts/test_p2_04_authorized_pipeline.js"
+    ,"test:p2-04": "npm run test:p2-04-cart-idempotency && npm run test:p2-04-idempotency && npm run test:p2-04-mutation-rollback && npm run test:p2-04-authorized-pipeline && npm run test:p2-04-audit"
+    ,"check:n8n-publish": "node scripts/check_n8n_publish_state.js"
+    ,"test:uat-all-accounts": "node scripts/test_all_uat_accounts_readonly.js"
   },
   "dependencies": {
     "compression": "^1.8.1",
@@ -17,6 +55,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "terser": "^5.48.0"
   }
 }

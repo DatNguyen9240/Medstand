@@ -1,0 +1,304 @@
+{
+  "role": "manager",
+  "expectedRoleVisibleReadCommands": 24,
+  "excludedByPolicy": [
+    "@cap_nhat_ket_qua_khao_sat",
+    "@khach_hang_insert",
+    "@lap_don_hang",
+    "@san_pham_trong_tam_import"
+  ],
+  "catalogRequestId": "req-3094-mrnkgnw5",
+  "complete": true,
+  "passed": 24,
+  "failed": 0,
+  "matrix": [
+    {
+      "ApiCode": "@cham_diem_kh",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3099-mrnkgruk"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@cong_no_chi_tiet",
+      "UiTemplate": "CONG_NO",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3101-mrnkh4h3"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@cong_no_khach_hang",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3103-mrnkhgwv"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_muc",
+      "UiTemplate": "CATALOG",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3105-mrnkhtek"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_sach_cau_hoi_khao_sat",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3107-mrnki6rj"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_sach_tonkho",
+      "UiTemplate": "CATALOG",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3109-mrnkijfn"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@de_xuat_khuyen_mai",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 1,
+        "requestId": "req-3111-mrnkilpa"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@doanh_so",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3113-mrnkimnk"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@don_hang",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3115-mrnkiz6y"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@upsell_goi_y",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3117-mrnkj04c"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@goi_ydon_hang",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3119-mrnkjcwr"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@goi_ydon_thuoc",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 1,
+        "requestId": "req-3121-mrnkjpc8"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@hoa_don",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3123-mrnkjq84"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@hoa_don_chi_tiet",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 422,
+        "code": "BUSINESS_ERROR",
+        "count": 0,
+        "requestId": "req-3125-mrnkjrg8"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@khao_sat360",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3127-mrnkjtcf"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@kiem_tra_khao_sat",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 1,
+        "requestId": "req-3129-mrnkk6lh"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@kiem_tra_khao_sat_ngay",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 1,
+        "requestId": "req-3131-mrnkk7jk"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@lich_su_khao_sat",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3133-mrnkk8nw"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@san_pham_trong_tam",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3135-mrnkk9jj"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tich_luy",
+      "UiTemplate": "TICH_LUY",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3137-mrnkkm0j"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tim_san_pham_theo_trieu_chung",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3139-mrnkkyjt"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tra_cuu_san_pham",
+      "UiTemplate": "CATALOG",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 1,
+        "requestId": "req-3141-mrnkkzht"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tuyen_ban_hang",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-3143-mrnkl0f1"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@thong_bao",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
+        "code": "OK",
+        "count": 9,
+        "requestId": "req-3145-mrnklcz8"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    }
+  ]
+}

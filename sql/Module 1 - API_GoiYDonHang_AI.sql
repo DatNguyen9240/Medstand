@@ -55,6 +55,17 @@ BEGIN
     
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
 
+    -- Danh tính là bắt buộc. Không cho phép Username rỗng trở thành truy vấn
+    -- toàn hệ thống khi gateway/token không truyền được người dùng.
+    IF NULLIF(@Username, '') IS NULL
+       OR NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK)
+                      WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'Không xác định được tài khoản hoặc tài khoản đã bị khóa.' AS Msg,
+               1 AS MsgType;
+        RETURN;
+    END
+
     -- ═══ 1. Lấy quyền user thực tế & Fallback ═══
     DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
     DECLARE @SYS_CeoID       VARCHAR(50) = ISNULL(@SYSCeoID, '')
@@ -180,12 +191,11 @@ BEGIN
             @ExtraInfo    = @OriginalInput;
     END
 
-    -- ═══ 2. Validate User ═══
-    IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
-    BEGIN
-        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
-        RETURN
-    END
+    -- Cache đúng phạm vi khách hàng do ERP cấp cho user/manager hiện tại.
+    -- Nếu mapping rỗng thì kết quả cũng rỗng (fail-closed).
+    CREATE TABLE #AllowedObjects (ObjectID VARCHAR(50) PRIMARY KEY);
+    INSERT INTO #AllowedObjects (ObjectID)
+    SELECT DISTINCT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username);
 
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
     BEGIN
@@ -207,16 +217,26 @@ BEGIN
     -- ═══════════════════════════════════════════════════
     IF @MaKhachHang = ''
     BEGIN
+        CREATE TABLE #TopChiNhanh
+        (
+            [Mã SP]     VARCHAR(50)   NOT NULL,
+            [Sản phẩm]  NVARCHAR(500) NULL,
+            [Số HĐ]     INT           NOT NULL,
+            [Doanh số]  BIGINT        NULL,
+            [Gợi ý]     NVARCHAR(500) NULL
+        );
+
+        INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
         SELECT TOP (@TopN)
             D.ItemID                                     AS [Mã SP],
             CF.ItemName                                  AS [Sản phẩm],
             COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
             CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
             N'Bán chạy trong chi nhánh'                  AS [Gợi ý]
-        INTO #TopChiNhanh
         FROM AR_InvoiceTbl I WITH (NOLOCK)
         JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
         JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
+        JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
         WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
           AND ISNULL(I.StatusID, 0) != 10
           AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
@@ -226,7 +246,7 @@ BEGIN
         -- Fallback if empty in UAT (take all time)
         IF NOT EXISTS (SELECT 1 FROM #TopChiNhanh)
         BEGIN
-            INSERT INTO #TopChiNhanh
+            INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
             SELECT TOP (@TopN)
                 D.ItemID                                     AS [Mã SP],
                 CF.ItemName                                  AS [Sản phẩm],
@@ -236,6 +256,7 @@ BEGIN
             FROM AR_InvoiceTbl I WITH (NOLOCK)
             JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
             JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
+            JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
             WHERE ISNULL(I.StatusID, 0) != 10
               AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
               AND ISNULL(CF.ItemGroupID, '') = 'HH1'
@@ -244,6 +265,7 @@ BEGIN
 
         SELECT * FROM #TopChiNhanh ORDER BY [Doanh số] DESC;
         DROP TABLE #TopChiNhanh;
+        DROP TABLE #AllowedObjects;
         RETURN;
     END
 
@@ -349,8 +371,11 @@ BEGIN
 
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
     SELECT TOP (@TopN)
+        @MaKhachHang                                   AS [MaKhachHang],
+        KH.ObjectName                                  AS [TenKhachHang],
         L.ItemID                                        AS [MaSanPham],
         CF.ItemName                                     AS [TenSanPham],
+        L.SoLanMua                                      AS [SoLanMua],
         CAST(L.TongTien AS BIGINT)                      AS [TongDaMua],
         FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [LanMuaCuoi],
         CK.ChuKyTrungBinh                               AS [ChuKyNgay],
@@ -378,6 +403,7 @@ BEGIN
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
+    LEFT JOIN CF_ObjectTbl KH WITH (NOLOCK) ON KH.ObjectID = @MaKhachHang
     WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
       AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
@@ -385,7 +411,7 @@ BEGIN
              (CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
              L.SoLanMua DESC;
 
-    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
+    DROP TABLE #AllowedObjects; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
 END
 GO
 

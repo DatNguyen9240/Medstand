@@ -1,3 +1,6 @@
+USE medtest;
+GO
+
 IF OBJECT_ID('API_HoaDon_AI', 'P') IS NOT NULL DROP PROCEDURE API_HoaDon_AI;
 GO
 
@@ -35,6 +38,8 @@ BEGIN
         END
     END
     IF @DenNgay IS NULL SET @DenNgay = GETDATE()
+    SET @TuNgay = CAST(@TuNgay AS DATE)
+    SET @DenNgay = DATEADD(DAY, 1, CAST(@DenNgay AS DATE))
 
     -- 3. Phân quyền
     DECLARE @SYSBranchID    VARCHAR(50) = ''
@@ -101,12 +106,13 @@ BEGIN
     -------------------------------------------------
     SELECT  
         ROW_NUMBER() OVER (ORDER BY A.DocumentDate DESC) AS STT, 
-        A.DocumentID, A.DocumentDate,  
-        O.ObjectName, O.Address, O.Phone, 
+        A.DocumentID, A.DocumentDate,
+        A.ObjectID, O.ObjectName, O.Address, O.Phone,
         A.Memo, A.Notes, 
         M.ObjectName AS ManagerName, 
-        E.ObjectName AS EmployeeName, 
-        A.BaseTotal, 
+        E.ObjectName AS EmployeeName,
+        A.EmployeeID, A.BranchID,
+        A.BaseTotal, A.StatusID,
         S.StatusName, S.BackColor AS StatusBackColor
     INTO #BC
     FROM dbo.AR_InvoiceTbl A WITH (NOLOCK)
@@ -114,7 +120,8 @@ BEGIN
     LEFT JOIN dbo.CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
     LEFT JOIN dbo.CF_ObjectTbl M WITH (NOLOCK) ON M.ObjectID = A.ManagerID
     LEFT JOIN dbo.AR_InvoiceStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
-    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
+    WHERE A.DocumentDate >= @TuNgay
+      AND A.DocumentDate < @DenNgay
       AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
       AND (@timkiem = '' OR A.DocumentID LIKE '%' + @timkiem + '%'
            OR A.ObjectID LIKE '%' + @timkiem + '%' 
@@ -139,7 +146,7 @@ BEGIN
     -------------------------------------------------
     IF NOT EXISTS (SELECT 1 FROM #BC)
     BEGIN
-        SELECT TOP 0 1 AS NoData -- Return empty recordset instead of NULL sum
+        SELECT TOP 0 * FROM #BC -- Keep the same schema when no invoices match
     END
     ELSE
     BEGIN

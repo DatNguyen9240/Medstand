@@ -4,7 +4,23 @@ AS
 BEGIN
     SET NOCOUNT ON
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+
+    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
+        RETURN
+    END
+
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
+    END
 
     -- 1. ĐỌC CẤU HÌNH CHIẾT KHẤU ĐỘNG TỪ DATABASE
     -- Cấu hình xả hàng khẩn cấp (< 3 tháng)

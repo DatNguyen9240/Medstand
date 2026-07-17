@@ -55,6 +55,18 @@ function initDashboard() {
     var authRaw = localStorage.getItem('auth_user') || localStorage.getItem('currentUser');
     if (authRaw) {
       var p = JSON.parse(authRaw);
+      var roleText = typeof getUserRoleLabel === 'function' ? getUserRoleLabel(p) : (p.RoleName || '');
+      var roleBadge = document.getElementById('dashboard-role-badge');
+      var homePage = document.getElementById('home-page');
+      if (roleBadge && roleText) {
+        roleBadge.textContent = roleText;
+        roleBadge.hidden = false;
+      }
+      if (homePage) {
+        var roleCode = String(p.roleCode || p.RoleCode || p.UserGroupID || '').toLowerCase();
+        var manager = Number(p.Manager || p.IsManager || 0) === 1 || roleCode.indexOf('admin') >= 0 || roleCode.indexOf('manager') >= 0 || roleCode === 'ql';
+        homePage.setAttribute('data-dashboard-role', manager ? 'manager' : 'tdv');
+      }
       var dName = p.DisplayName || p.UserName || '';
       if (dName) {
         var words = dName.trim().split(/\s+/);
@@ -839,7 +851,7 @@ function initDashboard() {
             '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(240 50 50)"/>' +
             '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(300 50 50)"/>' +
             '</svg>';
-          $list.html(items.map(function (item) {
+          $list.html(items.slice(0, 5).map(function (item) {
             var phone = item[DASHBOARD_SCHEMA.BIRTHDAY.phoneKey] || '';
             var phoneBtn = phone
               ? '<a href="tel:' + phone + '" class="birthday-call" aria-label="Gọi điện">' + phoneIcon + '</a>'
@@ -906,7 +918,17 @@ function initDashboard() {
       var data = res.data || res;
       var routeRecords = data.records || (Array.isArray(data) ? data : []);
       var careRecords = Array.isArray(data.careItems) ? data.careItems : [];
-      var routeTotal = Number.isFinite(Number(data.routeTotalCount)) ? Number(data.routeTotalCount) : routeRecords.length;
+      var seenRoutes = {};
+      routeRecords = routeRecords.filter(function (item) {
+        var visitId = item.VisitID || item.RouteVisitID || item.ScheduleID || '';
+        var key = visitId
+          ? 'visit|' + visitId
+          : [item.ObjectID || '', item.RouteID || item.Tuyen || item.ThuDiTuyen || '', item.WorkDate || docDate, item.VisitOrder || item.ThuTuGhe || ''].join('|');
+        if (seenRoutes[key]) return false;
+        seenRoutes[key] = true;
+        return true;
+      });
+      var routeTotal = routeRecords.length;
       var careTotal = Number.isFinite(Number(data.careTotalCount)) ? Number(data.careTotalCount) : careRecords.length;
       renderTasks(routeRecords.slice(0, 8), routeTotal);
       renderCareTasks(careRecords.slice(0, 8), careTotal);

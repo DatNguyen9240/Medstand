@@ -1,0 +1,255 @@
+{
+  "expectedRoleVisibleReadCommands": 24,
+  "legacyInventoryCount": 28,
+  "excludedByPolicy": [
+    "@cap_nhat_ket_qua_khao_sat",
+    "@khach_hang_insert",
+    "@lap_don_hang",
+    "@san_pham_trong_tam_import"
+  ],
+  "liveCount": 24,
+  "countDrift": 0,
+  "requestId": "req-3036-mrnkfrpc",
+  "matrix": [
+    {
+      "ApiCode": "@cham_diem_kh",
+      "DisplayName": "Chấm điểm khách hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 6,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3043-mrnkfuqc",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@cong_no_chi_tiet",
+      "DisplayName": "Công nợ chi tiết",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 1,
+      "ConfigRequestId": "req-3045-mrnkfvr4",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@cong_no_khach_hang",
+      "DisplayName": "Công nợ khách hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3047-mrnkfws5",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_muc",
+      "DisplayName": "Danh mục",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3049-mrnkfxor",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_sach_cau_hoi_khao_sat",
+      "DisplayName": "Danh sách câu hỏi khảo sát",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3051-mrnkfyjf",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@danh_sach_tonkho",
+      "DisplayName": "Danh sách tồn kho",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3053-mrnkfzm4",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@de_xuat_khuyen_mai",
+      "DisplayName": "Đề xuất khuyến mãi",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 0,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3055-mrnkg0ml",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@doanh_so",
+      "DisplayName": "Doanh số",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 9,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3057-mrnkg1g0",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@don_hang",
+      "DisplayName": "Đơn hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 8,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3059-mrnkg2ax",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@upsell_goi_y",
+      "DisplayName": "Gợi ý bán kèm (Upsell)",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 3,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3061-mrnkg3ch",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@goi_ydon_hang",
+      "DisplayName": "Gợi ý đơn hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 3,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3063-mrnkg46i",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@goi_ydon_thuoc",
+      "DisplayName": "Gợi ý đơn thuốc",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3065-mrnkg526",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@hoa_don",
+      "DisplayName": "Hóa đơn",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 4,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3067-mrnkg6c6",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@hoa_don_chi_tiet",
+      "DisplayName": "Hóa đơn",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 1,
+      "ConfigRequestId": "req-3069-mrnkg76d",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@khao_sat360",
+      "DisplayName": "Khảo sát 360 khách hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 3,
+      "RequiredFieldCount": 1,
+      "ConfigRequestId": "req-3071-mrnkg81d",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@kiem_tra_khao_sat",
+      "DisplayName": "Kiểm tra khảo sát",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3073-mrnkg9re",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@kiem_tra_khao_sat_ngay",
+      "DisplayName": "Kiểm tra khảo sát ngày",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3075-mrnkgakv",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@lich_su_khao_sat",
+      "DisplayName": "Lịch sử khảo sát",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 3,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3077-mrnkgbn5",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@san_pham_trong_tam",
+      "DisplayName": "Sản phẩm trọng tâm",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3079-mrnkgcgj",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tich_luy",
+      "DisplayName": "Tích lũy điểm",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 5,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3081-mrnkgdbo",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tim_san_pham_theo_trieu_chung",
+      "DisplayName": "Tìm thuốc theo triệu chứng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 1,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3083-mrnkgeyp",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tra_cuu_san_pham",
+      "DisplayName": "Tra cứu sản phẩm",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 2,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3085-mrnkgfuc",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tuyen_ban_hang",
+      "DisplayName": "Tuyến bán hàng",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 5,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3087-mrnkgi2u",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@thong_bao",
+      "DisplayName": "Xem thông báo",
+      "ExecutionType": "QUERY",
+      "ContractVersion": "2026.07.15.1",
+      "FieldCount": 0,
+      "RequiredFieldCount": 0,
+      "ConfigRequestId": "req-3089-mrnkgjau",
+      "result": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+﻿[
+    {
+        "apiCode":  "@cham_diem_kh",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  50,
+        "dataCount":  50,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@doanh_so",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  103,
+        "dataCount":  103,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@goi_ydon_hang",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  10,
+        "dataCount":  10,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@hoa_don",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  118,
+        "dataCount":  118,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@tich_luy",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  1503,
+        "dataCount":  1503,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@tuyen_ban_hang",
+        "expectation":  "legacy-empty",
+        "status":  200,
+        "code":  "OK",
+        "count":  8,
+        "dataCount":  8,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@cong_no_chi_tiet",
+        "expectation":  "validation",
+        "status":  422,
+        "code":  "VALIDATION_ERROR",
+        "count":  0,
+        "dataCount":  0,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@hoa_don_chi_tiet",
+        "expectation":  "validation",
+        "status":  422,
+        "code":  "VALIDATION_ERROR",
+        "count":  0,
+        "dataCount":  0,
+        "envelope":  true,
+        "result":  "PASS"
+    },
+    {
+        "apiCode":  "@khao_sat360",
+        "expectation":  "validation",
+        "status":  422,
+        "code":  "VALIDATION_ERROR",
+        "count":  0,
+        "dataCount":  0,
+        "envelope":  true,
+        "result":  "PASS"
+    }
+]

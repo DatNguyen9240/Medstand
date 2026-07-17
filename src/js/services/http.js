@@ -27,6 +27,7 @@ const Http = (() => {
 
   const CACHE_TTL_MS = 3 * 60 * 1000; // 3 phút
   const CACHE_PREFIX = '_hc_'; // prefix cho sessionStorage keys
+  const _inflightMutations = new Map();
 
   // ─── Cache layer (sessionStorage) ─────────────────────────────────────────
   // Dùng sessionStorage thay vì Map để cache tồn tại khi chuyển trang
@@ -101,6 +102,7 @@ const Http = (() => {
     console.log('[HTTP] Response:', res.status, res.url);
 
     if (res.status === 401) {
+      if (window.__isLoggingOut) return { code: 0, msg: 'Logged out' };
       _alert('warning', 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
       localStorage.removeItem('auth_user');
@@ -138,6 +140,7 @@ const Http = (() => {
 
     // Xử lý code: 2 (Phiên hết hạn)
     if (data.code === 2) {
+      if (window.__isLoggingOut) return { code: 0, msg: 'Logged out' };
       console.warn('[HTTP] Session expired (code: 2), redirecting to login...');
       _alert('warning', data.msg || 'Phiên đăng nhập đã hết hạn.');
       document.cookie = 'auth_token=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
@@ -207,7 +210,8 @@ const Http = (() => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(options.headers?.Authorization ? { Authorization: options.headers.Authorization } : {})
+          ...(options.headers?.Authorization ? { Authorization: options.headers.Authorization } : {}),
+          ...(options.headers?.['Idempotency-Key'] ? { 'Idempotency-Key': options.headers['Idempotency-Key'] } : {})
         },
         body: JSON.stringify({ data: encryptedData }),
         signal: options.signal
@@ -289,19 +293,34 @@ const Http = (() => {
     }
   }
 
-  async function post(endpoint, body = {}) {
-    showGlobalSpinner();
-    try {
-      clearCache(); // Dữ liệu đã thay đổi → xóa cache
-      const res = await _fetchWithTimeout(_url(endpoint), {
-        method: 'POST',
-        headers: _headers(),
-        body: JSON.stringify(body),
-      });
-      return _handleResponse(res);
-    } finally {
-      hideGlobalSpinner();
+  function post(endpoint, body = {}, options = {}) {
+    const idempotencyKey = String(options.idempotencyKey || '').trim();
+    if (idempotencyKey && _inflightMutations.has(idempotencyKey)) {
+      return _inflightMutations.get(idempotencyKey);
     }
+
+    const promise = (async function () {
+      showGlobalSpinner();
+      try {
+        clearCache(); // Dữ liệu đã thay đổi → xóa cache
+        const res = await _fetchWithTimeout(_url(endpoint), {
+          method: 'POST',
+          headers: _headers(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
+          body: JSON.stringify(body),
+        });
+        return _handleResponse(res);
+      } finally {
+        hideGlobalSpinner();
+      }
+    })();
+
+    if (idempotencyKey) {
+      _inflightMutations.set(idempotencyKey, promise);
+      promise.finally(function () {
+        if (_inflightMutations.get(idempotencyKey) === promise) _inflightMutations.delete(idempotencyKey);
+      }).catch(function () {});
+    }
+    return promise;
   }
 
   async function put(endpoint, body = {}) {

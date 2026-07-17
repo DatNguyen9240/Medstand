@@ -1,249 +1,275 @@
-    (function () {
-// determine if quiz or detail
-    const params = (window._routeParams || {});
-    const startQuiz = params.start === '1';
-    const content = $('#content-area')[0];
-    let questions = [];
-    let current = 0;
-    let answers = [];
-    const TOTAL_TIME = 300; // 5 phút
-    let timerId;
+(function () {
+  'use strict';
 
-    function getRemainingTime() {
-      const startTime = parseInt(sessionStorage.getItem('surveyStartTime') || '0', 10);
-      const elapsed = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-      return Math.max(0, TOTAL_TIME - elapsed);
-    }
+  var params = window._routeParams || {};
+  var mode = params.mode || 'list';
+  var content = $('#content-area')[0];
+  var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
+  var username = authUser.UserName || authUser.Username || authUser.username || '';
+  var documentId = params.id || localStorage.getItem('survey_doc_id') || '';
+  var questions = [];
+  var answers = [];
+  var current = 0;
+  var timerId = null;
+  var TOTAL_TIME = 300;
 
-    function initQuiz() {
-      answers = Array(questions.length).fill(null);
-      content.innerHTML = `
-      <div class="timer-row"><span>⏰</span> <span id="timer">05:00</span></div>
-      <div class="question-nav" id="question-nav"></div>
-      <div class="question-card" id="question-card"></div>
-      <div class="nav-bar">
-        <button class="nav-btn" id="prev-btn">Trước</button>
-        <button class="submit-btn" id="submit-btn">NỘP BÀI</button>
-        <button class="nav-btn" id="next-btn">Sau</button>
-      </div>
-      `;
-      function renderNav() {
-        $('#question-nav').html(questions.map((q, i) => `<div class="question-circle${i === current ? ' active' : ''}" onclick="goTo(${i})">${i + 1}</div>`).join(''));
-      }
-      function renderQuestion() {
-        const q = questions[current];
-        $('#question-card').html(`<div class="question-title">${q.text}</div><div class="answer-list">${q.options.map((opt, j) => `<label class="answer-radio"><input type="radio" name="answer" value="${j}" ${answers[current] === j ? 'checked' : ''} onchange="selectAnswer(${j})">${opt}</label>`).join('')}</div>`);
-      }
-      window.goTo = function (i) { current = i; renderNav(); renderQuestion(); }
-      window.selectAnswer = function (j) { answers[current] = j; }
-      $('#prev-btn')[0].onclick = () => { if (current > 0) { current--; renderNav(); renderQuestion(); } };
-      $('#next-btn')[0].onclick = () => { if (current < questions.length - 1) { current++; renderNav(); renderQuestion(); } };
-      $('#submit-btn')[0].onclick = () => { finishQuiz(); };
-      renderNav(); renderQuestion();
-      if (!sessionStorage.getItem('surveyStartTime')) {
-        sessionStorage.setItem('surveyStartTime', Date.now().toString());
-      }
-      function updateTimer() {
-        const remaining = getRemainingTime();
-        const m = Math.floor(remaining / 60), s = remaining % 60;
-        $('#timer').text(`${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
-        if (remaining > 0) { timerId = setTimeout(updateTimer, 1000); }
-        else { autoSubmit(); }
-      }
-      updateTimer();
-    }
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
 
-    if (!startQuiz) {
-      // ── Detail view: gọi API_BatDauBaiKhaoSat ──
-      // Xóa các thông tin cũ để đảm bảo tạo bản ghi mới cho ngày hôm nay
-      sessionStorage.removeItem('surveyStartTime');
-      localStorage.removeItem('survey_doc_id'); 
-      
-      content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
-      var authUser = JSON.parse(localStorage.getItem('auth_user') || '{}');
-      var now = new Date();
-      var thoiGianBatDau = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-      var gioPhut = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-      var dynamicTitle = 'Bài khảo sát ngày ' + String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() + ' ' + gioPhut;
+  function recordsOf(response) {
+    var data = response && (response.data || response);
+    return (data && data.records) || [];
+  }
 
-      var payload = {
-        User: authUser.UserName || authUser.Username || authUser.username || '', 
-        DocumentID: '', 
-        Title: dynamicTitle,
-        ThoiGianBatDau: thoiGianBatDau,
-        ThoiGianLamBai: '5p',
-        SoCauHoi: 3
-      };
-      console.log('[Survey] Start Payload:', payload);
+  function timerKey() { return 'surveyStartTime:' + documentId; }
 
-      Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, payload).then(function (res) {
-        var data = res.data || res;
-        var info = (data.records && data.records[0]) || data;
-        if (info.DocumentID) localStorage.setItem('survey_doc_id', info.DocumentID);
+  function getRemainingTime() {
+    var started = parseInt(sessionStorage.getItem(timerKey()) || '0', 10);
+    var elapsed = started ? Math.floor((Date.now() - started) / 1000) : 0;
+    return Math.max(0, TOTAL_TIME - elapsed);
+  }
 
-        content.innerHTML =
-          '<div class="detail-content">' +
-          '  <div><p>Bài khảo sát</p><p>' + (info.Title || 'Bài khảo sát') + '</p></div>' +
-          '  <div class="info-row"><span class="info-label">Số câu:</span><span class="info-value">' + (info.SoCauHoi || 0) + '</span></div>' +
-          '  <div class="info-row"><span class="info-label">Thời gian làm bài:</span><span class="info-value">' + (info.ThoiGianLamBai || '-') + ' phút</span></div>' +
-          '  <div class="info-row"><span class="info-label">Hạn thi:</span><span class="info-value">' + (info.HanThi || '-') + '</span></div>' +
-          '  <button class="btn-start" onclick="navigate(\'#/survey?start=1\')">BẮT ĐẦU</button>' +
-          '</div>';
-      }).catch(function (err) {
-        console.error('Failed to start survey', err);
-        content.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không tải được bài khảo sát</p>';
+  function statusLabel(status) {
+    if (status === 'COMPLETED') return 'Đã hoàn thành';
+    if (status === 'NOT_STARTED') return 'Chưa làm';
+    return 'Đang làm';
+  }
+
+  function showError(message) {
+    content.innerHTML = '<p style="text-align:center;color:var(--color-danger);padding:48px 0">' + escapeHtml(message) + '</p>';
+  }
+
+  function showList() {
+    localStorage.removeItem('survey_doc_id');
+    content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:240px;border-radius:var(--radius-lg)"></div></div>';
+    Http.get(API_CONFIG.ENDPOINTS.SURVEY.HISTORY, { q: JSON.stringify({ User: username }) })
+      .then(function (response) {
+        var rows = recordsOf(response);
+        var pageSize = 10;
+        var currentPage = 1;
+
+        function renderPage() {
+          var totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+          currentPage = Math.min(Math.max(currentPage, 1), totalPages);
+          var start = (currentPage - 1) * pageSize;
+          var pageRows = rows.slice(start, start + pageSize);
+          var cards = pageRows.map(function (row) {
+          var status = row.Status || 'IN_PROGRESS';
+          var action = status === 'COMPLETED' ? 'view' : (status === 'NOT_STARTED' ? 'start' : 'continue');
+          var actionText = status === 'COMPLETED' ? 'Xem kết quả' : (status === 'NOT_STARTED' ? 'Bắt đầu' : 'Tiếp tục');
+          return '<div class="survey-card">' +
+            '<div class="survey-title">' + escapeHtml(row.Title || 'Bài khảo sát') + '</div>' +
+            '<div class="survey-time">Thời gian: ' + escapeHtml(row.ThoiGian || '-') + '</div>' +
+            '<div class="survey-result">Trạng thái: ' + statusLabel(status) + '</div>' +
+            (status === 'COMPLETED' ? '<div class="survey-result">Kết quả: ' + escapeHtml(row.KetQua || '0/0') + '</div>' : '') +
+            '<button class="btn-start" onclick="navigate(\'#/survey?mode=' + action + '&id=' + encodeURIComponent(row.DocumentID) + '\')">' + actionText + '</button>' +
+            '</div>';
+          }).join('');
+
+          content.innerHTML = '<div style="padding:16px">' +
+            '<button class="btn-start" id="new-survey-btn">LÀM BÀI KHẢO SÁT MỚI</button>' +
+            '<div class="survey-list" style="margin-top:16px">' + (cards || '<p class="empty-msg">Chưa có bài khảo sát</p>') + '</div>' +
+            (rows.length ? '<div class="survey-pagination">' +
+              '<button type="button" id="survey-prev"' + (currentPage === 1 ? ' disabled' : '') + '>Trước</button>' +
+              '<span>Trang ' + currentPage + '/' + totalPages + ' · ' + rows.length + ' bài</span>' +
+              '<button type="button" id="survey-next"' + (currentPage === totalPages ? ' disabled' : '') + '>Sau</button>' +
+              '</div>' : '') +
+            '</div>';
+          $('#new-survey-btn')[0].onclick = createSurvey;
+          if ($('#survey-prev').length) $('#survey-prev')[0].onclick = function () { currentPage--; renderPage(); };
+          if ($('#survey-next').length) $('#survey-next')[0].onclick = function () { currentPage++; renderPage(); };
+        }
+
+        renderPage();
+      })
+      .catch(function (error) {
+        console.error('Failed to load surveys', error);
+        showError('Không tải được danh sách khảo sát.');
       });
-    } else {
-      // ── Quiz view: gọi API_ChiTietBaiKhaoSat ──
-      content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:300px;border-radius:var(--radius-lg)"></div></div>';
-      var authUser2 = JSON.parse(localStorage.getItem('auth_user') || '{}');
-      var docId = localStorage.getItem('survey_doc_id') || '';
+  }
 
-      Http.get(API_CONFIG.ENDPOINTS.SURVEY.QUESTIONS, { q: JSON.stringify({ User: authUser2.UserName || '', DocumentID: docId }) })
-        .then(function (res) {
-          var data = res.data || res;
-          var records = data.records || [];
-          // Map API records → { text, options, correctAnswer, maCauHoi }
-          questions = records.map(function (r, i) {
-            var opts = [];
-            if (r.DapAn1) opts.push(r.DapAn1);
-            if (r.DapAn2) opts.push(r.DapAn2);
-            if (r.DapAn3) opts.push(r.DapAn3);
-            if (r.DapAn4) opts.push(r.DapAn4);
-            return {
-              text: r.NoiDung || ('Câu ' + (i + 1)),
-              options: opts,
-              correctAnswer: parseInt(r.DapAnDung) || 0, // 1-based
-              maCauHoi: r.MaCauHoi || ''
-            };
-          });
-          if (questions.length > 0) {
-            initQuiz();
-          } else {
-            content.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không có câu hỏi</p>';
-          }
-        })
-        .catch(function (err) {
-          console.error('Failed to load questions', err);
-          content.innerHTML = '<p style="text-align:center;color:var(--color-text-muted);padding:48px 0">Không tải được câu hỏi</p>';
-        });
-    }
-    // Hết giờ → tự nộp, bỏ qua confirm
-    function autoSubmit() {
-      clearTimeout(timerId);
-      sessionStorage.removeItem('surveyStartTime');
-      $('#timer').text('00:00');
+  function createSurvey() {
+    var now = new Date();
+    var date = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    var title = 'Bài khảo sát ngày ' + String(now.getDate()).padStart(2, '0') + '/' + String(now.getMonth() + 1).padStart(2, '0') + '/' + now.getFullYear();
+    content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
 
-      var docId = localStorage.getItem('survey_doc_id') || '';
-      var authUser4 = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, {
+      User: username,
+      DocumentID: '',
+      Title: title,
+      ThoiGianBatDau: date,
+      ThoiGianLamBai: '5',
+      SoCauHoi: 3
+    }).then(function (response) {
+      var info = recordsOf(response)[0] || response.data || response;
+      documentId = info.DocumentID || '';
+      if (!documentId) throw new Error('API không trả về DocumentID');
+      localStorage.setItem('survey_doc_id', documentId);
+      renderIntro(info);
+    }).catch(function (error) {
+      console.error('Failed to create survey', error);
+      showError('Không thể tạo bài khảo sát.');
+    });
+  }
 
-      content.innerHTML = '<div style="padding:48px;text-align:center"><p style="color:var(--color-danger);font-weight:600;margin-bottom:16px">⏰ Hết giờ! Bài đang được nộp...</p><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
+  function renderIntro(info) {
+    content.innerHTML = '<div class="detail-content">' +
+      '<div><p>Bài khảo sát</p><p>' + escapeHtml(info.Title || 'Bài khảo sát') + '</p></div>' +
+      '<div class="info-row"><span class="info-label">Số câu:</span><span class="info-value">' + escapeHtml(info.SoCauHoi || 3) + '</span></div>' +
+      '<div class="info-row"><span class="info-label">Thời gian:</span><span class="info-value">' + escapeHtml(info.ThoiGianLamBai || '5') + ' phút</span></div>' +
+      '<div class="info-row"><span class="info-label">Hạn:</span><span class="info-value">' + escapeHtml(info.HanThi || '-') + '</span></div>' +
+      '<button class="btn-start" onclick="navigate(\'#/survey?mode=continue&id=' + encodeURIComponent(documentId) + '\')">BẮT ĐẦU</button>' +
+      '</div>';
+  }
 
-      Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
-        User: authUser4.UserName || '',
-        DocumentID: docId,
-        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
-      }).then(function () {
-        return Http.get(API_CONFIG.ENDPOINTS.SURVEY.RESULTS, { q: JSON.stringify({ DocumentID: docId }) });
-      }).then(function (resKQ) {
-        var kq = resKQ.data || resKQ;
-        var info = (kq.records && kq.records[0]) || kq;
-        var correct = parseInt(info.SoCauDung || info.Dung || 0);
-        var wrong = parseInt(info.SoCauSai || info.Sai || 0);
-        var total = parseInt(info.TongCau || info.SoCauHoi || questions.length);
-        var unanswered = total - correct - wrong;
-        var score = info.Diem || info.Score || correct;
-        showResults(score, correct, wrong, unanswered, total);
-      }).catch(function () {
-        var correct = answers.filter(function (v, i) { return v !== null && questions[i] && (v + 1) === questions[i].correctAnswer; }).length;
-        showResults(correct, correct, questions.length - correct, answers.filter(function (v) { return v === null; }).length, questions.length);
+  function startAssignedSurvey() {
+    if (!documentId) return showError('Thiếu mã bài khảo sát.');
+    Http.post(API_CONFIG.ENDPOINTS.SURVEY.START, {
+      User: username,
+      DocumentID: documentId
+    }).then(function () {
+      navigate('#/survey?mode=continue&id=' + encodeURIComponent(documentId));
+    }).catch(function (error) {
+      console.error('Failed to start assigned survey', error);
+      showError('Không thể bắt đầu bài khảo sát.');
+    });
+  }
+
+  function loadQuestions(readOnly) {
+    if (!documentId) return showError('Thiếu mã bài khảo sát.');
+    localStorage.setItem('survey_doc_id', documentId);
+    content.innerHTML = '<div class="detail-content"><div class="skeleton" style="height:300px;border-radius:var(--radius-lg)"></div></div>';
+
+    Http.get(API_CONFIG.ENDPOINTS.SURVEY.QUESTIONS, {
+      q: JSON.stringify({ User: username, DocumentID: documentId })
+    }).then(function (response) {
+      questions = recordsOf(response).map(function (row, index) {
+        var options = [row.DapAn1, row.DapAn2, row.DapAn3, row.DapAn4].filter(Boolean);
+        return {
+          text: row.NoiDung || ('Câu ' + (index + 1)),
+          options: options,
+          correctAnswer: parseInt(row.DapAnDung, 10) || 0,
+          maCauHoi: row.MaCauHoi || ''
+        };
       });
+      if (!questions.length) return showError('Bài khảo sát chưa có câu hỏi.');
+      if (readOnly) loadResult();
+      else initQuiz();
+    }).catch(function (error) {
+      console.error('Failed to load questions', error);
+      showError('Không tải được câu hỏi.');
+    });
+  }
+
+  function initQuiz() {
+    answers = Array(questions.length).fill(null);
+    content.innerHTML = '<div class="timer-row"><span>⏰</span> <span id="timer">05:00</span></div>' +
+      '<div class="question-nav" id="question-nav"></div>' +
+      '<div class="question-card" id="question-card"></div>' +
+      '<div class="nav-bar"><button class="nav-btn" id="prev-btn">Trước</button>' +
+      '<button class="submit-btn" id="submit-btn">NỘP BÀI</button>' +
+      '<button class="nav-btn" id="next-btn">Sau</button></div>';
+
+    function renderNav() {
+      $('#question-nav').html(questions.map(function (_, index) {
+        return '<div class="question-circle' + (index === current ? ' active' : '') + '" onclick="goTo(' + index + ')">' + (index + 1) + '</div>';
+      }).join(''));
     }
-
-    // Hiển thị kết quả
-    function showResults(score, correct, wrong, unanswered, total) {
-      content.innerHTML =
-        '<div style="padding:16px;">' +
-        '  <h2>Kết quả</h2>' +
-        '  <div style="text-align:center;padding:24px;background:rgba(var(--color-primary-rgb),0.1);border-radius:16px;">' +
-        '    <div>Điểm</div>' +
-        '    <div style="font-size:2rem;color:var(--color-primary);">' + score + '</div>' +
-        '    <div style="color:var(--color-danger);">' + correct + '/' + total + '</div>' +
-        '  </div>' +
-        '  <div style="margin-top:24px;">' +
-        '    <div>Trả lời đúng: ' + correct + '</div>' +
-        '    <div style="background:var(--color-primary);height:8px;border-radius:4px;margin:4px 0;width:' + (total > 0 ? Math.round(correct / total * 100) : 0) + '%"></div>' +
-        '    <div>Trả lời sai: ' + wrong + '</div>' +
-        '    <div style="background:var(--color-danger,#dc2626);height:8px;border-radius:4px;margin:4px 0;width:' + (total > 0 ? Math.round(wrong / total * 100) : 0) + '%"></div>' +
-        '    <div>Không trả lời: ' + unanswered + '</div>' +
-        '    <div style="background:var(--color-border);height:8px;border-radius:4px;margin:4px 0;width:' + (total > 0 ? Math.round(unanswered / total * 100) : 0) + '%"></div>' +
-        '  </div>' +
-        '  <button class="btn-start" onclick="navigate(\'#/survey\')">TIẾP THEO</button>' +
-        '</div>';
+    function renderQuestion() {
+      var question = questions[current];
+      $('#question-card').html('<div class="question-title">' + escapeHtml(question.text) + '</div><div class="answer-list">' +
+        question.options.map(function (option, index) {
+          return '<label class="answer-radio"><input type="radio" name="answer" value="' + index + '" ' +
+            (answers[current] === index ? 'checked' : '') + ' onchange="selectAnswer(' + index + ')">' + escapeHtml(option) + '</label>';
+        }).join('') + '</div>');
     }
+    window.goTo = function (index) { current = index; renderNav(); renderQuestion(); };
+    window.selectAnswer = function (index) { answers[current] = index; };
+    $('#prev-btn')[0].onclick = function () { if (current > 0) { current--; renderNav(); renderQuestion(); } };
+    $('#next-btn')[0].onclick = function () { if (current < questions.length - 1) { current++; renderNav(); renderQuestion(); } };
+    $('#submit-btn')[0].onclick = confirmSubmit;
+    renderNav();
+    renderQuestion();
 
-    function finishQuiz() {
-      clearTimeout(timerId);
+    if (!sessionStorage.getItem(timerKey())) sessionStorage.setItem(timerKey(), Date.now().toString());
+    updateTimer();
+  }
 
-      // Đóng băng timer ngay: lưu thời gian còn lại VÀ cập nhật sessionStorage
-      var frozenRemaining = getRemainingTime();
-      // Ghi đè startTime để getRemainingTime() luôn trả frozenRemaining trong lúc chờ
-      sessionStorage.setItem('surveyStartTime', (Date.now() - (TOTAL_TIME - frozenRemaining) * 1000).toString());
+  function updateTimer() {
+    var remaining = getRemainingTime();
+    $('#timer').text(String(Math.floor(remaining / 60)).padStart(2, '0') + ':' + String(remaining % 60).padStart(2, '0'));
+    if (remaining > 0) timerId = setTimeout(updateTimer, 1000);
+    else submitQuiz(true);
+  }
 
-      // 1) Gọi API nộp bài
-      var docId = localStorage.getItem('survey_doc_id') || '';
-      var authUser3 = JSON.parse(localStorage.getItem('auth_user') || '{}');
+  function confirmSubmit() {
+    clearTimeout(timerId);
+    var frozenRemaining = getRemainingTime();
+    ConfirmModal.show({
+      title: 'Nộp bài',
+      message: 'Bạn có chắc chắn muốn nộp bài khảo sát?',
+      icon: '📝',
+      okText: 'Nộp bài',
+      cancelText: 'Tiếp tục làm',
+      onCancel: function () {
+        sessionStorage.setItem(timerKey(), String(Date.now() - (TOTAL_TIME - frozenRemaining) * 1000));
+        updateTimer();
+      },
+      onOk: function () { submitQuiz(false); }
+    });
+  }
 
-      Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
-        User: authUser3.UserName || '',
-        DocumentID: docId,
-        JsonKetQua: JSON.stringify(questions.map((q, i) => ({ MaCauHoi: q.maCauHoi, DapAn: answers[i] !== null ? answers[i] + 1 : 0 })))
-      }).then(function (res) {
-        var data = res.data || res;
-        var msg = (data.records && data.records[0] && data.records[0].Msg) || data.msg || 'Bạn có đồng ý nộp bài?';
+  function submitQuiz(autoSubmitted) {
+    clearTimeout(timerId);
+    sessionStorage.removeItem(timerKey());
+    content.innerHTML = '<div style="padding:48px;text-align:center"><p>' +
+      (autoSubmitted ? '⏰ Hết giờ! Bài đang được nộp...' : 'Đang nộp bài...') +
+      '</p><div class="skeleton" style="height:160px;border-radius:var(--radius-lg)"></div></div>';
 
-        ConfirmModal.show({
-          title: 'Nộp bài',
-          message: msg,
-          icon: '📝',
-          okText: 'Nộp bài',
-          cancelText: 'Tiếp tục làm',
-          onCancel: function () {
-            // Resume: tính lại startTime dựa trên frozenRemaining để tiếp tục đếm
-            sessionStorage.setItem('surveyStartTime', (Date.now() - (TOTAL_TIME - frozenRemaining) * 1000).toString());
-            function resumeTimer() {
-              var remaining = getRemainingTime();
-              var m = Math.floor(remaining / 60), s = remaining % 60;
-              $('#timer').text(m.toString().padStart(2, '0') + ':' + s.toString().padStart(2, '0'));
-              if (remaining > 0) { timerId = setTimeout(resumeTimer, 1000); }
-              else { autoSubmit(); }
-            }
-            resumeTimer();
-          },
-          onOk: function () {
-            sessionStorage.removeItem('surveyStartTime');
-            content.innerHTML = '<div style="padding:48px;text-align:center"><div class="skeleton" style="height:200px;border-radius:var(--radius-lg)"></div></div>';
+    Http.post(API_CONFIG.ENDPOINTS.SURVEY.SUBMIT_QUIZ, {
+      User: username,
+      DocumentID: documentId,
+      JsonKetQua: JSON.stringify(questions.map(function (question, index) {
+        return { MaCauHoi: question.maCauHoi, DapAn: answers[index] == null ? 0 : answers[index] + 1 };
+      }))
+    }).then(loadResult).catch(function (error) {
+      console.error('Failed to submit survey', error);
+      showError('Nộp bài không thành công. Vui lòng thử lại.');
+    });
+  }
 
-            Http.get(API_CONFIG.ENDPOINTS.SURVEY.RESULTS, { q: JSON.stringify({ DocumentID: docId }) })
-              .then(function (resKQ) {
-                var kq = resKQ.data || resKQ;
-                var info = (kq.records && kq.records[0]) || kq;
-                var correct = parseInt(info.SoCauDung || info.Dung || 0);
-                var wrong = parseInt(info.SoCauSai || info.Sai || 0);
-                var total = parseInt(info.TongCau || info.SoCauHoi || questions.length);
-                var unanswered = total - correct - wrong;
-                var score = info.Diem || info.Score || correct;
-                showResults(score, correct, wrong, unanswered, total);
-              })
-              .catch(function () {
-                var correct = answers.filter(function (v, i) { return v !== null && questions[i] && (v + 1) === questions[i].correctAnswer; }).length;
-                showResults(correct, correct, questions.length - correct, answers.filter(function (v) { return v === null; }).length, questions.length);
-              });
-          } // end onOk
-        }); // end ConfirmModal.show
-      }).catch(function (err) {
-        console.error('Failed to submit quiz', err);
-        Alert.error('Lỗi khi nộp bài. Vui lòng thử lại.');
-      });
-    }
+  function loadResult() {
+    Http.get(API_CONFIG.ENDPOINTS.SURVEY.RESULTS, {
+      q: JSON.stringify({ User: username, DocumentID: documentId })
+    }).then(function (response) {
+      var info = recordsOf(response)[0];
+      if (!info) return showError('Không tìm thấy kết quả bài khảo sát.');
+      showResults(info);
+    }).catch(function (error) {
+      console.error('Failed to load survey result', error);
+      showError('Không tải được kết quả.');
+    });
+  }
+
+  function showResults(info) {
+    var correct = parseInt(info.SoCauDung || 0, 10);
+    var wrong = parseInt(info.SoCauSai || 0, 10);
+    var total = parseInt(info.TongCau || questions.length || 0, 10);
+    content.innerHTML = '<div style="padding:16px"><h2>Kết quả</h2>' +
+      '<div style="text-align:center;padding:24px;background:rgba(var(--color-primary-rgb),0.1);border-radius:16px">' +
+      '<div>Điểm</div><div style="font-size:2rem;color:var(--color-primary)">' + correct + '</div>' +
+      '<div>' + correct + '/' + total + '</div></div>' +
+      '<div style="margin-top:24px"><div>Trả lời đúng: ' + correct + '</div><div>Trả lời sai/không trả lời: ' + wrong + '</div></div>' +
+      '<button class="btn-start" onclick="navigate(\'#/survey\')">VỀ DANH SÁCH</button></div>';
+  }
+
+  if (mode === 'new') createSurvey();
+  else if (mode === 'start') startAssignedSurvey();
+  else if (mode === 'continue') loadQuestions(false);
+  else if (mode === 'view') loadQuestions(true);
+  else showList();
 })();

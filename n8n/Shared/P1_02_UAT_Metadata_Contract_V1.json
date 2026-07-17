@@ -1,0 +1,88 @@
+[
+  {
+    "id": "p102MetadataV1UAT",
+    "name": "P1-02 · UAT Metadata Contract V1",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "id": "p1-02-trigger",
+        "name": "Run P1-02 Migration",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "/* P1-02: versioned metadata contract. Safe to run repeatedly. */\nSET NOCOUNT ON;\nSET XACT_ABORT ON;\n\nIF OBJECT_ID('dbo.API_Definition', 'U') IS NULL OR OBJECT_ID('dbo.API_Field', 'U') IS NULL\n    THROW 51220, N'API metadata tables are missing.', 1;\n\nIF COL_LENGTH('dbo.API_Definition', 'ContractVersion') IS NULL\n    ALTER TABLE dbo.API_Definition ADD ContractVersion VARCHAR(40) NULL;\nIF COL_LENGTH('dbo.API_Definition', 'ContractChecksum') IS NULL\n    ALTER TABLE dbo.API_Definition ADD ContractChecksum VARCHAR(64) NULL;\nIF COL_LENGTH('dbo.API_Definition', 'ContractUpdatedAt') IS NULL\n    ALTER TABLE dbo.API_Definition ADD ContractUpdatedAt DATETIME2(0) NULL;\nIF COL_LENGTH('dbo.API_Definition', 'ContractUpdatedBy') IS NULL\n    ALTER TABLE dbo.API_Definition ADD ContractUpdatedBy VARCHAR(100) NULL;\n\nIF COL_LENGTH('dbo.API_Field', 'SourceOfTruth') IS NULL\n    ALTER TABLE dbo.API_Field ADD SourceOfTruth VARCHAR(30) NULL;\nIF COL_LENGTH('dbo.API_Field', 'ValidationRule') IS NULL\n    ALTER TABLE dbo.API_Field ADD ValidationRule NVARCHAR(500) NULL;\n\nIF OBJECT_ID('dbo.API_Filter', 'U') IS NOT NULL\nBEGIN\n    IF COL_LENGTH('dbo.API_Filter', 'SourceOfTruth') IS NULL\n        ALTER TABLE dbo.API_Filter ADD SourceOfTruth VARCHAR(30) NULL;\n    IF COL_LENGTH('dbo.API_Filter', 'ValidationRule') IS NULL\n        ALTER TABLE dbo.API_Filter ADD ValidationRule NVARCHAR(500) NULL;\nEND;\n\nIF OBJECT_ID('dbo.API_Metadata_Field_Override', 'U') IS NOT NULL\nBEGIN\n    IF COL_LENGTH('dbo.API_Metadata_Field_Override', 'SourceOfTruth') IS NULL\n        ALTER TABLE dbo.API_Metadata_Field_Override ADD SourceOfTruth VARCHAR(30) NULL;\n    IF COL_LENGTH('dbo.API_Metadata_Field_Override', 'ValidationRule') IS NULL\n        ALTER TABLE dbo.API_Metadata_Field_Override ADD ValidationRule NVARCHAR(500) NULL;\nEND;"
+        },
+        "id": "p1-02-schema",
+        "name": "Ensure Metadata Contract Schema",
+        "type": "n8n-nodes-base.microsoftSql",
+        "typeVersion": 1,
+        "position": [
+          260,
+          0
+        ],
+        "credentials": {
+          "microsoftSql": {
+            "id": "TpdxwsQAMalt6YK3",
+            "name": "Microsoft SQL account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SET NOCOUNT ON;\nSET XACT_ABORT ON;\nBEGIN TRANSACTION;\n\nUPDATE f\nSET\n    SourceOfTruth = CASE\n        WHEN ISNULL(f.IsSystemParam, 0) = 1 THEN 'SERVER_MAPPING'\n        WHEN NULLIF(f.DataSourceType, '') IS NOT NULL THEN 'DATASOURCE'\n        WHEN NULLIF(f.DefaultValue, '') IS NOT NULL THEN 'STATIC_DEFAULT'\n        ELSE 'USER_INPUT'\n    END,\n    ValidationRule = CASE\n        WHEN LOWER(f.FieldCode) IN ('@tungay', '@denngay', '@fromdate', '@todate', '@startdate', '@enddate')\n            OR LOWER(f.ControlType) = 'date' THEN N'ISO_DATE;RANGE_ORDER'\n        WHEN LOWER(f.FieldCode) LIKE '%topn' THEN N'POSITIVE_INTEGER;MAX=200'\n        WHEN LOWER(f.FieldCode) IN ('@page', '@pageindex') THEN N'POSITIVE_INTEGER;MAX=10000'\n        WHEN LOWER(f.FieldCode) IN ('@pagesize', '@limit') THEN N'POSITIVE_INTEGER;MIN=1;MAX=200'\n        WHEN LOWER(f.ControlType) = 'number' THEN N'NUMBER'\n        WHEN NULLIF(f.OptionsJson, '') IS NOT NULL THEN N'ENUM_OPTIONS'\n        WHEN LOWER(f.ControlType) = 'combobox' AND NULLIF(f.DataSourceType, '') IS NOT NULL THEN N'DATASOURCE_ID_IN_SCOPE'\n        ELSE NULL\n    END\nFROM dbo.API_Field f;\n\n/* Only requirements proven by current stored-procedure business contracts. */\nUPDATE f\nSET f.IsRequired = 1,\n    f.SourceOfTruth = 'USER_INPUT',\n    f.ValidationRule = CASE\n        WHEN LOWER(f.ControlType) = 'combobox' THEN N'REQUIRED;DATASOURCE_ID_IN_SCOPE'\n        ELSE N'REQUIRED;NON_EMPTY'\n    END\nFROM dbo.API_Field f\nJOIN dbo.API_Definition d ON d.ApiID = f.ApiID\nWHERE (d.ApiCode = '@cong_no_chi_tiet' AND f.FieldCode = '@MaKhachHang')\n   OR (d.ApiCode = '@hoa_don_chi_tiet' AND f.FieldCode = '@DocumentID')\n   OR (d.ApiCode = '@khao_sat360' AND f.FieldCode = '@ObjectID');\n\nIF OBJECT_ID('dbo.API_Filter', 'U') IS NOT NULL\nBEGIN\n    UPDATE fl\n    SET fl.IsRequired = f.IsRequired,\n        fl.SourceOfTruth = f.SourceOfTruth,\n        fl.ValidationRule = f.ValidationRule\n    FROM dbo.API_Filter fl\n    JOIN dbo.API_Field f ON f.ApiID = fl.ApiID AND f.FieldCode = fl.FieldCode;\nEND;\n\nIF OBJECT_ID('dbo.API_Metadata_Field_Override', 'U') IS NOT NULL\nBEGIN\n    MERGE dbo.API_Metadata_Field_Override AS target\n    USING (VALUES\n        ('API_CongNoChiTiet_AI', '@MaKhachHang', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE'),\n        ('API_HoaDonChiTiet_AI', '@DocumentID', 'USER_INPUT', N'REQUIRED;NON_EMPTY'),\n        ('API_KhaoSat360_AI', '@ObjectID', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE')\n    ) AS source (StoredProcedure, FieldCode, SourceOfTruth, ValidationRule)\n    ON target.StoredProcedure = source.StoredProcedure AND target.FieldCode = source.FieldCode\n    WHEN MATCHED THEN UPDATE SET\n        IsRequired = 1, FilterIsRequired = 1,\n        SourceOfTruth = source.SourceOfTruth, ValidationRule = source.ValidationRule\n    WHEN NOT MATCHED THEN INSERT\n        (StoredProcedure, FieldCode, IsRequired, FilterIsRequired, SourceOfTruth, ValidationRule)\n        VALUES (source.StoredProcedure, source.FieldCode, 1, 1, source.SourceOfTruth, source.ValidationRule);\nEND;\n\n;WITH ContractText AS (\n    SELECT\n        d.ApiID,\n        STRING_AGG(CONVERT(NVARCHAR(MAX), CONCAT(\n            f.FieldCode, ':', f.DataType, ':', f.IsRequired, ':',\n            ISNULL(f.DefaultValue, ''), ':', ISNULL(f.SourceOfTruth, ''), ':',\n            ISNULL(f.ValidationRule, '')\n        )), '|') WITHIN GROUP (ORDER BY f.OrderIndex, f.FieldCode) AS CanonicalContract\n    FROM dbo.API_Definition d\n    LEFT JOIN dbo.API_Field f ON f.ApiID = d.ApiID\n    WHERE d.IsActive = 1\n    GROUP BY d.ApiID\n)\nUPDATE d\nSET d.ContractVersion = '2026.07.15.1',\n    d.ContractChecksum = CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', ISNULL(c.CanonicalContract, '')), 2),\n    d.ContractUpdatedAt = SYSUTCDATETIME(),\n    d.ContractUpdatedBy = 'Codex:P1-02'\nFROM dbo.API_Definition d\nJOIN ContractText c ON c.ApiID = d.ApiID;\n\nEXEC(N'\nALTER PROCEDURE dbo.API_GetConfig\n    @ApiCode VARCHAR(100)\nAS\nBEGIN\n    SET NOCOUNT ON;\n    DECLARE @ApiID INT;\n    SELECT TOP 1 @ApiID = ApiID FROM dbo.API_Definition\n    WHERE ApiCode = @ApiCode OR ApiCode = ''@'' + REPLACE(@ApiCode, ''@'', '''');\n\n    IF @ApiID IS NULL\n    BEGIN\n        SELECT FieldCode = ''@Invalid'', FieldName = N''Không tìm thấy cấu hình.'', IsRequired = 0;\n        RETURN;\n    END;\n\n    SELECT\n        f.FieldCode,\n        FieldName = ISNULL(f.FieldName, REPLACE(f.FieldCode, ''@'', '''')),\n        f.Placeholder,\n        IsRequired = ISNULL(f.IsRequired, 0),\n        f.DataType,\n        f.ControlType,\n        f.DefaultValue,\n        f.OrderIndex,\n        IsSystemParam = ISNULL(f.IsSystemParam, 0),\n        f.DataSourceType,\n        f.DataSourceValue,\n        f.SourceOfTruth,\n        f.ValidationRule,\n        d.UiTemplate,\n        d.ContractVersion,\n        d.ContractChecksum,\n        UpdatedAt = d.ContractUpdatedAt,\n        UpdatedBy = d.ContractUpdatedBy\n    FROM dbo.API_Field f\n    JOIN dbo.API_Definition d ON d.ApiID = f.ApiID\n    WHERE f.ApiID = @ApiID\n    ORDER BY f.OrderIndex, f.FieldCode;\nEND');\n\nCOMMIT TRANSACTION;\n\nSELECT\n    ActiveContractCount = SUM(CASE WHEN IsActive = 1 AND ContractVersion IS NOT NULL THEN 1 ELSE 0 END),\n    MissingVersionCount = SUM(CASE WHEN IsActive = 1 AND ContractVersion IS NULL THEN 1 ELSE 0 END),\n    ContractVersion = MAX(ContractVersion)\nFROM dbo.API_Definition;\n\nSELECT d.ApiCode, f.FieldCode, f.IsRequired, f.DataType, f.SourceOfTruth, f.ValidationRule,\n       d.ContractVersion, d.ContractChecksum\nFROM dbo.API_Definition d\nJOIN dbo.API_Field f ON f.ApiID = d.ApiID\nWHERE d.IsActive = 1\nORDER BY d.ApiCode, f.OrderIndex, f.FieldCode;"
+        },
+        "id": "p1-02-migrate",
+        "name": "Apply Metadata Contract V1",
+        "type": "n8n-nodes-base.microsoftSql",
+        "typeVersion": 1,
+        "position": [
+          520,
+          0
+        ],
+        "credentials": {
+          "microsoftSql": {
+            "id": "TpdxwsQAMalt6YK3",
+            "name": "Microsoft SQL account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Run P1-02 Migration": {
+        "main": [
+          [
+            {
+              "node": "Ensure Metadata Contract Schema",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ensure Metadata Contract Schema": {
+        "main": [
+          [
+            {
+              "node": "Apply Metadata Contract V1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "tags": []
+  }
+]

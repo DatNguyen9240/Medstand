@@ -42,13 +42,15 @@ function drawLineChart(canvasId, labels, values, options = {}) {
         pointBackgroundColor: '#ffffff',
         pointBorderColor: primaryColor,
         pointBorderWidth: 2,
-        pointRadius: 5,
+        pointRadius: function (context) {
+          return options.peakIndex === context.dataIndex ? 6 : (options.pointRadius || 3);
+        },
         pointHoverRadius: 7,
         pointHoverBackgroundColor: primaryColor,
         pointHoverBorderColor: '#ffffff',
         pointHoverBorderWidth: 2,
         fill: true,
-        tension: 0.42
+        tension: options.tension === undefined ? 0.42 : options.tension
       }]
     },
     options: {
@@ -101,8 +103,9 @@ function drawLineChart(canvasId, labels, values, options = {}) {
             color: tickColor,
             font: { size: 11 },
             autoSkip: true,
-            maxTicksLimit: 12,
-            maxRotation: 45
+            maxTicksLimit: options.maxTicksLimit || 12,
+            maxRotation: options.maxRotation === undefined ? 45 : options.maxRotation,
+            minRotation: options.minRotation === undefined ? 0 : options.minRotation
           }
         },
         y: {

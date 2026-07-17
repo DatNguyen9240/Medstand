@@ -1,7 +1,8 @@
 @echo off
 setlocal
 set "ROOT=%~dp0"
-cd /d "%ROOT%"
+set "DOC_DIR=%ROOT%docs\manual"
+cd /d "%DOC_DIR%"
 
 set "MAIN=huong_dan_medstand"
 
@@ -30,5 +31,5 @@ if errorlevel 1 (
 )
 
 echo Build completed successfully.
-echo Output: %ROOT%%MAIN%.pdf
+echo Output: %DOC_DIR%\%MAIN%.pdf
 endlocal

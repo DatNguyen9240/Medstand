@@ -10,8 +10,8 @@ const Router = (() => {
 
     // Main app pages (need auth + nav)
     { path: 'home', template: 'src/templates/home.html', scripts: ['src/js/pages/home.js', 'src/js/pages/index.js'], css: ['src/css/pages/home.css'], auth: true, nav: 'home', title: 'Trang chủ' },
-    { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Thông báo' },
-    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot.bundle.min.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'home', title: 'AI Trợ lý' },
+    { path: 'notifications', template: 'src/templates/notifications.html', scripts: ['src/js/pages/notifications.js'], css: ['src/css/pages/notifications.css'], auth: true, nav: 'home', title: 'Xem thông báo' },
+    { path: 'chatbot', template: 'chatbot-widget/template/chatbot.html', scripts: ['chatbot-widget/js/chatbot.bundle.min.js'], css: ['chatbot-widget/css/chatbot.css', 'chatbot-widget/css/chatbot-api-engine.css'], auth: true, nav: 'chatbot', title: 'AI Trợ lý' },
     { path: 'routes', template: 'src/templates/routes.html', scripts: ['src/js/pages/routes.js'], css: ['src/css/components/segment.css', 'src/css/pages/routes.css'], auth: true, nav: 'routes', title: 'Tuyến' },
     { path: 'orders', template: 'src/templates/orders.html', scripts: ['src/js/pages/orders.js'], css: ['src/css/pages/orders.css'], auth: true, nav: 'orders', title: 'Đơn hàng' },
     { path: 'account', template: 'src/templates/account.html', scripts: ['src/js/pages/account.js'], css: ['src/css/pages/account.css'], auth: true, nav: 'account', title: 'Tài khoản' },
@@ -120,7 +120,7 @@ const Router = (() => {
       if (document.querySelector(`link[href^="${href}"]`)) return;
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = href + '?v=10.9';
+      link.href = href + '?v=11.35';
       link.setAttribute('data-dynamic', 'true');
       document.head.appendChild(link);
       _dynamicStylesheets.push(link);
@@ -136,7 +136,7 @@ const Router = (() => {
         return;
       }
       const script = document.createElement('script');
-      script.src = src + '?v=10.9';
+      script.src = src + '?v=11.35';
       script.charset = 'UTF-8';
       script.onload = () => {
         _loadedScripts.add(src);
@@ -255,7 +255,7 @@ const Router = (() => {
 
     // Auth guard — redirect to standalone login page
     if (route.auth && !_isLoggedIn()) {
-      window.location.href = 'pages/login.html?v=' + Date.now();
+      window.location.replace(window.location.origin + '/pages/login.html?v=' + Date.now());
       return;
     }
 
@@ -263,7 +263,7 @@ const Router = (() => {
     if (typeof TotalBar !== 'undefined') TotalBar.destroy();
     if (window.Swal) Swal.close();
     // FilterComponent appends overlay/modal/select to body
-    $('.filter-overlay, .filter-modal, .select-modal').remove();
+    $('.filter-overlay, .filter-modal, .select-modal, .picker-overlay, .picker-sheet').remove();
     $('body').css('overflow', '').removeClass('has-total-bar');
 
     // Run cleanup hooks from previous page
@@ -538,7 +538,7 @@ const Router = (() => {
     // Initial route
     if (!location.hash || location.hash === '#' || location.hash === '#/') {
       if (!_isLoggedIn()) {
-        window.location.href = 'pages/login.html?v=' + Date.now();
+        window.location.replace(window.location.origin + '/pages/login.html?v=' + Date.now());
         return;
       }
       location.hash = '#/home';

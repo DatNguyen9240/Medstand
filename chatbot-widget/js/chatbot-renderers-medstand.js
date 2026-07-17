@@ -58,14 +58,21 @@
         if (!khCode && safeRows.length > 0) {
             khCode = h.pickValue(safeRows[0], 'CUSTOMER') || safeRows[0].ObjectID || safeRows[0].MaKH || safeRows[0].CustomerCode || '';
         }
-        var tongNo    = safeRows.length > 0 ? (Number(h.pickValue(safeRows[0], 'MONEY')) || 0) : 0;
+        // TongTienNoThucTe is the balance of the whole debt report. Do not
+        // derive it from the generic MONEY role because SoTien also has that
+        // role and represents only one document.
+        var tongNo    = safeRows.length > 0
+            ? (Number(safeRows[0].TongTienNoThucTe != null
+                ? safeRows[0].TongTienNoThucTe
+                : h.pickValue(safeRows[0], 'MONEY')) || 0)
+            : 0;
         var tongHD    = safeRows.length > 0 ? (Number(h.pickValue(safeRows[0], 'COUNT') || safeRows.length)) : 0;
         var phatSinhDuong = 0, phatSinhAm = 0, hasReturn = false;
 
         var cardId = 'congno-' + h.nextId() + '-' + Date.now();
 
         safeRows.forEach(function (r) {
-            var tien = Number(h.pickValue(r, 'MONEY') || 0);
+            var tien = Number(r.SoTien != null ? r.SoTien : (h.pickValue(r, 'MONEY') || 0));
             if (tien > 0) phatSinhDuong += tien; else phatSinhAm += tien;
             var dien = String(h.pickValue(r, 'TITLE') || '').toLowerCase();
             if (tien < 0 && RETURN_KEYWORDS.some(function (kw) { return dien.indexOf(kw) >= 0; })) {
@@ -101,7 +108,7 @@
         // Chi tiết từng dòng — dùng Roles
         html += '<div class="ai-sales-debt-list" id="list-' + h.esc(cardId) + '" style="display:none;">';
         safeRows.forEach(function (r) {
-            var tien     = Number(h.pickValue(r, 'MONEY') || 0);
+            var tien     = Number(r.SoTien != null ? r.SoTien : (h.pickValue(r, 'MONEY') || 0));
             var idVal    = h.pickValue(r, 'ID')    || '';
             var titleVal = h.pickValue(r, 'TITLE') || '';
             var dateVal  = h.pickValue(r, 'TREND') || '';

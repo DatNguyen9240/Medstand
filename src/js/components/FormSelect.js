@@ -81,6 +81,7 @@ var FormSelect = (function () {
       label: opts.label,
       placeholder: placeholder,
       loadFn: opts.loadFn,
+      searchFn: opts.searchFn,
       value: '',
       labelText: ''
     };
@@ -156,12 +157,24 @@ var FormSelect = (function () {
       $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
 
       // Search
+      var searchTimer = null;
       $overlay.find('#picker-search').on('input', function () {
         var kw = Format.removeAccents($(this).val());
+        var rawKw = $(this).val().trim();
         $overlay.find('#picker-list li').each(function () {
           var text = Format.removeAccents($(this).text());
           $(this).css('display', text.indexOf(kw) !== -1 ? '' : 'none');
         });
+        if (field.searchFn && rawKw.length >= 2) {
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(function () {
+            field.searchFn(rawKw, function (remoteOptions) {
+              $overlay.remove();
+              _renderModal(remoteOptions || []);
+              setTimeout(function () { $('#picker-search').val(rawKw).focus(); }, 0);
+            });
+          }, 300);
+        }
       });
 
       // Select

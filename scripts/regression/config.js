@@ -3,6 +3,15 @@
  */
 const path = require('path');
 
+function normalizeBearerToken(value) {
+    const token = String(value || '').trim();
+    if (!token) return null;
+    return /^Bearer\s+/i.test(token) ? token : `Bearer ${token}`;
+}
+
+const adminToken = normalizeBearerToken(process.env.UAT_ADMIN_TOKEN || process.env.UAT_MANAGER_TOKEN);
+const northToken = normalizeBearerToken(process.env.UAT_NORTH_TOKEN || process.env.UAT_TDV_TOKEN || process.env.TEST_AUTH_TOKEN);
+
 module.exports = {
     // Địa chỉ server proxy chạy local
     API_BASE: process.env.TEST_API_BASE || 'http://localhost:3000',
@@ -10,11 +19,11 @@ module.exports = {
     // Địa chỉ n8n chạy local
     N8N_BASE: process.env.N8N_BASE || 'http://localhost:5678',
     
-    // Chat API Key mặc định của hệ thống
-    CHAT_API_KEY: process.env.CHAT_API_KEY || 'test123456',
+    // Không lưu API key mặc định trong source.
+    CHAT_API_KEY: process.env.CHAT_API_KEY || null,
     
-    // Giả lập token được server proxy chấp nhận
-    SIMULATED_TOKEN: 'Bearer SIMULATED_SALES_TOKEN_LOCAL',
+    // Token UAT phải được cấp tường minh qua biến môi trường; không dùng token giả mặc định.
+    SIMULATED_TOKEN: northToken,
 
     // Cấu hình thời gian và thử lại cho các cuộc gọi AI
     TIMEOUT_MS: 30000, // 30 giây
@@ -29,9 +38,9 @@ module.exports = {
 
     // Tài khoản UAT giả định theo phân vùng địa lý để kiểm thử RLS
     ACCOUNTS: {
-        NORTH: { UserName: 'NAMDINHB.MED', Role: 'Trình dược viên', Branch: 'MB' },
-        CENTRAL: { UserName: 'HUEB.MED', Role: 'Trình dược viên', Branch: 'MT' },
-        SOUTH: { UserName: 'CanThoA', Role: 'Trình dược viên', Branch: 'MN' },
-        ADMIN: { UserName: 'admin', Role: 'Quản trị hệ thống' }
+        NORTH: { UserName: 'NAMDINHB.MED', Role: 'Trình dược viên', Branch: 'MB', Token: northToken },
+        CENTRAL: { UserName: 'HUEB.MED', Role: 'Trình dược viên', Branch: 'MT', Token: normalizeBearerToken(process.env.UAT_CENTRAL_TOKEN) },
+        SOUTH: { UserName: 'CanThoA', Role: 'Trình dược viên', Branch: 'MN', Token: normalizeBearerToken(process.env.UAT_SOUTH_TOKEN) },
+        ADMIN: { UserName: 'admin', Role: 'Quản trị hệ thống', Token: adminToken }
     }
 };
