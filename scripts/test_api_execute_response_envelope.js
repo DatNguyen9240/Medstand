@@ -25,7 +25,7 @@ const run = (rows) => {
   )[0].json;
 };
 
-const requiredFields = ['success', 'code', 'message', 'data', 'count', 'requestId'];
+const requiredFields = ['success', 'code', 'status', 'errorCode', 'message', 'data', 'count', 'ApiCode', 'contractVersion', 'requestId', 'metadata'];
 for (const body of [run([]), run([{ Value: 1 }]), run([{ Msg: 'Vui lòng cung cấp mã khách hàng.', MsgType: 1 }])]) {
   for (const field of requiredFields) assert(field in body, `Missing envelope field: ${field}`);
 }
@@ -33,12 +33,19 @@ for (const body of [run([]), run([{ Value: 1 }]), run([{ Msg: 'Vui lòng cung c�
 const noData = run([]);
 assert.strictEqual(noData.success, true);
 assert.strictEqual(noData.code, 'NO_DATA');
+assert.strictEqual(noData.status, 'NO_DATA');
 assert.strictEqual(noData.count, 0);
 assert.deepStrictEqual(noData.data, []);
 
 const success = run([{ Value: 1 }, { Value: 2 }]);
 assert.strictEqual(success.code, 'OK');
+assert.strictEqual(success.status, 'SUCCESS');
 assert.strictEqual(success.count, 2);
+
+const metadata = run([{ Value: 1, RuleVersion: 'BR-TEST', RuleSource: 'TEST_SOURCE', StockDataStatus: 'PHYSICAL_ONLY_UNVERIFIED' }]);
+assert.strictEqual(metadata.metadata.ruleVersion, 'BR-TEST');
+assert.strictEqual(metadata.metadata.source, 'TEST_SOURCE');
+assert.strictEqual(metadata.metadata.freshness, 'PHYSICAL_ONLY_UNVERIFIED');
 
 const validation = run([{ Msg: 'Vui lòng cung cấp mã khách hàng.', MsgType: 1 }]);
 assert.strictEqual(validation.success, false);
@@ -47,7 +54,8 @@ assert.strictEqual(validation._httpStatus, 422);
 assert.strictEqual(validation.count, 0);
 
 const forbidden = run([{ Msg: 'Bạn không có quyền xem dữ liệu này.', MsgType: 1 }, { Value: 1 }]);
-assert.strictEqual(forbidden.code, 'FORBIDDEN');
+assert.strictEqual(forbidden.code, 'OUT_OF_SCOPE');
+assert.strictEqual(forbidden.status, 'OUT_OF_SCOPE');
 assert.strictEqual(forbidden._httpStatus, 403);
 assert.strictEqual(forbidden.count, 0);
 
@@ -62,4 +70,4 @@ assert.strictEqual(responseNode.parameters.options.responseCode, "={{ $('Format 
 assert(frontend.includes("gatewayError.code = payload.code || 'GATEWAY_ERROR'"));
 assert(frontend.includes("err && err.code === 'VALIDATION_ERROR'"));
 
-console.log('API Execute response envelope contract tests passed.');
+console.log('API Execute response envelope: STATIC_CONTRACT_PASS');

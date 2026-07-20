@@ -1,0 +1,25 @@
+{
+  "version": "NL-CORPUS-V1",
+  "generatedAt": "2026-07-19T00:00:00+07:00",
+  "deterministicSeed": "NL-CORPUS-V1",
+  "total": 648,
+  "syntheticDataOnly": true,
+  "splitCounts": {
+    "development": 388,
+    "validation": 130,
+    "holdout": 130
+  },
+  "categoryCounts": {
+    "CASUAL_OR_ADVERSARIAL": 24,
+    "CONTEXT_SWITCH": 36,
+    "HIGH_RISK_MEDICAL": 60,
+    "INTENT_VARIANTS": 240,
+    "MISSING_OR_AMBIGUOUS": 72,
+    "MULTI_INTENT": 36,
+    "MULTI_TURN": 60,
+    "NO_DIACRITIC_TYPO_ABBREVIATION": 72,
+    "OUT_OF_SCOPE_OR_MUTATION": 48
+  },
+  "holdoutPolicy": "Do not use holdout cases to tune prompts, rules or thresholds.",
+  "corpusSha256": "74e82aa9b08ff97752b10e91cd04229022eb3aba285b7bfcc2692c4717f61c6b"
+}

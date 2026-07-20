@@ -1,0 +1,113 @@
+{
+  "status": "UAT13_DAILY_WORK_RUNTIME_PASS",
+  "testedAt": "2026-07-19T07:10:32.154Z",
+  "phrase": "Hôm nay em nên làm gì?",
+  "expectedApiCode": "@tuyen_ban_hang",
+  "accountCount": 13,
+  "results": [
+    {
+      "username": "QLBH013.MED",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 8,
+      "requestId": "req-8068-mrrgha2r",
+      "result": "PASS"
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8071-mrrghbzg",
+      "result": "PASS"
+    },
+    {
+      "username": "QLBH016.MED",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8074-mrrghe2i",
+      "result": "PASS"
+    },
+    {
+      "username": "BACNINHA.MED",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8077-mrrghfzd",
+      "result": "PASS"
+    },
+    {
+      "username": "QLBH005.MED",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 7,
+      "requestId": "req-8080-mrrghhu3",
+      "result": "PASS"
+    },
+    {
+      "username": "HUEB.MED",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8083-mrrghjw2",
+      "result": "PASS"
+    },
+    {
+      "username": "QLBH010.MED",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 5,
+      "requestId": "req-8086-mrrghlnk",
+      "result": "PASS"
+    },
+    {
+      "username": "DANANGA.MED",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 2,
+      "requestId": "req-8089-mrrghnif",
+      "result": "PASS"
+    },
+    {
+      "username": "QLMN2",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 4,
+      "requestId": "req-8092-mrrghpby",
+      "result": "PASS"
+    },
+    {
+      "username": "CanThoA",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8095-mrrghrao",
+      "result": "PASS"
+    },
+    {
+      "username": "QLMD1",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 8,
+      "requestId": "req-8098-mrrght35",
+      "result": "PASS"
+    },
+    {
+      "username": "BinhPhuocA",
+      "status": "NO_DATA",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 0,
+      "requestId": "req-8101-mrrghvda",
+      "result": "PASS"
+    },
+    {
+      "username": "QLBH024.MED",
+      "status": "SUCCESS",
+      "apiCode": "@tuyen_ban_hang",
+      "count": 8,
+      "requestId": "req-8104-mrrghx7i",
+      "result": "PASS"
+    }
+  ]
+}

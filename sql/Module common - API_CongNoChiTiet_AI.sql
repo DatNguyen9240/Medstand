@@ -99,16 +99,133 @@ BEGIN
          END
      END
     SELECT TOP 20
-        DocumentID AS [MaHD],
-        FORMAT(DocumentDate, 'dd/MM/yyyy') AS [Ngay],
-        (DebitAmount - CreditAmount) AS [SoTien],
-        Memo AS [DienGiai],
-        COUNT(*) OVER() AS [TongSoHoaDon],
-        SUM(DebitAmount - CreditAmount) OVER() AS [TongTienNoThucTe],
-        @MaKhachHang AS [ObjectID]
-    FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '')
-    WHERE (DebitAmount - CreditAmount) <> 0
-    ORDER BY DocumentDate DESC
+        N'CUSTOMER' AS [ObjectType],
+        @MaKhachHang AS [CustomerID],
+        O.ObjectName AS [CustomerName],
+        O.Phone AS [Phone],
+        @DenNgay AS [AsOfDate],
+        I.DocumentID AS [MaHD],
+        COALESCE(
+            NULLIF(LTRIM(RTRIM(A.DocumentID)), ''),
+            CASE WHEN M.CandidateCount = 1 THEN M.DocumentID END
+        ) AS [MaChungTu],
+        FORMAT(COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate), 'dd/MM/yyyy') AS [Ngay],
+        I.DocumentDate AS [NgayHoaDon],
+        COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) AS [NgayKhoanCongNo],
+        I.DueDate AS [NgayDenHan],
+        I.DocumentID AS [InvoiceID],
+        I.DocumentID AS [InvoiceNumber],
+        I.DocumentDate AS [InvoiceDate],
+        COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) AS [DebtDate],
+        I.DueDate AS [DueDate],
+        CASE
+            WHEN I.DocumentID IS NOT NULL THEN 'INVOICE'
+            WHEN UPPER(ISNULL(A.SourceID, '')) = 'BL' THEN 'OPENING_BALANCE'
+            ELSE 'OTHER_RECEIVABLE'
+        END AS [LoaiKhoanCongNo],
+        CASE
+            WHEN I.DocumentID IS NOT NULL THEN 'INVOICE'
+            WHEN UPPER(ISNULL(A.SourceID, '')) = 'BL' THEN 'OPENING_BALANCE'
+            ELSE 'OTHER_RECEIVABLE'
+        END AS [DocumentType],
+        CASE
+            WHEN I.DocumentID IS NOT NULL THEN 'EXACT_INVOICE_MATCH'
+            WHEN NULLIF(LTRIM(RTRIM(A.DocumentID)), '') IS NOT NULL THEN 'NON_INVOICE_DOCUMENT'
+            WHEN M.CandidateCount = 1 THEN 'UNIQUE_RAW_SOURCE_MATCH'
+            ELSE 'UNRESOLVED_DOCUMENT'
+        END AS [DocumentMatchStatus],
+        A.DebitAmount AS [GiaTriBanDau],
+        A.CreditAmount AS [DaThanhToanTra],
+        (A.DebitAmount - A.CreditAmount) AS [SoTien],
+        A.DebitAmount AS [DebitAmount],
+        A.CreditAmount AS [CreditAmount],
+        (A.DebitAmount - A.CreditAmount) AS [RemainingAmount],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) <= 0 THEN N'Đã thanh toán'
+            WHEN A.CreditAmount > 0 THEN N'Thanh toán một phần'
+            ELSE N'Chưa thanh toán'
+        END AS [TrangThaiThanhToan],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) <= 0 THEN 'PAID'
+            WHEN A.CreditAmount > 0 THEN 'PARTIALLY_PAID'
+            ELSE 'UNPAID'
+        END AS [CollectionStatus],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) <= 0 THEN N'Đã thanh toán'
+            WHEN I.DueDate IS NULL THEN N'Chưa xác định hạn'
+            WHEN CAST(I.DueDate AS DATE) < CAST(@DenNgay AS DATE) THEN N'Đã quá hạn'
+            ELSE N'Chưa đến hạn'
+        END AS [TrangThaiCongNo],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) <= 0 THEN 'PAID'
+            WHEN I.DueDate IS NULL THEN 'DUE_DATE_UNKNOWN'
+            WHEN CAST(I.DueDate AS DATE) < CAST(@DenNgay AS DATE) THEN 'OVERDUE'
+            ELSE 'NOT_DUE'
+        END AS [PaymentStatus],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) > 0
+             AND I.DueDate IS NOT NULL
+             AND CAST(I.DueDate AS DATE) < CAST(@DenNgay AS DATE)
+                THEN DATEDIFF(DAY, CAST(I.DueDate AS DATE), CAST(@DenNgay AS DATE))
+            ELSE 0
+        END AS [SoNgayQuaHan],
+        CASE
+            WHEN (A.DebitAmount - A.CreditAmount) > 0
+             AND I.DueDate IS NOT NULL
+             AND CAST(I.DueDate AS DATE) < CAST(@DenNgay AS DATE)
+                THEN DATEDIFF(DAY, CAST(I.DueDate AS DATE), CAST(@DenNgay AS DATE))
+            ELSE 0
+        END AS [OverdueDays],
+        A.Memo AS [DienGiai],
+        A.Memo AS [Description],
+        SUM(CASE WHEN I.DocumentID IS NOT NULL THEN 1 ELSE 0 END) OVER() AS [TongSoHoaDon],
+        COUNT(*) OVER() AS [TongSoKhoanCongNo],
+        SUM(A.DebitAmount) OVER() AS [TongGiaTriBanDau],
+        SUM(A.CreditAmount) OVER() AS [TongDaThanhToanTra],
+        SUM(A.DebitAmount - A.CreditAmount) OVER() AS [TongTienNoThucTe],
+        SUM(CASE WHEN I.DocumentID IS NOT NULL THEN 1 ELSE 0 END) OVER() AS [InvoiceCount],
+        COUNT(*) OVER() AS [DebtItemCount],
+        SUM(A.DebitAmount) OVER() AS [TotalDebitAmount],
+        SUM(A.CreditAmount) OVER() AS [TotalCreditAmount],
+        SUM(A.DebitAmount - A.CreditAmount) OVER() AS [TotalOutstanding],
+        N'SY_GetDebitDocFnc' AS [DataSource],
+        @DenNgay AS [NgayChot],
+        @MaKhachHang AS [ObjectID],
+        O.ObjectName AS [TenKH],
+        O.Phone AS [SoDienThoai]
+    FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
+    OUTER APPLY
+    (
+        SELECT TOP 1
+            V.DocumentID,
+            V.DocumentDate,
+            V.EmployeeID,
+            COUNT_BIG(*) OVER() AS CandidateCount
+        FROM dbo.vCongNoBanHang V
+        WHERE V.ObjectID = A.ObjectID
+          AND V.AccountID = A.AccountID
+          AND V.DocumentDate <= @DenNgay
+          AND ABS(ISNULL(V.Amount, 0) - ISNULL(A.DebitAmount - A.CreditAmount, 0)) < 0.01
+          AND
+          (
+              NULLIF(LTRIM(RTRIM(A.DocumentID)), '') IS NULL
+              OR V.DocumentID = A.DocumentID
+          )
+        ORDER BY
+            CASE WHEN V.DocumentID = A.DocumentID THEN 0 ELSE 1 END,
+            V.DocumentDate DESC,
+            V.DocumentID
+    ) M
+    LEFT JOIN dbo.AR_InvoiceTbl I WITH (NOLOCK)
+        ON I.DocumentID = COALESCE(
+            NULLIF(LTRIM(RTRIM(A.DocumentID)), ''),
+            CASE WHEN M.CandidateCount = 1 THEN M.DocumentID END
+        )
+       AND I.ObjectID = A.ObjectID
+    LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK)
+        ON O.ObjectID = A.ObjectID
+    WHERE (A.DebitAmount - A.CreditAmount) <> 0
+    ORDER BY COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) DESC
 END
 
 

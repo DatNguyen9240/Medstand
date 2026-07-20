@@ -1,0 +1,62 @@
+{
+  "status": "MEDTEST_EMPTY_SUGGESTION_FIX_PASS",
+  "deployedAt": "2026-07-19T04:52:32.356Z",
+  "database": "medtest",
+  "backupDir": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\runtime-backups\\suggestion-empty-fix-2026-07-19T04-52-30-157Z",
+  "procedures": [
+    {
+      "name": "API_GoiYDonHang_AI",
+      "sha256": "1AABF90CC04279100E6FBD74C33482A291BE1AB4A7C60B4A909C02FBCFA9548A"
+    },
+    {
+      "name": "API_GoiYDonThuoc_AI",
+      "sha256": "F3138CA36FC227DB824A2E0DBA8DAE868B98D756C56494E59EA6D3A6EA7178A3"
+    },
+    {
+      "name": "API_UpsellGoiY_AI",
+      "sha256": "C2CBDB6D6AEC317E276BDEDBAE547366806E0FFD7E0CB75953659A8995674CDA"
+    }
+  ],
+  "metadata": [
+    {
+      "ApiCode": "@goi_ydon_hang",
+      "FieldCode": "@MaKhachHang",
+      "IsRequired": true,
+      "FieldName": "Khách hàng",
+      "DataSourceType": "APICODE",
+      "DataSourceValue": "@danh_muc|@Type=khachhang|@timkiem={q}",
+      "ValidationRule": "REQUIRED;DATASOURCE_ID_IN_SCOPE"
+    },
+    {
+      "ApiCode": "@goi_ydon_thuoc",
+      "FieldCode": "@timkiem",
+      "IsRequired": true,
+      "FieldName": "Sản phẩm gốc",
+      "DataSourceType": "APICODE",
+      "DataSourceValue": "@danh_muc|@Type=sanpham|@timkiem={q}",
+      "ValidationRule": "REQUIRED;MIN_LENGTH=2"
+    }
+  ],
+  "smoke": {
+    "HPA011": {
+      "code": "NEW_CUSTOMER_NO_FULFILLED_HISTORY",
+      "severity": "NO_DATA"
+    },
+    "upsellHPA011": {
+      "code": "NO_CUSTOMER_PURCHASE_HISTORY",
+      "severity": "NO_DATA"
+    },
+    "missingDrugKeyword": "MISSING_PRODUCT_KEYWORD",
+    "productKeyword": {
+      "keyword": "A008",
+      "count": 3,
+      "excludesRootA008": true,
+      "containsFakeNA": false
+    },
+    "noRelatedProduct": {
+      "keyword": "A015",
+      "code": "NO_RELATED_PRODUCT_HISTORY",
+      "severity": "NO_DATA"
+    }
+  }
+}

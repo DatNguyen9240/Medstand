@@ -1,0 +1,37 @@
+{
+  "status": "UPSELL_CUSTOMER_REQUIRED_N8N_RUNTIME_PASS",
+  "scopeGuard": "PASS",
+  "testedAt": "2026-07-19T08:52:15.842Z",
+  "results": [
+    {
+      "username": "QLBH013.MED",
+      "httpStatus": 422,
+      "code": "VALIDATION_ERROR",
+      "count": 0,
+      "noGenericData": true
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "httpStatus": 422,
+      "code": "VALIDATION_ERROR",
+      "count": 0,
+      "noGenericData": true
+    }
+  ],
+  "crossBranchResults": [
+    {
+      "username": "QLMD1",
+      "customerId": "NDB001",
+      "httpStatus": 403,
+      "status": "OUT_OF_SCOPE",
+      "noDataLeak": true
+    },
+    {
+      "username": "QLBH024.MED",
+      "customerId": "NDB001",
+      "httpStatus": 403,
+      "status": "OUT_OF_SCOPE",
+      "noDataLeak": true
+    }
+  ]
+}

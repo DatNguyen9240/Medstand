@@ -87,6 +87,8 @@ Phan_Tich_BRD_AI_Sale.md
 # Database backup - không commit lên Git
 *.bak
 *.bak.bak
+.runtime-backups/
+.playwright-browsers/
 
 # External product catalog images (not tracked by Git)
 images/product-catalog/

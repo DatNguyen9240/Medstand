@@ -52,7 +52,8 @@ assert.strictEqual(inherited.auth.requestId, 'req-contract-test');
 assert.strictEqual(inherited._requestContext.n8nExecutionId, 'parent-1');
 assert(sharedNodes.get('Map Verified Identity').parameters.jsCode.includes('auditSubjectHash'), 'Verified user must be represented by a one-way audit hash');
 
-assert(nodeMap(execute).get('Format Execute Response').parameters.jsCode.includes("$('Check Method Execute').first().json._requestContext?.requestId"));
+const executeFormatCode = nodeMap(execute).get('Format Execute Response').parameters.jsCode;
+assert(executeFormatCode.includes('function requestId()') && executeFormatCode.includes('request._requestContext?.requestId'));
 assert(nodeMap(list).get('Respond ListActive').parameters.responseBody.includes('requestId'));
 assert(nodeMap(config).get('Respond GetConfig').parameters.responseBody.includes('requestId'));
 

@@ -1,8 +1,4 @@
-IF OBJECT_ID('API_TraCuuSanPham_AI', 'P') IS NOT NULL DROP PROCEDURE API_TraCuuSanPham_AI;
-GO
-
-
-CREATE PROCEDURE API_TraCuuSanPham_AI
+CREATE OR ALTER PROCEDURE API_TraCuuSanPham_AI
     @Username VARCHAR(50) = '',
     @timkiem NVARCHAR(100) = '',
     @TopN      INT = 50
@@ -150,15 +146,23 @@ BEGIN
     GROUP BY D.ItemID;
 
 
-    -- 3. Trả kết quả cuối cùng: STT, Mã sp, Sản phẩm, Đơn Giá, Tồn Kho
+    -- 3. Trả kết quả. Không suy tồn khả dụng từ tồn vật lý khi chưa có
+    -- reservation/blocked/damaged/expired và warehouse scope đã xác minh.
     IF NOT EXISTS (SELECT 1 FROM #Items)
     BEGIN
         SELECT
-            1 AS [STT],
-            'N/A' AS [Mã sp],
-            N'Không tìm thấy sản phẩm' AS [Sản Phẩm],
-            0 AS [Đơn Giá],
-            0 AS [Tồn Kho];
+            CAST(NULL AS BIGINT) AS [STT],
+            CAST(NULL AS VARCHAR(50)) AS [Mã sp],
+            CAST(NULL AS NVARCHAR(500)) AS [Sản Phẩm],
+            CAST(NULL AS BIGINT) AS [Đơn Giá],
+            CAST(NULL AS DECIMAL(18, 2)) AS PhysicalStock,
+            CAST(NULL AS DECIMAL(18, 2)) AS AvailableStock,
+            CAST(NULL AS NVARCHAR(50)) AS StockDataStatus,
+            CAST(NULL AS NVARCHAR(100)) AS RecommendationStatus,
+            CAST(NULL AS NVARCHAR(500)) AS MedicalDisclaimer,
+            CAST(NULL AS NVARCHAR(50)) AS RuleVersion,
+            CAST(NULL AS NVARCHAR(100)) AS DataSource
+        WHERE 1 = 0;
     END
     ELSE
     BEGIN
@@ -167,13 +171,19 @@ BEGIN
             I.ItemID AS [Mã sp],
             I.ItemName AS [Sản Phẩm],
             CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-            ISNULL((SELECT SUM(QuantityinStock) FROM IV_StockTbl WITH (NOLOCK) WHERE ItemID = I.ItemID), 0) AS [Tồn Kho],
+            CAST(NULL AS DECIMAL(18, 2)) AS PhysicalStock,
+            CAST(NULL AS DECIMAL(18, 2)) AS AvailableStock,
+            N'PHYSICAL_STOCK_NOT_QUERIED' AS StockDataStatus,
             K.Ingredients AS [Thành Phần],
             K.MainUses AS [Công Dụng],
             K.TargetPatients AS [Đối Tượng],
             K.UsageInstructions AS [Cách Dùng],
             K.Contraindications AS [Chống Chỉ Định],
-            K.SideEffects AS [Tác Dụng Phụ]
+            K.SideEffects AS [Tác Dụng Phụ],
+            N'REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED' AS RecommendationStatus,
+            N'Thông tin chỉ để tham khảo; không thay thế chẩn đoán, kê đơn hoặc tư vấn của người có chuyên môn.' AS MedicalDisclaimer,
+            N'BR-MED-V1-DRAFT' AS RuleVersion,
+            N'API_TraCuuSanPham_AI' AS DataSource
         FROM #Items I
         LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID
         LEFT JOIN dbo.AI_ProductKnowledgeTbl K ON I.ItemID = K.ItemID

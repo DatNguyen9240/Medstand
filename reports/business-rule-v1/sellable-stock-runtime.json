@@ -1,0 +1,34 @@
+{
+  "status": "MEDTEST_SELLABLE_STOCK_PASS",
+  "deployedAt": "2026-07-19T02:32:32.933Z",
+  "database": "medtest",
+  "backupDir": "reports/runtime-backups/sellable-stock-2026-07-19T02-32-27-704Z",
+  "procedures": [
+    "dbo.API_DanhsachTonKho_AI",
+    "dbo.API_UpsellGoiY_AI",
+    "dbo.API_DeXuatKhuyenMai_AI"
+  ],
+  "smoke": [
+    {
+      "username": "QLBH013.MED",
+      "inventoryRows": 628,
+      "sellableInventoryRows": 473,
+      "allowedWarehouseCount": 3,
+      "returnedWarehouseCount": 3,
+      "upsellRows": 10,
+      "promotionRows": 50,
+      "status": "PASS"
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "inventoryRows": 628,
+      "sellableInventoryRows": 473,
+      "allowedWarehouseCount": 3,
+      "returnedWarehouseCount": 3,
+      "upsellRows": 10,
+      "promotionRows": 0,
+      "status": "PASS"
+    }
+  ],
+  "limitation": "ERP reservation/blocked-stock behavior is still awaiting owner confirmation."
+}

@@ -1,0 +1,16 @@
+{
+  "status": "N8N_ACTIVE_VERSION_PUBLISH_PASS",
+  "publishedAt": "2026-07-19T15:39:45.389Z",
+  "backupDir": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\natural-language-p0\\shadow-main-auth-retry-20260719",
+  "workflows": [
+    {
+      "id": "mQ2X8ubexBpqD3Ru",
+      "name": "MAIN_ChatBot_V5",
+      "activeVersionId": "e9ae83de-9ea2-4c9e-9d50-9e4568fa1252",
+      "beforeNodesSha256": "D12C442CA97C0D975536724A69818A1E814F1775ADF0F3591B18C9019D65D720",
+      "afterNodesSha256": "2F23C4A822DCEACAD9813FCD786881F5767FCA1ECE126AE80CFB7DA2DEAA5CC2",
+      "beforeConnectionsSha256": "CAE9BBAE40D69468EF23463758922ADB8FC78B7DD09C4D768E43BC8DE2F19DFC",
+      "afterConnectionsSha256": "CAE9BBAE40D69468EF23463758922ADB8FC78B7DD09C4D768E43BC8DE2F19DFC"
+    }
+  ]
+}

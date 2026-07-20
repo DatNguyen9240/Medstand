@@ -1,0 +1,64 @@
+{
+  "suite": "business-rule-v1-full-test",
+  "checkedAt": "2026-07-18",
+  "status": "TECHNICAL_RUNTIME_PASS_BUSINESS_APPROVAL_PENDING",
+  "static": {
+    "businessRuleChecks": "44/44 PASS",
+    "p0": "PASS",
+    "releaseBuild": "PASS",
+    "jsonParse": "PASS",
+    "diffCheck": "PASS"
+  },
+  "sqlAndApiRuntime": {
+    "sqlObjects": "8/8 MEDTEST_RUNTIME_PASS",
+    "accounts": "13/13 PASS",
+    "readCommands": "312/312 PASS",
+    "mutationDenied": "52/52 PASS"
+  },
+  "browserE2E": {
+    "passed": 21,
+    "skippedBySandboxGuard": 2,
+    "unexpected": 0,
+    "result": "PASS"
+  },
+  "securityAndAudit": {
+    "auditRows": "8/8 PASS",
+    "transactionOutcome": "PASS",
+    "idempotencyHash": "SHA256 PASS",
+    "liveAuth": "40/44 PASS, 4 BLOCKED, 0 FAIL",
+    "liveAuthBlocker": "Missing unmapped/no-scope fixture tokens"
+  },
+  "mainChat": {
+    "businessRead": "PASS",
+    "ambiguousSymptom": "PASS_ASK_CLARIFICATION",
+    "specificSymptom": "PASS_HTTP_200_JSON_10_ROWS",
+    "apiCode": "@tim_san_pham_theo_trieu_chung",
+    "stockContract": "PhysicalStock=NULL, AvailableStock=NULL, PHYSICAL_STOCK_NOT_QUERIED",
+    "medicalContract": "REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED_WITH_DISCLAIMER",
+    "ruleVersion": "BR-MED-V1-DRAFT"
+  },
+  "activeCatalog": {
+    "count": 24,
+    "inactiveCodesRemoved": [
+      "@khach_hang_list",
+      "@dashboard_sinh_nhat"
+    ],
+    "staleExecutePolicy": "403 API_NOT_ALLOWLISTED",
+    "staleConfigPolicy": "404 CONFIG_NOT_FOUND"
+  },
+  "frontend": {
+    "contract": "PASS",
+    "build": "PASS",
+    "nullAvailableStock": "Chưa xác định",
+    "backendFieldLabels": "PASS",
+    "errorTaxonomy": "PASS"
+  },
+  "remainingBusinessBlockers": [
+    "Payment-ledger and VAT approval",
+    "Available-stock schema and freshness source",
+    "Check-in source",
+    "Discount and medical-content approval",
+    "Business sign-off"
+  ],
+  "credentialsRecorded": false
+}

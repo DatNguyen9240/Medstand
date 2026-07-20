@@ -41,7 +41,7 @@ BEGIN TRY
             ''@tich_luy'', ''@tuyen_ban_hang'', ''@goi_ydon_hang'', ''@upsell_goi_y'',
             ''@goi_ydon_thuoc'', ''@danh_sach_tonkho'', ''@tra_cuu_san_pham'',
             ''@san_pham_trong_tam'', ''@de_xuat_khuyen_mai'', ''@danh_muc'',
-            ''@khach_hang_list'', ''@dashboard_sinh_nhat'', ''@khao_sat360'',
+            ''@khao_sat360'',
             ''@danh_sach_cau_hoi_khao_sat'', ''@kiem_tra_khao_sat'',
             ''@kiem_tra_khao_sat_ngay'', ''@lich_su_khao_sat'', ''@thong_bao'',
             ''@tim_san_pham_theo_trieu_chung''

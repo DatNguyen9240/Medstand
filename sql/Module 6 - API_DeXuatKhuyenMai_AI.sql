@@ -2,131 +2,193 @@ CREATE OR ALTER PROCEDURE [dbo].[API_DeXuatKhuyenMai_AI]
     @Username VARCHAR(50) = ''
 AS
 BEGIN
-    SET NOCOUNT ON
-    DECLARE @SYSBranchID VARCHAR(50) = ''
-    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    SET NOCOUNT ON;
 
-    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    DECLARE @SYSBranchID VARCHAR(50) = '';
+    DECLARE @SYSUserGroupID VARCHAR(50) = '';
+    DECLARE @EmployeeID VARCHAR(50) = '';
+    DECLARE @IsGlobal BIT = 0;
+    DECLARE @IsManager BIT = 0;
+    DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
+
+    SELECT
+        @SYSBranchID = COALESCE(BranchID, ''),
+        @SYSUserGroupID = COALESCE(UserGroupID, ''),
+        @EmployeeID = COALESCE(EmployeeID, ''),
+        @IsGlobal = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
+        @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) = 'QL' THEN 1 ELSE 0 END
+    FROM dbo.SY_User WITH (NOLOCK)
+    WHERE UserName = @Username
+      AND COALESCE(Disable, 0) = 0;
+
+    IF @SYSUserGroupID = ''
     BEGIN
-        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
-        RETURN
-    END
+        SELECT N'User không tồn tại hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-    SELECT @SYSBranchID = COALESCE(BranchID, ''),
-           @SYSUserGroupID = COALESCE(UserGroupID, '')
-    FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
-
-    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    /*
+       Sale chỉ được xem chương trình APPROVED_ACTIVE của công ty. Schema medtest
+       hiện chưa có cột/bảng chứng minh trạng thái phê duyệt của AR_PromotionTbl,
+       vì vậy không được dùng isDisable/ngày hiệu lực để giả định là đã duyệt.
+       Khi owner ERP xác nhận nguồn approval, nhánh này mới được nối dữ liệu thật.
+    */
+    IF @IsGlobal = 0 AND @IsManager = 0
     BEGIN
-        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
-        RETURN
-    END
+        SELECT TOP (0)
+            CAST(NULL AS VARCHAR(50)) AS ProgramID,
+            CAST(NULL AS NVARCHAR(250)) AS ProgramName,
+            CAST(NULL AS DATETIME) AS EffectiveFrom,
+            CAST(NULL AS DATETIME) AS EffectiveTo,
+            CAST(NULL AS NVARCHAR(50)) AS ProgramStatus,
+            CAST(NULL AS NVARCHAR(50)) AS ViewMode,
+            CAST(NULL AS NVARCHAR(50)) AS Audience,
+            CAST(NULL AS NVARCHAR(50)) AS RuleVersion;
+        RETURN;
+    END;
 
-    -- 1. ĐỌC CẤU HÌNH CHIẾT KHẤU ĐỘNG TỪ DATABASE
-    -- Cấu hình xả hàng khẩn cấp (< 3 tháng)
-    DECLARE @XaSauKhapCap_Thang INT = 3
-    DECLARE @XaSauKhapCap_PhanTram DECIMAL(5,2) = 50.00
-    SELECT TOP 1 
-        @XaSauKhapCap_Thang = NguongThoiGian_Thang, 
-        @XaSauKhapCap_PhanTram = PhanTramDeXuat 
-    FROM dbo.AR_AI_DiscountConfigTbl 
-    WHERE LoaiDeXuat = 'XA_HANG_SAU' 
-      AND NguongThoiGian_Thang <= 3 
-      AND IsActive = 1
-      AND (TuNgay IS NULL OR TuNgay <= GETDATE())
-      AND (DenNgay IS NULL OR DenNgay >= GETDATE())
-    ORDER BY NguongThoiGian_Thang ASC, PhanTramDeXuat DESC
+    INSERT INTO @AllowedStores (StoreHouseID)
+    SELECT DISTINCT US.StoreHouseID
+    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+    WHERE US.UserName = @Username
+      AND ISNULL(US.StoreHouseID, '') <> '';
 
-    -- Cấu hình xả hàng cận date (< 6 tháng)
-    DECLARE @XaSauCanDate_Thang INT = 6
-    DECLARE @XaSauCanDate_PhanTram DECIMAL(5,2) = 25.00
-    SELECT TOP 1 
-        @XaSauCanDate_Thang = NguongThoiGian_Thang, 
-        @XaSauCanDate_PhanTram = PhanTramDeXuat 
-    FROM dbo.AR_AI_DiscountConfigTbl 
-    WHERE LoaiDeXuat = 'XA_HANG_SAU' 
-      AND NguongThoiGian_Thang > 3 AND NguongThoiGian_Thang <= 6
-      AND IsActive = 1
-      AND (TuNgay IS NULL OR TuNgay <= GETDATE())
-      AND (DenNgay IS NULL OR DenNgay >= GETDATE())
-    ORDER BY NguongThoiGian_Thang ASC, PhanTramDeXuat DESC
+    IF @IsManager = 1 AND ISNULL(@EmployeeID, '') <> ''
+    BEGIN
+        INSERT INTO @AllowedStores (StoreHouseID)
+        SELECT DISTINCT US.StoreHouseID
+        FROM dbo.SY_User U WITH (NOLOCK)
+        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+          ON US.UserName = U.UserName
+        WHERE U.ManagerID = @EmployeeID
+          AND ISNULL(U.Disable, 0) = 0
+          AND ISNULL(US.StoreHouseID, '') <> ''
+          AND NOT EXISTS (
+              SELECT 1
+              FROM @AllowedStores A
+              WHERE A.StoreHouseID = US.StoreHouseID
+          );
+    END;
 
-    -- Cấu hình đẩy hàng chậm (combo)
-    DECLARE @ComboDayHang_Thang INT = 6
-    DECLARE @ComboDayHang_PhanTram DECIMAL(5,2) = 15.00
-    SELECT TOP 1 
-        @ComboDayHang_Thang = NguongThoiGian_Thang, 
-        @ComboDayHang_PhanTram = PhanTramDeXuat 
-    FROM dbo.AR_AI_DiscountConfigTbl 
-    WHERE LoaiDeXuat = 'COMBO_DAY_HANG' 
-      AND IsActive = 1
-      AND (TuNgay IS NULL OR TuNgay <= GETDATE())
-      AND (DenNgay IS NULL OR DenNgay >= GETDATE())
-    ORDER BY NguongThoiGian_Thang DESC, PhanTramDeXuat DESC
+    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    BEGIN
+        SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
+    /* Tồn vật lý còn lại theo lô trong đúng phạm vi kho của Manager/Admin. */
+    SELECT
+        T.ItemID,
+        T.StoreHouseID,
+        T.Lot,
+        T.ExpireDate,
+        SUM(ISNULL(T.Quantity, 0)) AS RemainingPhysical
+    INTO #StockByLot
+    FROM dbo.IV_StockTransactionTbl T WITH (NOLOCK)
+    WHERE @IsGlobal = 1
+       OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
+    GROUP BY T.ItemID, T.StoreHouseID, T.Lot, T.ExpireDate
+    HAVING SUM(ISNULL(T.Quantity, 0)) > 0;
 
-    -- 2. Tính tốc độ bán (Số lượng trung bình bán ra mỗi ngày trong 30 ngày qua)
-    SELECT D.ItemID, SUM(D.Quantity) / 30.0 AS TocDo INTO #V 
-    FROM AR_InvoiceDetailTbl D JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID 
-    WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE()) 
-      AND ISNULL(I.StatusID, 0) != 10 
-      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID) 
-    GROUP BY D.ItemID
-
-    -- 3. Lấy hạn dùng gần nhất của các mặt hàng (Chỉ lấy lô còn hiệu lực)
-    SELECT ItemID, MIN(ExpireDate) AS HanDungNhat 
-    INTO #Lot 
-    FROM CF_LotTbl 
-    WHERE ExpireDate >= GETDATE()
+    SELECT
+        ItemID,
+        SUM(RemainingPhysical) AS PhysicalStock,
+        SUM(CASE
+            WHEN ExpireDate IS NULL OR CAST(ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
+                THEN RemainingPhysical
+            ELSE 0
+        END) AS AvailableStock,
+        MIN(CASE WHEN ExpireDate >= GETDATE() THEN ExpireDate END) AS NearestExpireDate
+    INTO #PhysicalStock
+    FROM #StockByLot
     GROUP BY ItemID
+    HAVING SUM(RemainingPhysical) > 0;
 
-    -- 4. Đề xuất chiến lược Khuyến mại (Bản Final)
-    SELECT 
-        I.ItemID, CF.ItemName, CF.Unit,
-        CAST(I.QuantityinStock AS INT) AS TonKho,
-        L.HanDungNhat AS HanDung,
-        CASE 
-            WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauCanDate_Thang, GETDATE()) THEN N'XẢ HÀNG SÂU'
-            WHEN I.QuantityinStock > 0 AND (ISNULL(V.TocDo,0) = 0 OR (I.QuantityinStock / NULLIF(V.TocDo, 0)) > (@ComboDayHang_Thang * 30)) 
-                THEN N'COMBO/ĐẨY HÀNG'
-            ELSE N'THEO DÕI' 
+    /* Tốc độ bán 30 ngày chỉ dùng hóa đơn hoàn tất trong phạm vi chi nhánh. */
+    SELECT
+        D.ItemID,
+        SUM(ISNULL(D.Quantity, 0)) / 30.0 AS DailySalesVelocity
+    INTO #SalesVelocity
+    FROM dbo.AR_InvoiceDetailTbl D WITH (NOLOCK)
+    JOIN dbo.AR_InvoiceTbl I WITH (NOLOCK)
+      ON I.DocumentID = D.DocumentID
+    WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
+      AND I.StatusID IN (3, 6, 7, 8)
+      AND (@IsGlobal = 1 OR I.BranchID = @SYSBranchID)
+    GROUP BY D.ItemID;
+
+    ;WITH Candidate AS (
+        SELECT
+            S.ItemID,
+            Item.ItemName,
+            Item.Unit,
+            S.PhysicalStock,
+            S.AvailableStock,
+            S.NearestExpireDate,
+            ISNULL(V.DailySalesVelocity, 0) AS DailySalesVelocity,
+            CASE
+                WHEN S.NearestExpireDate <= DATEADD(MONTH, 3, GETDATE()) THEN N'NEAR_EXPIRY_URGENT'
+                WHEN S.NearestExpireDate <= DATEADD(MONTH, 6, GETDATE()) THEN N'NEAR_EXPIRY'
+                WHEN ISNULL(V.DailySalesVelocity, 0) = 0 THEN N'NO_SALES_30D'
+                WHEN S.PhysicalStock / NULLIF(V.DailySalesVelocity, 0) > 180 THEN N'HIGH_STOCK_SLOW_MOVING'
+                ELSE N'MONITOR'
+            END AS ProposalReasonCode
+        FROM #PhysicalStock S
+        JOIN dbo.CF_ItemTbl Item WITH (NOLOCK)
+          ON Item.ItemID = S.ItemID
+        LEFT JOIN #SalesVelocity V
+          ON V.ItemID = S.ItemID
+        WHERE ISNULL(Item.ItemGroupID, '') = 'HH1'
+    )
+    SELECT TOP (50)
+        C.ItemID,
+        C.ItemName,
+        C.Unit,
+        CAST(C.PhysicalStock AS DECIMAL(18, 2)) AS TonKho,
+        CAST(C.PhysicalStock AS DECIMAL(18, 2)) AS PhysicalStock,
+        CAST(C.AvailableStock AS DECIMAL(18, 2)) AS AvailableStock,
+        CASE
+            WHEN C.AvailableStock > 0 THEN N'PHYSICAL_AS_SELLABLE_TEMPORARY'
+            ELSE N'EXPIRED_NOT_SELLABLE'
+        END AS StockDataStatus,
+        C.NearestExpireDate AS HanDung,
+        C.ProposalReasonCode,
+        CASE C.ProposalReasonCode
+            WHEN N'NEAR_EXPIRY_URGENT' THEN N'Hạn dùng còn dưới 3 tháng; cần kiểm tra lô và xem xét phương án xử lý.'
+            WHEN N'NEAR_EXPIRY' THEN N'Hạn dùng còn dưới 6 tháng; cần theo dõi và xem xét chương trình phù hợp.'
+            WHEN N'NO_SALES_30D' THEN N'Không phát sinh bán trong 30 ngày gần nhất.'
+            WHEN N'HIGH_STOCK_SLOW_MOVING' THEN N'Tồn vật lý cao so với tốc độ bán 30 ngày gần nhất.'
+            ELSE N'Cần tiếp tục theo dõi.'
+        END AS ProposalReason,
+        CASE C.ProposalReasonCode
+            WHEN N'NEAR_EXPIRY_URGENT' THEN N'CẬN HẠN KHẨN CẤP'
+            WHEN N'NEAR_EXPIRY' THEN N'CẬN HẠN'
+            WHEN N'NO_SALES_30D' THEN N'CHẬM BÁN'
+            WHEN N'HIGH_STOCK_SLOW_MOVING' THEN N'TỒN CAO / BÁN CHẬM'
+            ELSE N'THEO DÕI'
         END AS LoaiDeXuat,
-        CASE 
-            WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauCanDate_Thang, GETDATE()) THEN
-                CASE WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauKhapCap_Thang, GETDATE()) THEN @XaSauKhapCap_PhanTram ELSE @XaSauCanDate_PhanTram END
-            WHEN I.QuantityinStock > 0 AND (ISNULL(V.TocDo,0) = 0 OR (I.QuantityinStock / NULLIF(V.TocDo, 0)) > (@ComboDayHang_Thang * 30)) THEN @ComboDayHang_PhanTram
-            ELSE 0.00
-        END AS PhanTramDeXuat,
-        CASE 
-            -- Trường hợp cận date
-            WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauKhapCap_Thang, GETDATE()) 
-                THEN N'KHẨN CẤP: Hạn dùng chỉ còn < ' + CAST(@XaSauKhapCap_Thang AS VARCHAR) + N' tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Đề xuất giảm giá ' + CAST(CAST(@XaSauKhapCap_PhanTram AS INT) AS VARCHAR) + N'% để xả ngay!'
-            WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauCanDate_Thang, GETDATE()) 
-                THEN N'CẬN DATE: Hạn dùng còn < ' + CAST(@XaSauCanDate_Thang AS VARCHAR) + N' tháng (' + CONVERT(VARCHAR, L.HanDungNhat, 103) + N'). Đề xuất giảm giá ' + CAST(CAST(@XaSauCanDate_PhanTram AS INT) AS VARCHAR) + N'%.'
-            
-            -- Trường hợp hàng chậm, vòng quay thấp
-            WHEN I.QuantityinStock > 0 AND ISNULL(V.TocDo,0) = 0 
-                THEN N'⚡ CẢNH BÁO: Hàng chậm bán (30 ngày qua không bán được). Đề xuất chiết khấu ' + CAST(CAST(@ComboDayHang_PhanTram AS INT) AS VARCHAR) + N'% khi chạy combo tặng kèm.'
-            WHEN I.QuantityinStock > 0 AND (I.QuantityinStock / NULLIF(V.TocDo, 0)) > (@ComboDayHang_Thang * 30) 
-                THEN N'📦 TỒN KHO CAO: Dự kiến ' + CAST(CAST(I.QuantityinStock / NULLIF(V.TocDo, 0) AS INT) AS VARCHAR) + N' ngày mới hết. Khuyến khích giảm ' + CAST(CAST(@ComboDayHang_PhanTram AS INT) AS VARCHAR) + N'% khi ghép combo.'
-            
-            ELSE N'Ổn định: Tốc độ bán tốt.'
-        END AS ChiTietAI
-    FROM IV_StockTbl I 
-    JOIN CF_ItemTbl CF ON I.ItemID = CF.ItemID 
-    LEFT JOIN #V V ON I.ItemID = V.ItemID
-    LEFT JOIN #Lot L ON I.ItemID = L.ItemID
-    WHERE I.QuantityinStock > 0 
-      AND ISNULL(CF.ItemGroupID, '') = 'HH1' -- Lọc hàng HH1
-    ORDER BY 
-        -- Ưu tiên hàng cận date lên đầu, sau đó đến hàng chậm
-        CASE WHEN L.HanDungNhat <= DATEADD(MONTH, @XaSauCanDate_Thang, GETDATE()) THEN 1 
-             WHEN ISNULL(V.TocDo,0) = 0 THEN 2 
-             ELSE 3 END ASC, 
-        TonKho DESC
+        CAST(NULL AS DECIMAL(5, 2)) AS PhanTramDeXuat,
+        N'AI không tự đề xuất mức giảm giá. Manager/Admin cần kiểm tra và gửi người có thẩm quyền quyết định.' AS ChiTietAI,
+        N'REFERENCE_ONLY_APPROVAL_REQUIRED' AS ActionStatus,
+        N'PENDING_COMPANY_APPROVAL' AS ApprovalStatus,
+        N'MANAGER_REVIEW' AS ViewMode,
+        N'MANAGER_ADMIN' AS Audience,
+        N'IV_StockTransactionTbl' AS DataSource,
+        N'BR-ACTION-V1-DRAFT' AS RuleVersion
+    FROM Candidate C
+    WHERE C.ProposalReasonCode <> N'MONITOR'
+    ORDER BY
+        CASE C.ProposalReasonCode
+            WHEN N'NEAR_EXPIRY_URGENT' THEN 1
+            WHEN N'NEAR_EXPIRY' THEN 2
+            WHEN N'NO_SALES_30D' THEN 3
+            WHEN N'HIGH_STOCK_SLOW_MOVING' THEN 4
+            ELSE 5
+        END,
+        C.PhysicalStock DESC;
 
-    DROP TABLE #V; DROP TABLE #Lot;
-END
-
-
-
+    DROP TABLE #SalesVelocity;
+    DROP TABLE #PhysicalStock;
+    DROP TABLE #StockByLot;
+END;
+GO

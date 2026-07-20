@@ -67,7 +67,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [800, 0],
-      "credentials": { "openAiApi": { "id": "NUWWHWYzGHV6GY0g", "name": "OpenAi account" } }
+      "credentials": { "openAiApi": { "id": "frs6ZRDbNFeYhZf7", "name": "OpenAi account" } }
     },
     {
       "parameters": {
@@ -118,7 +118,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [1600, 0],
-      "credentials": { "openAiApi": { "id": "NUWWHWYzGHV6GY0g", "name": "OpenAi account" } }
+      "credentials": { "openAiApi": { "id": "frs6ZRDbNFeYhZf7", "name": "OpenAi account" } }
     },
     {
       "parameters": {

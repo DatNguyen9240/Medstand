@@ -1,0 +1,16 @@
+{
+  "status": "N8N_ACTIVE_VERSION_PUBLISH_PASS",
+  "publishedAt": "2026-07-18T16:33:23.727Z",
+  "backupDir": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\runtime-backups\\cham-diem-validation-20260718-2330",
+  "workflows": [
+    {
+      "id": "fCJwiyAT9r6eh1ys",
+      "name": "K0-C · Execute API",
+      "activeVersionId": "5d197230-0842-4f34-93fc-124b02762cc7",
+      "beforeNodesSha256": "B3E14C39C3915904D81ADC4C521605ED1FE8EA75C04BE983D3CD10C2D6E19967",
+      "afterNodesSha256": "42ABCA31E91B92B5AA75DA3C0A6C2E4DD5F63FA638E05DA8B32353BD870B7EEC",
+      "beforeConnectionsSha256": "0F91E4AAE18E58F6F1E136F78ED68C14B6442F66D646E140856CA1B98A45C620",
+      "afterConnectionsSha256": "0F91E4AAE18E58F6F1E136F78ED68C14B6442F66D646E140856CA1B98A45C620"
+    }
+  ]
+}

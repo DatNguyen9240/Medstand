@@ -121,7 +121,7 @@
         // Dùng ApiEngine.invalidateCache() để force refresh ngay lập tức
         CACHE_TTL: 2 * 60 * 1000,
 
-        CACHE_KEY: 'api_engine_v3_list',
+        CACHE_KEY: 'api_engine_v4_list',
 
 
 
@@ -804,6 +804,11 @@
         var code = String(api && api.ApiCode || '').toLowerCase();
         if (code === '@hoa_don_chi_tiet') return 'Chi tiết hóa đơn';
         if (code === '@hoa_don') return 'Hóa đơn';
+        if (code === '@de_xuat_khuyen_mai') {
+            return _getCurrentUserScope().isManager
+                ? 'Sản phẩm cần xem xét khuyến mãi'
+                : 'Khuyến mãi công ty';
+        }
         return String(api && (api.DisplayName || api.ApiCode) || '');
     }
 
@@ -921,6 +926,12 @@
     function _friendlyApiMessage(message, fallback) {
         var raw = String(message || '').trim();
         if (!raw) return fallback || 'Không thể thực hiện yêu cầu. Vui lòng thử lại.';
+        if (/IDENTITY_MAPPING_NOT_FOUND|Authenticated identity is not mapped to an internal account/i.test(raw)) {
+            return 'Phiên đăng nhập chưa gắn đúng với tài khoản nội bộ. Vui lòng đăng xuất, đăng nhập lại; nếu vẫn lỗi hãy liên hệ quản trị viên.';
+        }
+        if (/AUTH_TOKEN_INVALID|token could not be verified|token expired|unauthorized|401/i.test(raw)) {
+            return 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.';
+        }
         if (/không có quyền|khong co quyen|forbidden|403/i.test(raw)) {
             return 'Bạn không có quyền xem dữ liệu này.';
         }
@@ -4206,6 +4217,24 @@
 
 
 
+        // Guard cứng cho các API bắt buộc tham số. Guard này vẫn hoạt động khi metadata
+        // đang tải, tránh gửi request thiếu tham số rồi mới nhận lỗi 422 chung từ backend.
+        var activeValidationCode = String(_activeApi && _activeApi.apiCode || '').toLowerCase();
+        if ((activeValidationCode === '@goi_ydon_hang' || activeValidationCode === '@upsell_goi_y')
+            && !params['@MaKhachHang'] && !params['@ObjectID']) {
+            if (_cbMsg) _cbMsg('ai', activeValidationCode === '@upsell_goi_y'
+                ? 'Vui lòng chọn khách hàng trước khi xem gợi ý bán kèm.'
+                : 'Vui lòng chọn khách hàng trước khi xem gợi ý đơn hàng.');
+            try { _menuShowParams(''); if (_inputEl) _inputEl.focus(); } catch (e) { }
+            return null;
+        }
+        if (activeValidationCode === '@goi_ydon_thuoc'
+            && !params['@timkiem'] && !params['@ItemID'] && !params['@itemid']) {
+            if (_cbMsg) _cbMsg('ai', 'Vui lòng chọn sản phẩm gốc trước khi xem gợi ý sản phẩm liên quan.');
+            try { _menuShowParams(''); if (_inputEl) _inputEl.focus(); } catch (e) { }
+            return null;
+        }
+
         var contractValidationMessage = '';
         if (_activeApi && _activeApi.config) {
             var contractFields = (_activeApi.config.filters && _activeApi.config.filters.length > 0)
@@ -4475,8 +4504,9 @@
                 _cbHide && _cbHide();
 
                 var r = typeof res === 'string' ? res : (res.message || res.reply || '');
+                var responseStatus = String(res && res.status || '').toUpperCase();
 
-                if (res && (res.success === false || res.status === 'error')) {
+                if (res && (res.success === false || res.status === 'error' || responseStatus === 'ERROR')) {
                     var friendlyError = /Missing para or Object not support/i.test(r)
                         ? 'Yêu cầu chưa được hỗ trợ hoặc đang thiếu tham số bắt buộc. Vui lòng kiểm tra lại thông tin tra cứu.'
                         : 'Không thể thực hiện yêu cầu. Vui lòng thử lại hoặc liên hệ quản trị viên.';
@@ -4498,6 +4528,10 @@
                 
 
                 var arrData = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : null);
+
+                if (responseStatus !== 'SUCCESS' && ['NO_DATA', 'OUT_OF_SCOPE', 'VALIDATION_ERROR', 'SYSTEM_ERROR'].indexOf(responseStatus) !== -1) {
+                    arrData = [];
+                }
 
                 if (arrData && arrData.length > 0) {
 
@@ -4545,7 +4579,14 @@
 
                     if (dataRows.length === 0) {
 
-                        _cbMsg && _cbMsg('ai', 'Dạ, em không tìm thấy dữ liệu nào phù hợp với điều kiện vừa lọc ạ.');
+                        var emptyCode = String(res.errorCode ?? res.code ?? 'NO_DATA').toUpperCase();
+                        var emptyMessages = {
+                            NO_DATA: 'Không có dữ liệu phù hợp với điều kiện tra cứu.',
+                            OUT_OF_SCOPE: 'Bạn không có quyền xem dữ liệu này trong phạm vi được giao.',
+                            VALIDATION_ERROR: 'Thông tin tra cứu chưa hợp lệ. Vui lòng kiểm tra và thử lại.',
+                            SYSTEM_ERROR: 'Hệ thống chưa thể tải dữ liệu. Vui lòng thử lại sau.'
+                        };
+                        _cbMsg && _cbMsg('ai', emptyMessages[emptyCode] ?? emptyMessages.NO_DATA);
 
                         return;
 
@@ -4559,6 +4600,7 @@
 
                         var dtToRender = dataRows.length ? dataRows : arrData;
 
+                        var responseMetadata = res.metadata ?? res.meta ?? {};
                         var html = _cbRender(dtToRender, r || ('🔍 Tìm thấy ' + dtToRender.length + ' kết quả'), apiCode, {
 
                             uiTemplate: uiTpl,
@@ -4567,7 +4609,11 @@
 
                             queryParams: Object.assign({}, params),
 
-                            khCode: ''  // engine khng c context khCode, chatbot.js sẽ tự resolve
+                            khCode: '',  // engine khng c context khCode, chatbot.js sẽ tự resolve
+                            responseMetadata: responseMetadata,
+                            requestId: res.requestId ?? responseMetadata.requestId ?? null,
+                            contractVersion: res.contractVersion ?? responseMetadata.contractVersion ?? null,
+                            status: res.errorCode ?? res.code ?? res.status ?? null
 
                         });
 
@@ -5569,11 +5615,13 @@
                 params: params || {},
                 username: _user()
             }).then(function (res) {
-                if (res && (res.success === false || res.status === 'error')) {
+                var contractStatus = String(res && res.status || '').toUpperCase();
+                if (res && (res.success === false || res.status === 'error' || ['OUT_OF_SCOPE', 'VALIDATION_ERROR', 'SYSTEM_ERROR'].indexOf(contractStatus) !== -1)) {
                     var apiError = new Error(res.message || res.reply || 'API error');
-                    apiError.code = res.code || 'API_ERROR';
+                    apiError.code = res.errorCode || res.code || contractStatus || 'API_ERROR';
                     throw apiError;
                 }
+                if (contractStatus === 'NO_DATA') return [];
                 if (Array.isArray(res) && res.length === 1 && Array.isArray(res[0])) res = res[0];
                 if (res && Array.isArray(res.data) && res.data.length === 1 && Array.isArray(res.data[0])) res.data = res.data[0];
                 var rows = Array.isArray(res) ? res : (res && Array.isArray(res.data) ? res.data : []);
@@ -5591,6 +5639,10 @@
             if (!apiCode) return 'DEFAULT';
 
             var codeClean = apiCode.startsWith('@') ? apiCode : '@' + apiCode;
+
+            // Debt APIs must use the business-rule renderer even when the
+            // remote API catalog has no UiTemplate metadata yet.
+            if (codeClean.indexOf('@cong_no') === 0) return 'CONG_NO';
 
             // 1. Check in config cache
 

@@ -1,9 +1,7 @@
 USE medtest;
 GO
 
-IF OBJECT_ID('API_GoiYDonThuoc_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonThuoc_AI;
-GO
-CREATE PROCEDURE API_GoiYDonThuoc_AI
+CREATE OR ALTER PROCEDURE API_GoiYDonThuoc_AI
     @Username VARCHAR(50) = '',
     @timkiem NVARCHAR(500) = ''
 AS
@@ -11,6 +9,27 @@ BEGIN
     SET NOCOUNT ON;
     SET ANSI_WARNINGS OFF;
     SET @timkiem = REPLACE(REPLACE(@timkiem, '"', ''), '''', '');
+
+    IF NULLIF(LTRIM(RTRIM(@Username)), '') IS NULL
+       OR NOT EXISTS (
+           SELECT 1 FROM dbo.SY_User WITH (NOLOCK)
+           WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+       )
+    BEGIN
+        SELECT N'Phiên đăng nhập không xác định được tài khoản nội bộ. Vui lòng đăng nhập lại.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity;
+        RETURN;
+    END
+
+    IF NULLIF(LTRIM(RTRIM(@timkiem)), '') IS NULL
+    BEGIN
+        SELECT N'Vui lòng chọn sản phẩm gốc hoặc nhập tên sản phẩm để xem gợi ý liên quan.' AS Msg,
+               1 AS MsgType,
+               N'VALIDATION_ERROR' AS Severity,
+               N'MISSING_PRODUCT_KEYWORD' AS Code;
+        RETURN;
+    END
    
     -- Chuẩn hóa các liên từ nối tiếng Việt thành dấu phẩy đề phòng n8n chưa xử lý
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng with ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
@@ -64,7 +83,9 @@ BEGIN
         CF.ItemID, CF.ItemName, CF.Unit, CF.TuKhoa,
         N'Gợi ý Medstand cho: ' + K.TuKhoa AS LyDoGoiY
     FROM CF_ItemTbl CF JOIN @Keys K ON (
-        N' ' + REPLACE(REPLACE(REPLACE(CF.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
+        CF.ItemID = K.TuKhoa
+        OR CF.ItemName LIKE N'%' + K.TuKhoa + N'%'
+        OR N' ' + REPLACE(REPLACE(REPLACE(CF.ItemName, ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
         OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(CF.TuKhoa,''), ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
     )
     WHERE ISNULL(CF.isDisable, 0) = 0
@@ -100,34 +121,53 @@ BEGIN
         N'GỢI Ý BÁN KÈM: Sản phẩm thường xuyên "cặp bài trùng" trong cùng hóa đơn', 2
     FROM AR_InvoiceDetailTbl D
     JOIN AR_InvoiceTbl I ON D.DocumentID = I.DocumentID
+    JOIN dbo.AR_GetObjectByUserFnc(@Username) AO ON AO.ObjectID = I.ObjectID
     JOIN AR_InvoiceDetailTbl D_Other ON I.DocumentID = D_Other.DocumentID
     JOIN CF_ItemTbl CF ON D_Other.ItemID = CF.ItemID
     WHERE D.ItemID IN (SELECT ItemID FROM @Table1)
       AND D_Other.ItemID NOT IN (SELECT ItemID FROM @Table1)
       AND D_Other.ItemID NOT IN (SELECT ItemID FROM @FinalGoiY)
       AND I.DocumentDate >= DATEADD(month, -6, GETDATE())
+      AND I.StatusID IN (3, 6, 7, 8)
       AND ISNULL(CF.isDisable, 0) = 0
       AND ISNULL(CF.ItemGroupID, '') = 'HH1'
     GROUP BY CF.ItemID, CF.ItemName, CF.Unit
     ORDER BY COUNT(DISTINCT I.DocumentID) DESC;
 
     -- Xóa cờ 2 bảng, dồn hết về bảng cuối
-    INSERT INTO @FinalGoiY (ItemID, ItemName, Unit, CanhBaoAI, Priority)
-    SELECT ItemID, ItemName, Unit, LyDoGoiY, 0 FROM @Table1;
+    -- @Table1 chỉ là sản phẩm gốc; không trả chính sản phẩm gốc như một gợi ý mới.
 
     -- Nếu không tìm thấy kết quả nào, trả về thông báo lỗi thân thiện để Chatbot hiển thị
     IF NOT EXISTS (SELECT 1 FROM @FinalGoiY)
     BEGIN
-        SELECT 
-            'N/A' AS ItemID, 
-            N'Không tìm thấy sản phẩm gốc' AS ItemName, 
-            '' AS Unit, 
-            N'Vui lòng kiểm tra lại từ khóa (Ví dụ: tên thuốc phải chính xác). Hệ thống cần 1 sản phẩm mồi để phân tích bán chéo.' AS CanhBaoAI;
+        IF EXISTS (SELECT 1 FROM @Table1)
+        BEGIN
+            DECLARE @RootProductName NVARCHAR(500) = NULL;
+            SELECT TOP 1 @RootProductName = ItemName FROM @Table1 ORDER BY ItemName;
+            SELECT CONCAT(
+                       N'Đã tìm thấy sản phẩm gốc ', @RootProductName,
+                       N' nhưng chưa có đủ hóa đơn hoàn tất trong phạm vi tài khoản để xác định sản phẩm thường mua kèm.'
+                   ) AS Msg,
+                   0 AS MsgType,
+                   N'NO_DATA' AS Severity,
+                   N'NO_RELATED_PRODUCT_HISTORY' AS Code;
+        END
+        ELSE
+        BEGIN
+            SELECT N'Không tìm thấy sản phẩm khớp với từ khóa. Hãy chọn sản phẩm từ danh sách hoặc kiểm tra lại tên.' AS Msg,
+                   0 AS MsgType,
+                   N'NO_DATA' AS Severity,
+                   N'PRODUCT_NOT_FOUND' AS Code;
+        END
         RETURN;
     END
 
     -- Xuất kết quả Bảng dồn sắp xếp theo thứ tự ưu tiên
-    SELECT ItemID, ItemName, Unit, CanhBaoAI FROM @FinalGoiY ORDER BY Priority ASC, ItemName ASC;
+    SELECT ItemID, ItemName, Unit, CanhBaoAI,
+           N'REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED' AS RecommendationStatus,
+           N'Thông tin chỉ để tham khảo; không thay thế chẩn đoán, kê đơn hoặc tư vấn của người có chuyên môn.' AS MedicalDisclaimer
+    FROM @FinalGoiY
+    ORDER BY Priority ASC, ItemName ASC;
 
 END
 GO

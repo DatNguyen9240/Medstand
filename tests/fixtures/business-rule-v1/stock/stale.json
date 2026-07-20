@@ -1,0 +1,11 @@
+{
+  "ApiCode": "@danh_sach_tonkho",
+  "contractVersion": "1.0.0-draft",
+  "role": "MANAGER",
+  "scope": { "branchId": "BR-DEMO", "warehouseIds": ["DL03"] },
+  "requestId": "req-fixture-stock-stale",
+  "status": "SUCCESS",
+  "errorCode": null,
+  "data": [{ "ProductCode": "SP-DEMO-003", "PhysicalStock": 40, "AvailableStock": 12, "StockDataStatus": "STALE", "StockUpdatedAt": "2026-06-01T07:45:00Z", "WarehouseScope": ["DL03"] }],
+  "metadata": { "ruleVersion": "BR-STOCK-V1-DRAFT", "source": "UAT_FIXTURE", "dataWindow": null, "updatedAt": "2026-06-01T07:45:00Z", "scope": "DL03", "freshness": "STALE" }
+}

@@ -1,11 +1,7 @@
 USE medtest;
 GO
 
-IF OBJECT_ID('dbo.API_DoanhSo_AI', 'P') IS NOT NULL
-    DROP PROCEDURE dbo.API_DoanhSo_AI;
-GO
-
-CREATE PROCEDURE [dbo].[API_DoanhSo_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_DoanhSo_AI]
     @BotType      VARCHAR(50)    = '',
     @Username     VARCHAR(50)    = '',
     @User         VARCHAR(50)    = '', -- Dashboard alias
@@ -53,9 +49,9 @@ BEGIN
     SET @TenSanPham = COALESCE(@TenSanPham, '');
     SET @LoaiBaoCao = COALESCE(@LoaiBaoCao, 'TatCa');
 
-    DECLARE @BC TABLE (EmployeeID VARCHAR(50), EmployeeName NVARCHAR(200), ManagerID VARCHAR(50), BranchID VARCHAR(50), DoanhSo MONEY);
-    DECLARE @BC2 TABLE (ObjectID VARCHAR(50), ObjectName NVARCHAR(200), DoanhSo MONEY);
-    DECLARE @BC3 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(200), SoLuong FLOAT, DoanhSo MONEY);
+    DECLARE @BC TABLE (EmployeeID VARCHAR(50), EmployeeName NVARCHAR(200), ManagerID VARCHAR(50), BranchID VARCHAR(50), DoanhSo MONEY, DoanhThuDaThu MONEY);
+    DECLARE @BC2 TABLE (ObjectID VARCHAR(50), ObjectName NVARCHAR(200), DoanhSo MONEY, DoanhThuDaThu MONEY);
+    DECLARE @BC3 TABLE (ItemID VARCHAR(50), ItemName NVARCHAR(200), SoLuong FLOAT, DoanhSo MONEY, DoanhThuDaThu MONEY);
     
     -- 1. Validate User
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE (UserName = @Username OR HoTen = @Username) AND COALESCE(Disable, 0) = 0)
@@ -249,7 +245,9 @@ BEGIN
     -- nhân viên, khách hàng và sản phẩm.
 
     -- =========================================================
-    -- ĐẶC CÁCH CHO WEB DASHBOARD 
+    -- ĐẶC CÁCH CHO WEB DASHBOARD.
+    -- AR_OrderAndReturnView là nguồn net hiện có của hệ thống; VAT chưa được
+    -- xác nhận ở schema nên không tự trừ/thêm VAT trong API.
     -- Trả về đúng format ngày tháng để vẽ Biểu Đồ và Tính Tổng
     -- =========================================================
     -- @User cũng được API chatbot truyền để xác định tài khoản đăng nhập,
@@ -260,8 +258,16 @@ BEGIN
         SELECT 
             DAY(DocumentDate) AS NgayBan,
             CAST(DocumentDate AS DATE) AS Ngay,
-            SUM(Amount) AS Amount,
-            FORMAT(SUM(Amount), '#,##0') AS [Doanh Số]
+            SUM(CASE WHEN StatusID IN (3, 6, 7, 8, 99) THEN TotalAmount ELSE 0 END) AS Amount,
+            SUM(CASE WHEN StatusID IN (3, 6, 7, 8, 99) THEN TotalAmount ELSE 0 END) AS DoanhSoDaXuat,
+            SUM(CASE WHEN StatusID IN (8, 99) THEN TotalAmount ELSE 0 END) AS DoanhThuDaThu,
+            FORMAT(SUM(CASE WHEN StatusID IN (3, 6, 7, 8, 99) THEN TotalAmount ELSE 0 END), '#,##0') AS [Doanh Số],
+            FORMAT(SUM(CASE WHEN StatusID IN (3, 6, 7, 8, 99) THEN TotalAmount ELSE 0 END), '#,##0') AS [Doanh Số Đã Xuất/Giao],
+            FORMAT(SUM(CASE WHEN StatusID IN (8, 99) THEN TotalAmount ELSE 0 END), '#,##0') AS [Doanh Thu Đã Thu],
+            N'AR_OrderAndReturnView.TotalAmount' AS RevenueBasis,
+            N'FULFILLED=3,6,7,8;COLLECTED=8;RETURN=99' AS RevenueRecognition,
+            N'COORDINATOR_DECISION' AS RuleSource,
+            N'BR-SALES-V1-C-DRAFT' AS RuleVersion
         FROM AR_OrderAndReturnView
         WHERE DocumentDate BETWEEN @TuNgay AND @DenNgay
           AND (
@@ -274,7 +280,7 @@ BEGIN
           AND (@ManagerID = '' OR ManagerID = @ManagerID)
           AND (@BranchID = '' OR BranchID = @BranchID)
           AND (@CeoID = '' OR CeoID = @CeoID)
-          AND StatusID NOT IN (-2, -1, 0)
+          AND StatusID IN (3, 6, 7, 8, 99)
         GROUP BY DAY(DocumentDate), CAST(DocumentDate AS DATE)
         ORDER BY CAST(DocumentDate AS DATE)
         
@@ -286,17 +292,18 @@ BEGIN
     -------------------------------------------------
     IF @LoaiBaoCao = 'NhanVien' OR @LoaiBaoCao = 'TatCa'
     BEGIN
-        INSERT INTO @BC (EmployeeID, EmployeeName, ManagerID, BranchID, DoanhSo)
+        INSERT INTO @BC (EmployeeID, EmployeeName, ManagerID, BranchID, DoanhSo, DoanhThuDaThu)
         SELECT 
             A.EmployeeID, 
             COALESCE(NULLIF(A.EmployeeName, ''), U.HoTen, A.EmployeeID) AS EmployeeName, 
             MAX(A.ManagerID) AS ManagerID, 
             MAX(A.BranchID) AS BranchID, 
-            SUM(A.Amount) AS DoanhSo
+            SUM(CASE WHEN A.StatusID IN (3, 6, 7, 8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhSo,
+            SUM(CASE WHEN A.StatusID IN (8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhThuDaThu
         FROM AR_OrderAndReturnView A
         LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0)
+            AND A.StatusID IN (3, 6, 7, 8, 99)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -317,7 +324,13 @@ BEGIN
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
                 EmployeeID AS [Mã NV], EmployeeName AS [Tên NV], 
                 ManagerID AS [Mã Quản Lý], BranchID AS [Chi Nhánh],
-                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số],
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số Đã Xuất/Giao],
+                FORMAT(DoanhThuDaThu, '#,##0') AS [Doanh Thu Đã Thu],
+                N'AR_OrderAndReturnView.TotalAmount' AS RevenueBasis,
+                N'FULFILLED=3,6,7,8;COLLECTED=8;RETURN=99' AS RevenueRecognition,
+                N'COORDINATOR_DECISION' AS RuleSource,
+                N'BR-SALES-V1-C-DRAFT' AS RuleVersion
             FROM @BC ORDER BY DoanhSo DESC
             RETURN;
         END
@@ -328,12 +341,14 @@ BEGIN
     -------------------------------------------------
     IF @LoaiBaoCao = 'KhachHang' OR @LoaiBaoCao = 'TatCa'
     BEGIN
-        INSERT INTO @BC2 (ObjectID, ObjectName, DoanhSo)
-        SELECT A.ObjectID, A.ObjectName, SUM(A.Amount) AS DoanhSo
+        INSERT INTO @BC2 (ObjectID, ObjectName, DoanhSo, DoanhThuDaThu)
+        SELECT A.ObjectID, A.ObjectName,
+            SUM(CASE WHEN A.StatusID IN (3, 6, 7, 8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhSo,
+            SUM(CASE WHEN A.StatusID IN (8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhThuDaThu
         FROM AR_OrderAndReturnView A
         LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0)
+            AND A.StatusID IN (3, 6, 7, 8, 99)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -353,7 +368,13 @@ BEGIN
             SELECT TOP (@TopN) ROW_NUMBER() OVER (ORDER BY DoanhSo DESC, ObjectName) AS STT, 
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
                 ObjectID AS [Mã KH], ObjectName AS [Tên Khách Hàng], 
-                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số],
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số Đã Xuất/Giao],
+                FORMAT(DoanhThuDaThu, '#,##0') AS [Doanh Thu Đã Thu],
+                N'AR_OrderAndReturnView.TotalAmount' AS RevenueBasis,
+                N'FULFILLED=3,6,7,8;COLLECTED=8;RETURN=99' AS RevenueRecognition,
+                N'COORDINATOR_DECISION' AS RuleSource,
+                N'BR-SALES-V1-C-DRAFT' AS RuleVersion
             FROM @BC2 ORDER BY DoanhSo DESC
             RETURN;
         END
@@ -364,14 +385,22 @@ BEGIN
     -------------------------------------------------
     IF @LoaiBaoCao = 'SanPham' OR @LoaiBaoCao = 'TatCa'
     BEGIN
-        INSERT INTO @BC3 (ItemID, ItemName, SoLuong, DoanhSo)
-        SELECT B.ItemID, B.ItemName, SUM(D.Quantity) AS SoLuong, SUM(D.Amount) AS DoanhSo
+        INSERT INTO @BC3 (ItemID, ItemName, SoLuong, DoanhSo, DoanhThuDaThu)
+        SELECT B.ItemID, B.ItemName,
+            SUM(CASE WHEN A.StatusID IN (3, 6, 7, 8, 99) THEN A.Quantity ELSE 0 END) AS SoLuong,
+            SUM(CASE WHEN A.StatusID IN (3, 6, 7, 8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhSo,
+            SUM(CASE WHEN A.StatusID IN (8, 99) THEN A.TotalAmount ELSE 0 END) AS DoanhThuDaThu
         FROM AR_OrderAndReturnView A
-        INNER JOIN AR_OrderDetailTbl D ON A.DocumentID = D.DocumentID
-        INNER JOIN CF_ItemTbl B ON D.ItemID = B.ItemID
+        INNER JOIN CF_ItemTbl B ON A.ItemID = B.ItemID
+        LEFT JOIN (
+            SELECT DocumentID, ItemID,
+                MAX(CASE WHEN ISNULL(isKM, 0) = 0 THEN 1 ELSE 0 END) AS HasRegularSaleLine
+            FROM AR_OrderDetailTbl
+            GROUP BY DocumentID, ItemID
+        ) PM ON A.StatusID <> 99 AND A.DocumentID = PM.DocumentID AND A.ItemID = PM.ItemID
         LEFT JOIN SY_User U ON A.EmployeeID = U.EmployeeID
         WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
-            AND A.StatusID NOT IN (-2, -1, 0)
+            AND A.StatusID IN (3, 6, 7, 8, 99)
             AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)
             AND (@ObjectName = '' OR A.ObjectName LIKE N'%' + @ObjectName + '%')
             AND (@EmployeeID = '' OR A.EmployeeID = @EmployeeID)
@@ -379,13 +408,13 @@ BEGIN
             AND (@TenSanPham = '' OR B.ItemName LIKE N'%' + @TenSanPham + '%')
             AND (@ManagerID = '' OR A.ManagerID = @ManagerID)
             AND (@BranchID = '' OR A.BranchID = @BranchID)
+            AND (A.StatusID = 99 OR PM.HasRegularSaleLine = 1)
             AND (
                 @SYSUserGroupID = 'Admin'
                 OR A.EmployeeID = @SYS_EmployeeID
                 OR A.ManagerID = @SYS_EmployeeID
                 OR A.CeoID = @SYS_EmployeeID
             )
-            AND ISNULL(D.isKM, 0) = 0
         GROUP BY B.ItemID, B.ItemName
 
         IF @LoaiBaoCao = 'SanPham'
@@ -394,7 +423,13 @@ BEGIN
                 FORMAT(@TuNgay, 'dd/MM/yyyy') AS [Từ Ngày], FORMAT(@DenNgay, 'dd/MM/yyyy') AS [Đến Ngày],
                 ItemID AS [Mã SP], ItemName AS [Tên Sản Phẩm], 
                 FORMAT(SoLuong, '#,##0.##') AS [Số Lượng], 
-                FORMAT(DoanhSo, '#,##0') AS [Doanh Số]
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số],
+                FORMAT(DoanhSo, '#,##0') AS [Doanh Số Đã Xuất/Giao],
+                FORMAT(DoanhThuDaThu, '#,##0') AS [Doanh Thu Đã Thu],
+                N'AR_OrderAndReturnView.TotalAmount' AS RevenueBasis,
+                N'FULFILLED=3,6,7,8;COLLECTED=8;RETURN=99' AS RevenueRecognition,
+                N'COORDINATOR_DECISION' AS RuleSource,
+                N'BR-SALES-V1-C-DRAFT' AS RuleVersion
             FROM @BC3 ORDER BY DoanhSo DESC
             RETURN;
         END
@@ -417,16 +452,23 @@ BEGIN
             CASE WHEN X.ReportGroup = N'Sản phẩm'
                  THEN FORMAT(X.QuantityValue, '#,##0.##')
                  ELSE NULL END AS [Số Lượng],
-            FORMAT(X.DoanhSoValue, '#,##0') AS [Doanh Số]
+            FORMAT(X.DoanhSoValue, '#,##0') AS [Doanh Số],
+            FORMAT(X.DoanhSoValue, '#,##0') AS [Doanh Số Đã Xuất/Giao],
+            FORMAT(X.DoanhThuDaThuValue, '#,##0') AS [Doanh Thu Đã Thu],
+            N'AR_OrderAndReturnView.TotalAmount' AS RevenueBasis,
+            N'FULFILLED=3,6,7,8;COLLECTED=8;RETURN=99' AS RevenueRecognition,
+            N'COORDINATOR_DECISION' AS RuleSource,
+            N'BR-SALES-V1-C-DRAFT' AS RuleVersion
         FROM (
             SELECT
                 N'Nhân viên' AS ReportGroup,
                 EmployeeID AS EntityID,
                 EmployeeName AS DisplayName,
                 CAST(NULL AS DECIMAL(18, 2)) AS QuantityValue,
-                DoanhSo AS DoanhSoValue
+                DoanhSo AS DoanhSoValue,
+                DoanhThuDaThu AS DoanhThuDaThuValue
             FROM (
-                SELECT TOP (@TopN) EmployeeID, EmployeeName, DoanhSo
+                SELECT TOP (@TopN) EmployeeID, EmployeeName, DoanhSo, DoanhThuDaThu
                 FROM @BC
                 ORDER BY DoanhSo DESC, EmployeeName
             ) E
@@ -435,9 +477,9 @@ BEGIN
 
             SELECT
                 N'Khách hàng', ObjectID, ObjectName,
-                CAST(NULL AS DECIMAL(18, 2)), DoanhSo
+                CAST(NULL AS DECIMAL(18, 2)), DoanhSo, DoanhThuDaThu
             FROM (
-                SELECT TOP (@TopN) ObjectID, ObjectName, DoanhSo
+                SELECT TOP (@TopN) ObjectID, ObjectName, DoanhSo, DoanhThuDaThu
                 FROM @BC2
                 ORDER BY DoanhSo DESC, ObjectName
             ) C
@@ -446,9 +488,9 @@ BEGIN
 
             SELECT
                 N'Sản phẩm', ItemID, ItemName,
-                CAST(SoLuong AS DECIMAL(18, 2)), DoanhSo
+                CAST(SoLuong AS DECIMAL(18, 2)), DoanhSo, DoanhThuDaThu
             FROM (
-                SELECT TOP (@TopN) ItemID, ItemName, SoLuong, DoanhSo
+                SELECT TOP (@TopN) ItemID, ItemName, SoLuong, DoanhSo, DoanhThuDaThu
                 FROM @BC3
                 ORDER BY DoanhSo DESC, ItemName
             ) P

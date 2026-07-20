@@ -23,12 +23,6 @@ BEGIN
        SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
    END
 
-   -- ANTI-HALLUCINATION: Clear hallucinated IDs
-   IF @MaKhachHang <> '' AND LEN(@MaKhachHang) > 8 AND @MaKhachHang NOT LIKE '%[0-9]%'
-   BEGIN
-       SET @MaKhachHang = ''
-   END
-
     IF @DenNgay IS NULL SET @DenNgay = GETDATE()
     ELSE SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, CAST(CAST(@DenNgay AS DATE) AS DATETIME)))
     
@@ -42,7 +36,10 @@ BEGIN
          SELECT TOP 1 @ResolvedID = ObjectID 
          FROM dbo.CF_ObjectTbl 
          WHERE (ObjectID LIKE '%' + @CleanSearch + '%'
-            OR ObjectName LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+            OR ObjectName LIKE '%' + @CleanSearch + '%')
+           AND ISNULL(isCustomer, 0) = 1
+           AND ISNULL(isDisable, 0) = 0
+           AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
          ORDER BY 
              CASE WHEN ObjectID = @CleanSearch THEN 1
                   WHEN ObjectName = @CleanSearch THEN 2
@@ -58,7 +55,10 @@ BEGIN
              SELECT TOP 1 @ResolvedID = ObjectID 
              FROM dbo.CF_ObjectTbl 
              WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
-                OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
+                OR ObjectID LIKE '%' + @CleanSearch + '%')
+               AND ISNULL(isCustomer, 0) = 1
+               AND ISNULL(isDisable, 0) = 0
+               AND (@SYS_BranchID = '' OR BranchID = @SYS_BranchID)
              ORDER BY 
                  CASE WHEN ObjectID = @CleanSearch THEN 1
                       WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
@@ -97,7 +97,21 @@ BEGIN
                WHEN C.TongNo >= 500000000 THEN N'Nợ Khủng'
                WHEN C.TongNo >= 100000000 THEN N'Nợ Vừa'
                ELSE N'Nợ Nhỏ'
-           END AS PhanLoai
+           END AS PhanLoai,
+           CASE WHEN ISNULL(O.isCustomer, 0) = 1 THEN N'CUSTOMER' ELSE N'UNKNOWN' END AS ObjectType,
+           C.ObjectID AS CustomerID,
+           O.ObjectName AS CustomerName,
+           C.TongNo AS TotalDebt,
+           N'DUE_DATE_UNKNOWN' AS PaymentStatus,
+           CASE
+               WHEN C.TongNo >= 500000000 THEN N'LARGE'
+               WHEN C.TongNo >= 100000000 THEN N'MEDIUM'
+               ELSE N'SMALL'
+           END AS DebtSize,
+           N'DUE_DATE_UNKNOWN' AS DueStatus,
+           @DenNgay AS AsOfDate,
+           N'DEBT-V1-DRAFT' AS RuleVersion,
+           N'vCongNoBanHang' AS DataSource
        FROM @CongNo C
        LEFT JOIN CF_ObjectTbl O ON C.ObjectID = O.ObjectID
        WHERE (
@@ -107,6 +121,7 @@ BEGIN
                AND C.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
            )
        )
+       AND ISNULL(O.isCustomer, 0) = 1
        ORDER BY C.TongNo DESC
        
        RETURN
@@ -121,10 +136,26 @@ BEGIN
            WHEN SUM(A.DebitAmount - A.CreditAmount) >= 500000000 THEN N'Nợ Khủng'
            WHEN SUM(A.DebitAmount - A.CreditAmount) >= 100000000 THEN N'Nợ Vừa'
            ELSE N'Nợ Nhỏ'
-       END AS PhanLoai
+       END AS PhanLoai,
+       CASE WHEN ISNULL(O.isCustomer, 0) = 1 THEN N'CUSTOMER' ELSE N'UNKNOWN' END AS ObjectType,
+       A.ObjectID AS CustomerID,
+       O.ObjectName AS CustomerName,
+       SUM(A.DebitAmount - A.CreditAmount) AS TotalDebt,
+       N'DUE_DATE_UNKNOWN' AS PaymentStatus,
+       CASE
+           WHEN SUM(A.DebitAmount - A.CreditAmount) >= 500000000 THEN N'LARGE'
+           WHEN SUM(A.DebitAmount - A.CreditAmount) >= 100000000 THEN N'MEDIUM'
+           ELSE N'SMALL'
+       END AS DebtSize,
+       N'DUE_DATE_UNKNOWN' AS DueStatus,
+       @DenNgay AS AsOfDate,
+       N'DEBT-V1-DRAFT' AS RuleVersion,
+       N'SY_GetDebitDocFnc' AS DataSource
    FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
    LEFT JOIN dbo.CF_ObjectTbl O ON A.ObjectID = O.ObjectID
    WHERE A.ObjectID = @MaKhachHang
+     AND ISNULL(O.isCustomer, 0) = 1
+     AND ISNULL(O.isDisable, 0) = 0
      AND (
          UPPER(@SYSUserGroupID) = 'ADMIN'
          OR (
@@ -132,5 +163,5 @@ BEGIN
              AND A.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
          )
      )
-   GROUP BY A.ObjectID, O.ObjectName
+   GROUP BY A.ObjectID, O.ObjectName, O.isCustomer
 END

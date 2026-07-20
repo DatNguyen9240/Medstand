@@ -29,7 +29,7 @@ assert(applyCode.includes("params['@SYSEmployeeID']"));
 
 const gateCode = nodes.get('Enforce API Capability').parameters.jsCode;
 assert(gateCode.includes("'@doanh_so'"));
-assert(gateCode.includes("'@lap_don_hang': 'orders.write'"));
+assert(gateCode.includes("previewApis = new Set(['@lap_don_hang'])"));
 assert(gateCode.includes("'@khach_hang_insert': 'customers.write'"));
 assert(gateCode.includes("'@san_pham_trong_tam_import': 'products.import'"));
 assert(gateCode.includes("operationType = 'DENY'"));
@@ -43,9 +43,12 @@ assert.strictEqual(runGate({ body: { ApiCode: '@doanh_so' }, verifiedIdentity: {
 assert.strictEqual(runGate({ body: { ApiCode: '@doanh_so' }, verifiedIdentity: { capabilities: [] } }).httpStatus, 403);
 assert.strictEqual(runGate({ body: { ApiCode: '@unknown' }, verifiedIdentity: { capabilities: ['*'] } }).ok, false);
 assert.strictEqual(runGate({ body: { ApiCode: '@khach_hang_insert' }, verifiedIdentity: { capabilities: ['api.read'] } }).ok, false);
-assert.strictEqual(runGate({ body: { ApiCode: '@khach_hang_insert' }, verifiedIdentity: { capabilities: ['customers.write'] } }).ok, true);
-assert.strictEqual(runGate({ body: { ApiCode: '@san_pham_trong_tam_import' }, verifiedIdentity: { capabilities: ['products.import'] } }).ok, true);
-assert.strictEqual(runGate({ body: { ApiCode: '@lap_don_hang' }, verifiedIdentity: { capabilities: ['orders.write'] } }).ok, true);
+assert.strictEqual(runGate({ body: { ApiCode: '@khach_hang_insert' }, verifiedIdentity: { capabilities: ['customers.write'] } }).ok, false);
+assert.strictEqual(runGate({ body: { ApiCode: '@khach_hang_insert' }, verifiedIdentity: { capabilities: ['customers.write'] } }).code, 'PILOT_READ_ONLY');
+assert.strictEqual(runGate({ body: { ApiCode: '@san_pham_trong_tam_import' }, verifiedIdentity: { capabilities: ['products.import'] } }).ok, false);
+assert.strictEqual(runGate({ body: { ApiCode: '@lap_don_hang' }, verifiedIdentity: { capabilities: ['api.read'] } }).operationType, 'PREVIEW');
+assert.strictEqual(runGate({ body: { ApiCode: '@lap_don_hang' }, verifiedIdentity: { capabilities: ['api.read'] } }).ok, true);
+assert.strictEqual(runGate({ body: { ApiCode: '@lap_don_hang' }, verifiedIdentity: { capabilities: ['orders.write'] } }).ok, false);
 
 const request = {
   body: {

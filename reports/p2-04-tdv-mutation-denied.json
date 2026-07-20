@@ -1,0 +1,29 @@
+{
+  "role": "tdv",
+  "results": [
+    {
+      "apiCode": "@cap_nhat_ket_qua_khao_sat",
+      "status": 403,
+      "code": "API_NOT_ALLOWLISTED",
+      "requestId": "req-7171-mrq4val5"
+    },
+    {
+      "apiCode": "@khach_hang_insert",
+      "status": 403,
+      "code": "CAPABILITY_REQUIRED",
+      "requestId": "req-7173-mrq4vb4f"
+    },
+    {
+      "apiCode": "@san_pham_trong_tam_import",
+      "status": 403,
+      "code": "CAPABILITY_REQUIRED",
+      "requestId": "req-7175-mrq4vbmn"
+    },
+    {
+      "apiCode": "@lap_don_hang",
+      "status": 403,
+      "code": "CAPABILITY_REQUIRED",
+      "requestId": "req-7177-mrq4vc58"
+    }
+  ]
+}

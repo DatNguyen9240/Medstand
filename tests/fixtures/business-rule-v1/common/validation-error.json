@@ -1,0 +1,11 @@
+{
+  "ApiCode": "@tim_san_pham_theo_trieu_chung",
+  "contractVersion": "1.0.0-draft",
+  "role": "TDV",
+  "scope": { "branchId": "BR-DEMO" },
+  "requestId": "req-fixture-validation-error",
+  "status": "VALIDATION_ERROR",
+  "errorCode": "VALIDATION_ERROR",
+  "data": [],
+  "metadata": { "ruleVersion": "BR-MED-V1-DRAFT", "source": "UAT_FIXTURE", "dataWindow": null, "updatedAt": "2026-07-17T08:00:00Z", "scope": "BR-DEMO", "freshness": "CURRENT" }
+}

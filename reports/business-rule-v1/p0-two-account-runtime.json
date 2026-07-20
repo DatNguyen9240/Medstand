@@ -1,0 +1,46 @@
+{
+  "status": "MEDTEST_P0_RUNTIME_PASS",
+  "testedAt": "2026-07-18T14:31:40.521Z",
+  "database": "medtest",
+  "mode": "READ_ONLY",
+  "results": [
+    {
+      "username": "QLBH013.MED",
+      "recommendation": {
+        "result": "PASS",
+        "fixtureHash": "3cd3ba99dbcd",
+        "rowsChecked": 6
+      },
+      "tier": {
+        "result": "PASS",
+        "rowsChecked": 5
+      },
+      "partialDebt": {
+        "result": "PASS",
+        "fixtureHash": "3cd3ba99dbcd",
+        "rowsChecked": 1,
+        "runtimeErrors": 0,
+        "firstRuntimeError": null
+      }
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "recommendation": {
+        "result": "PASS",
+        "fixtureHash": "3cd3ba99dbcd",
+        "rowsChecked": 6
+      },
+      "tier": {
+        "result": "PASS",
+        "rowsChecked": 5
+      },
+      "partialDebt": {
+        "result": "PASS",
+        "fixtureHash": "3cd3ba99dbcd",
+        "rowsChecked": 1,
+        "runtimeErrors": 0,
+        "firstRuntimeError": null
+      }
+    }
+  ]
+}

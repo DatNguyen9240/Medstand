@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-v58'; // Tăng phiên bản để kích hoạt cập nhật cache mới tức thì
+const CACHE_VERSION = 'medstand-v69'; // Thêm gợi ý công việc hôm nay theo tuyến và phạm vi user
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [

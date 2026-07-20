@@ -15,6 +15,18 @@
     "test:api-execute-envelope": "node scripts/test_api_execute_response_envelope.js",
     "test:api-metadata-contract": "node scripts/test_api_metadata_contract.js",
     "test:api-execute-validation": "node scripts/test_api_execute_validation.js",
+    "test:business-rule-v1-n8n": "node scripts/test_business_rule_v1_n8n_contract.js",
+    "test:daily-work-intent": "node scripts/test_daily_work_quick_intent.js",
+    "test:daily-work-intent:uat13": "node scripts/test_daily_work_intent_uat13_runtime.js",
+    "generate:natural-language-corpus": "node scripts/generate_natural_language_corpus.js",
+    "test:natural-language-p0a": "node scripts/test_natural_language_p0a_contract.js",
+    "test:natural-language-p0b": "node scripts/test_natural_language_corpus.js",
+    "test:natural-language-p0": "npm run test:natural-language-p0a && npm run test:natural-language-p0b",
+    "test:natural-language-shadow-runtime": "node scripts/test_natural_language_shadow_runtime.js",
+    "audit:n8n-credentials": "node scripts/audit_active_n8n_credentials.js",
+    "baseline:natural-language": "node scripts/run_natural_language_baseline.js",
+    "test:p0-business-contract": "node scripts/test_p0_business_contract.js",
+    "test:business-rule-frontend": "node scripts/test_business_rule_frontend_contract.js",
     "test:p1-04-request-audit": "node scripts/test_p1_04_request_audit.js",
     "test:api-catalog-auth": "node scripts/test_api_catalog_auth_guard.js",
     "test:api-cors-auth": "node scripts/test_api_cors_auth_contract.js",
@@ -24,8 +36,8 @@
     "test:regression": "node scripts/regression/test_runner.js",
     "test:chatbot-auth-regression": "node scripts/test_chatbot_api_auth_regression.js",
     "test:chatbot-auth-regression:contract": "node scripts/test_chatbot_api_auth_regression.js --contract-only",
-    "test:p0": "npm run test:shared-auth-guard && npm run test:api-execute-auth && npm run test:api-execute-capability && npm run test:api-execute-envelope && npm run test:api-metadata-contract && npm run test:api-execute-validation && npm run test:p1-04-request-audit && npm run test:api-catalog-auth && npm run test:api-cors-auth && npm run test:gateway-log-redaction && npm run test:p0-05-uat-runner && npm run test:regression-credential-safety && npm run test:chatbot-auth-regression:contract && npm run test:api-danh-muc-scope && npm run test:survey-daily-wrapper && npm run test:survey-history-wrapper",
-    "test:release-local": "npm run test:p0 && npm run test:p2-ui-contract && npm run test:weekly-chart && npm run build"
+    "test:p0": "npm run test:shared-auth-guard && npm run test:api-execute-auth && npm run test:api-execute-capability && npm run test:api-execute-envelope && npm run test:api-metadata-contract && npm run test:api-execute-validation && npm run test:business-rule-v1-n8n && npm run test:p1-04-request-audit && npm run test:api-catalog-auth && npm run test:api-cors-auth && npm run test:gateway-log-redaction && npm run test:p0-05-uat-runner && npm run test:regression-credential-safety && npm run test:chatbot-auth-regression:contract && npm run test:api-danh-muc-scope && npm run test:survey-daily-wrapper && npm run test:survey-history-wrapper",
+    "test:release-local": "npm run test:p0 && npm run test:p2-ui-contract && npm run test:business-rule-frontend && npm run test:weekly-chart && npm run build"
     ,"test:guest": "playwright test --project=guest"
     ,"test:manager": "playwright test --project=manager"
     ,"test:tdv": "playwright test --project=tdv"

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medstand.local/schemas/natural-language-parser-output-v1.json",
+  "title": "Medstand natural-language parser output v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["internalIntent", "confidence", "entities", "missingFields", "requiresClarification"],
+  "properties": {
+    "internalIntent": {
+      "type": ["string", "null"],
+      "enum": [
+        "SALES_REVENUE", "INVOICE_LIST", "INVOICE_DETAIL", "ORDER_LIST",
+        "CUSTOMER_SCORING", "CUSTOMER_DEBT_SUMMARY", "CUSTOMER_DEBT_DETAIL",
+        "LOYALTY_PROGRESS", "SALES_ROUTE", "ORDER_RECOMMENDATION",
+        "UPSELL_RECOMMENDATION", "PRESCRIPTION_BUNDLE_RECOMMENDATION",
+        "INVENTORY_LIST", "PRODUCT_SEARCH", "FOCUS_PRODUCTS", "PROMOTION_REVIEW",
+        "CATALOG_LOOKUP", "SURVEY_360", "SURVEY_QUESTIONS", "SURVEY_STATUS",
+        "SURVEY_DAILY_STATUS", "SURVEY_HISTORY", "NOTIFICATIONS",
+        "SYMPTOM_PRODUCT_SEARCH", "CASUAL_CHAT", null
+      ]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "entities": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "customerId": { "type": ["string", "null"], "maxLength": 100 },
+        "documentId": { "type": ["string", "null"], "maxLength": 100 },
+        "employeeId": { "type": ["string", "null"], "maxLength": 100 },
+        "employeeName": { "type": ["string", "null"], "maxLength": 200 },
+        "itemId": { "type": ["string", "null"], "maxLength": 100 },
+        "searchTerm": { "type": ["string", "null"], "maxLength": 300 },
+        "keyword": { "type": ["string", "null"], "maxLength": 300 },
+        "fromDate": { "type": ["string", "null"], "maxLength": 30 },
+        "toDate": { "type": ["string", "null"], "maxLength": 30 },
+        "targetDate": { "type": ["string", "null"], "maxLength": 30 },
+        "reportType": { "type": ["string", "null"], "maxLength": 50 },
+        "catalogType": { "type": ["string", "null"], "maxLength": 50 },
+        "topN": { "type": ["number", "null"], "minimum": 1, "maximum": 100 }
+      }
+    },
+    "missingFields": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "maxLength": 60 }
+    },
+    "requiresClarification": { "type": "boolean" },
+    "alternatives": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["internalIntent", "confidence"],
+        "properties": {
+          "internalIntent": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    }
+  }
+}

@@ -56,6 +56,21 @@ BEGIN
         SUM(CASE WHEN A.Quantity >= 0 THEN A.Quantity ELSE 0 END) AS Nhap,
         SUM(CASE WHEN A.Quantity < 0 THEN -A.Quantity ELSE 0 END) AS Xuat,
         SUM(ISNULL(A.Quantity,0)) AS TonCuoi,
+        SUM(ISNULL(A.Quantity,0)) AS PhysicalStock,
+        CAST(CASE
+            WHEN A.ExpireDate IS NOT NULL AND CAST(A.ExpireDate AS DATE) < CAST(GETDATE() AS DATE) THEN 0
+            WHEN SUM(ISNULL(A.Quantity, 0)) > 0 THEN SUM(ISNULL(A.Quantity, 0))
+            ELSE 0
+        END AS DECIMAL(18, 2)) AS AvailableStock,
+        CASE
+            WHEN A.ExpireDate IS NOT NULL AND CAST(A.ExpireDate AS DATE) < CAST(GETDATE() AS DATE)
+                THEN N'EXPIRED_NOT_SELLABLE'
+            WHEN SUM(ISNULL(A.Quantity, 0)) < 0
+                THEN N'STOCK_RECONCILIATION_REQUIRED'
+            ELSE N'PHYSICAL_AS_SELLABLE_TEMPORARY'
+        END AS StockDataStatus,
+        N'LEGACY_DEFAULT' AS RuleSource,
+        N'BR-STOCK-V1-DRAFT' AS RuleVersion,
         CASE
             WHEN SUM(ISNULL(A.Quantity,0)) < 0 THEN N'Cần đối soát'
             WHEN A.ExpireDate IS NOT NULL AND A.ExpireDate < GETDATE() THEN N'Hết hạn'

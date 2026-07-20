@@ -1,13 +1,13 @@
 {
-  "generatedAt": "2026-07-17T04:59:53.178Z",
+  "generatedAt": "2026-07-19T16:32:16.429Z",
   "mode": "contract-only",
   "securityGate": "BLOCKED",
   "summary": {
-    "total": 44,
-    "passed": 40,
+    "total": 42,
+    "passed": 38,
     "blocked": 4,
     "failed": 0,
-    "readApiPolicyCount": 26
+    "readApiPolicyCount": 24
   },
   "cases": [
     {
@@ -18,7 +18,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_MISSING",
-        "requestId": "req-auth-p0-05-mrogy8yf",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -30,7 +30,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_MISSING",
-        "requestId": "req-auth-p0-05-mrogy8yf",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -42,7 +42,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_MISSING",
-        "requestId": "req-auth-p0-05-mrogy8yf",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -54,7 +54,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_INVALID",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -66,7 +66,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_INVALID",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -78,7 +78,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_INVALID",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -90,7 +90,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_EXPIRED",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -102,7 +102,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_EXPIRED",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -114,7 +114,7 @@
       "evidence": {
         "httpStatus": 401,
         "code": "AUTH_TOKEN_EXPIRED",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -126,7 +126,7 @@
       "evidence": {
         "httpStatus": 403,
         "code": "IDENTITY_MAPPING_NOT_FOUND",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -138,7 +138,7 @@
       "evidence": {
         "httpStatus": 403,
         "code": "IDENTITY_MAPPING_NOT_FOUND",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -150,7 +150,7 @@
       "evidence": {
         "httpStatus": 403,
         "code": "IDENTITY_MAPPING_NOT_FOUND",
-        "requestId": "req-auth-p0-05-mrogy8yg",
+        "requestId": "req-auth-p0-05-mrs0kd9n",
         "sqlExecutionCount": 0
       }
     },
@@ -353,30 +353,6 @@
       "status": "PASS",
       "evidence": {
         "apiCode": "@danh_muc",
-        "code": "CAPABILITY_REQUIRED",
-        "httpStatus": 403,
-        "sqlExecutionCount": 0
-      }
-    },
-    {
-      "id": "execute-no-scope-@khach_hang_list",
-      "endpoint": "execute",
-      "identity": "valid-no-scope",
-      "status": "PASS",
-      "evidence": {
-        "apiCode": "@khach_hang_list",
-        "code": "CAPABILITY_REQUIRED",
-        "httpStatus": 403,
-        "sqlExecutionCount": 0
-      }
-    },
-    {
-      "id": "execute-no-scope-@dashboard_sinh_nhat",
-      "endpoint": "execute",
-      "identity": "valid-no-scope",
-      "status": "PASS",
-      "evidence": {
-        "apiCode": "@dashboard_sinh_nhat",
         "code": "CAPABILITY_REQUIRED",
         "httpStatus": 403,
         "sqlExecutionCount": 0

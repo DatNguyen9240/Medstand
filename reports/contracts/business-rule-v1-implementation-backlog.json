@@ -1,0 +1,340 @@
+{
+  "backlogVersion": "1.0.0",
+  "generatedAt": "2026-07-18",
+  "sourceDecisionRegister": "reports/contracts/business-rule-v1-decision-log.json",
+  "statusDefinitions": {
+    "IMPLEMENTED": "Source va runtime contract hien tai da dap ung quyet dinh.",
+    "PARTIAL_IMPLEMENTED": "Da co mot phan contract nhung con thieu output, UX hoac rule.",
+    "SAFE_FALLBACK_IMPLEMENTED": "Da fail-safe, con cho nguon ERP/business de hoan tat.",
+    "PATCH_REQUIRED": "Co the sua bang source hien co truoc pilot.",
+    "PATCH_REQUIRED_BLOCKED_EXTERNAL": "Can patch fail-safe, nhung rule day du con cho owner ben ngoai.",
+    "BLOCKED_EXTERNAL": "Khong du evidence/schema/approval de implement dung.",
+    "DEFERRED": "Da chap nhan nhung khong nam trong phase hien tai.",
+    "READY_FOR_PILOT": "Quyet dinh ve rollout, san sang lap pilot gate.",
+    "SUPERSEDED": "Quyet dinh cu da duoc thay the boi quyet dinh nghiep vu moi.",
+    "MEDTEST_RUNTIME_PASS": "Source va runtime medtest da pass; con cho UAT bang mat hoac external sign-off neu co."
+  },
+  "items": [
+    {
+      "decisionId": "BR-DEC-20260718-001",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "n8n", "FE", "Finance"],
+      "targets": ["sql/Module common - API_DoanhSo_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Giu DoanhSoDaXuat/DoanhThuDaThu tach rieng; bo sung response tong quan theo role. DoanhThuDaThu van la proxy cho toi khi Finance xac nhan payment ledger/VAT."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-002",
+      "status": "SUPERSEDED",
+      "priority": "P0",
+      "owners": ["SQL", "FE", "ERP_Warehouse"],
+      "targets": ["sql/Module common - API_DanhsachTonKho_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Da duoc BR-DEC-20260719-037 thay the theo quyet dinh moi cua Business Owner."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-003",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["SQL", "FE"],
+      "targets": ["sql/Module 2 - API_TuyenBanHang_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Mac dinh lay 5 khach, cho phep View More toi da 8; validate TopN trong khoang 5-8 cho priority list."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-004",
+      "status": "IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "n8n"],
+      "targets": ["sql/Module 2 - API_TuyenBanHang_AI.sql", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Giu customer/management scope va regression cross-scope denial."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-005",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P1",
+      "owners": ["SQL", "FE"],
+      "targets": ["sql/Module 1 - API_GoiYDonHang_AI.sql", "sql/Module 2 - API_TuyenBanHang_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Chuan hoa PriorityReason cho sap mua lai, no qua han va lau chua mua; moi card khach phai co ly do."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-006",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Tach response thanh Co hoi ban hang va Can thu hoi cong no; dung ngon ngu du doan, khong khang dinh se mua."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-007",
+      "status": "PATCH_REQUIRED",
+      "priority": "P0",
+      "owners": ["SQL", "n8n", "FE"],
+      "targets": ["sql/Module 1 - API_GoiYDonHang_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Bo du doan ca nhan fallback 30 ngay cho duoi 3 invoice; tra NEW_CUSTOMER/INSUFFICIENT_HISTORY va nhom Khach moi can cham soc."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-008",
+      "status": "IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "FE"],
+      "targets": ["sql/Module 3 - API_ChamDiemKH_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Giu CustomerTier/ValueSegment va RiskLevel doc lap; regression Tier A + Risk HIGH."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-009",
+      "status": "SAFE_FALLBACK_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "ERP_Program", "Business"],
+      "targets": ["sql/Module 6 - API_DeXuatKhuyenMai_AI.sql"],
+      "nextAction": "Tiep tuc REFERENCE_ONLY khi chua co approval source; sau discovery chi hien APPROVED_ACTIVE, khong tu de xuat discount moi."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-010",
+      "status": "BLOCKED_EXTERNAL",
+      "priority": "P1",
+      "owners": ["ERP_Program", "Business"],
+      "targets": ["sql/Module 4 - API_TichLuy_AI.sql", "sql/Module 6 - API_DeXuatKhuyenMai_AI.sql"],
+      "nextAction": "Tim cot/bang Stackable; khi thieu thi tra DECISION_REQUIRED va khong cong chuong trinh."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-011",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/API_Services/API_Execute.json", "chatbot-widget/js/chatbot.js", "chatbot-widget/css/chatbot.css"],
+      "nextAction": "Giu medical disclaimer trong symptom response; them global AI disclosure co dinh va contextual warning cho nghiep vu/chuyen mon."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-012",
+      "status": "PATCH_REQUIRED_BLOCKED_EXTERNAL",
+      "priority": "P0",
+      "owners": ["n8n", "MedicalOwner"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Them hard-stop fail-safe cho nhom nhay cam/red flag truoc SQL symptom; danh sach cuoi cung cho duoc si/bac si duyet."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-013",
+      "status": "BLOCKED_EXTERNAL",
+      "priority": "P0",
+      "owners": ["MedicalOwner", "ERP_Product"],
+      "targets": ["sql/Module 10 - API_TraCuuSanPham_AI.sql", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Xac dinh metadata tuoi/can nang/chong chi dinh duoc phe duyet; tra cuu catalog van duoc phep, symptom recommendation cho tre em tam hard-stop."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-014",
+      "status": "SAFE_FALLBACK_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "ERP_AR"],
+      "targets": ["sql/Module common - API_CongNoChiTiet_AI.sql"],
+      "nextAction": "Giu DUE_DATE_UNKNOWN khi thieu DueDate; sau discovery moi fallback sang customer payment term."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-015",
+      "status": "PATCH_REQUIRED",
+      "priority": "P0",
+      "owners": ["SQL", "FE"],
+      "targets": ["sql/Module common - API_CongNoChiTiet_AI.sql", "chatbot-widget/js/chatbot-renderers-medstand.js"],
+      "nextAction": "Tach CollectionStatus PAID/PARTIALLY_PAID khoi DueStatus; hien Debit, Credit va Remaining, chi PAID khi Remaining<=0."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-016",
+      "status": "BLOCKED_EXTERNAL",
+      "priority": "P0",
+      "owners": ["Finance", "SQL"],
+      "targets": ["sql/Module common - API_DoanhSo_AI.sql", "sql/Module 4 - API_TichLuy_AI.sql"],
+      "nextAction": "Doi soat invoice/return toan bo/return mot phan; khong approve cong thuc return va loyalty truoc Finance sign-off."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-017",
+      "status": "IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "n8n"],
+      "targets": ["n8n/Shared/Shared_Auth_Guard.json", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Giu verified identity; Sale own scope, Manager managed/branch scope, Admin system scope; regression 403/OUT_OF_SCOPE."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-018",
+      "status": "SAFE_FALLBACK_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "ERP_CRM"],
+      "targets": ["sql/Module 2 - API_TuyenBanHang_AI.sql"],
+      "nextAction": "Giu CHECKIN_SOURCE_UNAVAILABLE; khong map LastPurchase thanh LastVisit cho toi khi co check-in source."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-019",
+      "status": "PATCH_REQUIRED",
+      "priority": "P0",
+      "owners": ["SQL", "Business"],
+      "targets": ["sql/Module 3 - API_ChamDiemKH_AI.sql"],
+      "nextAction": "Tier chi dung Monetary + Frequency theo quyet dinh; bo Recency/Consumption khoi ValueSegment va giu Recency cho Risk. Can config trong so duoc duyet."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-020",
+      "status": "PATCH_REQUIRED_BLOCKED_EXTERNAL",
+      "priority": "P1",
+      "owners": ["SQL", "Business"],
+      "targets": ["sql/Module 3 - API_ChamDiemKH_AI.sql"],
+      "nextAction": "Them CustomerTier theo nguong cong ty va BranchRank rieng; can nguong, percentile va ky tai tinh duoc duyet."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-021",
+      "status": "PATCH_REQUIRED_BLOCKED_EXTERNAL",
+      "priority": "P1",
+      "owners": ["SQL", "FE", "ERP"],
+      "targets": ["sql/Module common - API_DanhsachTonKho_AI.sql", "n8n/API_Services/API_Execute.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Them UpdatedAt/FreshnessStatus; khi chua co timestamp tra UPDATED_AT_UNKNOWN va khong goi realtime."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-022",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P1",
+      "owners": ["SQL", "FE"],
+      "targets": ["sql/Module common - API_DoanhSo_AI.sql", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "DoanhSoDaXuat da loai order; bo sung PendingOrderValue/pipeline rieng neu Manager can xem don cho."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-023",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Tao Manager summary hom nay/MTD/ky truoc va drill-down; khong tao dashboard rieng."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-024",
+      "status": "BLOCKED_EXTERNAL",
+      "priority": "P1",
+      "owners": ["ERP_Target", "Business"],
+      "targets": ["sql/Module common - API_DoanhSo_AI.sql"],
+      "nextAction": "Discovery bang/API target approved; thieu nguon thi tra TARGET_DATA_UNAVAILABLE, khong suy target tu lich su."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-025",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "chatbot-widget/js/chatbot-api-engine.js"],
+      "nextAction": "Giu @ command deterministic; mo rong natural-language router chi map vao active catalog, khong dynamic SQL/ApiCode."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-026",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/API_Services/API_Execute.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Hien source label de hieu; technical details collapsed gom ApiCode, RuleVersion, DataSource, UpdatedAt va RequestId."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-027",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["n8n", "FE"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Ambiguous intent tra 2-3 quick choices, nho context, chi hoi tham so bat buoc con thieu."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-028",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["n8n"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Tach verified company data va AI general knowledge; khong co data source thi DATA_SOURCE_UNAVAILABLE, khong tu tao so."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-029",
+      "status": "PARTIAL_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["n8n", "FE", "Security"],
+      "targets": ["n8n/API_Services/API_Execute.json", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Capability/idempotency/audit da co; chuan hoa preview-confirm-revalidate cho moi mutation. Phase pilot van mutation off."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-030",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["n8n", "Security"],
+      "targets": ["n8n/AI_Core/MAIN_ChatBot_V5.json"],
+      "nextAction": "Context theo verified user va workday; xoa khi logout/expiry; khong luu credential; audit va context tach rieng."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-031",
+      "status": "DEFERRED",
+      "priority": "P2",
+      "owners": ["AI_Governance", "Privacy", "Security"],
+      "targets": [],
+      "nextAction": "Chi lap architecture note; chua luu raw chat de train. Can retention, redaction, human review, dataset approval va employee notice."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-032",
+      "status": "DEFERRED",
+      "priority": "P2",
+      "owners": ["FE", "Backend"],
+      "targets": [],
+      "nextAction": "XLSX export sau pilot; khong implement PDF; file phai giu scope/source/filter/as-of metadata."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-033",
+      "status": "READY_FOR_PILOT",
+      "priority": "P0",
+      "owners": ["Coordinator", "QA", "Business"],
+      "targets": ["docs/KE_HOACH_PILOT_READ_ONLY_BUSINESS_RULE_V1.md"],
+      "nextAction": "Dung tai khoan Sale/Manager/Admin hien co o 3 mien; read-only truoc, mutation off, thu evidence va feedback theo request ID."
+    },
+    {
+      "decisionId": "BR-DEC-20260718-034",
+      "status": "PATCH_REQUIRED",
+      "priority": "P1",
+      "owners": ["FE", "QA"],
+      "targets": ["chatbot-widget/js/chatbot.js", "chatbot-widget/css/chatbot.css", "docs/KE_HOACH_TEST_P0_2_TAI_KHOAN.md"],
+      "nextAction": "Sau dot UAT hien tai, do latency khi mo form lenh; render khung/nhan tham so ngay, tai danh sach dong bat dong bo voi loading state rieng; regression desktop/mobile va khong khoa o chat."
+    },
+    {
+      "decisionId": "BR-DEC-20260719-035",
+      "status": "SAFE_FALLBACK_IMPLEMENTED",
+      "priority": "P0",
+      "owners": ["SQL", "FE", "ERP_Program", "Business"],
+      "targets": ["sql/Module 6 - API_DeXuatKhuyenMai_AI.sql", "chatbot-widget/js/chatbot-api-engine.js", "chatbot-widget/js/chatbot.js"],
+      "nextAction": "Giu de xuat AI chi cho Manager/Admin va khong tu de xuat muc giam. Sale chi nhan APPROVED_ACTIVE sau khi owner ERP xac nhan bang/cot approval; truoc do fail-safe NO_DATA."
+    },
+    {
+      "decisionId": "BR-DEC-20260719-036",
+      "status": "MEDTEST_RUNTIME_PASS",
+      "priority": "P0",
+      "owners": ["SQL", "n8n", "FE", "QA"],
+      "targets": ["sql/Module 5 - API_UpsellGoiY_AI.sql", "sql/Migrate_Upsell_Customer_Required_AI.sql", "n8n/API_Services/API_Execute.json"],
+      "nextAction": "Nguoi dung Ctrl+F5 va UAT form bat buoc chon khach; tiep tuc test bang mat viec doi khach khong giu ma cu va khach ngoai scope khong lo du lieu.",
+      "runtimeEvidence": "reports/business-rule-v1/upsell-customer-required-runtime.json",
+      "runtimeBackup": "reports/runtime-backups/upsell-customer-required-20260719-004952"
+    },
+    {
+      "decisionId": "BR-DEC-20260719-037",
+      "status": "MEDTEST_RUNTIME_PASS",
+      "priority": "P0",
+      "owners": ["SQL", "FE", "ERP_Warehouse", "QA"],
+      "targets": [
+        "sql/Module common - API_DanhsachTonKho_AI.sql",
+        "sql/Module 5 - API_UpsellGoiY_AI.sql",
+        "sql/Module 6 - API_DeXuatKhuyenMai_AI.sql",
+        "chatbot-widget/js/chatbot.js"
+      ],
+      "nextAction": "Nguoi dung Ctrl+F5 va UAT @danh_sach_tonkho, @upsell_goi_y tren local; tiep tuc doi owner ERP xac nhan reservation/blocked stock.",
+      "externalFollowUp": "Owner ERP xac nhan co reservation/blocked stock khi lap don hay khong.",
+      "runtimeEvidence": "reports/business-rule-v1/sellable-stock-runtime.json"
+    },
+    {
+      "decisionId": "BR-DEC-20260719-038",
+      "status": "MEDTEST_RUNTIME_PASS",
+      "priority": "P0",
+      "owners": ["SQL", "n8n", "FE", "QA"],
+      "targets": [
+        "sql/Module 1 - API_GoiYDonHang_AI.sql",
+        "sql/Module 5 - API_UpsellGoiY_AI.sql",
+        "sql/Module 8 - API_GoiYDonThuoc_AI.sql",
+        "sql/Migrate_Suggestion_API_Required_Inputs_AI.sql",
+        "n8n/API_Services/API_Execute.json",
+        "chatbot-widget/js/chatbot-api-engine.js"
+      ],
+      "nextAction": "Nguoi dung Ctrl+F5 va UAT bang QLBH013.MED: Upsell HPA011 phai bao chua du lich su; goi y don hang thieu khach phai hoi chon khach; A015 khong duoc tu tra lai chinh no.",
+      "runtimeEvidence": "reports/business-rule-v1/empty-suggestion-runtime.json"
+    }
+  ]
+}

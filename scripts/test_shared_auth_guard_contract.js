@@ -136,4 +136,4 @@ assert.strictEqual(rejected.auth.ok, false);
 assert.strictEqual(rejected.auth.httpStatus, 401);
 assert.strictEqual(rejected.auth.code, 'AUTH_TOKEN_INVALID');
 
-console.log('Shared Auth Guard contract tests passed.');
+console.log('Shared Auth Guard contract: STATIC_CONTRACT_PASS');

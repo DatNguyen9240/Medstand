@@ -16,11 +16,12 @@ CREATE OR ALTER PROCEDURE API_ChamDiemKH_AI
     @RiskLevel     VARCHAR(20) = '',
     @Page          INT = 1,
     @PageSize      INT = 50,
-    -- Trọng số RFM-C (CEO tùy chỉnh, mặc định cân bằng 4 chiều)
-    @W_Recency     DECIMAL(18,2) = 0.25,  -- Trọng số Recency
+    -- Giữ 4 tham số để tương thích client cũ. Tier chỉ dùng Frequency + Monetary;
+    -- Recency/Consumption không được cộng vào ValueSegment.
+    @W_Recency     DECIMAL(18,2) = 0.25,  -- Chỉ dùng cho tương thích; Recency thuộc Risk
     @W_Frequency   DECIMAL(18,2) = 0.25,  -- Trọng số Frequency
     @W_Monetary    DECIMAL(18,2) = 0.30,  -- Trọng số Monetary (ưu tiên hơn 1 chút)
-    @W_Consumption DECIMAL(18,2) = 0.20   -- Trọng số Consumption
+    @W_Consumption DECIMAL(18,2) = 0.20   -- Chỉ dùng cho tương thích/diagnostic
 AS
 BEGIN
     SET NOCOUNT ON
@@ -41,6 +42,15 @@ BEGIN
         SET @W_Consumption = @W_Consumption / 100.0
     END
 
+    -- P0: ValueSegment/Tier chỉ phản ánh tần suất mua và doanh số.
+    -- Nếu client truyền trọng số không hợp lệ thì quay về tỷ lệ mặc định 25/30.
+    IF @W_Frequency < 0 OR @W_Monetary < 0 OR (@W_Frequency + @W_Monetary) <= 0
+    BEGIN
+        SET @W_Frequency = 0.25
+        SET @W_Monetary = 0.30
+    END
+    DECLARE @TierWeightTotal DECIMAL(18,4) = @W_Frequency + @W_Monetary
+
     -- 0. Kiểm tra quyền
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
@@ -50,7 +60,13 @@ BEGIN
     -- Chuẩn hóa tham số NhomFilter (chấp nhận cả tiếng Việt lẫn ký tự)
     IF UPPER(@NhomFilter) LIKE '%VIP%' OR @NhomFilter = 'A'           SET @NhomFilter = 'A'
     ELSE IF UPPER(@NhomFilter) LIKE '%ỔN ĐỊNH%' OR @NhomFilter = 'B' SET @NhomFilter = 'B'
-    ELSE IF UPPER(@NhomFilter) LIKE '%NGUY CƠ%' OR @NhomFilter = 'C' SET @NhomFilter = 'C'
+    ELSE IF UPPER(@NhomFilter) LIKE '%NGUY CƠ%'
+    BEGIN
+        -- BR-TIER-002: "nguy cơ" là RiskLevel, không phải ValueSegment C.
+        SET @NhomFilter = ''
+        IF @RiskLevel = '' SET @RiskLevel = 'HIGH'
+    END
+    ELSE IF @NhomFilter = 'C' SET @NhomFilter = 'C'
     ELSE IF @NhomFilter != ''                                          SET @NhomFilter = ''
 
     -- Dọn rác nếu AI nhận diện nhầm NhomFilter thành MaKhachHang
@@ -142,7 +158,7 @@ BEGIN
     JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
     JOIN #AllowedObjects AO ON AO.ObjectID = I.ObjectID
     WHERE I.DocumentDate >= DATEADD(MONTH, -12, GETDATE())
-      AND ISNULL(I.StatusID, 0) != 10
+      AND I.StatusID IN (3, 6, 7, 8)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
       AND (@BranchID = '' OR I.BranchID = @BranchID)
       AND (@EmployeeID = '' OR I.EmployeeID = @EmployeeID)
@@ -167,22 +183,20 @@ BEGIN
     INTO #Scored
     FROM #Raw
 
-    -- ═══ BƯỚC 3: SCORING — Tính điểm tổng hợp theo trọng số CEO ═══
+    -- ═══ BƯỚC 3: SCORING — Tier chỉ dùng Frequency + Monetary ═══
     SELECT
         ObjectID, Recency_Days, Frequency_6M, Monetary_12M, LanMuaCuoi,
         DoanhSo3ThangGan, DoanhSo3ThangTruoc,
         R_Score, F_Score, M_Score, C_Score,
         CAST(
-            (@W_Recency * R_Score)
-          + (@W_Frequency * F_Score)
-          + (@W_Monetary * M_Score)
-          + (@W_Consumption * C_Score)
+            ((@W_Frequency * F_Score) + (@W_Monetary * M_Score))
+            / NULLIF(@TierWeightTotal, 0)
         AS INT)                                                                              AS TotalScore
     INTO #Final
     FROM #Scored
 
     -- ═══ BƯỚC 4: SEGMENTATION — Phân cụm tự động theo phân phối ═══
-    -- Nhom/ValueSegment phản ánh giá trị RFM-C. RiskLevel là chiều rủi ro
+    -- Nhom/ValueSegment phản ánh Frequency + Monetary. RiskLevel là chiều rủi ro
     -- riêng, tránh ép khách giá trị cao xuống nhóm C chỉ vì lâu chưa mua.
     SELECT
         F.*,
@@ -215,7 +229,8 @@ BEGIN
             CAST(S.Monetary_12M AS BIGINT) AS DoanhSo12Thang,
             CAST(S.DoanhSo3ThangGan AS BIGINT) AS DoanhSo3ThangGan,
             S.LanMuaCuoi, S.Recency_Days AS SoNgayKhongMua,
-            CASE WHEN S.DoanhSo3ThangTruoc = 0 THEN N'Khách mới hoặc chưa đủ chu kỳ'
+            CASE WHEN S.Frequency_6M = 0 OR S.LanMuaCuoi IS NULL THEN N'NEW_CUSTOMER: chưa đủ dữ liệu lịch sử'
+                 WHEN S.DoanhSo3ThangTruoc = 0 THEN N'Khách mới hoặc chưa đủ chu kỳ'
                  WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * 1.1 THEN N'Tăng trưởng'
                  WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.9 THEN N'Sụt giảm'
                  ELSE N'Ổn định' END AS XuHuong,
@@ -225,7 +240,7 @@ BEGIN
                     THEN N'Doanh số 3 tháng gần nhất giảm trên 20% so với kỳ trước.'
                  WHEN KH.DateCreate >= DATEADD(DAY,-30,GETDATE())
                     THEN N'Khách mới, chưa đủ dữ liệu lịch sử để đánh giá ổn định.'
-                 ELSE N'Phân nhóm theo điểm Recency, Frequency, Monetary và Consumption.' END AS LyDoChinh,
+                 ELSE N'Tier phân nhóm theo tần suất mua và doanh số; Risk tính riêng từ độ lâu chưa mua và xu hướng giảm.' END AS LyDoChinh,
             CASE WHEN S.RiskLevel = 'HIGH' THEN 3 WHEN S.RiskLevel = 'MEDIUM' THEN 2 ELSE 1 END AS RiskPriority
         FROM CF_ObjectTbl KH
         JOIN #Segmented S ON KH.ObjectID = S.ObjectID
@@ -242,7 +257,9 @@ BEGIN
            DoanhSo12Thang, DoanhSo3ThangGan,
            CONVERT(VARCHAR(10), LanMuaCuoi, 103) AS LanMuaCuoi,
            SoNgayKhongMua, XuHuong, LyDoChinh, TotalRows,
-           @Page AS [Page], @PageSize AS PageSize
+           @Page AS [Page], @PageSize AS PageSize,
+           N'FREQUENCY_MONETARY_PERCENTILE_DRAFT' AS RuleSource,
+           N'BR-TIER-V1-DRAFT' AS RuleVersion
     FROM Numbered
     ORDER BY RiskPriority DESC, DiemTongHop DESC, ObjectID ASC
     OFFSET ((@Page - 1) * @PageSize) ROWS FETCH NEXT @PageSize ROWS ONLY

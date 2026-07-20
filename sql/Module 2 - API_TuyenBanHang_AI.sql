@@ -126,7 +126,8 @@ BEGIN
         RETURN;
     END
 
-    -- 5. LẤY LỊCH SỬ MUA HÀNG CUỐI (Lọc theo phân quyền chi nhánh/quản lý)
+    -- 5. LẤY LỊCH SỬ HÓA ĐƠN CUỐI (BR-ROUTE-002).
+    -- Đơn hàng chưa giao không được coi là lần mua hợp lệ.
     SELECT
         T.ObjectID,
         MAX(T.DocumentDate)                             AS LanMuaCuoi,
@@ -134,10 +135,7 @@ BEGIN
     INTO #LanMuaCuoi
     FROM (
         SELECT ObjectID, DocumentDate, BranchID, CeoID, ManagerID 
-        FROM AR_InvoiceTbl WHERE ISNULL(StatusID, 0) != 10
-        UNION ALL
-        SELECT ObjectID, DocumentDate, BranchID, CeoID, ManagerID 
-        FROM AR_OrderTbl WHERE ISNULL(StatusID, 0) != 10
+        FROM AR_InvoiceTbl WHERE StatusID IN (3, 6, 7, 8)
     ) T
     WHERE (@MaKhachHang = '' OR T.ObjectID = @MaKhachHang)
       AND (
@@ -153,15 +151,15 @@ BEGIN
     SELECT
         I.ObjectID,
         CASE
-            WHEN COUNT(DISTINCT I.DocumentID) >= 2
+            WHEN COUNT(DISTINCT I.DocumentID) >= 3
             THEN DATEDIFF(DAY, MIN(I.DocumentDate), MAX(I.DocumentDate))
                  / (COUNT(DISTINCT I.DocumentID) - 1)
-            ELSE 30
+            ELSE 30 -- fallback tham khảo; chưa đủ 3 hóa đơn để tin cậy
         END AS ChuKyTB
     INTO #ChuKy
     FROM AR_InvoiceTbl I
     WHERE I.DocumentDate >= DATEADD(MONTH, -6, @TuNgay) AND I.DocumentDate <= @TuNgay
-      AND ISNULL(I.StatusID, 0) != 10
+      AND I.StatusID IN (3, 6, 7, 8)
       AND (@MaKhachHang = '' OR I.ObjectID = @MaKhachHang)
       AND (
           UPPER(@SYSUserGroupID) = 'ADMIN'
@@ -232,6 +230,10 @@ BEGIN
         CAST(@TuNgay AS DATE) AS [WorkDate],
         @TenThuHomNay AS [AppliedWeekday],
         @SYSBranchID AS [ScopeBranchID],
+        N'AR_InvoiceTbl' AS [LastPurchaseSource],
+        N'CHECKIN_SOURCE_UNAVAILABLE' AS [LastVisitStatus],
+        N'LEGACY_DEFAULT' AS [RuleSource],
+        N'BR-ROUTE-V1' AS [RuleVersion],
         M.Latitude AS [Latitude],
         M.Longitude AS [Longitude]
     FROM CF_ObjectTbl KH

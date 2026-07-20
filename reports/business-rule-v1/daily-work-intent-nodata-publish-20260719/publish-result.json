@@ -1,0 +1,16 @@
+{
+  "status": "N8N_ACTIVE_VERSION_PUBLISH_PASS",
+  "publishedAt": "2026-07-19T07:09:19.198Z",
+  "backupDir": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\business-rule-v1\\daily-work-intent-nodata-publish-20260719",
+  "workflows": [
+    {
+      "id": "mQ2X8ubexBpqD3Ru",
+      "name": "MAIN_ChatBot_V5",
+      "activeVersionId": "e9ae83de-9ea2-4c9e-9d50-9e4568fa1252",
+      "beforeNodesSha256": "AACA235C953019C3D5CE682B584212970F9C4540FE40A80DC9D4E9C7C463890A",
+      "afterNodesSha256": "66591A4069C6575B10F570593786F968AC17728509B1A0EDB3F4F153F7F1EF40",
+      "beforeConnectionsSha256": "CAE9BBAE40D69468EF23463758922ADB8FC78B7DD09C4D768E43BC8DE2F19DFC",
+      "afterConnectionsSha256": "CAE9BBAE40D69468EF23463758922ADB8FC78B7DD09C4D768E43BC8DE2F19DFC"
+    }
+  ]
+}

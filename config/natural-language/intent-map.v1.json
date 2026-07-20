@@ -1,0 +1,39 @@
+{
+  "version": "NL-INTENT-MAP-V1",
+  "pilotMode": "READ_ONLY",
+  "intents": {
+    "SALES_REVENUE": { "apiCode": "@doanh_so", "risk": "FINANCIAL", "requiredEntities": [] },
+    "INVOICE_LIST": { "apiCode": "@hoa_don", "risk": "FINANCIAL", "requiredEntities": [] },
+    "INVOICE_DETAIL": { "apiCode": "@hoa_don_chi_tiet", "risk": "FINANCIAL", "requiredEntities": ["documentId"] },
+    "ORDER_LIST": { "apiCode": "@don_hang", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] },
+    "CUSTOMER_SCORING": { "apiCode": "@cham_diem_kh", "risk": "RECOMMENDATION", "requiredEntities": [] },
+    "CUSTOMER_DEBT_SUMMARY": { "apiCode": "@cong_no_khach_hang", "risk": "FINANCIAL", "requiredEntities": [] },
+    "CUSTOMER_DEBT_DETAIL": { "apiCode": "@cong_no_chi_tiet", "risk": "FINANCIAL", "requiredEntities": ["customerId"] },
+    "LOYALTY_PROGRESS": { "apiCode": "@tich_luy", "risk": "OPERATIONAL", "requiredEntities": [] },
+    "SALES_ROUTE": { "apiCode": "@tuyen_ban_hang", "risk": "OPERATIONAL", "requiredEntities": [] },
+    "ORDER_RECOMMENDATION": { "apiCode": "@goi_ydon_hang", "risk": "RECOMMENDATION", "requiredEntities": ["customerId"] },
+    "UPSELL_RECOMMENDATION": { "apiCode": "@upsell_goi_y", "risk": "RECOMMENDATION", "requiredEntities": ["customerId"] },
+    "PRESCRIPTION_BUNDLE_RECOMMENDATION": { "apiCode": "@goi_ydon_thuoc", "risk": "MEDICAL", "requiredEntities": ["searchTerm"] },
+    "INVENTORY_LIST": { "apiCode": "@danh_sach_tonkho", "risk": "OPERATIONAL", "requiredEntities": ["searchTerm"] },
+    "PRODUCT_SEARCH": { "apiCode": "@tra_cuu_san_pham", "risk": "CATALOG", "requiredEntities": ["searchTerm"] },
+    "FOCUS_PRODUCTS": { "apiCode": "@san_pham_trong_tam", "risk": "OPERATIONAL", "requiredEntities": [] },
+    "PROMOTION_REVIEW": { "apiCode": "@de_xuat_khuyen_mai", "risk": "RECOMMENDATION", "requiredEntities": [] },
+    "CATALOG_LOOKUP": { "apiCode": "@danh_muc", "risk": "CATALOG", "requiredEntities": [] },
+    "SURVEY_360": { "apiCode": "@khao_sat360", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] },
+    "SURVEY_QUESTIONS": { "apiCode": "@danh_sach_cau_hoi_khao_sat", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] },
+    "SURVEY_STATUS": { "apiCode": "@kiem_tra_khao_sat", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] },
+    "SURVEY_DAILY_STATUS": { "apiCode": "@kiem_tra_khao_sat_ngay", "risk": "OPERATIONAL", "requiredEntities": [] },
+    "SURVEY_HISTORY": { "apiCode": "@lich_su_khao_sat", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] },
+    "NOTIFICATIONS": { "apiCode": "@thong_bao", "risk": "OPERATIONAL", "requiredEntities": [] },
+    "SYMPTOM_PRODUCT_SEARCH": { "apiCode": "@tim_san_pham_theo_trieu_chung", "risk": "MEDICAL", "requiredEntities": ["keyword"] }
+  },
+  "confidenceThresholds": {
+    "CATALOG": 0.85,
+    "OPERATIONAL": 0.9,
+    "FINANCIAL": 0.92,
+    "RECOMMENDATION": 0.92,
+    "MEDICAL": null,
+    "MUTATION": null
+  },
+  "minimumTopTwoMargin": 0.1
+}

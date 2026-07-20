@@ -1,0 +1,42 @@
+{
+  "status": "MEDTEST_UPSELL_CUSTOMER_REQUIRED_PASS",
+  "scopeGuard": "PASS",
+  "deployedAt": "2026-07-19T08:51:56.623Z",
+  "database": "medtest",
+  "backupDir": "C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\business-rule-v1\\upsell-scope-guard-deploy-20260719",
+  "beforeSha256": "C2CBDB6D6AEC317E276BDEDBAE547366806E0FFD7E0CB75953659A8995674CDA",
+  "afterSha256": "88C6C92692A9D1E6D0FE12A2714C972DDF834C707D930CB6B28EF1D7BA0C6C1C",
+  "metadata": {
+    "isRequired": true,
+    "sourceOfTruth": "USER_INPUT",
+    "validationRule": "REQUIRED;DATASOURCE_ID_IN_SCOPE"
+  },
+  "smoke": [
+    {
+      "username": "QLBH013.MED",
+      "missingCustomer": "PASS",
+      "scopedCustomer": "PASS",
+      "resultRowCount": 10
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "missingCustomer": "PASS",
+      "scopedCustomer": "PASS",
+      "resultRowCount": 10
+    }
+  ],
+  "crossBranchSmoke": [
+    {
+      "username": "QLMD1",
+      "customerId": "NDB001",
+      "outOfScope": "PASS",
+      "noProductLeak": true
+    },
+    {
+      "username": "QLBH024.MED",
+      "customerId": "NDB001",
+      "outOfScope": "PASS",
+      "noProductLeak": true
+    }
+  ]
+}

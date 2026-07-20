@@ -1,0 +1,528 @@
+{
+  "generatedAt": "2026-07-18T06:46:30.500Z",
+  "mode": "full",
+  "securityGate": "BLOCKED",
+  "summary": {
+    "total": 44,
+    "passed": 40,
+    "blocked": 4,
+    "failed": 0,
+    "readApiPolicyCount": 26
+  },
+  "cases": [
+    {
+      "id": "execute-guest",
+      "endpoint": "execute",
+      "identity": "guest",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_MISSING",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "list-active-guest",
+      "endpoint": "list-active",
+      "identity": "guest",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_MISSING",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "get-config-guest",
+      "endpoint": "get-config",
+      "identity": "guest",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_MISSING",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-invalid-token",
+      "endpoint": "execute",
+      "identity": "invalid-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_INVALID",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "list-active-invalid-token",
+      "endpoint": "list-active",
+      "identity": "invalid-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_INVALID",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "get-config-invalid-token",
+      "endpoint": "get-config",
+      "identity": "invalid-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_INVALID",
+        "requestId": "req-auth-p0-05-mrq077tt",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-expired-token",
+      "endpoint": "execute",
+      "identity": "expired-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_EXPIRED",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "list-active-expired-token",
+      "endpoint": "list-active",
+      "identity": "expired-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_EXPIRED",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "get-config-expired-token",
+      "endpoint": "get-config",
+      "identity": "expired-token",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 401,
+        "code": "AUTH_TOKEN_EXPIRED",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-valid-unmapped",
+      "endpoint": "execute",
+      "identity": "valid-unmapped",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 403,
+        "code": "IDENTITY_MAPPING_NOT_FOUND",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "list-active-valid-unmapped",
+      "endpoint": "list-active",
+      "identity": "valid-unmapped",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 403,
+        "code": "IDENTITY_MAPPING_NOT_FOUND",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "get-config-valid-unmapped",
+      "endpoint": "get-config",
+      "identity": "valid-unmapped",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 403,
+        "code": "IDENTITY_MAPPING_NOT_FOUND",
+        "requestId": "req-auth-p0-05-mrq077tu",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@doanh_so",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@doanh_so",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@hoa_don",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@hoa_don",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@hoa_don_chi_tiet",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@hoa_don_chi_tiet",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@don_hang",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@don_hang",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@cham_diem_kh",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@cham_diem_kh",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@cong_no_khach_hang",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@cong_no_khach_hang",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@cong_no_chi_tiet",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@cong_no_chi_tiet",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@tich_luy",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@tich_luy",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@tuyen_ban_hang",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@tuyen_ban_hang",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@goi_ydon_hang",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@goi_ydon_hang",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@upsell_goi_y",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@upsell_goi_y",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@goi_ydon_thuoc",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@goi_ydon_thuoc",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@danh_sach_tonkho",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@danh_sach_tonkho",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@tra_cuu_san_pham",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@tra_cuu_san_pham",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@san_pham_trong_tam",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@san_pham_trong_tam",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@de_xuat_khuyen_mai",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@de_xuat_khuyen_mai",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@danh_muc",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@danh_muc",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@khach_hang_list",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@khach_hang_list",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@dashboard_sinh_nhat",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@dashboard_sinh_nhat",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@khao_sat360",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@khao_sat360",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@danh_sach_cau_hoi_khao_sat",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@danh_sach_cau_hoi_khao_sat",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@kiem_tra_khao_sat",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@kiem_tra_khao_sat",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@kiem_tra_khao_sat_ngay",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@kiem_tra_khao_sat_ngay",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@lich_su_khao_sat",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@lich_su_khao_sat",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@thong_bao",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@thong_bao",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "execute-no-scope-@tim_san_pham_theo_trieu_chung",
+      "endpoint": "execute",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "apiCode": "@tim_san_pham_theo_trieu_chung",
+        "code": "CAPABILITY_REQUIRED",
+        "httpStatus": 403,
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "list-active-no-scope",
+      "endpoint": "list-active",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 200,
+        "count": 0,
+        "sqlResponseFiltered": true
+      }
+    },
+    {
+      "id": "get-config-no-scope",
+      "endpoint": "get-config",
+      "identity": "valid-no-scope",
+      "status": "PASS",
+      "evidence": {
+        "httpStatus": 404,
+        "code": "CONFIG_NOT_FOUND",
+        "sqlExecutionCount": 0
+      }
+    },
+    {
+      "id": "live-manager",
+      "endpoint": "all",
+      "identity": "manager",
+      "status": "BLOCKED",
+      "evidence": {
+        "reason": "Missing live UAT inputs: UAT_UNMAPPED_TOKEN, UAT_NO_SCOPE_TOKEN"
+      }
+    },
+    {
+      "id": "live-tdv",
+      "endpoint": "all",
+      "identity": "tdv",
+      "status": "BLOCKED",
+      "evidence": {
+        "reason": "Missing live UAT inputs: UAT_UNMAPPED_TOKEN, UAT_NO_SCOPE_TOKEN"
+      }
+    },
+    {
+      "id": "live-unmapped",
+      "endpoint": "all",
+      "identity": "unmapped",
+      "status": "BLOCKED",
+      "evidence": {
+        "reason": "Missing live UAT inputs: UAT_UNMAPPED_TOKEN, UAT_NO_SCOPE_TOKEN"
+      }
+    },
+    {
+      "id": "live-noScope",
+      "endpoint": "all",
+      "identity": "noScope",
+      "status": "BLOCKED",
+      "evidence": {
+        "reason": "Missing live UAT inputs: UAT_UNMAPPED_TOKEN, UAT_NO_SCOPE_TOKEN"
+      }
+    }
+  ]
+}

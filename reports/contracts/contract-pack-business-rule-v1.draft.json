@@ -1,0 +1,169 @@
+{
+  "contractVersion": "1.0.0-draft",
+  "status": "FROZEN_FOR_IMPLEMENTATION",
+  "checksumAlgorithm": "SHA-256",
+  "checksumScope": "canonical JSON payload with checksum omitted",
+  "checksum": "ad40f0d66b6eb0033cc9b0295389657c4a1d3d4047bcf465db71f34bbad791ab",
+  "sourceBaselineCommit": "8e4b5da7a0d3f820374692c65d39c8d8350d374d",
+  "gate0ArtifactCommit": "PENDING_COORDINATOR_COMMIT",
+  "ruleVersion": "BR-V1-DRAFT",
+  "nullableSemantics": {
+    "null": "unknown_or_not_available; never coerce to zero",
+    "emptyArray": "no records for the requested scope/filter",
+    "emptyString": "unknown unless the field contract explicitly defines empty as meaningful",
+    "zero": "valid numeric zero when returned by the API",
+    "false": "valid boolean false when returned by the API"
+  },
+  "errorTaxonomy": {
+    "NO_DATA": "Request is valid but no record satisfies the filter and scope.",
+    "OUT_OF_SCOPE": "Data exists but is not visible to the authenticated role/scope.",
+    "VALIDATION_ERROR": "Input is missing or invalid; business SQL must not execute.",
+    "SYSTEM_ERROR": "Gateway, workflow, database or unexpected system failure; do not expose SQL/token details."
+  },
+  "commonEnvelope": {
+    "required": ["ApiCode", "contractVersion", "requestId", "status", "data", "metadata"],
+    "fields": {
+      "ApiCode": { "type": "string", "pattern": "^@" },
+      "contractVersion": { "type": "string" },
+      "requestId": { "type": "string", "pattern": "^req-" },
+      "status": { "enum": ["SUCCESS", "NO_DATA", "OUT_OF_SCOPE", "VALIDATION_ERROR", "SYSTEM_ERROR"] },
+      "errorCode": { "type": ["string", "null"] },
+      "data": { "type": "array" },
+      "metadata": {
+        "type": "object",
+        "fields": ["ruleVersion", "source", "dataWindow", "updatedAt", "scope", "freshness"]
+      }
+    }
+  },
+  "apis": [
+    {
+      "ApiCode": "@doanh_so",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@TuNgay", "@DenNgay", "@MaKhachHang", "@MaNhanVien"],
+      "output": ["Revenue", "DoanhSoDaXuat", "DoanhThuDaThu", "RevenueBasis", "RevenueRecognition", "RuleVersion", "DocumentCount"],
+      "enums": { "RevenueBasis": ["AR_OrderAndReturnView.TotalAmount", "BUSINESS_DECISION_REQUIRED"] },
+      "validation": ["ISO_DATE", "FROM_DATE_LEQ_TO_DATE"],
+      "notes": "Fulfilled sales use statuses 3,6,7,8 plus signed return 99. DoanhThuDaThu is a status-8 proxy until payment-ledger reconciliation proves full versus partial collection; VAT/net production sign-off remains required."
+    },
+    {
+      "ApiCode": "@danh_sach_tonkho",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@timkiem", "@MaKho"],
+      "output": ["PhysicalStock", "AvailableStock", "StockDataStatus", "StockUpdatedAt", "WarehouseScope", "RuleVersion"],
+      "enums": {
+        "StockDataStatus": ["PHYSICAL_AS_SELLABLE_TEMPORARY", "EXPIRED_NOT_SELLABLE", "STOCK_RECONCILIATION_REQUIRED", "PHYSICAL_STOCK_NOT_QUERIED", "STALE", "OUT_OF_SCOPE"]
+      },
+      "validation": ["SCOPE_REQUIRED"],
+      "notes": "When stock is queried in the verified warehouse scope, AvailableStock temporarily equals positive unexpired physical stock. Expired/negative lots return zero. APIs that did not query stock keep AvailableStock null. ERP reservation/blocked-stock confirmation remains open."
+    },
+    {
+      "ApiCode": "@goi_ydon_hang",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang", "@TopN"],
+      "output": ["CustomerCode", "ProductCode", "CycleDays", "DoTinCay", "RuleSource", "RecommendationReason", "AvailableStock", "RuleVersion"],
+      "enums": {
+        "DoTinCay": ["PERSONAL_CYCLE_ELIGIBLE", "INSUFFICIENT_HISTORY", "LOW_CONFIDENCE"],
+        "RuleSource": ["APPROVED_CONFIG", "LEGACY_DEFAULT", "BUSINESS_DECISION_REQUIRED"]
+      },
+      "validation": ["CUSTOMER_REQUIRED", "TOPN_POSITIVE_INTEGER_MAX_100"],
+      "notes": "At least three valid invoices are required for personal-cycle eligibility."
+    },
+    {
+      "ApiCode": "@tuyen_ban_hang",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang", "@TopN", "@DocumentDate"],
+      "output": ["CustomerCode", "VisitOrder", "LastPurchaseAt", "LastPurchaseSource", "LastVisitStatus", "PriorityReason", "RuleVersion"],
+      "enums": { "LastVisitStatus": ["CHECKIN_CONFIRMED", "CHECKIN_SOURCE_UNAVAILABLE", "OUT_OF_SCOPE"] },
+      "validation": ["TOPN_INTEGER_RANGE_5_8_WHEN_PRIORITY_LIST"],
+      "notes": "UI must label this as priority suggestion, not route optimization."
+    },
+    {
+      "ApiCode": "@cham_diem_kh",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang"],
+      "output": ["CustomerTier", "RiskLevel", "CustomerState", "RuleVersion", "Reason"],
+      "enums": {
+        "CustomerTier": ["A", "B", "C", "BUSINESS_DECISION_REQUIRED"],
+        "RiskLevel": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"],
+        "CustomerState": ["ACTIVE_CUSTOMER", "NEW_CUSTOMER"]
+      },
+      "validation": ["CUSTOMER_REQUIRED"],
+      "notes": "CustomerTier and RiskLevel are independent fields."
+    },
+    {
+      "ApiCode": "@tich_luy",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang"],
+      "output": ["Achieved", "Target", "Remaining", "ProgramStatus", "EffectiveFrom", "EffectiveTo", "RuleVersion"],
+      "enums": { "ProgramStatus": ["APPROVED_ACTIVE", "REFERENCE_ONLY_APPROVAL_REQUIRED", "EXPIRED", "NO_DATA"] },
+      "validation": ["CUSTOMER_REQUIRED"],
+      "notes": "Only APPROVED_ACTIVE may be shown as currently applicable."
+    },
+    {
+      "ApiCode": "@de_xuat_khuyen_mai",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang", "@MaSanPham"],
+      "output": ["ProgramStatus", "EffectiveFrom", "EffectiveTo", "ActionStatus", "RuleVersion"],
+      "enums": { "ActionStatus": ["APPROVED_ACTIVE", "REFERENCE_ONLY_APPROVAL_REQUIRED", "EXPIRED", "NO_DATA"] },
+      "validation": ["SCOPE_REQUIRED"],
+      "notes": "Reference-only promotion is not a discount command."
+    },
+    {
+      "ApiCode": "@tra_cuu_san_pham",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@timkiem", "@TopN"],
+      "output": ["ProductCode", "ProductName", "Unit", "Description"],
+      "enums": {},
+      "validation": ["PRODUCT_KEYWORD_REQUIRED"],
+      "notes": "Product lookup is not symptom search."
+    },
+    {
+      "ApiCode": "@tim_san_pham_theo_trieu_chung",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@Keyword"],
+      "output": ["ProductCode", "ProductName", "MedicalWarning", "Confidence"],
+      "enums": {},
+      "validation": ["SYMPTOM_REQUIRED"],
+      "notes": "Must display medical-context warning and must not diagnose/prescribe."
+    },
+    {
+      "ApiCode": "@upsell_goi_y",
+      "active": true,
+      "visible": true,
+      "access": "READ",
+      "legacy": false,
+      "input": ["@MaKhachHang", "@timkiem", "@TopN"],
+      "output": ["ProductCode", "Reason", "AvailableStock", "RuleVersion"],
+      "enums": {},
+      "validation": ["CUSTOMER_REQUIRED_IN_USER_SCOPE", "TOPN_POSITIVE_INTEGER_MAX_100"],
+      "notes": "Upsell is customer-specific. Missing customer must fail closed; draft orders are not official revenue."
+    }
+  ]
+}

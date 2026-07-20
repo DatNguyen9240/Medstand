@@ -1,0 +1,62 @@
+﻿[
+    {
+        "name":  "execute-guest",
+        "status":  401,
+        "code":  "AUTH_TOKEN_MISSING",
+        "requestId":  "req-6378-mrq0awg1",
+        "operation":  "UNKNOWN",
+        "transactionOutcome":  "NOT_STARTED",
+        "expectIdempotency":  false,
+        "result":  "PASS"
+    },
+    {
+        "name":  "execute-validation",
+        "status":  422,
+        "code":  "VALIDATION_ERROR",
+        "requestId":  "req-6380-mrq0awwu",
+        "operation":  "READ",
+        "transactionOutcome":  "NOT_APPLICABLE",
+        "expectIdempotency":  false,
+        "result":  "PASS"
+    },
+    {
+        "name":  "execute-success",
+        "status":  200,
+        "code":  "OK",
+        "requestId":  "req-6382-mrq0axha",
+        "operation":  "READ",
+        "transactionOutcome":  "NOT_APPLICABLE",
+        "expectIdempotency":  false,
+        "result":  "PASS"
+    },
+    {
+        "name":  "execute-mutation-denied",
+        "status":  403,
+        "code":  "CAPABILITY_REQUIRED",
+        "requestId":  "req-6384-mrq0ayuk",
+        "operation":  "MUTATION",
+        "transactionOutcome":  "NOT_STARTED",
+        "expectIdempotency":  true,
+        "result":  "PASS"
+    },
+    {
+        "name":  "list-success",
+        "status":  200,
+        "code":  null,
+        "requestId":  "req-6386-mrq0azdr",
+        "operation":  "CATALOG",
+        "transactionOutcome":  "NOT_APPLICABLE",
+        "expectIdempotency":  false,
+        "result":  "PASS"
+    },
+    {
+        "name":  "config-success",
+        "status":  200,
+        "code":  0,
+        "requestId":  "req-6388-mrq0b0a7",
+        "operation":  "CATALOG",
+        "transactionOutcome":  "NOT_APPLICABLE",
+        "expectIdempotency":  false,
+        "result":  "PASS"
+    }
+]

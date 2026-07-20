@@ -1,0 +1,11 @@
+{
+  "date": "2026-07-17",
+  "scope": "catalog-menu-ui",
+  "results": [
+    { "case": "CAT-01", "name": "five approved catalog actions", "status": "PASS" },
+    { "case": "CAT-02", "name": "technical TYPE/LABEL table hidden", "status": "PASS" },
+    { "case": "CAT-03", "name": "search and keyword step", "status": "PASS" },
+    { "case": "CAT-04", "name": "unknown type fail closed", "status": "PASS" },
+    { "case": "CAT-05", "name": "responsive and keyboard browser UAT", "status": "BLOCKED", "reason": "Playwright Chromium spawn EPERM in current environment" }
+  ]
+}

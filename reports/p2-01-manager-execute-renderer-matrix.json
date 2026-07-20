@@ -7,8 +7,9 @@
     "@lap_don_hang",
     "@san_pham_trong_tam_import"
   ],
-  "complete": false,
-  "passed": 22,
+  "catalogRequestId": "req-7105-mrq4qgg7",
+  "complete": true,
+  "passed": 24,
   "failed": 0,
   "matrix": [
     {
@@ -18,7 +19,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4316-mrogmhl7"
+        "requestId": "req-7110-mrq4qhnt"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -30,7 +31,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4318-mrogmu0e"
+        "requestId": "req-7112-mrq4qu26"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -42,7 +43,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4320-mrogn6ff"
+        "requestId": "req-7114-mrq4r6fi"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -54,7 +55,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4322-mrognixo"
+        "requestId": "req-7116-mrq4rivi"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -66,7 +67,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4324-mrognvch"
+        "requestId": "req-7118-mrq4rv8m"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -78,7 +79,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4326-mrogo7x5"
+        "requestId": "req-7120-mrq4s7oc"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -90,7 +91,7 @@
         "httpStatus": 200,
         "code": "OK",
         "count": 1,
-        "requestId": "req-4328-mrogo9ln"
+        "requestId": "req-7122-mrq4s92y"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -102,7 +103,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4330-mrogoaif"
+        "requestId": "req-7124-mrq4s9wy"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -114,7 +115,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4332-mrogomw5"
+        "requestId": "req-7126-mrq4smai"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -126,7 +127,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4334-mrogonz3"
+        "requestId": "req-7128-mrq4sn6g"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -138,7 +139,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4336-mrogp0ds"
+        "requestId": "req-7130-mrq4szjq"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -150,7 +151,7 @@
         "httpStatus": 200,
         "code": "OK",
         "count": 1,
-        "requestId": "req-4338-mrogpct9"
+        "requestId": "req-7132-mrq4tby0"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -162,7 +163,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4340-mrogpdw6"
+        "requestId": "req-7134-mrq4tctc"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -172,9 +173,9 @@
       "UiTemplate": "DEFAULT",
       "execution": {
         "httpStatus": 422,
-        "code": "BUSINESS_ERROR",
+        "code": "VALIDATION_ERROR",
         "count": 0,
-        "requestId": "req-4342-mrogpets"
+        "requestId": "req-7136-mrq4tdmm"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -186,7 +187,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4344-mrogpfsl"
+        "requestId": "req-7138-mrq4tei4"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -198,7 +199,7 @@
         "httpStatus": 200,
         "code": "OK",
         "count": 1,
-        "requestId": "req-4346-mrogpsbr"
+        "requestId": "req-7140-mrq4tqvr"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -210,7 +211,7 @@
         "httpStatus": 200,
         "code": "OK",
         "count": 1,
-        "requestId": "req-4348-mrogpt9k"
+        "requestId": "req-7142-mrq4trqb"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -222,7 +223,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4350-mrogpu6e"
+        "requestId": "req-7144-mrq4tsk6"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -234,7 +235,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4352-mrogpv1b"
+        "requestId": "req-7146-mrq4ttdg"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -246,7 +247,7 @@
         "httpStatus": 200,
         "code": "NO_DATA",
         "count": 0,
-        "requestId": "req-4354-mrogq7h5"
+        "requestId": "req-7148-mrq4u5tc"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -256,9 +257,9 @@
       "UiTemplate": "DEFAULT",
       "execution": {
         "httpStatus": 200,
-        "code": "NO_DATA",
-        "count": 0,
-        "requestId": "req-4356-mrogqjvz"
+        "code": "OK",
+        "count": 10,
+        "requestId": "req-7150-mrq4ui7z"
       },
       "renderer": "PASS",
       "result": "PASS"
@@ -268,9 +269,33 @@
       "UiTemplate": "CATALOG",
       "execution": {
         "httpStatus": 200,
+        "code": "NO_DATA",
+        "count": 0,
+        "requestId": "req-7152-mrq4uj4f"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@tuyen_ban_hang",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 422,
+        "code": "VALIDATION_ERROR",
+        "count": 0,
+        "requestId": "req-7154-mrq4uk0v"
+      },
+      "renderer": "PASS",
+      "result": "PASS"
+    },
+    {
+      "ApiCode": "@thong_bao",
+      "UiTemplate": "DEFAULT",
+      "execution": {
+        "httpStatus": 200,
         "code": "OK",
-        "count": 1,
-        "requestId": "req-4358-mrogqktc"
+        "count": 9,
+        "requestId": "req-7156-mrq4ukkf"
       },
       "renderer": "PASS",
       "result": "PASS"

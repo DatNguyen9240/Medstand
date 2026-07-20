@@ -74,7 +74,8 @@ FROM dbo.API_Field f
 JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
 WHERE (d.ApiCode = '@cong_no_chi_tiet' AND f.FieldCode = '@MaKhachHang')
    OR (d.ApiCode = '@hoa_don_chi_tiet' AND f.FieldCode = '@DocumentID')
-   OR (d.ApiCode = '@khao_sat360' AND f.FieldCode = '@ObjectID');
+   OR (d.ApiCode = '@khao_sat360' AND f.FieldCode = '@ObjectID')
+   OR (d.ApiCode = '@upsell_goi_y' AND f.FieldCode = '@MaKhachHang');
 
 IF OBJECT_ID('dbo.API_Filter', 'U') IS NOT NULL
 BEGIN
@@ -92,7 +93,8 @@ BEGIN
     USING (VALUES
         ('API_CongNoChiTiet_AI', '@MaKhachHang', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE'),
         ('API_HoaDonChiTiet_AI', '@DocumentID', 'USER_INPUT', N'REQUIRED;NON_EMPTY'),
-        ('API_KhaoSat360_AI', '@ObjectID', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE')
+        ('API_KhaoSat360_AI', '@ObjectID', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE'),
+        ('API_UpsellGoiY_AI', '@MaKhachHang', 'USER_INPUT', N'REQUIRED;DATASOURCE_ID_IN_SCOPE')
     ) AS source (StoredProcedure, FieldCode, SourceOfTruth, ValidationRule)
     ON target.StoredProcedure = source.StoredProcedure AND target.FieldCode = source.FieldCode
     WHEN MATCHED THEN UPDATE SET

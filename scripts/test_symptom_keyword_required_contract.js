@@ -12,4 +12,4 @@ const sql = fs.readFileSync(path.join(root, 'sql', 'Module 10 - API_TraCuuSanPha
 assert(engine.includes("@tim_san_pham_theo_trieu_chung") && engine.includes('Vui lòng nhập từ khóa'), 'FE must reject an empty symptom keyword');
 assert(workflow.includes("apiCode === '@tim_san_pham_theo_trieu_chung'") && workflow.includes("'@keyword', '@timkiem'"), 'n8n must validate symptom keyword before SQL');
 assert(sql.includes("IF @timkiem = ''") && sql.includes("'VALIDATION_ERROR'"), 'SQL procedure must not search all products for an empty keyword');
-console.log('Symptom keyword required contract checks passed.');
+console.log('Symptom keyword required contract: STATIC_CONTRACT_PASS');

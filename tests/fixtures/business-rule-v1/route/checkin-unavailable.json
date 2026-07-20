@@ -1,0 +1,11 @@
+{
+  "ApiCode": "@tuyen_ban_hang",
+  "contractVersion": "1.0.0-draft",
+  "role": "TDV",
+  "scope": { "branchId": "BR-DEMO", "routeId": "ROUTE-DEMO-01", "customerScope": ["KH-DEMO-003"] },
+  "requestId": "req-fixture-route-checkin-unavailable",
+  "status": "SUCCESS",
+  "errorCode": null,
+  "data": [{ "CustomerCode": "KH-DEMO-003", "VisitOrder": 1, "LastPurchaseAt": "2026-06-20", "LastPurchaseSource": "AR_InvoiceTbl", "LastVisitStatus": "CHECKIN_SOURCE_UNAVAILABLE", "PriorityReason": "Chưa có dữ liệu ghé" }],
+  "metadata": { "ruleVersion": "BR-ROUTE-V1-DRAFT", "source": "UAT_FIXTURE", "dataWindow": null, "updatedAt": "2026-07-17T08:00:00Z", "scope": "ROUTE-DEMO-01", "freshness": "CURRENT" }
+}

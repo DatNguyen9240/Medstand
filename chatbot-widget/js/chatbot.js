@@ -114,6 +114,28 @@
 
     }
 
+    // P0A: each browser tab owns one conversation ID. The server derives its
+    // own session fingerprint from the verified token; the client never sends it.
+    function _getConversationId() {
+        return _getSessionId();
+    }
+
+    function _contextResetKey() {
+        var uname = _user();
+        return 'ai_chat_reset_context' + (uname ? '_' + uname.toLowerCase() : '');
+    }
+
+    function _markConversationForReset(conversationId) {
+        if (conversationId) sessionStorage.setItem(_contextResetKey(), conversationId);
+    }
+
+    function _consumeConversationReset() {
+        var key = _contextResetKey();
+        var previous = sessionStorage.getItem(key) || '';
+        if (previous) sessionStorage.removeItem(key);
+        return previous;
+    }
+
 
 
     // ── LocalStorage cache with TTL (Phase 1) ──
@@ -904,6 +926,7 @@
                 _clearCache();
                 var uname = _user();
                 var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+                _markConversationForReset(_getSessionId());
                 sessionStorage.removeItem(key); // Xóa session ngầm
                 chatHistory = [];
                 _renderHistory();
@@ -1372,7 +1395,16 @@
 
 
 
-            var payload = { action: 'chat', text: text || displayText, session_id: sessionId, files: fileList, history: historyStr };
+            var conversationId = sessionId || _getConversationId();
+            var payload = {
+                action: 'chat',
+                text: text || displayText,
+                session_id: conversationId,
+                conversationId: conversationId,
+                resetConversationId: _consumeConversationReset(),
+                files: fileList,
+                history: historyStr
+            };
 
             if (window.ApiEngine && window.ApiEngine.getActiveApi) {
                 var activeApiObj = window.ApiEngine.getActiveApi();
@@ -1422,7 +1454,14 @@
         var historyStr = pastMsgs.map(function (m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
 
         _showTyping();
-        var payload = { action: 'chat', text: text, session_id: _getSessionId(), history: historyStr };
+        var conversationId = _getConversationId();
+        var payload = {
+            action: 'chat', text: text,
+            session_id: conversationId,
+            conversationId: conversationId,
+            resetConversationId: _consumeConversationReset(),
+            history: historyStr
+        };
 
         var relativeUrl = CHAT_CASUAL_API.replace(_cfg.N8N_BASE || '', '');
         var rawPayload = JSON.stringify({
@@ -1548,6 +1587,10 @@
 
         console.log('API Response:', res);
 
+        if (res && res.ApiCode && !res.apiCode) res.apiCode = res.ApiCode;
+
+        var responseStatus = String(res && res.status || '').toUpperCase();
+
         _hideTyping();
 
         _setStopMode(false);
@@ -1660,7 +1703,7 @@
 
 
 
-            if (res && res.status === 'success' && Array.isArray(res.data)) {
+            if (res && (res.status === 'success' || responseStatus === 'SUCCESS' || responseStatus === 'NO_DATA' || responseStatus === 'OUT_OF_SCOPE' || responseStatus === 'VALIDATION_ERROR' || responseStatus === 'SYSTEM_ERROR') && Array.isArray(res.data)) {
 
                 // 1. Lc data (ẩn các field hidden & loại dòng toàn null do SQL SUM trả v)
 
@@ -1668,7 +1711,7 @@
 
                     if (!r) return false;
 
-                    var visibleKeys = Object.keys(r).filter(function (k) { return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1; });
+                    var visibleKeys = Object.keys(r).filter(function (k) { return _getHiddenFields().indexOf(k) === -1 && !_isTechnicalRuleField(k) && String(k).indexOf('Metadata_') === -1; });
 
                     if (visibleKeys.length === 0) return false;
 
@@ -1684,24 +1727,19 @@
 
 
 
-                if (cleanData.length === 0) {
-                    var isSuccessMsg = res.message && (res.message.indexOf('Tìm thấy') > -1 || res.message.indexOf('kết quả') > -1 || res.message.indexOf('ket qua') > -1);
-                    var warnMsg = 'Không có dữ liệu phù hợp với điều kiện tra cứu.';
-                    
-                    var isNoDebt = (res.apiCode === '@cong_no_chi_tiet' || (res.message && (res.message.indexOf('nợ') > -1 || res.message.indexOf('hóa đơn') > -1)));
-                    
-                    if (isNoDebt) {
-                        _addMessage('ai', 'Dạ tuyệt vời! Khách hàng này hiện không có bất kỳ hóa đơn nợ nào, Sếp hoàn toàn yên tâm nhé!');
-                        return;
-                    }
-                    
-                    if (isSuccessMsg || !res.message) {
-                        warnMsg = 'Không có dữ liệu phù hợp với điều kiện tra cứu.';
-                    } else {
-                        warnMsg = res.message;
-                    }
+                if (responseStatus !== 'SUCCESS' && ['NO_DATA', 'OUT_OF_SCOPE', 'VALIDATION_ERROR', 'SYSTEM_ERROR'].indexOf(responseStatus) !== -1) {
+                    cleanData = [];
+                }
 
-                    _addMessage('ai', warnMsg);
+                if (cleanData.length === 0) {
+                    var emptyCode = String(res.errorCode ?? res.code ?? responseStatus ?? 'NO_DATA').toUpperCase();
+                    var emptyMessages = {
+                        NO_DATA: 'Không có dữ liệu phù hợp với điều kiện tra cứu.',
+                        OUT_OF_SCOPE: 'Bạn không có quyền xem dữ liệu này trong phạm vi được giao.',
+                        VALIDATION_ERROR: 'Thông tin tra cứu chưa hợp lệ. Vui lòng kiểm tra và thử lại.',
+                        SYSTEM_ERROR: 'Hệ thống chưa thể tải dữ liệu. Vui lòng thử lại sau.'
+                    };
+                    _addMessage('ai', emptyMessages[emptyCode] ?? emptyMessages.NO_DATA);
                     return;
                 }
 
@@ -1717,17 +1755,42 @@
 
                 var apiCode = (res.apiCode || '').toLowerCase();
 
-                var uiTpl = (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
+                var isDebtApi = apiCode.indexOf('@cong_no') === 0;
+                var uiTpl = isDebtApi ? 'CONG_NO' : (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
+                var catalogAllowedTypes = ['sanpham', 'khachhang', 'donhang', 'khohang', 'nhanvien'];
+                var isCatalogRoot = cleanData.length > 0 && cleanData.every(function (row) {
+                    if (!row) return false;
+                    var type = String(row.Type ?? row.TYPE ?? row.type ?? '').toLowerCase();
+                    var hasLabel = row.Label !== undefined || row.LABEL !== undefined || row.label !== undefined;
+                    return hasLabel && catalogAllowedTypes.indexOf(type) >= 0;
+                });
 
-                var renderFn = apiCode === '@doanh_so'
+                var renderFn = isCatalogRoot && ApiChatbot.__internal && typeof ApiChatbot.__internal.renderCatalog === 'function'
+                    ? ApiChatbot.__internal.renderCatalog
+                    : apiCode === '@doanh_so'
                     ? _renderSalesDashboard
                     : (_UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView);
 
                 // 4. Render — truyn meta đầy đủ (khCode cho CONG_NO/TICH_LUY, uiTemplate cho tất cả)
 
-                var renderMeta = { uiTemplate: uiTpl, fieldRoles: ApiEngine.getRoleMapping(), khCode: khCode, queryParams: Object.assign({}, res.intentParams || {}) };
+                var responseMetadata = res.metadata ?? res.meta ?? {};
+                var renderMeta = {
+                    uiTemplate: uiTpl,
+                    fieldRoles: ApiEngine.getRoleMapping(),
+                    khCode: khCode,
+                    queryParams: Object.assign({}, res.intentParams || {}),
+                    responseMetadata: responseMetadata,
+                    requestId: res.requestId ?? responseMetadata.requestId ?? null,
+                    contractVersion: res.contractVersion ?? responseMetadata.contractVersion ?? null,
+                    status: res.errorCode ?? res.code ?? res.status ?? null
+                };
 
-                var cardHtml = renderFn(cleanData, res.message, apiCode, renderMeta);
+                var cardHtml = renderFn(cleanData, res.message, isCatalogRoot ? '@danh_muc' : apiCode, renderMeta);
+                if (apiCode === '@danh_muc' && !isCatalogRoot && ApiChatbot.__internal && typeof ApiChatbot.__internal.renderCatalogFooter === 'function') {
+                    var catalogParams = res.intentParams ?? res.params ?? {};
+                    var catalogType = catalogParams['@Type'] ?? catalogParams['@type'] ?? catalogParams.type ?? '';
+                    cardHtml += ApiChatbot.__internal.renderCatalogFooter(catalogType);
+                }
 
                 _addHtmlMessage(cardHtml, '📊 Kết quả');
 
@@ -1739,7 +1802,7 @@
 
             // -- Xử lý Lỗi --
 
-            if (res && res.status === 'error') {
+            if (res && (res.status === 'error' || responseStatus === 'ERROR' || responseStatus === 'SYSTEM_ERROR' || responseStatus === 'VALIDATION_ERROR' || responseStatus === 'OUT_OF_SCOPE')) {
 
                 var errorMsg = (res.message && res.message.length < 200) ? res.message : 'Dạ hệ thống đang bận hoặc dữ liệu chưa sẵn sàng ạ. Sếp vui lòng thử lại sau nhé!';
                 _addMessage('ai', 'Lỗi hệ thống: ' + errorMsg);
@@ -1803,6 +1866,17 @@
             _addMessage('ai', ' Lỗi hiển thị dữ liệu: ' + err.message);
 
         }
+
+    }
+
+
+
+    function _isTechnicalRuleField(key) {
+
+        // Rule metadata vẫn nằm trong response để audit nhưng không phải thông tin
+        // nghiệp vụ dành cho Sale/Manager, nên không render ở bất kỳ bảng/thẻ nào.
+        var normalized = String(key || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return normalized.indexOf('rule') === 0;
 
     }
 
@@ -2062,7 +2136,7 @@
 
     function _fmtCellVal(v) {
 
-        if (v === null || v === undefined) return '';
+        if (v === null || v === undefined) return '—';
 
         var s = String(v);
 
@@ -2076,6 +2150,38 @@
 
         return s;
 
+    }
+
+    function _formatBusinessCell(key, value) {
+        var normalizedKey = String(key || '').toLowerCase().replace(/[_\s]/g, '');
+        if (value === null || value === undefined || String(value).trim() === '') {
+            if (normalizedKey === 'physicalstock') return 'Chưa truy vấn kho';
+            if (normalizedKey === 'availablestock') return 'Chưa kiểm tra kho';
+            return '—';
+        }
+
+        var normalizedValue = String(value).trim().toUpperCase();
+        var statuses = {
+            'PHYSICAL_ONLY_UNVERIFIED': 'Có số tồn kho nhưng chưa xác minh số có thể bán',
+            'PHYSICAL_STOCK_NOT_QUERIED': 'Chưa kiểm tra kho cho kết quả này',
+            'PHYSICAL_AS_SELLABLE_TEMPORARY': 'Theo tồn kho hiện tại',
+            'EXPIRED_NOT_SELLABLE': 'Hết hạn - không được bán',
+            'STOCK_RECONCILIATION_REQUIRED': 'Cần đối soát kho',
+            'NO_SELLABLE_STOCK': 'Không còn hàng có thể bán',
+            'CHECKIN_SOURCE_UNAVAILABLE': 'Chưa có dữ liệu ghé',
+            'REFERENCE_ONLY_APPROVAL_REQUIRED': 'Chỉ tham khảo, cần phê duyệt',
+            'REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED': 'Chỉ tham khảo, cần người có chuyên môn xem xét',
+            'PERSONAL_CYCLE_ELIGIBLE': 'Đủ dữ liệu tính chu kỳ cá nhân',
+            'INSUFFICIENT_HISTORY': 'Chưa đủ lịch sử giao dịch',
+            'DUE_DATE_UNKNOWN': 'Chưa xác định hạn thanh toán',
+            'NEW_CUSTOMER': 'Khách hàng mới',
+            'HIGH': 'Cao',
+            'MEDIUM': 'Vừa',
+            'LOW': 'Thấp',
+            'LARGE': 'Lớn',
+            'SMALL': 'Nhỏ'
+        };
+        return statuses[normalizedValue] || _fmtCellVal(value);
     }
 
 
@@ -2104,7 +2210,7 @@
 
             Object.keys(r).forEach(function (k) {
 
-                if (keys.indexOf(k) === -1 && _getHiddenFields().indexOf(k) === -1) keys.push(k);
+                if (keys.indexOf(k) === -1 && _getHiddenFields().indexOf(k) === -1 && !_isTechnicalRuleField(k)) keys.push(k);
 
             });
 
@@ -2532,6 +2638,13 @@
 
         if (!rows || rows.length === 0) return '';
 
+        if (String(apiCode || '').toLowerCase() === '@de_xuat_khuyen_mai') {
+            var promotionMode = String(rows[0] && rows[0].ViewMode || '').toUpperCase();
+            headerMsg = promotionMode === 'MANAGER_REVIEW'
+                ? 'Sản phẩm cần xem xét khuyến mãi (' + rows.length + ')'
+                : 'Chương trình khuyến mãi công ty (' + rows.length + ')';
+        }
+
         if (String(apiCode || '').toLowerCase() === '@doanh_so') {
             return _renderSalesDashboard(rows, headerMsg, apiCode, meta);
         }
@@ -2598,7 +2711,7 @@
 
                 var keys = Object.keys(r).filter(function (k) {
 
-                    return _getHiddenFields().indexOf(k) === -1 && String(k).indexOf('Metadata_') === -1;
+                    return _getHiddenFields().indexOf(k) === -1 && !_isTechnicalRuleField(k) && String(k).indexOf('Metadata_') === -1;
 
                 }).sort();
 
@@ -2952,7 +3065,7 @@
 
             if (moneyF && grp.commonKeys.indexOf(moneyF.key) !== -1) {
 
-                html += '<div class="ai-catalog-money">' + _esc(_fmtCellVal(moneyF.val)) + '</div>';
+                html += '<div class="ai-catalog-money">' + _esc(_formatBusinessCell(moneyF.key, moneyF.val)) + '</div>';
 
             }
 
@@ -2966,9 +3079,9 @@
 
                 html += '<div class="ai-catalog-row">';
 
-                html += '<span class="ai-catalog-label">' + _esc(k) + '</span>';
+                html += '<span class="ai-catalog-label">' + _esc(_getFriendlyHeader(k)) + '</span>';
 
-                html += '<span class="ai-catalog-value">' + _esc(_fmtCellVal(val)) + '</span>';
+                html += '<span class="ai-catalog-value">' + _esc(_formatBusinessCell(k, val)) + '</span>';
 
                 html += '</div>';
 
@@ -3030,9 +3143,9 @@
 
                                 html += '<div class="ai-catalog-row-small">';
 
-                                html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                                html += '<span class="ai-catalog-label-small">' + _esc(_getFriendlyHeader(k)) + '</span>';
 
-                                html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                                html += '<span class="ai-catalog-value-small"><strong>' + _esc(_formatBusinessCell(k, val)) + '</strong></span>';
 
                                 html += '</div>';
 
@@ -3062,9 +3175,9 @@
 
                             html += '<div class="ai-catalog-row-small">';
 
-                            html += '<span class="ai-catalog-label-small">' + _esc(k) + '</span>';
+                            html += '<span class="ai-catalog-label-small">' + _esc(_getFriendlyHeader(k)) + '</span>';
 
-                            html += '<span class="ai-catalog-value-small"><strong>' + _esc(_fmtCellVal(val)) + '</strong></span>';
+                            html += '<span class="ai-catalog-value-small"><strong>' + _esc(_formatBusinessCell(k, val)) + '</strong></span>';
 
                             html += '</div>';
 
@@ -3103,7 +3216,7 @@
 
         html += '<div class="ai-view-table">';
 
-        html += _buildInlineTable(rows, keys);
+        html += _buildInlineTable(rows, keys, apiCode);
 
         html += '</div>';
 
@@ -3194,7 +3307,35 @@
             'ngaydudoan': 'Ngày Dự Đoán Hết Hàng',
             'conlai': 'Còn Lại (Ngày)',
             'diemuutien': 'Điểm Ưu Tiên',
-            'lydoghe': 'Lý Do Ghé'
+            'lydoghe': 'Lý Do Ghé',
+            'physicalstock': 'Tồn trong kho',
+            'availablestock': 'Có thể bán',
+            'stockdatastatus': 'Trạng thái dữ liệu tồn kho',
+            'freshnessstatus': 'Độ mới dữ liệu',
+            'stockupdatedat': 'Cập nhật tồn kho lúc',
+            'revenuebasis': 'Cơ sở tính doanh số',
+            'revenuerecognition': 'Cách ghi nhận doanh số',
+            'doanhsodaxuat': 'Doanh số đã xuất/giao',
+            'doanhthudathu': 'Doanh thu đã thu',
+            'risklevel': 'Mức rủi ro',
+            'valuesegment': 'Phân khúc giá trị',
+            'customertier': 'Hạng khách hàng',
+            'dotincay': 'Độ tin cậy',
+            'lastpurchasesource': 'Nguồn lần mua cuối',
+            'lastvisitstatus': 'Trạng thái dữ liệu ghé',
+            'actionstatus': 'Trạng thái phê duyệt',
+            'programstatus': 'Trạng thái chương trình',
+            'recommendationreason': 'Lý do đề xuất',
+            'recommendationstatus': 'Trạng thái khuyến nghị',
+            'medicaldisclaimer': 'Cảnh báo chuyên môn',
+            'datawindow': 'Khoảng dữ liệu',
+            'paymentstatus': 'Trạng thái thanh toán',
+            'duestatus': 'Trạng thái hạn thanh toán',
+            'debtsize': 'Quy mô công nợ',
+            'asofdate': 'Dữ liệu đến ngày',
+            'datasource': 'Nguồn dữ liệu',
+            'totaldebt': 'Tổng công nợ',
+            'customerid': 'Mã khách hàng'
         };
         var lower = key.toLowerCase().replace(/_/g, '');
         return dict[lower] || key;
@@ -3217,6 +3358,7 @@
             'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
             'xuhuong', 'trangthai', 'tiendo', 'muctieu',
             'risklevel', 'diemtonghop', 'lydochinh',
+            'physicalstock', 'availablestock', 'stockdatastatus', 'actionstatus', 'lastvisitstatus', 'dotincay',
             // Order & general document columns
             'documentid', 'documentdate', 'objectname', 'basetotal', 'statusname', 'employeename', 'docno'
         ];
@@ -3311,6 +3453,8 @@
             var normalizedK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
             if (lowerK === 'showallcols' || lowerK === 'fulltable' || lowerK === 'showall') {
                 forceShowAll = true;
+            } else if (_isTechnicalRuleField(k)) {
+                return;
             } else if (String(apiCode || '').toLowerCase() === '@doanh_so' && (normalizedK === 'ngayban' || (normalizedK === 'doanhso' && hasAmountColumn))) {
                 return;
             } else if (HIDDEN_COLS.indexOf(k) === -1 && HIDDEN_COLS.indexOf(k.toLowerCase()) === -1) {
@@ -3322,6 +3466,30 @@
         var tbodyId = 'ai-inline-tbody-v' + _modalIdCounter;
 
         var html = '';
+
+        var isTierScoringTable = String(apiCode || '').toLowerCase() === '@cham_diem_kh';
+        var tierPage = rows.length ? Number(rows[0].Page || rows[0].page || 1) : 1;
+        var tierPageSize = rows.length ? Number(rows[0].PageSize || rows[0].pagesize || 50) : 50;
+        var tierTotalRows = rows.length ? Number(rows[0].TotalRows || rows[0].totalRows || rows.length) : 0;
+        if (!Number.isFinite(tierPage) || tierPage < 1) tierPage = 1;
+        if (!Number.isFinite(tierPageSize) || tierPageSize < 1) tierPageSize = 50;
+        if (!Number.isFinite(tierTotalRows) || tierTotalRows < 0) tierTotalRows = rows.length;
+
+        var normalizedStockKeys = keys.map(function (key) {
+            return String(key || '').toLowerCase().replace(/[_\s]/g, '');
+        });
+        var hasAvailableStock = normalizedStockKeys.indexOf('availablestock') !== -1;
+        var stockNeedsVerification = rows.some(function (row) {
+            var available = row.AvailableStock ?? row.availableStock ?? row.availablestock;
+            return hasAvailableStock && (available === null || available === undefined || available === '');
+        });
+        if (stockNeedsVerification) {
+            html += '<aside class="ai-stock-guidance" role="note">'
+                + '<div><strong>Chưa có số lượng có thể bán</strong>'
+                + '<span>Đây không phải là hết hàng. Hãy kiểm tra tồn kho trước khi báo khách hoặc chốt đơn.</span></div>'
+                + '<button type="button" class="ai-stock-check-btn">Kiểm tra tồn kho</button>'
+                + '</aside>';
+        }
 
 
 
@@ -3350,9 +3518,18 @@
 
         // ── Filter toolbar ──
 
-        var chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">Tất cả</button>';
+        var chipsHtml = '';
 
-        if (badgeKeyFound) {
+        if (isTierScoringTable) {
+            chipsHtml += '<button class="ai-sales-filter-chip active" data-server-tier="" type="button">Tất cả</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="A" type="button">Nhóm A</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="B" type="button">Nhóm B</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="C" type="button">Nhóm C</button>';
+        } else {
+            chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">Tất cả</button>';
+        }
+
+        if (!isTierScoringTable && badgeKeyFound) {
 
             // Render chip cho từng giá trị phân loại thực tế trong data
 
@@ -3370,13 +3547,23 @@
 
         }
 
-        chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
+        if (isTierScoringTable) {
+            var tierPageCount = Math.max(1, Math.ceil(tierTotalRows / tierPageSize));
+            chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' / ' + tierTotalRows + ' khách</span>';
+            chipsHtml += '<span class="ai-tier-page-nav">'
+                + '<button class="ai-tier-page-btn" data-tier-page-action="prev" type="button"' + (tierPage <= 1 ? ' disabled' : '') + '>Trang trước</button>'
+                + '<span class="ai-tier-page-label">Trang ' + tierPage + ' / ' + tierPageCount + '</span>'
+                + '<button class="ai-tier-page-btn" data-tier-page-action="next" type="button"' + (tierPage >= tierPageCount ? ' disabled' : '') + '>Trang sau</button>'
+                + '</span>';
+        } else {
+            chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
+        }
 
         var filterRowCount = cacheRows ? cacheRows.length : rows.length;
-        if (filterRowCount > 12) {
+        if (filterRowCount > 12 || isTierScoringTable) {
             html += '<div class="ai-sales-filter-bar ai-inline-filter">'
                 + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
-                + '<div class="ai-sales-filter-chips">' + chipsHtml + '</div>'
+                + '<div class="ai-sales-filter-chips"' + (isTierScoringTable ? ' data-tier-controls="true"' : '') + '>' + chipsHtml + '</div>'
                 + '</div>';
         }
 
@@ -3417,7 +3604,20 @@
 
         // Lưu data vào cache để filter handler dùng
 
-        _modalDataCache[tbodyId] = { rows: cacheRows || rows, keys: keys, badgeKey: badgeKeyFound, forceShowAll: forceShowAll, apiCode: apiCode };
+        _modalDataCache[tbodyId] = {
+            rows: cacheRows || rows,
+            visibleRows: rows,
+            keys: keys,
+            badgeKey: badgeKeyFound,
+            forceShowAll: forceShowAll,
+            apiCode: apiCode,
+            isTierScoring: isTierScoringTable,
+            currentTier: '',
+            currentPage: tierPage,
+            pageSize: tierPageSize,
+            totalRows: tierTotalRows,
+            loading: false
+        };
 
 
 
@@ -3429,11 +3629,11 @@
 
 
 
-    function _renderTableBody(filteredRows, keys, forceShowAll, apiCode) {
+    function _renderTableBody(filteredRows, keys, forceShowAll, apiCode, showAllRows) {
 
         var MAX = 50;
 
-        var shown = Math.min(filteredRows.length, MAX);
+        var shown = showAllRows ? filteredRows.length : Math.min(filteredRows.length, MAX);
 
         var html = '';
 
@@ -3458,9 +3658,9 @@
                 var lowerK = k.toLowerCase().replace(/_/g, '');
 
                 if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
-                    cellHtml = '<span class="ai-badge-recommend">' + _esc(_fmtCellVal(val)) + '</span>';
+                    cellHtml = '<span class="ai-badge-recommend">' + _esc(_formatBusinessCell(k, val)) + '</span>';
                 } else {
-                    cellHtml = _esc(_fmtCellVal(val));
+                    cellHtml = _esc(_formatBusinessCell(k, val));
                 }
 
                 var tdClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
@@ -3480,7 +3680,7 @@
                 secondaryKeys.forEach(function (k) {
                     html += '<div class="ai-table-detail-item">';
                     html += '  <div class="ai-table-detail-label">' + _esc(_getFriendlyHeader(k)) + '</div>';
-                    html += '  <div class="ai-table-detail-value">' + _esc(_fmtCellVal(filteredRows[i][k])) + '</div>';
+                    html += '  <div class="ai-table-detail-value">' + _esc(_formatBusinessCell(k, filteredRows[i][k])) + '</div>';
                     html += '</div>';
                 });
                 html += '</div>';
@@ -3491,7 +3691,9 @@
 
         if (filteredRows.length > MAX) {
 
-            html += '<tr><td colspan="' + colSpan + '" style="text-align:center;opacity:0.6;font-style:italic">... và ' + (filteredRows.length - MAX) + ' dòng khác</td></tr>';
+            var pageAction = showAllRows ? 'collapse' : 'expand';
+            var pageLabel = showAllRows ? 'Thu gọn' : 'Xem thêm ' + (filteredRows.length - MAX) + ' dòng';
+            html += '<tr class="ai-table-page-row"><td colspan="' + colSpan + '"><button type="button" class="ai-table-page-btn" data-table-page-action="' + pageAction + '" aria-expanded="' + (showAllRows ? 'true' : 'false') + '">' + pageLabel + '</button></td></tr>';
 
         }
 
@@ -3577,6 +3779,7 @@
             return !activeGroup || String(row['Nhóm phân tích'] || '') === activeGroup;
         });
         filtered = _applyModalFilter(filtered, cached.keys, searchText, 'all', null);
+        cached.visibleRows = filtered;
         tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode);
         var count = container.querySelector('.ai-sales-detail-count');
         if (count) count.textContent = (activeGroup ? activeGroup + ': ' : '') + filtered.length + ' dòng';
@@ -3584,7 +3787,122 @@
         if (filterCount) filterCount.textContent = filtered.length + ' dòng';
     }
 
+    function _syncTierScoringControls(container, cache) {
+        if (!container || !cache) return;
+        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 50)));
+        container.querySelectorAll('[data-server-tier]').forEach(function (button) {
+            button.classList.toggle('active', String(button.getAttribute('data-server-tier') || '') === String(cache.currentTier || ''));
+            button.disabled = Boolean(cache.loading);
+        });
+        var previous = container.querySelector('[data-tier-page-action="prev"]');
+        var next = container.querySelector('[data-tier-page-action="next"]');
+        if (previous) previous.disabled = Boolean(cache.loading) || Number(cache.currentPage || 1) <= 1;
+        if (next) next.disabled = Boolean(cache.loading) || Number(cache.currentPage || 1) >= pageCount;
+        var pageLabel = container.querySelector('.ai-tier-page-label');
+        if (pageLabel) pageLabel.textContent = cache.loading
+            ? 'Đang tải...'
+            : 'Trang ' + Number(cache.currentPage || 1) + ' / ' + pageCount;
+        var count = container.querySelector('.ai-sales-filter-count');
+        if (count) {
+            count.textContent = cache.loadError
+                ? 'Không tải được dữ liệu'
+                : Number((cache.rows || []).length) + ' / ' + Number(cache.totalRows || 0) + ' khách';
+        }
+    }
+
+    function _loadTierScoringPage(control, tier, page) {
+        var controls = control ? control.closest('[data-tier-controls="true"]') : null;
+        var container = controls
+            ? (controls.closest('.ai-view-table') || (controls.parentElement && controls.parentElement.parentElement))
+            : null;
+        var tbody = container ? container.querySelector('tbody') : null;
+        var cache = tbody ? _modalDataCache[tbody.id] : null;
+        if (!controls || !container || !tbody || !cache || cache.loading) return;
+        if (!window.ApiEngine || typeof window.ApiEngine.queryData !== 'function') return;
+
+        var targetTier = String(tier || '').toUpperCase();
+        var targetPage = Math.max(1, Number(page || 1));
+        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 50)));
+        if (targetPage > pageCount && targetTier === String(cache.currentTier || '')) return;
+
+        cache.loading = true;
+        cache.loadError = false;
+        _syncTierScoringControls(container, cache);
+
+        var params = {
+            '@Page': targetPage,
+            '@PageSize': Number(cache.pageSize || 50)
+        };
+        if (targetTier) params['@NhomFilter'] = targetTier;
+
+        window.ApiEngine.queryData('@cham_diem_kh', params).then(function (newRows) {
+            newRows = Array.isArray(newRows) ? newRows : [];
+            cache.rows = newRows;
+            cache.visibleRows = newRows;
+            cache.currentTier = targetTier;
+            cache.currentPage = targetPage;
+            cache.totalRows = newRows.length
+                ? Number(newRows[0].TotalRows || newRows[0].totalRows || newRows.length)
+                : 0;
+            var search = container.querySelector('.ai-sales-filter-input');
+            if (search) search.value = '';
+            tbody.innerHTML = newRows.length
+                ? _renderTableBody(newRows, cache.keys, cache.forceShowAll, cache.apiCode)
+                : '<tr><td colspan="99" class="ai-tier-empty">Không có khách hàng trong nhóm này.</td></tr>';
+        }).catch(function (error) {
+            cache.loadError = true;
+            console.error('[Chatbot] Tier pagination failed:', error);
+        }).finally(function () {
+            cache.loading = false;
+            _syncTierScoringControls(container, cache);
+        });
+    }
+
     $messages.addEventListener('click', function (e) {
+        var stockCheckBtn = e.target.closest('.ai-stock-check-btn');
+        if (stockCheckBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            $input.value = '@danh_sach_tonkho ';
+            $input.dispatchEvent(new Event('input', { bubbles: true }));
+            $input.focus();
+            return;
+        }
+
+        var tierControl = e.target.closest('[data-server-tier], [data-tier-page-action]');
+        if (tierControl) {
+            e.preventDefault();
+            e.stopPropagation();
+            var tierControls = tierControl.closest('[data-tier-controls="true"]');
+            var tierContainer = tierControls
+                ? (tierControls.closest('.ai-view-table') || (tierControls.parentElement && tierControls.parentElement.parentElement))
+                : null;
+            var tierTbody = tierContainer ? tierContainer.querySelector('tbody') : null;
+            var tierCache = tierTbody ? _modalDataCache[tierTbody.id] : null;
+            if (!tierCache) return;
+            if (tierControl.hasAttribute('data-server-tier')) {
+                _loadTierScoringPage(tierControl, tierControl.getAttribute('data-server-tier'), 1);
+            } else {
+                var direction = tierControl.getAttribute('data-tier-page-action');
+                var nextPage = Number(tierCache.currentPage || 1) + (direction === 'prev' ? -1 : 1);
+                _loadTierScoringPage(tierControl, tierCache.currentTier, nextPage);
+            }
+            return;
+        }
+
+        var tablePageBtn = e.target.closest('.ai-table-page-btn');
+        if (tablePageBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            var pageTbody = tablePageBtn.closest('tbody');
+            var pageCache = pageTbody ? _modalDataCache[pageTbody.id] : null;
+            if (!pageTbody || !pageCache) return;
+            var pageRows = pageCache.visibleRows || pageCache.rows || [];
+            var showAllRows = tablePageBtn.getAttribute('data-table-page-action') === 'expand';
+            pageTbody.innerHTML = _renderTableBody(pageRows, pageCache.keys, pageCache.forceShowAll, pageCache.apiCode, showAllRows);
+            return;
+        }
+
         var salesGroupCard = e.target.closest('.ai-sales-group-card');
         if (salesGroupCard) {
             e.preventDefault();
@@ -3762,11 +4080,13 @@
 
                                 var doFilter2 = function () {
 
-                                    var filtered = _applyModalFilter(allRows, keysF, curSearch, curFilter, curBadgeKey);
+                                    var currentRows = cached && cached.rows ? cached.rows : allRows;
+                                    var filtered = _applyModalFilter(currentRows, keysF, curSearch, curFilter, curBadgeKey);
 
+                                    if (cached) cached.visibleRows = filtered;
                                     if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF, cached && cached.forceShowAll, cached && cached.apiCode);
 
-                                    if (countEl2) countEl2.textContent = filtered.length + ' dòng';
+                                    if (countEl2 && !(cached && cached.isTierScoring)) countEl2.textContent = filtered.length + ' dòng';
 
                                 };
 
@@ -3789,11 +4109,11 @@
 
                                 }
 
-                                tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function (chip) {
+                                tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (chip) {
 
                                     chip.addEventListener('click', function () {
 
-                                        tableView.querySelectorAll('.ai-sales-filter-chip').forEach(function (c) { c.classList.remove('active'); });
+                                        tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (c) { c.classList.remove('active'); });
 
                                         chip.classList.add('active');
 
@@ -5276,6 +5596,7 @@
             _clearCache();
             var uname = _user();
             var key = 'ai_chat_session_id' + (uname ? '_' + uname.toLowerCase() : '');
+            _markConversationForReset(_getSessionId());
             sessionStorage.removeItem(key);
             $messages.innerHTML = '';
             $welcome.style.display = '';
@@ -5598,10 +5919,29 @@
             renderCardView: function (rows, headerMsg, apiCode, meta) {
 
                 var uiTpl = (meta && meta.uiTemplate) ? meta.uiTemplate.toUpperCase() : 'DEFAULT';
+                var debtCode = String(apiCode || '').toLowerCase();
+                var isDebtApi = debtCode.indexOf('@cong_no') === 0;
 
                 if (String(apiCode || '').toLowerCase() === '@doanh_so') {
                     return _renderSalesDashboard(rows, headerMsg, '@doanh_so', meta);
                 }
+
+                // Catalog responses can arrive without ApiCode or with lowercase
+                // field names. Detect the frozen five-row root contract before the
+                // generic TYPE/LABEL table renderer gets a chance to handle it.
+                var catalogAllowedTypes = ['sanpham', 'khachhang', 'donhang', 'khohang', 'nhanvien'];
+                var catalogRows = Array.isArray(rows) ? rows : [];
+                var isCatalogRoot = catalogRows.length > 0 && catalogRows.every(function (row) {
+                    if (!row) return false;
+                    var type = String(row.Type ?? row.TYPE ?? row.type ?? '').toLowerCase();
+                    var hasLabel = row.Label !== undefined || row.LABEL !== undefined || row.label !== undefined;
+                    return hasLabel && catalogAllowedTypes.indexOf(type) >= 0;
+                });
+                if (isCatalogRoot && window.ApiChatbot && window.ApiChatbot.__internal && typeof window.ApiChatbot.__internal.renderCatalog === 'function') {
+                    return window.ApiChatbot.__internal.renderCatalog(catalogRows, headerMsg, '@danh_muc', meta);
+                }
+
+                if (isDebtApi) uiTpl = 'CONG_NO';
 
                 var renderFn = _UI_RENDERERS[uiTpl] || _UI_RENDERERS['DEFAULT'] || _renderCardView;
 
@@ -5724,6 +6064,8 @@
             pickValue: function (row, role) { return _pickValue(row, role); },
 
             fmtCellVal: function (v) { return _fmtCellVal(v); },
+
+            formatBusinessCell: function (key, v) { return _formatBusinessCell(key, v); },
 
             esc: function (s) { return _esc(s); },
 

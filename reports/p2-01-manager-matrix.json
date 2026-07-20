@@ -9,7 +9,7 @@
   ],
   "liveCount": 24,
   "countDrift": 0,
-  "requestId": "req-4253-mroglrhz",
+  "requestId": "req-7047-mrq4pr46",
   "matrix": [
     {
       "ApiCode": "@cham_diem_kh",
@@ -18,7 +18,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 6,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4260-mroglu2x",
+      "ConfigRequestId": "req-7054-mrq4ptdg",
       "result": "PASS"
     },
     {
@@ -28,7 +28,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 1,
-      "ConfigRequestId": "req-4262-mroglv0b",
+      "ConfigRequestId": "req-7056-mrq4pu5p",
       "result": "PASS"
     },
     {
@@ -38,7 +38,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4264-mroglvu2",
+      "ConfigRequestId": "req-7058-mrq4pux9",
       "result": "PASS"
     },
     {
@@ -48,7 +48,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4266-mroglwwy",
+      "ConfigRequestId": "req-7060-mrq4pvs1",
       "result": "PASS"
     },
     {
@@ -58,7 +58,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4268-mroglxpr",
+      "ConfigRequestId": "req-7062-mrq4pwk8",
       "result": "PASS"
     },
     {
@@ -68,7 +68,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4270-mroglykw",
+      "ConfigRequestId": "req-7064-mrq4pxdt",
       "result": "PASS"
     },
     {
@@ -78,7 +78,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 0,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4272-mroglzej",
+      "ConfigRequestId": "req-7066-mrq4py5f",
       "result": "PASS"
     },
     {
@@ -88,7 +88,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 9,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4274-mrogm07c",
+      "ConfigRequestId": "req-7068-mrq4pywx",
       "result": "PASS"
     },
     {
@@ -98,7 +98,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 8,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4276-mrogm0zu",
+      "ConfigRequestId": "req-7070-mrq4pzpe",
       "result": "PASS"
     },
     {
@@ -108,7 +108,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 3,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4278-mrogm1z6",
+      "ConfigRequestId": "req-7072-mrq4q0i9",
       "result": "PASS"
     },
     {
@@ -118,7 +118,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 3,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4280-mrogm2so",
+      "ConfigRequestId": "req-7074-mrq4q1qc",
       "result": "PASS"
     },
     {
@@ -128,7 +128,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4282-mrogm3ms",
+      "ConfigRequestId": "req-7076-mrq4q2i7",
       "result": "PASS"
     },
     {
@@ -138,7 +138,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 4,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4284-mrogm4fo",
+      "ConfigRequestId": "req-7078-mrq4q3h2",
       "result": "PASS"
     },
     {
@@ -148,7 +148,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 1,
-      "ConfigRequestId": "req-4286-mrogm59v",
+      "ConfigRequestId": "req-7080-mrq4q48s",
       "result": "PASS"
     },
     {
@@ -158,7 +158,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 3,
       "RequiredFieldCount": 1,
-      "ConfigRequestId": "req-4288-mrogm62m",
+      "ConfigRequestId": "req-7082-mrq4q4zv",
       "result": "PASS"
     },
     {
@@ -168,7 +168,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4290-mrogm6ux",
+      "ConfigRequestId": "req-7084-mrq4q5rr",
       "result": "PASS"
     },
     {
@@ -178,7 +178,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4292-mrogm7pq",
+      "ConfigRequestId": "req-7086-mrq4q6j9",
       "result": "PASS"
     },
     {
@@ -188,7 +188,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 3,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4294-mrogm8kq",
+      "ConfigRequestId": "req-7088-mrq4q7dk",
       "result": "PASS"
     },
     {
@@ -198,7 +198,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4296-mrogm9fc",
+      "ConfigRequestId": "req-7090-mrq4q84u",
       "result": "PASS"
     },
     {
@@ -208,7 +208,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 5,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4298-mrogmabs",
+      "ConfigRequestId": "req-7092-mrq4q8zf",
       "result": "PASS"
     },
     {
@@ -218,7 +218,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 1,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4300-mrogmb5m",
+      "ConfigRequestId": "req-7094-mrq4q9qw",
       "result": "PASS"
     },
     {
@@ -228,7 +228,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 2,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4302-mrogmc0t",
+      "ConfigRequestId": "req-7096-mrq4qall",
       "result": "PASS"
     },
     {
@@ -238,7 +238,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 5,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4304-mrogmctr",
+      "ConfigRequestId": "req-7098-mrq4qbdq",
       "result": "PASS"
     },
     {
@@ -248,7 +248,7 @@
       "ContractVersion": "2026.07.15.1",
       "FieldCount": 0,
       "RequiredFieldCount": 0,
-      "ConfigRequestId": "req-4306-mrogmdmp",
+      "ConfigRequestId": "req-7100-mrq4qc5v",
       "result": "PASS"
     }
   ]

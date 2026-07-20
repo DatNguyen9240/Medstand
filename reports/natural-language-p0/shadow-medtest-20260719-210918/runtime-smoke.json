@@ -1,0 +1,56 @@
+{
+  "status": "NATURAL_LANGUAGE_SHADOW_RUNTIME_PASS",
+  "testedAt": "2026-07-19T14:13:06.539Z",
+  "environment": "local-n8n+medtest-api",
+  "naturalLanguageMode": "SHADOW",
+  "accountCount": 2,
+  "totalChecks": 6,
+  "results": [
+    {
+      "username": "QLBH013.MED",
+      "role": "manager",
+      "result": "PASS",
+      "checks": {
+        "approvedApiCatalog": {
+          "result": "PASS",
+          "count": 24
+        },
+        "naturalLanguageShadow": {
+          "result": "PASS",
+          "predictedInternalIntent": "SALES_ROUTE",
+          "predictedApiCode": "@tuyen_ban_hang",
+          "confidence": 1,
+          "returnedBusinessRows": 0
+        },
+        "explicitCommand": {
+          "result": "PASS",
+          "apiCode": "@tuyen_ban_hang",
+          "status": "SUCCESS"
+        }
+      }
+    },
+    {
+      "username": "NAMDINHB.MED",
+      "role": "sale",
+      "result": "PASS",
+      "checks": {
+        "approvedApiCatalog": {
+          "result": "PASS",
+          "count": 24
+        },
+        "naturalLanguageShadow": {
+          "result": "PASS",
+          "predictedInternalIntent": "SALES_ROUTE",
+          "predictedApiCode": "@tuyen_ban_hang",
+          "confidence": 1,
+          "returnedBusinessRows": 0
+        },
+        "explicitCommand": {
+          "result": "PASS",
+          "apiCode": "@tuyen_ban_hang",
+          "status": "NO_DATA"
+        }
+      }
+    }
+  ]
+}
