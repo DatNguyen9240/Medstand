@@ -1,14 +1,16 @@
-IF OBJECT_ID('API_SanPhamTrongTam_AI', 'P') IS NOT NULL DROP PROCEDURE API_SanPhamTrongTam_AI;
-GO
-
-
-CREATE PROCEDURE API_SanPhamTrongTam_AI
+CREATE OR ALTER PROCEDURE API_SanPhamTrongTam_AI
     @Username   VARCHAR(50) = '',
     @MaKhachHang  VARCHAR(50) = '', -- Mã khách hàng
     @TopN       INT = 500         
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
+        RETURN
+    END
 
     -- LOG FOR AUDITING
     EXEC AI_WriteAuditLog
@@ -40,7 +42,16 @@ BEGIN
 
     -- Lấy BranchID của User để phân quyền
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
+    END
 
     -- Danh sách sản phẩm trọng tâm
     SELECT DISTINCT ItemID INTO #TrongTam FROM AR_SanPhamTrongTamDetailTbl WHERE DocumentID = @ProgramID

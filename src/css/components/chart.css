@@ -131,3 +131,7 @@
   text-align: center;
   padding: 24px;
 }
+
+.chart-empty-state[hidden] {
+  display: none;
+}

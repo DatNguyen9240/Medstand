@@ -17,7 +17,7 @@ if (fs.existsSync(envPath)) {
             if (index > -1) {
                 const key = trimmed.substring(0, index).trim();
                 const val = trimmed.substring(index + 1).trim().replace(/^['"]|['"]$/g, '');
-                if (key) process.env[key] = val;
+                if (key && process.env[key] === undefined) process.env[key] = val;
             }
         }
     });
@@ -149,11 +149,16 @@ app.post('/api/gateway', async (req, res) => {
         const headers = {
             'Content-Type': 'application/json',
             ...(req.headers['authorization'] ? { 'Authorization': req.headers['authorization'] } : {}),
+            ...(req.headers['idempotency-key'] ? { 'Idempotency-Key': req.headers['idempotency-key'] } : {}),
             ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {})
         };
 
-        console.log('[Proxy Gateway] Request headers:', JSON.stringify(headers));
-        console.log('[Proxy Gateway] Request body:', JSON.stringify(body));
+        // Chỉ log metadata, không ghi Authorization, password hoặc payload nghiệp vụ.
+        const requestHeaderNames = Object.keys(headers);
+        const requestBodyKeys = body && typeof body === 'object' && !Array.isArray(body)
+            ? Object.keys(body)
+            : [];
+        console.log(`[Proxy Gateway] Request metadata: headers=${requestHeaderNames.join(',')}; bodyKeys=${requestBodyKeys.join(',')}`);
 
         const options = {
             method: method,
@@ -182,7 +187,8 @@ app.post('/api/gateway', async (req, res) => {
         }
 
         console.log(`[Proxy Gateway] Response status: ${response.status}`);
-        console.log(`[Proxy Gateway] Response text snippet: ${resDataText.substring(0, 300)}`);
+        // Login response có thể chứa access/refresh token, vì vậy chỉ log kích thước.
+        console.log(`[Proxy Gateway] Response bytes: ${Buffer.byteLength(resDataText, 'utf8')}`);
 
         // 3. Mã hóa kết quả trả về cho Client
         const encryptedRes = Cipher.encrypt(resDataText);

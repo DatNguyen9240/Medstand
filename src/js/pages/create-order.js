@@ -72,6 +72,43 @@ function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
 var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
 var rowCounter = 0;
 var _productsCache = null;
+var _branchLoadError = false;
+var _createOrderActive = true;
+var _orderSubmitIdempotencyKey = '';
+var _draftSubmitIdempotencyKey = '';
+
+function newIdempotencyKey(prefix) {
+  var randomPart = (window.crypto && window.crypto.randomUUID)
+    ? window.crypto.randomUUID()
+    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  return prefix + '-' + randomPart;
+}
+
+function destroyProductPicker() {
+  $('.picker-overlay, .picker-sheet').off().remove();
+  $('body').css('overflow', '');
+}
+
+function mapCustomerOptions(records) {
+  _customersCache = _customersCache.concat(records || []).filter(function (item, index, list) {
+    return list.findIndex(function (x) { return x.ObjectID === item.ObjectID; }) === index;
+  });
+  return (records || []).map(function (r) {
+    return { value: r.ObjectID || '', label: r.DisplayName || ((r.ObjectID || '') + ' - ' + (r.ObjectName || '')) };
+  });
+}
+
+function loadCustomers(searchText, done) {
+  Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
+    q: JSON.stringify({ User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: searchText || '', SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || '' })
+  }).then(function (res) {
+    var records = (res.data || res).records || res.data || res || [];
+    done(mapCustomerOptions(records));
+  }).catch(function () {
+    Alert.error('Không thể tải danh sách khách hàng. Vui lòng thử lại.');
+    done([]);
+  });
+}
 var _customersCache = [];    // Cache danh sách khách hàng đầy đủ
 var _selectedLocationID = ''; // Lưu tỉnh thành của khách hàng đang chọn
 
@@ -82,19 +119,29 @@ orderForm
   .addInput({ id: 'orderDate', label: 'Ngày CT', type: 'date', required: true, value: todayStr() })
   .addList({
     id: 'branch', label: 'Chi nhánh', required: true, placeholder: 'Chọn chi nhánh',
-    locked: !!user.BranchID,
+    locked: false,
     loadFn: function (done) {
       Http.get(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { q: JSON.stringify({ BranchID: '', SearchText: '' }) })
         .then(function (res) {
           var records = (res.data || res).records || res.data || res || [];
           var opts = records.map(function (r) { return { value: r.BranchID || '', label: r.BranchName || r.BranchID || '' }; });
+          _branchLoadError = false;
           done(opts);
           // Auto-fill từ localStorage nếu có
           if (user.BranchID && !orderForm.getValue('branch')) {
             var match = opts.find(function (o) { return o.value === user.BranchID; });
-            if (match) orderForm.setListValue('branch', match.value, match.label);
+            if (match) {
+              orderForm.setListValue('branch', match.value, match.label);
+              orderForm.setLocked('branch', true);
+            } else {
+              Alert.error('Chi nhánh được phân quyền không tồn tại trong danh sách. Vui lòng liên hệ quản trị viên.');
+            }
           }
-        }).catch(function () { done([]); });
+        }).catch(function () {
+          _branchLoadError = true;
+          orderForm.setLocked('branch', false);
+          Alert.error('Không thể tải thông tin chi nhánh. Vui lòng thử lại hoặc liên hệ quản trị viên.');
+        });
     }
   })
   .addList({
@@ -111,7 +158,8 @@ orderForm
         _customersCache = records; // Lưu vào cache để auto-fill sau này
         done(records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; }));
       }).catch(function () { done([]); });
-    }
+    },
+    searchFn: function (keyword, done) { loadCustomers(keyword, done); }
   })
   .addList({
     id: 'ward', label: 'Phường/Xã', required: true, placeholder: 'Chọn phường/xã',
@@ -182,20 +230,6 @@ orderForm.onListChange('customer', function(val) {
 });
 
 // Auto-fill và lock Chi nhánh nếu có trong localStorage
-if (user.BranchID) {
-  Http.get(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { q: JSON.stringify({ BranchID: '', SearchText: '' }) })
-    .then(function (res) {
-      setTimeout(function() {
-        var records = (res.data || res).records || res.data || res || [];
-        var match = records.find(function (r) { return (r.BranchID || '') == user.BranchID; });
-        if (match) {
-          orderForm.setListValue('branch', match.BranchID, match.BranchName || match.BranchID);
-          orderForm.setLocked('branch', true);
-        }
-      }, 100);
-    });
-}
-
 // -- Load sản phẩm (cache) ----------------------------------------------------
 function loadProducts(cb) {
   if (_productsCache) return cb(_productsCache);
@@ -209,17 +243,25 @@ function loadProducts(cb) {
 
 function buildProductOptions(items) {
   return items.map(function (item) {
-    return { value: item.ItemID || '', label: (item.ItemName || item.ItemID || '') + ' - ' + Format.currency(item.UnitPrice || item.Price || 0), price: item.UnitPrice || item.Price || 0, name: item.ItemName || item.ItemID || '' };
+    return {
+      value: item.ItemID || '',
+      price: item.UnitPrice || item.Price || 0,
+      name: item.ItemName || item.ItemID || '',
+      unit: item.UnitName || item.Unit || item.UnitID || '',
+      stock: item.QuantityinStock !== undefined ? item.QuantityinStock : (item.TonKho !== undefined ? item.TonKho : '')
+    };
   });
 }
 
 function openProductPicker(rowId) {
+  destroyProductPicker();
   var $pickerContainer = $('#productPickerContainer_' + rowId);
   var $pickerText = $pickerContainer.find('.filter-value-text');
   var origText = $pickerText.text();
 
   $pickerText.text('Đang tải...');
   loadProducts(function (items) {
+    if (!_createOrderActive || document.body.getAttribute('data-page') !== 'create-order') return;
     $pickerText.text(origText);
 
     var options = buildProductOptions(items);
@@ -230,29 +272,36 @@ function openProductPicker(rowId) {
       '<div style="padding:12px">' +
       Input.renderSearch({ id: 'pp-search', placeholder: 'Tìm kiếm sản phẩm' }) +
       '</div>' +
-      '<ul class="select-modal-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
-      options.map(function (o) {
+      '<ul class="select-modal-list product-picker-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
+      options.map(function (o, optionIndex) {
         var sel = currentVal === o.value ? ' class="selected"' : '';
-        return '<li data-value="' + o.value + '" data-price="' + o.price + '" data-name="' + o.name + '"' + sel + '>' + o.label + '</li>';
+        return '<li data-value="' + o.value + '" data-price="' + o.price + '" data-name="' + o.name + '"' + sel + (optionIndex >= 30 ? ' style="display:none"' : '') + ' title="' + o.name + '">' +
+          '<span class="product-option-main"><strong>' + o.value + '</strong><span class="product-option-name">' + o.name + '</span></span>' +
+          '<span class="product-option-meta"><span>' + Format.currency(o.price) + '</span>' +
+          (o.stock !== '' ? '<span>Tồn: ' + o.stock + '</span>' : '') +
+          (o.unit ? '<span>ĐVT: ' + o.unit + '</span>' : '') + '</span></li>';
       }).join('') + '</ul>';
 
     var $overlay = $('<div class="picker-overlay"></div>');
     var $sheet = $('<div class="picker-sheet"></div>').html(html);
     $overlay.append($sheet).appendTo('body');
+    $('body').css('overflow', 'hidden');
     
     // Trigger animation
     setTimeout(function() {
       $overlay.addClass('active');
       $sheet.addClass('active');
     }, 10);
-    $overlay.find('#pp-close').on('click', function () { $overlay.remove(); });
-    $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
+    $overlay.find('#pp-close').on('click', destroyProductPicker);
+    $overlay.on('click', function (e) { if (e.target === $overlay[0]) destroyProductPicker(); });
     $overlay.find('#pp-search').on('input', function () {
       var kw = Format.removeAccents($(this).val());
-      $overlay.find('#pp-list li').each(function () {
-        var text = Format.removeAccents($(this).text());
-        $(this).toggle(text.indexOf(kw) !== -1);
-      });
+      var matches = options.filter(function (o) {
+        return Format.removeAccents(o.value + ' ' + o.name).indexOf(kw) !== -1;
+      }).slice(0, 30);
+      var allowed = {};
+      matches.forEach(function (o) { allowed[o.value] = true; });
+      $overlay.find('#pp-list li').each(function () { $(this).toggle(!!allowed[$(this).attr('data-value')]); });
     });
     $overlay.find('#pp-list li').on('click', function () {
       var val = $(this).attr('data-value');
@@ -271,7 +320,7 @@ function openProductPicker(rowId) {
       }
       $('#discount_' + rowId).val(autoDiscount);
 
-      $overlay.remove();
+      destroyProductPicker();
       calculateRowTotal(rowId);
     });
   });
@@ -390,6 +439,11 @@ function validateAndBuildPayload() {
   var v = orderForm.getValues();
   var productRows = collectProducts();
 
+  if (_branchLoadError) {
+    Alert.error('Không thể tải thông tin chi nhánh. Vui lòng tải lại trang hoặc liên hệ quản trị viên.');
+    return null;
+  }
+
   if (!v.orderDate) { Alert.warning('Vui lòng chọn ngày chứng từ.'); return null; }
   if (!v.branch) { Alert.warning('Vui lòng chọn chi nhánh.'); return null; }
   if (!v.customer) { Alert.warning('Vui lòng chọn khách hàng.'); return null; }
@@ -450,7 +504,9 @@ $('#btnSubmitOrder').on('click', function () {
   var $btn = $(this);
   $btn.prop('disabled', true).text('Đang xử lý...');
 
-  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload).then(function (res) {
+  if (!_orderSubmitIdempotencyKey) _orderSubmitIdempotencyKey = newIdempotencyKey('order-create');
+  var submitKey = _orderSubmitIdempotencyKey;
+  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload, { idempotencyKey: submitKey }).then(function (res) {
     var d = res.data || res;
     var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
     var msg = record && record.Msg ? record.Msg : '';
@@ -461,6 +517,7 @@ $('#btnSubmitOrder').on('click', function () {
   }).catch(function (err) {
     Alert.error(err.message || 'Có lỗi xảy ra.');
   }).finally(function () {
+    if (_orderSubmitIdempotencyKey === submitKey) _orderSubmitIdempotencyKey = '';
     $btn.prop('disabled', false).text('TẠO ĐƠN HÀNG');
   });
 });
@@ -474,7 +531,9 @@ $('#btnDraftOrder').on('click', function () {
   $btn.prop('disabled', true).text('Đang xử lý...');
 
   // Bước 1: Tạo đơn hàng
-  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload).then(function (res) {
+  if (!_draftSubmitIdempotencyKey) _draftSubmitIdempotencyKey = newIdempotencyKey('order-draft');
+  var draftKey = _draftSubmitIdempotencyKey;
+  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload, { idempotencyKey: draftKey }).then(function (res) {
     var d = res.data || res;
     var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
     var msg = record && record.Msg ? record.Msg : '';
@@ -492,6 +551,7 @@ $('#btnDraftOrder').on('click', function () {
   }).catch(function (err) {
     Alert.error(err.message || 'Có lỗi xảy ra.');
   }).finally(function () {
+    if (_draftSubmitIdempotencyKey === draftKey) _draftSubmitIdempotencyKey = '';
     $btn.prop('disabled', false).text('LƯU NHÁP');
   });
 });
@@ -641,5 +701,7 @@ setTimeout(function() {
 // -- Cleanup Hooks (Chống rò rỉ bộ nhớ) --------------------------------
 window._pageCleanupHooks = window._pageCleanupHooks || [];
 window._pageCleanupHooks.push(function() {
+  _createOrderActive = false;
+  destroyProductPicker();
   $(document).off('change', '#fs-orderDate');
 });

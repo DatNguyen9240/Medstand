@@ -4,6 +4,9 @@ var NAV_ICONS = {
   home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
   routes: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"/></svg>',
   orders: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+  reports: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></svg>',
+  customers: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  chatbot: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="3"/><path d="M8 7V5a4 4 0 0 1 8 0v2"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M9 17h6"/></svg>',
   account: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
 };
 
@@ -12,13 +15,26 @@ var THEME_ICONS = {
   moon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
 };
 
-function getSidebarTabs(activeTab) {
-  return [
+function isManagerNavUser(user) {
+  user = user || {};
+  var role = String(user.role || user.Role || user.roleName || user.RoleName || user.RoleCode || '').toLowerCase();
+  var group = String(user.UserGroupID || user.userGroupID || user.UserGroup || '').toLowerCase();
+  return role.indexOf('manager') >= 0 || role.indexOf('quanly') >= 0 || role.indexOf('quản lý') >= 0 ||
+    role.indexOf('admin') >= 0 || group.indexOf('admin') >= 0 || Number(user.Manager || user.manager) === 1 ||
+    user.IsManager === true || Number(user.IsManager || user.isManager) === 1 ||
+    (user.EmployeeID && user.ManagerID && String(user.EmployeeID).toLowerCase() === String(user.ManagerID).toLowerCase());
+}
+
+function getSidebarTabs(activeTab, user) {
+  var tabs = [
     { id: 'home', label: 'Trang chủ', icon: NAV_ICONS.home, href: '#/home' },
     { id: 'routes', label: 'Tuyến', icon: NAV_ICONS.routes, href: '#/routes' },
-    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: '#/orders' },
-    { id: 'account', label: 'Tài khoản', icon: NAV_ICONS.account, href: '#/account' }
+    { id: 'orders', label: 'Đơn hàng', icon: NAV_ICONS.orders, href: '#/orders' }
   ];
+  if (isManagerNavUser(user)) tabs.push({ id: 'reports', label: 'Báo cáo', icon: NAV_ICONS.reports, href: '#/revenue' });
+  tabs.push({ id: 'customers', label: 'Khách hàng', icon: NAV_ICONS.customers, href: '#/customer-management' });
+  tabs.push({ id: 'chatbot', label: 'Trợ lý AI', icon: NAV_ICONS.chatbot, href: '#/chatbot' });
+  return tabs;
 }
 
 function getMobileTabs(activeTab) {
@@ -30,9 +46,24 @@ function getMobileTabs(activeTab) {
   ];
 }
 
+function getUserRoleLabel(user) {
+  var userGroup = String(user.UserGroupID || user.UserGroup || '').toLowerCase();
+  if (userGroup === 'admin' || userGroup.indexOf('admin') >= 0) return 'Quản trị viên';
+  if (userGroup === 'ql' || userGroup === 'manager' || userGroup === 'quanly' || userGroup === 'quản lý') return 'Quản lý';
+  var managerFlag = user.Manager !== undefined ? user.Manager : user.manager;
+  var isManagerFlag = user.IsManager !== undefined ? user.IsManager : user.isManager;
+  if (Number(managerFlag) === 1 || isManagerFlag === true || Number(isManagerFlag) === 1) return 'Quản lý';
+  if (user.EmployeeID && user.ManagerID && String(user.EmployeeID).toLowerCase() === String(user.ManagerID).toLowerCase()) return 'Quản lý';
+
+  var explicitRole = user.RoleName || user.UserRoleName || user.GroupName || user.UserGroupName;
+  if (explicitRole) return explicitRole;
+
+  if (managerFlag === 0 || managerFlag === '0' || user.EmployeeID || user.ManagerID) return 'Trình dược viên';
+  return 'Chưa xác định';
+}
+
 function renderSidebar(activeTab, base) {
   activeTab = activeTab || 'home';
-  var tabs = getSidebarTabs(activeTab);
   var collapsed = localStorage.getItem('sidebar-collapsed') === 'true';
 
   // Get current user info from localStorage
@@ -40,7 +71,9 @@ function renderSidebar(activeTab, base) {
   try {
     user = JSON.parse(localStorage.getItem('auth_user') || '{}');
   } catch (e) {}
+  var tabs = getSidebarTabs(activeTab, user);
   var displayName = user.DisplayName || user.UserName || 'Trình dược viên';
+  var roleLabel = getUserRoleLabel(user);
   var avatarSrc = '';
   if (user.Avatar) {
     avatarSrc = user.Avatar.startsWith('data:') ? user.Avatar : 'data:image/jpeg;base64,' + user.Avatar;
@@ -79,13 +112,13 @@ function renderSidebar(activeTab, base) {
     }).join('') +
     '</nav>' +
     '<div class="sidebar-footer">' +
-    '  <div class="sidebar-user">' +
+    '  <a href="#/account" class="sidebar-user" title="Tài khoản">' +
     '    <img src="' + avatarSrc + '" class="sidebar-user-avatar" alt="">' +
     '    <div class="sidebar-user-info">' +
     '      <div class="sidebar-user-name">' + displayName + '</div>' +
-    '      <div class="sidebar-user-role">Trình dược viên</div>' +
+    '      <div class="sidebar-user-role">' + roleLabel + '</div>' +
     '    </div>' +
-    '  </div>' +
+    '  </a>' +
     '  <button class="sidebar-logout-btn" onclick="AuthService.logout()">' +
     '    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
     '    <span>Đăng xuất</span>' +

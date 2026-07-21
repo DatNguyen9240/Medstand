@@ -253,7 +253,7 @@
       ],
       "credentials": {
         "openAiApi": {
-          "id": "NUWWHWYzGHV6GY0g",
+          "id": "frs6ZRDbNFeYhZf7",
           "name": "OpenAi account"
         }
       }
@@ -359,7 +359,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "oltuZlv17pevRi6M",
+          "id": "TpdxwsQAMalt6YK3",
           "name": "Microsoft SQL account"
         }
       }
@@ -421,7 +421,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "oltuZlv17pevRi6M",
+          "id": "TpdxwsQAMalt6YK3",
           "name": "Microsoft SQL account"
         }
       }
@@ -497,7 +497,7 @@
       ],
       "credentials": {
         "qdrantApi": {
-          "id": "wRToVAhAN63iZT6Q",
+          "id": "Smpjg3Jo47EbcJNc",
           "name": "QdrantApi account"
         }
       }

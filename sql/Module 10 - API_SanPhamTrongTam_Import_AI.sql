@@ -1,16 +1,48 @@
-IF OBJECT_ID('API_SanPhamTrongTam_Import_AI', 'P') IS NOT NULL DROP PROCEDURE API_SanPhamTrongTam_Import_AI;
-GO
-
-CREATE PROCEDURE API_SanPhamTrongTam_Import_AI
+CREATE OR ALTER PROCEDURE API_SanPhamTrongTam_Import_AI
     @DocumentID VARCHAR(50),
     @TuNgay   DATETIME,
     @DenNgay     DATETIME,
     @Memo       NVARCHAR(200),
     @JsonItems  NVARCHAR(MAX) = '', -- Để trống sẽ giữ nguyên SP cũ
-    @JsonRules  NVARCHAR(MAX) = ''  -- Để trống sẽ giữ nguyên mốc cũ
+    @JsonRules  NVARCHAR(MAX) = '', -- Để trống sẽ giữ nguyên mốc cũ
+    @Username   VARCHAR(50) = ''
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'Không có quyền import: tài khoản không tồn tại hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF COALESCE(@DocumentID, '') = '' OR LEN(@DocumentID) > 30
+    BEGIN
+        SELECT N'DocumentID bắt buộc và không được vượt quá 30 ký tự.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF @TuNgay IS NULL OR @DenNgay IS NULL OR @TuNgay > @DenNgay
+    BEGIN
+        SELECT N'Khoảng ngày không hợp lệ.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF (COALESCE(@JsonItems, '') NOT IN ('', '[]') AND ISJSON(@JsonItems) <> 1)
+       OR (COALESCE(@JsonRules, '') NOT IN ('', '[]') AND ISJSON(@JsonRules) <> 1)
+    BEGIN
+        SELECT N'Dữ liệu JSON không hợp lệ.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF COALESCE(@JsonItems, '') NOT IN ('', '[]')
+       AND EXISTS (
+           SELECT 1
+           FROM OPENJSON(@JsonItems) WITH (ItemID VARCHAR(50) '$.ItemID') J
+           WHERE COALESCE(J.ItemID, '') = '' OR NOT EXISTS (SELECT 1 FROM CF_ItemTbl I WHERE I.ItemID = J.ItemID)
+       )
+    BEGIN
+        SELECT N'Danh sách có sản phẩm không tồn tại.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+
     BEGIN TRY
         BEGIN TRANSACTION;
 
@@ -22,13 +54,13 @@ BEGIN
         ELSE
         BEGIN
             INSERT INTO AR_SanPhamTrongTamTbl (DocumentID, FromDate, ToDate, Memo, isLock, UserCreate, DateCreate)
-            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, 'AI_IMPORT', GETDATE());
+            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, @Username, GETDATE());
         END
 
         -- FIX LỖI FOREIGN KEY cho bảng Promotion
         IF NOT EXISTS (SELECT 1 FROM AR_PromotionTbl WHERE DocumentID = @DocumentID)
             INSERT INTO AR_PromotionTbl (DocumentID, FromDate, ToDate, TenChuongTrinh, isDisable, UserCreate, DateCreate)
-            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, 'AI_IMPORT', GETDATE());
+            VALUES (@DocumentID, @TuNgay, @DenNgay, @Memo, 0, @Username, GETDATE());
 
         -- 2. Chỉ cập nhật Sản phẩm nếu JSON có dữ liệu
         IF @JsonItems IS NOT NULL AND @JsonItems <> '' AND @JsonItems <> '[]'
@@ -56,4 +88,13 @@ BEGIN
         SELECT ERROR_MESSAGE() AS Msg, 1 AS MsgType;
     END CATCH
 END
+GO
+
+UPDATE f
+SET IsSystemParam = 1,
+    SourceOfTruth = 'VERIFIED_IDENTITY'
+FROM dbo.API_Field f
+JOIN dbo.API_Definition d ON d.ApiID = f.ApiID
+WHERE d.ApiCode = '@san_pham_trong_tam_import'
+  AND f.FieldCode = '@Username';
 GO

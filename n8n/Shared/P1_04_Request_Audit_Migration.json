@@ -1,0 +1,182 @@
+{
+  "id": "p104AuditMigV1",
+  "name": "P1-04 · Request Audit Migration",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "p104-migration-trigger",
+      "name": "Run P1-04 Audit Migration",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "/* P1-04: privacy-safe API request audit. Safe to run repeatedly. */\nSET NOCOUNT ON;\nSET XACT_ABORT ON;\n\nIF OBJECT_ID('dbo.AI_API_RequestAudit', 'U') IS NULL\nBEGIN\n    CREATE TABLE dbo.AI_API_RequestAudit (\n        AuditID                BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,\n        RequestID              VARCHAR(100) NOT NULL,\n        CorrelationHintHash    CHAR(64) NULL,\n        VerifiedUserHash       CHAR(64) NULL,\n        ApiCode                VARCHAR(100) NOT NULL,\n        OperationType          VARCHAR(20) NOT NULL,\n        ResultCode             VARCHAR(60) NOT NULL,\n        HttpStatus             SMALLINT NOT NULL,\n        DurationMs             INT NOT NULL,\n        RowCountBucket         VARCHAR(20) NOT NULL,\n        IdempotencyKeyHash     CHAR(64) NULL,\n        TransactionOutcome     VARCHAR(30) NOT NULL,\n        N8nExecutionID         VARCHAR(80) NULL,\n        StartedAt              DATETIME2(3) NOT NULL,\n        CompletedAt            DATETIME2(3) NOT NULL CONSTRAINT DF_AI_API_RequestAudit_CompletedAt DEFAULT SYSUTCDATETIME(),\n        CONSTRAINT UQ_AI_API_RequestAudit_RequestID UNIQUE (RequestID),\n        CONSTRAINT CK_AI_API_RequestAudit_Operation CHECK (OperationType IN ('READ', 'MUTATION', 'CATALOG', 'UNKNOWN')),\n        CONSTRAINT CK_AI_API_RequestAudit_Transaction CHECK (TransactionOutcome IN ('NOT_APPLICABLE', 'NOT_STARTED', 'NAVIGATION_ONLY', 'COMMITTED', 'ROLLED_BACK')),\n        CONSTRAINT CK_AI_API_RequestAudit_RowBucket CHECK (RowCountBucket IN ('0', '1', '2-10', '11-100', '100+', 'HIDDEN'))\n    );\n\n    CREATE INDEX IX_AI_API_RequestAudit_CompletedAt ON dbo.AI_API_RequestAudit (CompletedAt DESC);\n    CREATE INDEX IX_AI_API_RequestAudit_RequestID ON dbo.AI_API_RequestAudit (RequestID);\n    CREATE INDEX IX_AI_API_RequestAudit_UserHash ON dbo.AI_API_RequestAudit (VerifiedUserHash, CompletedAt DESC);\nEND;\n\nDENY SELECT, INSERT, UPDATE, DELETE ON dbo.AI_API_RequestAudit TO public;"
+      },
+      "id": "p104-audit-batch-1",
+      "name": "Apply Audit Batch 1",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE OR ALTER PROCEDURE dbo.AI_WriteAPIRequestAudit\n    @RequestID VARCHAR(100),\n    @CorrelationHintHash CHAR(64) = NULL,\n    @VerifiedUserHash CHAR(64) = NULL,\n    @ApiCode VARCHAR(100),\n    @OperationType VARCHAR(20),\n    @ResultCode VARCHAR(60),\n    @HttpStatus SMALLINT,\n    @DurationMs INT,\n    @RowCountBucket VARCHAR(20),\n    @IdempotencyKeyHash CHAR(64) = NULL,\n    @TransactionOutcome VARCHAR(30),\n    @N8nExecutionID VARCHAR(80) = NULL,\n    @StartedAt DATETIME2(3)\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SET XACT_ABORT ON;\n\n    IF @RequestID NOT LIKE 'req-%' OR LEN(@RequestID) > 100\n        THROW 51240, 'Invalid server request ID.', 1;\n    IF @OperationType NOT IN ('READ', 'MUTATION', 'CATALOG', 'UNKNOWN')\n        SET @OperationType = 'UNKNOWN';\n    IF @TransactionOutcome NOT IN ('NOT_APPLICABLE', 'NOT_STARTED', 'NAVIGATION_ONLY', 'COMMITTED', 'ROLLED_BACK')\n        SET @TransactionOutcome = 'NOT_STARTED';\n    IF @RowCountBucket NOT IN ('0', '1', '2-10', '11-100', '100+', 'HIDDEN')\n        SET @RowCountBucket = 'HIDDEN';\n    SET @DurationMs = CASE WHEN @DurationMs < 0 THEN 0 WHEN @DurationMs > 86400000 THEN 86400000 ELSE @DurationMs END;\n\n    BEGIN TRANSACTION;\n    IF NOT EXISTS (SELECT 1 FROM dbo.AI_API_RequestAudit WITH (UPDLOCK, HOLDLOCK) WHERE RequestID = @RequestID)\n    BEGIN\n        INSERT dbo.AI_API_RequestAudit (\n            RequestID, CorrelationHintHash, VerifiedUserHash, ApiCode, OperationType,\n            ResultCode, HttpStatus, DurationMs, RowCountBucket, IdempotencyKeyHash,\n            TransactionOutcome, N8nExecutionID, StartedAt, CompletedAt\n        ) VALUES (\n            @RequestID, @CorrelationHintHash, @VerifiedUserHash, LEFT(@ApiCode, 100), @OperationType,\n            LEFT(@ResultCode, 60), @HttpStatus, @DurationMs, @RowCountBucket, @IdempotencyKeyHash,\n            @TransactionOutcome, @N8nExecutionID, @StartedAt, SYSUTCDATETIME()\n        );\n    END;\n\n    /* Enforced rolling retention without a separate scheduler. */\n    DELETE TOP (500) FROM dbo.AI_API_RequestAudit\n    WHERE CompletedAt < DATEADD(DAY, -90, SYSUTCDATETIME());\n    COMMIT TRANSACTION;\nEND;"
+      },
+      "id": "p104-audit-batch-2",
+      "name": "Apply Audit Batch 2",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE OR ALTER PROCEDURE dbo.API_ReadRequestAudit_AI\n    @Username VARCHAR(50),\n    @RequestID VARCHAR(100) = NULL,\n    @FromUtc DATETIME2(3) = NULL,\n    @ToUtc DATETIME2(3) = NULL,\n    @TopN INT = 100\nAS\nBEGIN\n    SET NOCOUNT ON;\n    DECLARE @Role VARCHAR(50) = '';\n    SELECT TOP (1) @Role = UPPER(ISNULL(UserGroupID, ''))\n    FROM dbo.SY_User\n    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;\n\n    IF @Role NOT IN ('ADMIN', 'SECURITY', 'QA')\n    BEGIN\n        SELECT N'Quyền truy cập audit bị từ chối.' AS Msg, 1 AS MsgType;\n        RETURN;\n    END;\n\n    SET @TopN = CASE WHEN @TopN BETWEEN 1 AND 500 THEN @TopN ELSE 100 END;\n    SET @FromUtc = COALESCE(@FromUtc, DATEADD(DAY, -7, SYSUTCDATETIME()));\n    SET @ToUtc = COALESCE(@ToUtc, SYSUTCDATETIME());\n\n    SELECT TOP (@TopN)\n        RequestID, CorrelationHintHash, VerifiedUserHash, ApiCode, OperationType,\n        ResultCode, HttpStatus, DurationMs, RowCountBucket, IdempotencyKeyHash,\n        TransactionOutcome, N8nExecutionID, StartedAt, CompletedAt\n    FROM dbo.AI_API_RequestAudit\n    WHERE CompletedAt BETWEEN @FromUtc AND @ToUtc\n      AND (@RequestID IS NULL OR RequestID = @RequestID)\n    ORDER BY CompletedAt DESC;\nEND;"
+      },
+      "id": "p104-audit-batch-3",
+      "name": "Apply Audit Batch 3",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "CREATE OR ALTER PROCEDURE dbo.AI_PruneAPIRequestAudit\n    @Username VARCHAR(50),\n    @RetentionDays INT = 90\nAS\nBEGIN\n    SET NOCOUNT ON;\n    DECLARE @Role VARCHAR(50) = '';\n    SELECT TOP (1) @Role = UPPER(ISNULL(UserGroupID, ''))\n    FROM dbo.SY_User\n    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;\n    IF @Role NOT IN ('ADMIN', 'SECURITY')\n        THROW 51241, 'Audit retention access denied.', 1;\n\n    SET @RetentionDays = CASE WHEN @RetentionDays BETWEEN 30 AND 365 THEN @RetentionDays ELSE 90 END;\n    DELETE FROM dbo.AI_API_RequestAudit\n    WHERE CompletedAt < DATEADD(DAY, -@RetentionDays, SYSUTCDATETIME());\n    SELECT DeletedRows = @@ROWCOUNT, RetentionDays = @RetentionDays;\nEND;"
+      },
+      "id": "p104-audit-batch-4",
+      "name": "Apply Audit Batch 4",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "TpdxwsQAMalt6YK3",
+          "name": "Microsoft SQL account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { success: true, code: 'P1_04_AUDIT_SCHEMA_READY', batchCount: 4 } }];"
+      },
+      "id": "p104-migration-result",
+      "name": "Audit Migration Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Run P1-04 Audit Migration": {
+      "main": [
+        [
+          {
+            "node": "Apply Audit Batch 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Audit Batch 1": {
+      "main": [
+        [
+          {
+            "node": "Apply Audit Batch 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Audit Batch 2": {
+      "main": [
+        [
+          {
+            "node": "Apply Audit Batch 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Audit Batch 3": {
+      "main": [
+        [
+          {
+            "node": "Apply Audit Batch 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Audit Batch 4": {
+      "main": [
+        [
+          {
+            "node": "Audit Migration Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "f785e932-7379-4433-a9f2-d1af80ac512a",
+  "tags": []
+}

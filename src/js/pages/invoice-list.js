@@ -3,6 +3,7 @@
   var searchText = '';
   var fromDate, toDate;
   var filterValues = {};
+  var loadSequence = 0;
 
   // Init filter
   var filter = new FilterComponent({
@@ -42,12 +43,14 @@
   TotalBar.init({ onPageChange: function (page) { loadPage(page); } });
 
   function loadPage(page) {
+    var requestSequence = ++loadSequence;
     $('#invoice-list').prop('hidden', true);
     $('#skeleton').prop('hidden', false);
 
     var params = Object.assign({ FromDate: fromDate, ToDate: toDate, SearchText: searchText, page: page, limit: LIMIT }, FilterFields.toApiParams(filterValues));
     InvoiceService.getList(params)
       .then(function (res) {
+        if (requestSequence !== loadSequence) return;
         var data = res.data || res;
         var invoices = data.records || data || [];
         var totalPages = data.pagetotal || data._pagetotal || 1;
@@ -64,6 +67,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(function (err) {
+        if (requestSequence !== loadSequence) return;
         console.error('Failed to load invoices', err);
         $('#skeleton').prop('hidden', true);
         $('#invoice-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không tải được dữ liệu</p>');

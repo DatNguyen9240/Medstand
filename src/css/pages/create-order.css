@@ -116,3 +116,36 @@ body[data-page="create-order"] {
         text-align: center;
     }
 }
+.product-picker-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.product-option-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.product-option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.35;
+}
+
+.product-option-meta {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}

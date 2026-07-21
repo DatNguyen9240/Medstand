@@ -2,6 +2,7 @@
  * Chatbot Quick Suggestions (Tabbed Version)
  */
 window.CHAT_SUGGESTIONS = [
+    { category: 'Công việc', label: 'Việc hôm nay', text: 'Hôm nay em nên làm gì?', icon: '✅' },
     // ══════════════════════════════════════
     //  📊 PHÂN TÍCH
     // ══════════════════════════════════════

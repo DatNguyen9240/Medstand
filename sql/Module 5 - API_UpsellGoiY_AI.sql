@@ -1,9 +1,4 @@
-USE medtest;
-GO
-
-IF OBJECT_ID('API_UpsellGoiY_AI', 'P') IS NOT NULL DROP PROCEDURE API_UpsellGoiY_AI;
-GO
-CREATE PROCEDURE API_UpsellGoiY_AI
+CREATE OR ALTER PROCEDURE API_UpsellGoiY_AI
     @Username     VARCHAR(50)   = '',
     @MaKhachHang  NVARCHAR(100) = '',
     @timkiem      NVARCHAR(50)  = '',      
@@ -23,7 +18,65 @@ BEGIN
     END
 
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    DECLARE @EmployeeID VARCHAR(50) = ''
+    DECLARE @IsGlobal BIT = 0
+    DECLARE @IsManager BIT = 0
+    DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY)
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, ''),
+           @EmployeeID = COALESCE(EmployeeID, ''),
+           @IsGlobal = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
+           @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) = 'QL' THEN 1 ELSE 0 END
+    FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
+    END
+
+    INSERT INTO @AllowedStores (StoreHouseID)
+    SELECT DISTINCT US.StoreHouseID
+    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+    WHERE US.UserName = @Username
+      AND ISNULL(US.StoreHouseID, '') <> '';
+
+    IF @IsManager = 1 AND ISNULL(@EmployeeID, '') <> ''
+    BEGIN
+        INSERT INTO @AllowedStores (StoreHouseID)
+        SELECT DISTINCT US.StoreHouseID
+        FROM dbo.SY_User U WITH (NOLOCK)
+        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+          ON US.UserName = U.UserName
+        WHERE U.ManagerID = @EmployeeID
+          AND ISNULL(U.Disable, 0) = 0
+          AND ISNULL(US.StoreHouseID, '') <> ''
+          AND NOT EXISTS (
+              SELECT 1 FROM @AllowedStores A
+              WHERE A.StoreHouseID = US.StoreHouseID
+          );
+    END
+
+    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    BEGIN
+        SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+
+    SET @MaKhachHang = LTRIM(RTRIM(COALESCE(@MaKhachHang, '')));
+
+    -- Upsell là gợi ý riêng cho từng khách hàng. Không được rơi xuống danh sách
+    -- bán chạy/sản phẩm trọng tâm chung khi caller chưa chọn khách.
+    IF @MaKhachHang = ''
+    BEGIN
+        SELECT
+            N'Vui lòng chọn khách hàng để gợi ý bán kèm.' AS Msg,
+            1 AS MsgType,
+            N'VALIDATION_ERROR' AS Severity,
+            N'MISSING_CUSTOMER' AS Code;
+        RETURN;
+    END
 
     DECLARE @DoanhSoHienTai FLOAT = 0
     DECLARE @MucTarget      FLOAT = 0
@@ -63,7 +116,7 @@ BEGIN
             ORDER BY ISNULL(I.Cnt, 0) DESC;
               
             -- Fallback tìm toàn quốc (chỉ chạy cho admin)
-            IF @ResolvedID = '' AND @SYSBranchID = ''
+            IF @ResolvedID = '' AND UPPER(@SYSUserGroupID) = 'ADMIN'
             BEGIN
                 SELECT TOP 1 @ResolvedID = O.ObjectID 
                 FROM CF_ObjectTbl O
@@ -94,12 +147,28 @@ BEGIN
         RETURN;
     END
 
-    -- RLS GUARD: Reuse ERP permission system (AR_GetObjectByUserFnc) to handle branch/manager hierarchy securely
-    IF @MaKhachHang <> '' AND @Username <> '' AND NOT EXISTS (
-        SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @MaKhachHang
+    -- RLS GUARD: Non-global users must pass both the explicit branch boundary and
+    -- the ERP customer-scope function. The branch check prevents a broad ERP
+    -- function result from exposing a customer in another region.
+    IF @MaKhachHang <> '' AND @Username <> '' AND @IsGlobal = 0 AND (
+        NOT EXISTS (
+            SELECT 1
+            FROM dbo.CF_ObjectTbl O WITH (NOLOCK)
+            WHERE O.ObjectID = @MaKhachHang
+              AND O.BranchID = @SYSBranchID
+        )
+        OR NOT EXISTS (
+            SELECT 1
+            FROM dbo.AR_GetObjectByUserFnc(@Username)
+            WHERE ObjectID = @MaKhachHang
+        )
     )
     BEGIN
-        SELECT N'Bạn không có quyền xem thông tin của khách hàng này.' AS Msg, 1 AS MsgType
+        SELECT
+            N'Bạn không có quyền xem thông tin của khách hàng này.' AS Msg,
+            1 AS MsgType,
+            N'OUT_OF_SCOPE' AS Severity,
+            N'CUSTOMER_OUT_OF_SCOPE' AS Code;
         RETURN;
     END
 
@@ -118,25 +187,14 @@ BEGIN
     WHERE GETDATE() BETWEEN FromDate AND ToDate
     ORDER BY ToDate DESC;
 
-    -- UAT FALLBACK: Nếu không có chương trình đang chạy, lấy chương trình mới nhất
-    IF ISNULL(@ProgramID, '') = ''
-    BEGIN
-        SELECT TOP 1 @ProgramID = DocumentID 
-        FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
-        ORDER BY ToDate DESC;
-    END
-
-    -- ═══ 2. Doanh số hiện tại của khách trong tháng (Tính cả hóa đơn & đơn nháp) ═══
+    -- ═══ 2. Doanh số hiện tại của khách trong tháng (chỉ hóa đơn hợp lệ) ═══
     SELECT @DoanhSoHienTai = ISNULL(SUM(I.TotalAmount), 0)
     FROM (
         SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.TotalAmount
         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        UNION ALL
-        SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.TotalAmount
-        FROM AR_OrderTbl O WITH (NOLOCK) JOIN AR_OrderDetailTbl D WITH (NOLOCK) ON O.DocumentID = D.DocumentID
     ) I
     WHERE I.ObjectID = @MaKhachHang
-      AND ISNULL(I.StatusID, 0) != 10
+      AND I.StatusID IN (3, 6, 7, 8)
       AND I.DocumentDate >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID);
 
@@ -196,7 +254,7 @@ BEGIN
     INTO #KhachQuen 
     FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.ObjectID = @MaKhachHang 
-      AND ISNULL(I.StatusID,0) != 10 
+      AND I.StatusID IN (3, 6, 7, 8)
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
     GROUP BY D.ItemID;
 
@@ -207,16 +265,38 @@ BEGIN
         SELECT D.ItemID, COUNT(DISTINCT I.DocumentID) AS TanSuatMua
         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
         WHERE I.ObjectID = @MaKhachHang 
-          AND ISNULL(I.StatusID,0) != 10
+          AND I.StatusID IN (3, 6, 7, 8)
         GROUP BY D.ItemID;
     END
 
     -- ═══ 6. Top 50 bán chạy tại chi nhánh ═══
+    IF NOT EXISTS (SELECT 1 FROM #KhachQuen)
+    BEGIN
+        DECLARE @UpsellCustomerName NVARCHAR(500) = NULL;
+        SELECT @UpsellCustomerName = ObjectName
+        FROM dbo.CF_ObjectTbl WITH (NOLOCK)
+        WHERE ObjectID = @MaKhachHang;
+
+        SELECT CONCAT(
+                   N'Khách ', COALESCE(NULLIF(@UpsellCustomerName, ''), @MaKhachHang),
+                   N' chưa có hóa đơn hoàn tất (trạng thái 3/6/7/8), nên chưa đủ dữ liệu để gợi ý bán kèm riêng.'
+               ) AS Msg,
+               0 AS MsgType,
+               N'NO_DATA' AS Severity,
+               N'NO_CUSTOMER_PURCHASE_HISTORY' AS Code;
+
+        DROP TABLE #GiaThiTruong;
+        DROP TABLE #KhachQuen;
+        DROP TABLE #LatestPriceHeader;
+        DROP TABLE #TrongTam;
+        RETURN;
+    END
+
     SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
     INTO #BanChay 
     FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.DocumentDate >= DATEADD(DAY, -180, GETDATE()) 
-      AND ISNULL(I.StatusID, 0) != 10 
+      AND I.StatusID IN (3, 6, 7, 8)
       AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
     GROUP BY D.ItemID;
 
@@ -226,16 +306,36 @@ BEGIN
         INSERT INTO #BanChay (ItemID, DoanhSoChiNhanh)
         SELECT TOP 50 D.ItemID, SUM(D.TotalAmount) AS DoanhSoChiNhanh
         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        WHERE ISNULL(I.StatusID, 0) != 10 
+        WHERE I.StatusID IN (3, 6, 7, 8)
           AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
         GROUP BY D.ItemID
         ORDER BY DoanhSoChiNhanh DESC;
     END
 
-    -- ═══ 7. Tồn kho tổng hợp ═══
-    SELECT ItemID, SUM(QuantityinStock) AS QuantityinStock
+    -- ═══ 7. Tồn kho đúng phạm vi user; lô hết hạn/âm không được tính là có thể bán ═══
+    SELECT
+        T.ItemID,
+        T.StoreHouseID,
+        T.Lot,
+        T.ExpireDate,
+        SUM(ISNULL(T.Quantity, 0)) AS RemainingPhysical
+    INTO #StockByLot
+    FROM dbo.IV_StockTransactionTbl T WITH (NOLOCK)
+    WHERE @IsGlobal = 1
+       OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
+    GROUP BY T.ItemID, T.StoreHouseID, T.Lot, T.ExpireDate;
+
+    SELECT
+        ItemID,
+        SUM(RemainingPhysical) AS PhysicalStock,
+        SUM(CASE
+            WHEN RemainingPhysical > 0
+             AND (ExpireDate IS NULL OR CAST(ExpireDate AS DATE) >= CAST(GETDATE() AS DATE))
+                THEN RemainingPhysical
+            ELSE 0
+        END) AS QuantityinStock
     INTO #TonKho
-    FROM IV_StockTbl WITH (NOLOCK)
+    FROM #StockByLot
     GROUP BY ItemID;
 
     -- ═══ 7.5. Danh sách sản phẩm trọng tâm     -- Chuẩn hóa các liên từ nối tiếng Việt thành khoảng trắng/dấu phẩy đề phòng n8n chưa xử lý
@@ -323,9 +423,10 @@ BEGIN
             I.Unit,
             CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
             ISNULL(S.QuantityinStock, 0)               AS TonKho,
+            ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+            ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
+            N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
             (
-                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 2000000 ELSE 0 END) +
-                
                 -- Ưu tiên 1: Tên chứa từ khoá nguyên bản ở đầu (VD: Bắt đầu bằng chữ "Thuốc ho")
                 (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE REPLACE(@timkiem, 'thuoc ', '') + N'%' OR I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 500000 ELSE 0 END) +
                 
@@ -349,7 +450,9 @@ BEGIN
                        OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa,'') COLLATE Vietnamese_CI_AS, ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + T.Term + N' %'
                 ), 0)
             ) AS PriorityScore,
-            N'Triệu chứng: ' + @timkiem + CASE WHEN ISNULL(S.QuantityinStock, 0) <= 0 THEN N' | Hết hàng' ELSE N' | Còn hàng' END AS LyDoGoiY
+            N'Triệu chứng: ' + @timkiem + N' | Có thể bán theo kho được phân quyền' AS LyDoGoiY,
+            N'LEGACY_UPSELL_DRAFT' AS RuleSource,
+            N'BR-UPSELL-V1-DRAFT' AS RuleVersion
         INTO #KetQuaKichBan1
         FROM CF_ItemTbl I WITH (NOLOCK)
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
@@ -357,6 +460,7 @@ BEGIN
         WHERE ISNULL(I.isDisable, 0) = 0
           AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
           AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+          AND ISNULL(S.QuantityinStock, 0) > 0
           AND (
               I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
               I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
@@ -381,8 +485,13 @@ BEGIN
                 '' AS Unit, 
                 0 AS GiaBan,
                 0 AS TonKho,
+                0 AS PhysicalStock,
+                0 AS AvailableStock,
+                N'NO_SELLABLE_STOCK' AS StockDataStatus,
                 0 AS PriorityScore,
-                N'Vui lòng thử lại với từ khóa khác hoặc kiểm tra lại tên.' AS LyDoGoiY;
+                N'Vui lòng thử lại với từ khóa khác hoặc kiểm tra lại tên.' AS LyDoGoiY,
+                N'LEGACY_UPSELL_DRAFT' AS RuleSource,
+                N'BR-UPSELL-V1-DRAFT' AS RuleVersion;
         END
         ELSE
         BEGIN
@@ -411,9 +520,11 @@ BEGIN
             I.Unit,
             CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
             ISNULL(S.QuantityinStock, 0)               AS TonKho,
+            ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+            ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
+            N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
             (
                 (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
-                (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
                 (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
                 (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
             ) AS PriorityScore,
@@ -422,7 +533,9 @@ BEGIN
                 WHEN KQ.ItemID IS NOT NULL THEN N'Combo: Hàng khách quen'
                 WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy'
                 ELSE N'Gợi ý sẵn có'
-            END AS LyDoGoiY
+            END + N' | Có thể bán theo kho được phân quyền' AS LyDoGoiY,
+            N'LEGACY_UPSELL_DRAFT' AS RuleSource,
+            N'BR-UPSELL-V1-DRAFT' AS RuleVersion
         INTO #KetQuaKichBan2
         FROM CF_ItemTbl I WITH (NOLOCK)
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
@@ -436,7 +549,7 @@ BEGIN
           AND ISNULL(S.QuantityinStock, 0) > 0
           AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
 
-        -- UAT FALLBACK: Nếu không có sản phẩm nào có sẵn tồn kho, lấy cả sản phẩm hết hàng
+        -- Fallback khi không có sản phẩm thuộc các nhóm trọng tâm/khách quen/bán chạy.
         IF NOT EXISTS (SELECT 1 FROM #KetQuaKichBan2)
         BEGIN
             INSERT INTO #KetQuaKichBan2
@@ -455,18 +568,22 @@ BEGIN
                 I.Unit,
                 CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
                 ISNULL(S.QuantityinStock, 0)               AS TonKho,
+                ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+                ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
+                N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
                 (
                     (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
-                    (CASE WHEN ISNULL(S.QuantityinStock,0) > 0 THEN 200000 ELSE 0 END) +
                     (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
                     (CASE WHEN KQ.ItemID IS NOT NULL THEN 500 ELSE 0 END)
                 ) AS PriorityScore,
                 CASE
-                    WHEN TT.ItemID IS NOT NULL THEN N'Hàng TRỌNG TÂM (Hết hàng)'
-                    WHEN KQ.ItemID IS NOT NULL THEN N'Combo: Hàng khách quen (Hết hàng)'
-                    WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy (Hết hàng)'
-                    ELSE N'Gợi ý sẵn có (Hết hàng)'
-                END AS LyDoGoiY
+                    WHEN TT.ItemID IS NOT NULL THEN N'Hàng TRỌNG TÂM'
+                    WHEN KQ.ItemID IS NOT NULL THEN N'Combo: Hàng khách quen'
+                    WHEN BC.ItemID IS NOT NULL THEN N'Combo: Hàng bán chạy'
+                    ELSE N'Gợi ý sẵn có'
+                END + N' | Có thể bán theo kho được phân quyền' AS LyDoGoiY,
+                N'LEGACY_UPSELL_DRAFT' AS RuleSource,
+                N'BR-UPSELL-V1-DRAFT' AS RuleVersion
             FROM CF_ItemTbl I WITH (NOLOCK)
             LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
             LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
@@ -476,14 +593,15 @@ BEGIN
             WHERE ISNULL(I.isDisable, 0) = 0
               AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
               AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
+              AND ISNULL(S.QuantityinStock, 0) > 0
               AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
         END
 
-        SELECT * FROM #KetQuaKichBan2 ORDER BY PriorityScore DESC, TonKho DESC;
+        SELECT * FROM #KetQuaKichBan2 ORDER BY PriorityScore DESC, ItemID ASC;
         DROP TABLE #KetQuaKichBan2;
     END
 
-    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
+    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #StockByLot; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
 END
 GO
 

@@ -15,22 +15,32 @@ SET XACT_ABORT ON
 -- ═══ 1. VALIDATION ═══
 IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
 BEGIN
-    SELECT N'ERR:User không tồn tại hoặc đã bị khóa' AS DocumentID
+    SELECT N'ERR:User không tồn tại hoặc đã bị khóa' AS DocumentID, N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
     RETURN
 END
 IF COALESCE(@ItemList, '') = '' OR @ItemList = '[]'
 BEGIN
-    SELECT N'ERR:Danh sách sản phẩm trống' AS DocumentID
+    SELECT N'ERR:Danh sách sản phẩm trống' AS DocumentID, N'Danh sách sản phẩm trống' AS Msg, 1 AS MsgType
+    RETURN
+END
+IF ISJSON(@ItemList) <> 1
+BEGIN
+    SELECT N'ERR:Danh sách sản phẩm không phải JSON hợp lệ' AS DocumentID, N'Danh sách sản phẩm không phải JSON hợp lệ' AS Msg, 1 AS MsgType
     RETURN
 END
 IF COALESCE(@ObjectID, '') = ''
 BEGIN
-    SELECT N'ERR:Chưa chọn khách hàng (ObjectID là bắt buộc)' AS DocumentID
+    SELECT N'ERR:Chưa chọn khách hàng (ObjectID là bắt buộc)' AS DocumentID, N'Chưa chọn khách hàng (ObjectID là bắt buộc)' AS Msg, 1 AS MsgType
     RETURN
 END
 IF NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
 BEGIN
-    SELECT N'ERR:Mã khách hàng không tồn tại: ' + @ObjectID AS DocumentID
+    SELECT N'ERR:Mã khách hàng không tồn tại: ' + @ObjectID AS DocumentID, N'Mã khách hàng không tồn tại' AS Msg, 1 AS MsgType
+    RETURN
+END
+IF NOT EXISTS (SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @ObjectID)
+BEGIN
+    SELECT N'ERR:Không có quyền tạo đơn cho khách hàng này' AS DocumentID, N'Không có quyền tạo đơn cho khách hàng này' AS Msg, 1 AS MsgType
     RETURN
 END
 
@@ -40,7 +50,13 @@ END
         -- 1. Yêu cầu bắt buộc phải có dấu gạch chéo /
         IF CHARINDEX('/', @DocumentID) = 0
         BEGIN
-            SELECT N'ERR:Mã phiếu tự điền phải theo định dạng chuẩn (ví dụ: DMB0526/1)' AS DocumentID
+            SELECT N'ERR:Mã phiếu tự điền phải theo định dạng chuẩn (ví dụ: DMB0526/1)' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
+            RETURN
+        END
+
+        IF LEN(@DocumentID) > 30
+        BEGIN
+            SELECT N'ERR:Mã phiếu không được vượt quá 30 ký tự' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
             RETURN
         END
         
@@ -48,7 +64,7 @@ END
         DECLARE @Suffix VARCHAR(50) = SUBSTRING(@DocumentID, CHARINDEX('/', @DocumentID) + 1, LEN(@DocumentID))
         IF TRY_CAST(@Suffix AS INT) IS NULL
         BEGIN
-            SELECT N'ERR:Mã phiếu không hợp lệ. Phần số thứ tự sau dấu gạch chéo phải là chữ số (ví dụ: DMB0526/12).' AS DocumentID
+            SELECT N'ERR:Mã phiếu không hợp lệ. Phần số thứ tự sau dấu gạch chéo phải là chữ số (ví dụ: DMB0526/12).' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
             RETURN
         END
     END
@@ -97,7 +113,7 @@ GROUP BY J.ItemID, J.UnitPrice, J.Price
     )
     BEGIN
         DROP TABLE #Items
-        SELECT N'ERR:Sản phẩm khuyến mãi 0đ không hợp lệ (phải có sản phẩm mua chính đi kèm trong đơn hàng)' AS DocumentID
+        SELECT N'ERR:Sản phẩm khuyến mãi 0đ không hợp lệ (phải có sản phẩm mua chính đi kèm trong đơn hàng)' AS DocumentID, N'Sản phẩm khuyến mãi không hợp lệ' AS Msg, 1 AS MsgType
         RETURN
     END
 
@@ -106,13 +122,13 @@ BEGIN
     DECLARE @BadItems NVARCHAR(500)
     SELECT @BadItems = STRING_AGG(ItemID, ', ') FROM #Items WHERE ItemName IS NULL
     DROP TABLE #Items
-    SELECT N'ERR:Sản phẩm không tồn tại: ' + @BadItems AS DocumentID
+    SELECT N'ERR:Sản phẩm không tồn tại: ' + @BadItems AS DocumentID, N'Sản phẩm không tồn tại: ' + @BadItems AS Msg, 1 AS MsgType
     RETURN
 END
 IF EXISTS (SELECT 1 FROM #Items WHERE COALESCE(Quantity, 0) <= 0)
 BEGIN
     DROP TABLE #Items
-    SELECT N'ERR:Số lượng phải lớn hơn 0' AS DocumentID
+    SELECT N'ERR:Số lượng phải lớn hơn 0' AS DocumentID, N'Số lượng phải lớn hơn 0' AS Msg, 1 AS MsgType
     RETURN
 END
 IF EXISTS (SELECT 1 FROM #Items WHERE UnitPrice IS NULL)
@@ -120,7 +136,7 @@ BEGIN
     DECLARE @NoPrice NVARCHAR(500)
     SELECT @NoPrice = STRING_AGG(ItemID, ', ') FROM #Items WHERE UnitPrice IS NULL
     DROP TABLE #Items
-    SELECT N'ERR:Sản phẩm chưa có giá: ' + @NoPrice AS DocumentID
+    SELECT N'ERR:Sản phẩm chưa có giá: ' + @NoPrice AS DocumentID, N'Sản phẩm chưa có giá: ' + @NoPrice AS Msg, 1 AS MsgType
     RETURN
 END
 -- ═══ 3. TẠO ĐƠN + CHI TIẾT ═══
@@ -193,7 +209,7 @@ BEGIN CATCH
     IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION
     DECLARE @ErrMsg NVARCHAR(500) = ERROR_MESSAGE()
     DROP TABLE IF EXISTS #Items
-    SELECT N'ERR:' + @ErrMsg AS DocumentID
+    SELECT N'ERR:' + @ErrMsg AS DocumentID, N'Hệ thống chưa thể tạo đơn hàng.' AS Msg, 1 AS MsgType
     RETURN
 END CATCH
 DROP TABLE IF EXISTS #Items

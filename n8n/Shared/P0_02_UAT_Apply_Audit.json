@@ -1,0 +1,85 @@
+{
+  "name": "P0-02 · UAT Capability Metadata Apply + Audit",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "p0-02-manual-trigger",
+      "name": "Run UAT Apply + Audit",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "/* TASK-P0-02\n   Adds authorization metadata without changing stored-procedure data logic.\n   Run in UAT first. The transaction rolls back automatically on any error. */\nSET XACT_ABORT ON;\nBEGIN TRY\n    BEGIN TRANSACTION;\n\n    IF OBJECT_ID('dbo.API_Definition', 'U') IS NULL\n        THROW 51200, N'dbo.API_Definition does not exist.', 1;\n\n    IF COL_LENGTH('dbo.API_Definition', 'OperationType') IS NULL\n        ALTER TABLE dbo.API_Definition ADD OperationType VARCHAR(20) NULL;\n    IF COL_LENGTH('dbo.API_Definition', 'RequiredCapability') IS NULL\n        ALTER TABLE dbo.API_Definition ADD RequiredCapability VARCHAR(100) NULL;\n    IF COL_LENGTH('dbo.API_Definition', 'AllowedCapabilities') IS NULL\n        ALTER TABLE dbo.API_Definition ADD AllowedCapabilities NVARCHAR(1000) NULL;\n    IF COL_LENGTH('dbo.API_Definition', 'ScopeResolver') IS NULL\n        ALTER TABLE dbo.API_Definition ADD ScopeResolver VARCHAR(50) NULL;\n    IF COL_LENGTH('dbo.API_Definition', 'OwnershipRule') IS NULL\n        ALTER TABLE dbo.API_Definition ADD OwnershipRule VARCHAR(100) NULL;\n\n    /* Dynamic SQL avoids compile-time references to columns added in this transaction. */\n    EXEC sys.sp_executesql N'\n        UPDATE dbo.API_Definition\n        SET OperationType = ''DENY'',\n            RequiredCapability = NULL,\n            AllowedCapabilities = N''[]'',\n            ScopeResolver = ''NONE'',\n            OwnershipRule = ''DENY''\n        WHERE OperationType IS NULL;\n\n        UPDATE dbo.API_Definition\n        SET OperationType = ''READ'',\n            RequiredCapability = ''api.read'',\n            AllowedCapabilities = N''[\"api.read\"]'',\n            ScopeResolver = ''VERIFIED_USER_HIERARCHY'',\n            OwnershipRule = ''TDV_OWN_OR_MANAGER_BRANCH''\n        WHERE ApiCode IN (\n            ''@doanh_so'', ''@hoa_don'', ''@hoa_don_chi_tiet'', ''@don_hang'',\n            ''@cham_diem_kh'', ''@cong_no_khach_hang'', ''@cong_no_chi_tiet'',\n            ''@tich_luy'', ''@tuyen_ban_hang'', ''@goi_ydon_hang'', ''@upsell_goi_y'',\n            ''@goi_ydon_thuoc'', ''@danh_sach_tonkho'', ''@tra_cuu_san_pham'',\n            ''@san_pham_trong_tam'', ''@de_xuat_khuyen_mai'', ''@danh_muc'', ''@khao_sat360'',\n            ''@danh_sach_cau_hoi_khao_sat'', ''@kiem_tra_khao_sat'',\n            ''@kiem_tra_khao_sat_ngay'', ''@lich_su_khao_sat'', ''@thong_bao'',\n            ''@tim_san_pham_theo_trieu_chung''\n        );\n\n        UPDATE dbo.API_Definition\n        SET OperationType = ''MUTATION'',\n            RequiredCapability = CASE ApiCode\n                WHEN ''@lap_don_hang'' THEN ''orders.write''\n                WHEN ''@khach_hang_insert'' THEN ''customers.write''\n                WHEN ''@san_pham_trong_tam_import'' THEN ''products.import''\n            END,\n            AllowedCapabilities = CASE ApiCode\n                WHEN ''@lap_don_hang'' THEN N''[\"orders.write\"]''\n                WHEN ''@khach_hang_insert'' THEN N''[\"customers.write\"]''\n                WHEN ''@san_pham_trong_tam_import'' THEN N''[\"products.import\"]''\n            END,\n            ScopeResolver = ''VERIFIED_USER_HIERARCHY'',\n            OwnershipRule = ''SERVER_VERIFIED_SCOPE_ONLY''\n        WHERE ApiCode IN (''@lap_don_hang'', ''@khach_hang_insert'', ''@san_pham_trong_tam_import'');\n\n        IF EXISTS (\n            SELECT 1 FROM dbo.API_Definition\n            WHERE OperationType <> ''DENY''\n              AND (RequiredCapability IS NULL OR ScopeResolver IS NULL OR OwnershipRule IS NULL)\n        )\n            THROW 51201, N''An allowlisted API is missing authorization metadata.'', 1;\n    ';\n\n    COMMIT TRANSACTION;\nEND TRY\nBEGIN CATCH\n    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;\n    THROW;\nEND CATCH;\n\n"
+      },
+      "id": "p0-02-apply-migration",
+      "name": "Apply Capability Metadata",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "oltuZlv17pevRi6M",
+          "name": "MS SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "\nSELECT\n    d.ApiCode,\n    d.StoredProcedure,\n    d.OperationType,\n    d.RequiredCapability,\n    d.ScopeResolver,\n    d.OwnershipRule,\n    CASE\n        WHEN m.definition LIKE '%@Username = '''' OR%'\n          OR m.definition LIKE '%@Username='''' OR%'\n          OR m.definition LIKE '%@SYSBranchID = '''' OR%'\n          OR m.definition LIKE '%@SYSBranchID='''' OR%' THEN 1\n        ELSE 0\n    END AS HasFailOpenCandidate,\n    SUM(CASE WHEN d.OperationType = 'READ' THEN 1 ELSE 0 END) OVER () AS ReadCount,\n    SUM(CASE WHEN d.OperationType = 'MUTATION' THEN 1 ELSE 0 END) OVER () AS MutationCount,\n    SUM(CASE WHEN d.OperationType = 'DENY' THEN 1 ELSE 0 END) OVER () AS DenyCount\nFROM dbo.API_Definition d\nLEFT JOIN sys.procedures p ON p.name = d.StoredProcedure\nLEFT JOIN sys.sql_modules m ON m.object_id = p.object_id\nWHERE d.IsActive = 1\nORDER BY CASE d.OperationType WHEN 'MUTATION' THEN 1 WHEN 'READ' THEN 2 ELSE 3 END, d.ApiCode;\n"
+      },
+      "id": "p0-02-audit",
+      "name": "Audit Capability + Scope",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "oltuZlv17pevRi6M",
+          "name": "MS SQL account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run UAT Apply + Audit": {
+      "main": [
+        [
+          {
+            "node": "Apply Capability Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Capability Metadata": {
+      "main": [
+        [
+          {
+            "node": "Audit Capability + Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": []
+}

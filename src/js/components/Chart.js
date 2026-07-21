@@ -42,13 +42,15 @@ function drawLineChart(canvasId, labels, values, options = {}) {
         pointBackgroundColor: '#ffffff',
         pointBorderColor: primaryColor,
         pointBorderWidth: 2,
-        pointRadius: 5,
+        pointRadius: function (context) {
+          return options.peakIndex === context.dataIndex ? 6 : (options.pointRadius || 3);
+        },
         pointHoverRadius: 7,
         pointHoverBackgroundColor: primaryColor,
         pointHoverBorderColor: '#ffffff',
         pointHoverBorderWidth: 2,
         fill: true,
-        tension: 0.42
+        tension: options.tension === undefined ? 0.42 : options.tension
       }]
     },
     options: {
@@ -78,7 +80,9 @@ function drawLineChart(canvasId, labels, values, options = {}) {
           displayColors: false,
           callbacks: {
             title: function (items) {
-              return items[0].label;
+              return options.tooltipLabels && options.tooltipLabels[items[0].dataIndex]
+                ? options.tooltipLabels[items[0].dataIndex]
+                : items[0].label;
             },
             label: function (context) {
               const v = context.parsed.y;
@@ -99,8 +103,9 @@ function drawLineChart(canvasId, labels, values, options = {}) {
             color: tickColor,
             font: { size: 11 },
             autoSkip: true,
-            maxTicksLimit: 12,
-            maxRotation: 45
+            maxTicksLimit: options.maxTicksLimit || 12,
+            maxRotation: options.maxRotation === undefined ? 45 : options.maxRotation,
+            minRotation: options.minRotation === undefined ? 0 : options.minRotation
           }
         },
         y: {
@@ -115,8 +120,10 @@ function drawLineChart(canvasId, labels, values, options = {}) {
             font: { size: 11 },
             padding: 8,
             callback: function (value) {
-              if (value >= 1000000) return (value / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 0 });
-              if (value >= 1000)    return (value / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + 'k';
+              var absValue = Math.abs(value);
+              if (absValue >= 1000000000) return (value / 1000000000).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' Tỷ';
+              if (absValue >= 1000000) return (value / 1000000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + ' Tr';
+              if (absValue >= 1000)    return (value / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + 'k';
               return value;
             }
           }

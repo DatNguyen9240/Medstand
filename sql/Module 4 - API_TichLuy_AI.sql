@@ -1,7 +1,4 @@
-IF OBJECT_ID('API_TichLuy_AI', 'P') IS NOT NULL DROP PROCEDURE API_TichLuy_AI;
-GO
-
-CREATE PROCEDURE API_TichLuy_AI
+CREATE OR ALTER PROCEDURE API_TichLuy_AI
    @Username   VARCHAR(50)   = '',
    @MaKhachHang  NVARCHAR(100) = '',
    @ProgramID  VARCHAR(50)   = '',
@@ -13,12 +10,21 @@ BEGIN
    SET NOCOUNT ON
     
     DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
+    DECLARE @SYSUserGroupID VARCHAR(50) = ''
+    SELECT @SYSBranchID = COALESCE(BranchID, ''),
+           @SYSUserGroupID = COALESCE(UserGroupID, '')
+    FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0
    
     -- 1. KIỂM TRA QUYỀN
     IF NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
         SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
+    END
+
+    IF UPPER(@SYSUserGroupID) <> 'ADMIN' AND @SYSBranchID = ''
+    BEGIN
+        SELECT N'Tài khoản chưa được cấp phạm vi chi nhánh.' AS Msg, 1 AS MsgType
+        RETURN
     END
 
 
@@ -65,12 +71,44 @@ BEGIN
          END
      END
 
-     
+    IF @MaKhachHang <> '' AND NOT EXISTS (
+        SELECT 1 FROM dbo.CF_ObjectTbl WITH (NOLOCK)
+        WHERE ObjectID = @MaKhachHang AND ISNULL(isDisable, 0) = 0 AND ISNULL(isCustomer, 0) = 1
+    )
+    BEGIN
+        SELECT N'Không tìm thấy khách hàng hợp lệ.' AS Msg,
+               1 AS MsgType,
+               N'VALIDATION_ERROR' AS Severity;
+        RETURN;
+    END
+
+    IF @MaKhachHang <> '' AND UPPER(@SYSUserGroupID) <> 'ADMIN'
+       AND NOT EXISTS (SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        SELECT N'Bạn không có quyền xem thông tin tích lũy của khách hàng này.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity;
+        RETURN;
+    END
+
+    IF @ProgramID <> '' AND NOT EXISTS (
+        SELECT 1 FROM dbo.AR_SanPhamTrongTamTbl WITH (NOLOCK) WHERE DocumentID = @ProgramID
+    )
+    BEGIN
+        SELECT N'Chương trình tích lũy không tồn tại.' AS Msg,
+               1 AS MsgType,
+               N'VALIDATION_ERROR' AS Severity;
+        RETURN;
+    END
 
 
-    -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH
+    -- 2. XÁC ĐỊNH CHƯƠNG TRÌNH ĐANG HIỆU LỰC.
+    -- Không tự rơi về chương trình cũ/hết hạn (BR-PROGRAM-002/004).
     IF @ProgramID = ''
-        SELECT TOP 1 @ProgramID = DocumentID FROM AR_SanPhamTrongTamTbl WITH (NOLOCK) ORDER BY ToDate DESC
+        SELECT TOP 1 @ProgramID = DocumentID
+        FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
+        WHERE GETDATE() BETWEEN FromDate AND ToDate
+        ORDER BY ToDate DESC
     
     IF @TuNgay IS NULL OR @DenNgay IS NULL
         SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WITH (NOLOCK) WHERE DocumentID = @ProgramID
@@ -84,17 +122,17 @@ BEGIN
     ) X
 
 
-     -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM (Tính cả hóa đơn & đơn nháp)
+     -- 4. TỔNG MUA & TRẢ HÀNG TRỌNG TÂM.
+     -- BR-SALES-001: chỉ hóa đơn hợp lệ; không cộng đơn hàng chưa giao.
      SELECT I.ObjectID, SUM(I.TotalAmount) AS TongHoaDon INTO #HoaDon
      FROM (
          SELECT I.ObjectID, I.DocumentDate, I.BranchID, I.StatusID, D.ItemID, D.TotalAmount
          FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-         UNION ALL
-         SELECT O.ObjectID, O.DocumentDate, O.BranchID, O.StatusID, D.ItemID, D.TotalAmount
-         FROM AR_OrderTbl O WITH (NOLOCK) JOIN AR_OrderDetailTbl D WITH (NOLOCK) ON O.DocumentID = D.DocumentID
      ) I
      JOIN #TrongTam T ON I.ItemID = T.ItemID
-     WHERE I.DocumentDate BETWEEN @TuNgay AND @DenNgay AND ISNULL(I.StatusID, 0) != 10
+     WHERE I.DocumentDate >= @TuNgay
+       AND I.DocumentDate < DATEADD(DAY, 1, CAST(@DenNgay AS DATE))
+       AND I.StatusID IN (3, 6, 7, 8)
        AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
      GROUP BY I.ObjectID
 
@@ -102,7 +140,11 @@ BEGIN
     SELECT R.ObjectID, SUM(D.TotalAmount) AS TongTraHang INTO #TraHang
     FROM AR_ReturnTbl R WITH (NOLOCK) JOIN AR_ReturnDetailTbl D WITH (NOLOCK) ON R.DocumentID = D.DocumentID
     JOIN #TrongTam T ON D.ItemID = T.ItemID
-    WHERE R.DocumentDate BETWEEN @TuNgay AND @DenNgay AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
+    WHERE R.DocumentDate >= @TuNgay
+      AND R.DocumentDate < DATEADD(DAY, 1, CAST(@DenNgay AS DATE))
+      AND ISNULL(R.Status, 0) = 1
+      AND ISNULL(R.KhongTruDSWeb, 0) = 0
+      AND (@SYSBranchID = '' OR R.BranchID = @SYSBranchID)
     GROUP BY R.ObjectID
 
 
@@ -118,9 +160,19 @@ BEGIN
    -- ════════════════════════════════════════════════════
    SELECT
        @ProgramID      AS ProgramID,
+       N'LEGACY_DEFAULT' AS RuleSource,
+       N'BR-PROGRAM-V1-DRAFT' AS RuleVersion,
+       CASE
+           WHEN @ProgramID = '' THEN N'NO_DATA'
+           WHEN GETDATE() BETWEEN @TuNgay AND DATEADD(DAY, 1, CAST(@DenNgay AS DATE)) THEN N'REFERENCE_ONLY_APPROVAL_REQUIRED'
+           ELSE N'EXPIRED'
+       END AS ProgramStatus,
+       @TuNgay AS EffectiveFrom,
+       @DenNgay AS EffectiveTo,
        KH.ObjectID,
        KH.ObjectName   AS TenCuaHang,
        CAST(ISNULL(TL.TongTichLuy, 0) AS BIGINT) AS TichLuyDatDuoc,
+       CAST(ISNULL(TL.TongTichLuy, 0) AS BIGINT) AS Achieved,
        
        -- Quà tặng hiện tại
        ISNULL((SELECT TOP 1 QuaTang FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem <= ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem DESC), N'Chưa đạt quà') AS QuaDaDat,
@@ -131,6 +183,12 @@ BEGIN
        -- Mốc mục tiêu tiếp theo
        ISNULL((SELECT TOP 1 CAST(TuDiem AS BIGINT) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC),
               (SELECT TOP 1 CAST(TuDiem AS BIGINT) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID ORDER BY TuDiem DESC)) AS MucTieu,
+       ISNULL((SELECT TOP 1 CAST(TuDiem AS BIGINT) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC),
+              (SELECT TOP 1 CAST(TuDiem AS BIGINT) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID ORDER BY TuDiem DESC)) AS Target,
+       CASE
+           WHEN (SELECT TOP 1 TuDiem FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC) IS NULL THEN 0
+           ELSE CAST((SELECT TOP 1 TuDiem FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC) - ISNULL(TL.TongTichLuy,0) AS BIGINT)
+       END AS Remaining,
        
        -- Tiến độ %
        CASE
@@ -162,13 +220,11 @@ BEGIN
        FROM (
            SELECT I.ObjectID, I.DocumentDate, I.StatusID, D.ItemID
            FROM AR_InvoiceTbl I JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-           UNION ALL
-           SELECT O.ObjectID, O.DocumentDate, O.StatusID, D.ItemID
-           FROM AR_OrderTbl O JOIN AR_OrderDetailTbl D ON O.DocumentID = D.DocumentID
        ) I
        WHERE I.ObjectID = @MaKhachHang 
-         AND I.DocumentDate BETWEEN @TuNgay AND @DenNgay
-         AND ISNULL(I.StatusID, 0) != 10
+         AND I.DocumentDate >= @TuNgay
+         AND I.DocumentDate < DATEADD(DAY, 1, CAST(@DenNgay AS DATE))
+         AND I.StatusID IN (3, 6, 7, 8)
          AND I.ItemID IN (SELECT ItemID FROM #TrongTam)
 
        SELECT TOP 12

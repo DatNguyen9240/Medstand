@@ -137,6 +137,82 @@
   padding: 0 20px;
 }
 
+/* Role-aware hierarchy: the same API-backed cards are presented with a clear
+   scope for managers versus field representatives. */
+.dashboard-context {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 2px 2px;
+  color: var(--color-text);
+}
+
+.dashboard-context > span {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.dashboard-context-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.dashboard-context-tdv,
+.dashboard-context-tdv + .dashboard-context-hint {
+  display: none;
+}
+
+#home-page[data-dashboard-role="tdv"] .dashboard-context-manager,
+#home-page[data-dashboard-role="tdv"] .dashboard-context-manager + .dashboard-context-hint {
+  display: none;
+}
+
+#home-page[data-dashboard-role="tdv"] .dashboard-context-tdv,
+#home-page[data-dashboard-role="tdv"] .dashboard-context-tdv + .dashboard-context-hint {
+  display: inline;
+}
+
+#home-page[data-dashboard-role="manager"] .home-kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+#home-page[data-dashboard-role="tdv"] .home-kpi-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+#home-page[data-dashboard-role="tdv"] #kpi-revenue {
+  order: -1;
+}
+
+#home-page[data-dashboard-role="tdv"] #kpi-coverage {
+  display: none;
+}
+
+#home-page[data-dashboard-role="manager"] .home-analytics-row {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+}
+
+#home-page[data-dashboard-role="tdv"] .home-analytics-row {
+  grid-template-columns: 1fr;
+}
+
+#home-page[data-dashboard-role="tdv"] .birthday-col {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .dashboard-context {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+
+  #home-page[data-dashboard-role="tdv"] .home-kpi-grid,
+  #home-page[data-dashboard-role="manager"] .home-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .kpi-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -693,6 +769,52 @@
   gap: var(--spacing-md);
 }
 
+.visit-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.visit-section {
+  min-width: 0;
+}
+
+.visit-section + .visit-section {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--spacing-lg);
+}
+
+.visit-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.visit-section-header h4 {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.visit-section-header .widget-badge {
+  margin-left: auto;
+}
+
+.visit-empty {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  margin: 0;
+  padding: var(--spacing-md) 0;
+}
+
+.care-reason {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+
 .task-item {
   background: rgba(var(--color-primary-rgb), 0.03);
   border: 1px solid var(--color-border);
@@ -1220,6 +1342,18 @@
     gap: var(--space-3);
   }
 
+  .visit-sections {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .visit-section + .visit-section {
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    padding-left: 0;
+    padding-top: var(--spacing-lg);
+  }
+
   .task-item {
     padding: var(--space-3);
   }
@@ -1304,4 +1438,23 @@ body[data-page="home"] .app-header {
 
 .sidebar-item:hover:not(.active) svg {
   color: var(--color-accent) !important;
+}
+.dashboard-role-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 8px;
+  padding: 5px 10px;
+  border: 1px solid rgba(11, 138, 67, 0.18);
+  border-radius: 999px;
+  background: rgba(11, 138, 67, 0.08);
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+#home-page[data-dashboard-role="tdv"] .dashboard-role-badge {
+  border-color: rgba(63, 81, 181, 0.18);
+  background: rgba(63, 81, 181, 0.08);
+  color: #3f51b5;
 }

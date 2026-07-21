@@ -24,10 +24,11 @@
 
       function renderCard(r) {
         var cls = getResultClass(r.KetQua);
-        return '<div class="survey-card" onclick="localStorage.setItem(\'survey_doc_id\',\'' + r.DocumentID + '\');navigate(\'#/survey\')">' +
+        var mode = r.Status === 'COMPLETED' ? 'view' : (r.Status === 'NOT_STARTED' ? 'start' : 'continue');
+        return '<div class="survey-card" onclick="navigate(\'#/survey?mode=' + mode + '&id=' + encodeURIComponent(r.DocumentID) + '\')">' +
           '<div class="survey-title">' + (r.Title || 'Bài khảo sát') + '</div>' +
           '<div class="survey-time">Thời gian: ' + (r.ThoiGian || '-') + '</div>' +
-          '<div class="survey-result ' + cls + '">Kết quả: ' + (r.KetQua || '0/0') + '</div>' +
+          '<div class="survey-result ' + cls + '">' + (r.Status === 'COMPLETED' ? 'Kết quả: ' + (r.KetQua || '0/0') : 'Trạng thái: Đang làm') + '</div>' +
           '</div>';
       }
 

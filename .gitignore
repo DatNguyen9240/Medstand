@@ -29,6 +29,10 @@ node_modules/
 # ── Scratch / temp files (tạo bởi AI tools) ──
 scratch*
 *.scratch.*
+.env.uat.local
+playwright-report/
+test-results/
+tests/.auth/
 
 # ?? n8n-system binaries (node, cloudflared) ??
 n8n-system/.bin/
@@ -50,6 +54,19 @@ test_base64.txt
 *.log
 n8n-system/.logs/
 
+# Local environment files (keep examples only)
+.env
+.env.*.local
+!.env.example
+!.env.uat.example
+
+# LaTeX generated files
+*.aux
+*.idx
+*.toc
+*.out
+*.synctex.gz
+
 # ── n8n Qdrant storage (runtime data) ──
 n8n-system/storage/
 
@@ -70,3 +87,8 @@ Phan_Tich_BRD_AI_Sale.md
 # Database backup - không commit lên Git
 *.bak
 *.bak.bak
+.runtime-backups/
+.playwright-browsers/
+
+# External product catalog images (not tracked by Git)
+images/product-catalog/

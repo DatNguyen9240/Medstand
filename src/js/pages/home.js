@@ -39,8 +39,9 @@ function initDashboard() {
   function formatRevenue(value) {
     var val = parseFloat(value);
     if (isNaN(val) || val === 0) return '0 ₫';
-    if (val >= 1e9) return (val / 1e9).toFixed(2).replace(/\.00$/, '') + ' Tỷ';
-    if (val >= 1e6) return (val / 1e6).toFixed(1).replace(/\.0$/, '') + ' Tr';
+    var absVal = Math.abs(val);
+    if (absVal >= 1e9) return (val / 1e9).toFixed(2).replace(/\.00$/, '') + ' Tỷ';
+    if (absVal >= 1e6) return (val / 1e6).toFixed(1).replace(/\.0$/, '') + ' Tr';
     return val.toLocaleString('vi-VN') + ' ₫';
   }
 
@@ -54,6 +55,18 @@ function initDashboard() {
     var authRaw = localStorage.getItem('auth_user') || localStorage.getItem('currentUser');
     if (authRaw) {
       var p = JSON.parse(authRaw);
+      var roleText = typeof getUserRoleLabel === 'function' ? getUserRoleLabel(p) : (p.RoleName || '');
+      var roleBadge = document.getElementById('dashboard-role-badge');
+      var homePage = document.getElementById('home-page');
+      if (roleBadge && roleText) {
+        roleBadge.textContent = roleText;
+        roleBadge.hidden = false;
+      }
+      if (homePage) {
+        var roleCode = String(p.roleCode || p.RoleCode || p.UserGroupID || '').toLowerCase();
+        var manager = Number(p.Manager || p.IsManager || 0) === 1 || roleCode.indexOf('admin') >= 0 || roleCode.indexOf('manager') >= 0 || roleCode === 'ql';
+        homePage.setAttribute('data-dashboard-role', manager ? 'manager' : 'tdv');
+      }
       var dName = p.DisplayName || p.UserName || '';
       if (dName) {
         var words = dName.trim().split(/\s+/);
@@ -90,11 +103,16 @@ function initDashboard() {
 
   var currentFrom = savedDates.fromDate || defaultFrom;
   var currentTo = savedDates.toDate || defaultTo;
+  var hasCustomDateRange = savedDates.isCustom === true || (
+    !!(savedDates.fromDate || savedDates.toDate) &&
+    (currentFrom !== defaultFrom || currentTo !== defaultTo)
+  );
   
   // Prevent date range inversion causing server SQL crash
   if (new Date(currentFrom) > new Date(currentTo)) {
     currentFrom = defaultFrom;
     currentTo = defaultTo;
+    hasCustomDateRange = false;
   }
 
   // ── Render Date Inputs dùng Input component ──
@@ -113,6 +131,25 @@ function initDashboard() {
   // ── Load data theo dates ──
   function getFromDate() { return elFrom ? elFrom.value : defaultFrom; }
   function getToDate() { return elTo ? elTo.value : defaultTo; }
+
+  function parseFilterDate(value) {
+    var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    var year = Number(match[1]);
+    var month = Number(match[2]);
+    var day = Number(match[3]);
+    var date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  }
+
+  function isValidChartRange(fromDate, toDate) {
+    var startDate = parseFilterDate(fromDate);
+    var endDate = parseFilterDate(toDate);
+    if (!startDate || !endDate || startDate > endDate) return false;
+    var maxEndDate = new Date(startDate.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    if (maxEndDate.getMonth() !== startDate.getMonth()) maxEndDate.setDate(0);
+    return endDate <= maxEndDate;
+  }
 
   // ── Load Notification Count ──
   function loadNotificationCount() {
@@ -150,9 +187,14 @@ function initDashboard() {
     var fromDate = getFromDate();
     var toDate = getToDate();
 
+    if (!isValidChartRange(fromDate, toDate)) {
+      Alert.warning('Khoảng ngày không hợp lệ hoặc vượt quá một năm.');
+      return;
+    }
+
     // Lưu lại vào localStorage
     try {
-      localStorage.setItem(storageKey, JSON.stringify({ fromDate: fromDate, toDate: toDate }));
+      localStorage.setItem(storageKey, JSON.stringify({ fromDate: fromDate, toDate: toDate, isCustom: hasCustomDateRange }));
     } catch (e) { }
 
     setLoadingState(true);
@@ -170,13 +212,21 @@ function initDashboard() {
   }
 
   // ── Khi thay đổi ngày → reload ──
-  if (elFrom) elFrom.addEventListener('change', loadAll);
-  if (elTo) elTo.addEventListener('change', loadAll);
+  function handleDateRangeChange() {
+    hasCustomDateRange = true;
+    loadAll();
+  }
+  if (elFrom) elFrom.addEventListener('change', handleDateRangeChange);
+  if (elTo) elTo.addEventListener('change', handleDateRangeChange);
 
   // ── Khi thay đổi tab biểu đồ ──
   $('.analytics-tabs').on('click', '.tab-btn', function () {
     var $btn = $(this);
     if ($btn.hasClass('active')) return;
+    if (!isValidChartRange(getFromDate(), getToDate())) {
+      Alert.warning('Khoảng ngày không hợp lệ hoặc vượt quá một năm.');
+      return;
+    }
 
     $('.analytics-tabs .tab-btn').removeClass('active');
     $btn.addClass('active');
@@ -186,20 +236,24 @@ function initDashboard() {
     var subtitleMap = {
       day: 'Theo ngày trong kỳ',
       week: 'Theo tuần trong kỳ',
-      month: 'Theo tháng trong năm',
-      quarter: 'Theo quý trong năm'
+      month: 'Theo tháng trong kỳ',
+      quarter: 'Theo quý trong kỳ'
     };
     $('.analytics-subtitle').text(subtitleMap[currentTab] || 'Theo ngày trong kỳ');
 
     // Tự động mở rộng khoảng ngày khi xem theo tháng/quý
-    if ((currentTab === 'month' || currentTab === 'quarter') && elFrom && elTo) {
-      var nowD = new Date();
-      var yearFrom = nowD.getFullYear() + '-01-01';
-      var yearTo = nowD.getFullYear() + '-'
-        + String(nowD.getMonth() + 1).padStart(2, '0') + '-'
-        + String(nowD.getDate()).padStart(2, '0');
-      if (elFrom.value !== yearFrom) elFrom.value = yearFrom;
-      if (elTo.value !== yearTo) elTo.value = yearTo;
+    if ((currentTab === 'month' || currentTab === 'quarter') && !hasCustomDateRange && elFrom && elTo) {
+      var currentDate = new Date();
+      var yearStart = currentDate.getFullYear() + '-01-01';
+      var today = currentDate.getFullYear() + '-'
+        + String(currentDate.getMonth() + 1).padStart(2, '0') + '-'
+        + String(currentDate.getDate()).padStart(2, '0');
+      if (elFrom.value !== yearStart || elTo.value !== today) {
+        elFrom.value = yearStart;
+        elTo.value = today;
+        loadAll();
+        return;
+      }
     }
 
     loadChartAndRevenue(getFromDate(), getToDate());
@@ -216,9 +270,6 @@ function initDashboard() {
       .then(function (res) {
         var data = res.data || res;
         var records = data.records || [];
-        var hasData = records.length > 0;
-        $('#revenue-chart-empty').prop('hidden', hasData);
-        $('#revenue-chart').prop('hidden', !hasData);
         var record = {};
         DASHBOARD_SCHEMA.STATS.forEach(function (item, i) {
           record[item.key] = (records[i] && records[i].Value) || '';
@@ -316,11 +367,14 @@ function initDashboard() {
   }
 
   // ── Chart & Revenue ──
-  function loadChartAndRevenue(fromDate, toDate) {
+  function legacyLoadChartAndRevenue(fromDate, toDate) {
     return DashboardService.getRevenue(fromDate, toDate)
       .then(function (res) {
         var data = res.data || res;
         var records = data.records || [];
+        var hasData = records.length > 0;
+        $('#revenue-chart-empty').prop('hidden', hasData);
+        $('#revenue-chart').prop('hidden', !hasData);
 
         // 1. Tính tổng doanh thu
         var total = records.reduce(function (sum, r) { return sum + (parseFloat(r.Amount) || 0); }, 0);
@@ -348,6 +402,7 @@ function initDashboard() {
           records.forEach(function (r) {
             var rawDate = '';
             var v = 0;
+            var hasAmount = false;
             
             for (var k in r) {
                 if (!r.hasOwnProperty(k)) continue;
@@ -355,7 +410,10 @@ function initDashboard() {
                 if (['ngay', 'date', 'ngaylap', 'documentdate', 'createddate', 'label', 'thoigian', 'ngày', 'columndate'].indexOf(kl) !== -1) {
                     if (String(r[k]).match(/\d/)) rawDate = r[k];
                 }
-                if (['basetotal', 'amount', 'doanhso', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri', 'doanhthu'].indexOf(kl) !== -1) v = parseFloat(r[k]) || 0;
+                if (['basetotal', 'amount', 'doanhso', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri', 'doanhthu'].indexOf(kl) !== -1) {
+                    v = parseFloat(r[k]) || 0;
+                    hasAmount = true;
+                }
             }
             
             if (!rawDate) {
@@ -366,7 +424,7 @@ function initDashboard() {
                     }
                 }
             }
-            if (!v) {
+            if (!hasAmount) {
                 for (var key in r) {
                     var parsed = parseFloat(r[key]);
                     if (!isNaN(parsed) && String(r[key]) !== rawDate && r[key] !== null && r[key] !== '') {
@@ -535,6 +593,8 @@ function initDashboard() {
         updateHeroSummary();
       })
       .catch(function () {
+        $('#revenue-chart-empty').prop('hidden', false);
+        $('#revenue-chart').prop('hidden', true);
         $('#kpi-revenue-value').text('0 ₫');
         $('#qs-max-value').text('--');
         $('#qs-min-value').text('--');
@@ -545,6 +605,230 @@ function initDashboard() {
   }
 
   // ── Birthdays ──
+  function loadChartAndRevenue(fromDate, toDate) {
+    function parseLocalDate(value, fallbackDate) {
+      var text = String(value || '').trim();
+      var match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      var year, month, day;
+
+      if (match) {
+        year = Number(match[1]);
+        month = Number(match[2]);
+        day = Number(match[3]);
+      } else {
+        match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (match) {
+          day = Number(match[1]);
+          month = Number(match[2]);
+          year = Number(match[3]);
+        } else {
+          match = text.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+          if (match) {
+            year = Number(match[1]);
+            month = Number(match[2]);
+            day = Number(match[3]);
+          } else {
+            match = text.match(/^(\d{2})\/(\d{2})$/);
+            if (!match || !fallbackDate) return null;
+            day = Number(match[1]);
+            month = Number(match[2]);
+            year = fallbackDate.getFullYear();
+            if (month < fallbackDate.getMonth() + 1) year++;
+          }
+        }
+      }
+
+      var date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+    }
+
+    function dateKey(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    function shortDate(date) {
+      return String(date.getDate()).padStart(2, '0') + '/' + String(date.getMonth() + 1).padStart(2, '0');
+    }
+
+    function fullDate(date) {
+      return shortDate(date) + '/' + date.getFullYear();
+    }
+
+    function parseAmount(value) {
+      if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+      if (typeof value !== 'string') return null;
+      var normalized = value.trim().replace(/,/g, '');
+      if (!normalized) return null;
+      var parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getRecordDate(record, startDate) {
+      var dateFields = ['ngay', 'date', 'ngaylap', 'documentdate', 'createddate', 'label', 'thoigian', 'ngÃ y', 'columndate'];
+      var fallback = null;
+      for (var field in record) {
+        if (!Object.prototype.hasOwnProperty.call(record, field)) continue;
+        var value = record[field];
+        var lowerField = String(field).toLowerCase();
+        if (dateFields.indexOf(lowerField) !== -1) {
+          var parsed = parseLocalDate(value, startDate);
+          if (parsed) return parsed;
+        }
+        if (!fallback && /\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{4}\/\d{2}\/\d{2}/.test(String(value))) {
+          fallback = parseLocalDate(value, startDate);
+        }
+      }
+      return fallback;
+    }
+
+    function getRecordAmount(record) {
+      var amountFields = ['basetotal', 'amount', 'doanhso', 'thanhtien', 'tongtien', 'column1', 'value', 'giatri', 'doanhthu'];
+      for (var field in record) {
+        if (!Object.prototype.hasOwnProperty.call(record, field)) continue;
+        if (amountFields.indexOf(String(field).toLowerCase()) !== -1) return parseAmount(record[field]);
+      }
+      return null;
+    }
+
+    function setEmptyState() {
+      $('#revenue-chart-empty').prop('hidden', false);
+      $('#revenue-chart').prop('hidden', true);
+      $('#kpi-revenue-value').attr('title', '0 Ä‘').text('0 Ä‘');
+      $('#qs-max-value, #qs-min-value, #qs-avg-value, #qs-total-value').text('--');
+      $('#qs-max-date, #qs-min-date').text('');
+      _progress.revenue = 0;
+      renderChart({ labels: [], values: [] });
+      renderTargetProgress();
+      updateHeroSummary();
+    }
+
+    var startDate = parseLocalDate(fromDate);
+    var endDate = parseLocalDate(toDate);
+    if (!startDate || !endDate || startDate > endDate) {
+      setEmptyState();
+      return Promise.resolve();
+    }
+
+    return DashboardService.getRevenue(fromDate, toDate)
+      .then(function (res) {
+        var data = res.data || res;
+        var records = Array.isArray(data.records) ? data.records : [];
+        var dayValues = {};
+        var cursor = new Date(startDate);
+        var validRecordCount = 0;
+
+        for (; cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+          dayValues[dateKey(cursor)] = 0;
+        }
+
+        records.forEach(function (record) {
+          var transactionDate = getRecordDate(record, startDate);
+          var amount = getRecordAmount(record);
+          if (!transactionDate || amount === null || transactionDate < startDate || transactionDate > endDate) return;
+          if (amount < 0) {
+            console.warn('[Revenue chart] Negative net-sales amount returned by API:', {
+              amount: amount,
+              date: dateKey(transactionDate),
+              record: record
+            });
+          }
+          dayValues[dateKey(transactionDate)] += amount;
+          validRecordCount++;
+        });
+
+        if (!validRecordCount) {
+          setEmptyState();
+          return;
+        }
+
+        $('#revenue-chart-empty').prop('hidden', true);
+        $('#revenue-chart').prop('hidden', false);
+
+        var keys = Object.keys(dayValues).sort();
+        var labels = [];
+        var values = [];
+        var tooltipLabels = [];
+
+        if (currentTab === 'week') {
+          var weekValues = {};
+          keys.forEach(function (key) {
+            var weekStart = getMonday(parseLocalDate(key));
+            var weekKey = dateKey(weekStart);
+            if (weekValues[weekKey] === undefined) weekValues[weekKey] = 0;
+            weekValues[weekKey] += dayValues[key];
+          });
+          Object.keys(weekValues).sort().forEach(function (weekKey) {
+            var weekStart = parseLocalDate(weekKey);
+            var weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            labels.push(shortDate(weekStart) + '-' + shortDate(weekEnd));
+            tooltipLabels.push(fullDate(weekStart) + '-' + fullDate(weekEnd));
+            values.push(weekValues[weekKey]);
+          });
+        } else if (currentTab === 'month') {
+          var monthValues = {};
+          keys.forEach(function (key) {
+            var date = parseLocalDate(key);
+            var monthKey = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+            if (monthValues[monthKey] === undefined) monthValues[monthKey] = 0;
+            monthValues[monthKey] += dayValues[key];
+          });
+          Object.keys(monthValues).sort().forEach(function (monthKey) {
+            var date = parseLocalDate(monthKey + '-01');
+            labels.push('T' + (date.getMonth() + 1) + '/' + date.getFullYear());
+            tooltipLabels.push('ThÃ¡ng ' + (date.getMonth() + 1) + '/' + date.getFullYear());
+            values.push(monthValues[monthKey]);
+          });
+        } else if (currentTab === 'quarter') {
+          var quarterValues = {};
+          keys.forEach(function (key) {
+            var date = parseLocalDate(key);
+            var quarter = Math.floor(date.getMonth() / 3) + 1;
+            var quarterKey = date.getFullYear() + '-Q' + quarter;
+            if (quarterValues[quarterKey] === undefined) quarterValues[quarterKey] = 0;
+            quarterValues[quarterKey] += dayValues[key];
+          });
+          Object.keys(quarterValues).sort().forEach(function (quarterKey) {
+            var parts = quarterKey.split('-Q');
+            labels.push('Q' + parts[1] + '/' + parts[0]);
+            tooltipLabels.push('QuÃ½ ' + parts[1] + '/' + parts[0]);
+            values.push(quarterValues[quarterKey]);
+          });
+        } else {
+          keys.forEach(function (key) {
+            var date = parseLocalDate(key);
+            labels.push(shortDate(date));
+            tooltipLabels.push(fullDate(date));
+            values.push(dayValues[key]);
+          });
+        }
+
+        var total = values.reduce(function (sum, value) { return sum + value; }, 0);
+        var maxValue = Math.max.apply(null, values);
+        var minValue = Math.min.apply(null, values);
+        var maxIndex = values.indexOf(maxValue);
+        var minIndex = values.indexOf(minValue);
+        var average = total / values.length;
+
+        _progress.revenue = total;
+        $('#kpi-revenue-value').attr('title', Number(total).toLocaleString('vi-VN') + ' Ä‘').text(formatRevenue(total));
+        $('#qs-max-value').text(formatRevenue(maxValue));
+        $('#qs-max-date').text('(' + labels[maxIndex] + ')');
+        $('#qs-min-value').text(formatRevenue(minValue));
+        $('#qs-min-date').text('(' + labels[minIndex] + ')');
+        $('#qs-avg-value').text(formatRevenue(average));
+        $('#qs-total-value').text(formatRevenue(total));
+
+        renderChart({ labels: labels, values: values, tooltipLabels: tooltipLabels });
+        renderTargetProgress();
+        updateHeroSummary();
+      })
+      .catch(function (error) {
+        console.error('[Revenue chart] Failed to load data:', error);
+        setEmptyState();
+      });
+  }
+
   function loadBirthdays(fromDate, toDate) {
     return DashboardService.getBirthdays(fromDate, toDate)
       .then(function (res) {
@@ -567,7 +851,7 @@ function initDashboard() {
             '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(240 50 50)"/>' +
             '<polygon points="47.97,45.43 36.98,20.77 42.37,10.73 50,24 57.63,10.73 63.02,20.77 52.03,45.43" fill="currentColor" stroke="#fff" stroke-width="1.2" transform="rotate(300 50 50)"/>' +
             '</svg>';
-          $list.html(items.map(function (item) {
+          $list.html(items.slice(0, 5).map(function (item) {
             var phone = item[DASHBOARD_SCHEMA.BIRTHDAY.phoneKey] || '';
             var phoneBtn = phone
               ? '<a href="tel:' + phone + '" class="birthday-call" aria-label="Gọi điện">' + phoneIcon + '</a>'
@@ -605,7 +889,8 @@ function initDashboard() {
       drawLineChart('revenue-chart', chart.labels, chart.values, {
         lineColor: '#0b8a43',
         primaryRgb: '11, 138, 67',
-        label: 'Doanh số'
+        label: 'Doanh số thuần',
+        tooltipLabels: chart.tooltipLabels
       });
     });
   }
@@ -615,7 +900,11 @@ function initDashboard() {
     var user = {};
     try { user = JSON.parse(localStorage.getItem('auth_user') || '{}'); } catch (e) {}
     var userName = user.UserName || '';
-    if (!userName) { renderTasks([]); return Promise.resolve(); }
+    if (!userName) {
+      renderTasks([], 0);
+      renderCareTasks([], 0);
+      return Promise.resolve();
+    }
 
     var today = new Date();
     var docDate = today.getFullYear() + '-'
@@ -627,11 +916,25 @@ function initDashboard() {
       DocumentDate: docDate
     }).then(function (res) {
       var data = res.data || res;
-      var records = data.records || (Array.isArray(data) ? data : []);
-      var total = records.length;
-      renderTasks(records.slice(0, 8), total);
+      var routeRecords = data.records || (Array.isArray(data) ? data : []);
+      var careRecords = Array.isArray(data.careItems) ? data.careItems : [];
+      var seenRoutes = {};
+      routeRecords = routeRecords.filter(function (item) {
+        var visitId = item.VisitID || item.RouteVisitID || item.ScheduleID || '';
+        var key = visitId
+          ? 'visit|' + visitId
+          : [item.ObjectID || '', item.RouteID || item.Tuyen || item.ThuDiTuyen || '', item.WorkDate || docDate, item.VisitOrder || item.ThuTuGhe || ''].join('|');
+        if (seenRoutes[key]) return false;
+        seenRoutes[key] = true;
+        return true;
+      });
+      var routeTotal = routeRecords.length;
+      var careTotal = Number.isFinite(Number(data.careTotalCount)) ? Number(data.careTotalCount) : careRecords.length;
+      renderTasks(routeRecords.slice(0, 8), routeTotal);
+      renderCareTasks(careRecords.slice(0, 8), careTotal);
     }).catch(function () {
       renderTasks([], 0);
+      renderCareTasks([], 0);
     });
   }
 
@@ -711,17 +1014,32 @@ function initDashboard() {
     });
   }
 
-  function renderTasks(tasks, total) {
-    var $widget = $('.widget-tasks');
-    // Cập nhật header badge tổng số
-    var $badge = $widget.find('.tasks-total');
-    if (!$badge.length) {
-      $widget.find('.widget-header h3').after('<span class="widget-badge tasks-total"></span>');
-      $badge = $widget.find('.tasks-total');
-    }
-    $badge.text(total || 0);
+  function renderCareTasks(tasks, total) {
+    $('#care-total').text(total || 0);
 
     if (!tasks || tasks.length === 0) {
+      $('#care-tasks-grid').html('<p class="visit-empty">Chưa có khách được đề xuất chăm sóc.</p>');
+      return;
+    }
+
+    $('#care-tasks-grid').html(tasks.map(function (task) {
+      var reasons = Array.isArray(task.reasons) ? task.reasons : [];
+      var reasonText = reasons.map(function (reason) { return reason.text || reason.reasonText || reason.code || ''; }).filter(Boolean).join(' · ');
+      reasonText = reasonText || task.reasonText || task.ReasonText || '';
+      return '<div class="task-item">' +
+        '<div class="task-name">' + (task.customerName || task.ObjectName || '') + '</div>' +
+        '<div class="task-addr">' + (task.address || task.Address || task.ADDRESS || '') + '</div>' +
+        (reasonText ? '<div class="care-reason">' + reasonText + '</div>' : '') +
+        '</div>';
+    }).join(''));
+  }
+
+  function renderTasks(tasks, total) {
+    var $section = $('#route-visit-section');
+    $('#route-total').text(total || 0);
+
+    if (!tasks || tasks.length === 0) {
+      $section.find('.widget-see-all').remove();
       $('#tasks-grid').html('<p style="color:var(--color-text-muted);font-size:var(--font-size-sm);padding:8px 0">Không có tuyến nào hôm nay.</p>');
       return;
     }
@@ -744,9 +1062,9 @@ function initDashboard() {
     }).join(''));
 
     // Hiện link "Xem tất cả" nếu có nhiều hơn 8
-    if (total > 8 && !$widget.find('.widget-see-all').length) {
-      $widget.append('<a href="#/routes" class="widget-see-all">Xem tất cả ' + total + ' điểm <span>›</span></a>');
-    }
+    var $seeAll = $section.find('.widget-see-all');
+    if (total > 8 && !$seeAll.length) $section.append('<a href="#/routes" class="widget-see-all">Xem tất cả ' + total + ' điểm <span>›</span></a>');
+    if (total <= 8) $seeAll.remove();
   }
 
 

@@ -23,10 +23,7 @@ GO
     EXEC dbo.API_Metadata_AutoBootstrap_AI @Apply = 1, @UpdateExisting = 1;
  ═══════════════════════════════════════════════════════════════
 */
-IF OBJECT_ID('API_GoiYDonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_GoiYDonHang_AI;
-GO
-
-CREATE PROCEDURE API_GoiYDonHang_AI
+CREATE OR ALTER PROCEDURE API_GoiYDonHang_AI
     @Username     VARCHAR(50)   = '',
     @User         VARCHAR(50)   = '',         -- Dashboard/Chatbot alias
     @MaKhachHang  NVARCHAR(100) = '',         -- Original parameter name
@@ -54,6 +51,17 @@ BEGIN
     END
     
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 10;
+
+    -- Danh tính là bắt buộc. Không cho phép Username rỗng trở thành truy vấn
+    -- toàn hệ thống khi gateway/token không truyền được người dùng.
+    IF NULLIF(@Username, '') IS NULL
+       OR NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK)
+                      WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    BEGIN
+        SELECT N'Không xác định được tài khoản hoặc tài khoản đã bị khóa.' AS Msg,
+               1 AS MsgType;
+        RETURN;
+    END
 
     -- ═══ 1. Lấy quyền user thực tế & Fallback ═══
     DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
@@ -180,16 +188,27 @@ BEGIN
             @ExtraInfo    = @OriginalInput;
     END
 
-    -- ═══ 2. Validate User ═══
-    IF @Username <> '' AND NOT EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
+    -- Cache đúng phạm vi khách hàng do ERP cấp cho user/manager hiện tại.
+    -- Nếu mapping rỗng thì kết quả cũng rỗng (fail-closed).
+    CREATE TABLE #AllowedObjects (ObjectID VARCHAR(50) PRIMARY KEY);
+    INSERT INTO #AllowedObjects (ObjectID)
+    SELECT DISTINCT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username);
+
+    -- BR-CONTRACT-V1: gợi ý cá nhân bắt buộc có khách hàng; không trả bảng bán chạy
+    -- như một kết quả thay thế vì sẽ làm client hiểu sai ý định người dùng.
+    IF ISNULL(@MaKhachHang, '') = ''
     BEGIN
-        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
-        RETURN
+        SELECT N'Vui lòng cung cấp mã khách hàng để tạo gợi ý đơn hàng.' AS Msg,
+               1 AS MsgType,
+               N'VALIDATION_ERROR' AS Severity;
+        RETURN;
     END
 
     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)
     BEGIN
-        SELECT 'N/A' AS [Mã SP], N'Không tìm thấy mã khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
+        SELECT N'Không tìm thấy mã khách hàng này.' AS Msg,
+               1 AS MsgType,
+               N'VALIDATION_ERROR' AS Severity;
         RETURN;
     END
 
@@ -198,7 +217,9 @@ BEGIN
         SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @MaKhachHang
     )
     BEGIN
-        SELECT 'N/A' AS [Mã SP], N'Bạn không có quyền xem thông tin của khách hàng này.' AS [Sản phẩm], 0 AS [Đã mua (đ)], NULL AS [Lần cuối], 0 AS [Chu kỳ], 0 AS [Còn (ngày)], N'Vui lòng kiểm tra lại.' AS [Gợi ý];
+        SELECT N'Bạn không có quyền xem thông tin của khách hàng này.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity;
         RETURN;
     END
 
@@ -207,18 +228,28 @@ BEGIN
     -- ═══════════════════════════════════════════════════
     IF @MaKhachHang = ''
     BEGIN
+        CREATE TABLE #TopChiNhanh
+        (
+            [Mã SP]     VARCHAR(50)   NOT NULL,
+            [Sản phẩm]  NVARCHAR(500) NULL,
+            [Số HĐ]     INT           NOT NULL,
+            [Doanh số]  BIGINT        NULL,
+            [Gợi ý]     NVARCHAR(500) NULL
+        );
+
+        INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
         SELECT TOP (@TopN)
             D.ItemID                                     AS [Mã SP],
             CF.ItemName                                  AS [Sản phẩm],
             COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
             CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
             N'Bán chạy trong chi nhánh'                  AS [Gợi ý]
-        INTO #TopChiNhanh
         FROM AR_InvoiceTbl I WITH (NOLOCK)
         JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
         JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
+        JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
         WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
-          AND ISNULL(I.StatusID, 0) != 10
+          AND I.StatusID IN (3, 6, 7, 8)
           AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
           AND ISNULL(CF.ItemGroupID, '') = 'HH1'
         GROUP BY D.ItemID, CF.ItemName;
@@ -226,7 +257,7 @@ BEGIN
         -- Fallback if empty in UAT (take all time)
         IF NOT EXISTS (SELECT 1 FROM #TopChiNhanh)
         BEGIN
-            INSERT INTO #TopChiNhanh
+            INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
             SELECT TOP (@TopN)
                 D.ItemID                                     AS [Mã SP],
                 CF.ItemName                                  AS [Sản phẩm],
@@ -236,7 +267,8 @@ BEGIN
             FROM AR_InvoiceTbl I WITH (NOLOCK)
             JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
             JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
-            WHERE ISNULL(I.StatusID, 0) != 10
+            JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
+            WHERE I.StatusID IN (3, 6, 7, 8)
               AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
               AND ISNULL(CF.ItemGroupID, '') = 'HH1'
             GROUP BY D.ItemID, CF.ItemName;
@@ -244,6 +276,7 @@ BEGIN
 
         SELECT * FROM #TopChiNhanh ORDER BY [Doanh số] DESC;
         DROP TABLE #TopChiNhanh;
+        DROP TABLE #AllowedObjects;
         RETURN;
     END
 
@@ -264,7 +297,7 @@ BEGIN
     JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.ObjectID = @MaKhachHang
       AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
-      AND ISNULL(I.StatusID, 0) != 10
+      AND I.StatusID IN (3, 6, 7, 8)
     GROUP BY D.ItemID;
 
     -- UAT FALLBACK: Nếu không có lịch sử mua trong 6 tháng, lấy tất cả lịch sử mua
@@ -281,17 +314,38 @@ BEGIN
         FROM AR_InvoiceTbl I WITH (NOLOCK)
         JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
         WHERE I.ObjectID = @MaKhachHang
-          AND ISNULL(I.StatusID, 0) != 10
+          AND I.StatusID IN (3, 6, 7, 8)
         GROUP BY D.ItemID;
     END
 
     -- TIÊU CHÍ 2: Chu kỳ mua hàng trung bình (Average Purchase Cycle)
+    IF NOT EXISTS (SELECT 1 FROM #LichSu)
+    BEGIN
+        DECLARE @CustomerName NVARCHAR(500) = NULL;
+        SELECT @CustomerName = ObjectName
+        FROM dbo.CF_ObjectTbl WITH (NOLOCK)
+        WHERE ObjectID = @MaKhachHang;
+
+        SELECT CONCAT(
+                   N'Khách ', COALESCE(NULLIF(@CustomerName, ''), @MaKhachHang),
+                   N' chưa có hóa đơn hoàn tất (trạng thái 3/6/7/8), nên chưa đủ dữ liệu để gợi ý đơn hàng. Hãy chăm sóc như khách mới.'
+               ) AS Msg,
+               0 AS MsgType,
+               N'NO_DATA' AS Severity,
+               N'NEW_CUSTOMER_NO_FULFILLED_HISTORY' AS Code;
+
+        DROP TABLE #AllowedObjects;
+        DROP TABLE #LichSu;
+        RETURN;
+    END
+
     SELECT
         L.ItemID,
         CASE
-            WHEN L.SoLanMua >= 2
+            -- BR-SALES-006: chỉ coi chu kỳ cá nhân là đủ tin cậy từ 3 hóa đơn hợp lệ.
+            WHEN L.SoLanMua >= 3
             THEN DATEDIFF(DAY, L.LanMuaDau, L.LanMuaCuoi) / (L.SoLanMua - 1)
-            ELSE 30 -- Mặc định 30 ngày nếu chỉ mua 1 lần
+            ELSE CAST(NULL AS INT) -- Không đoán chu kỳ khi chưa đủ 3 hóa đơn hợp lệ.
         END AS ChuKyTrungBinh
     INTO #ChuKy
     FROM #LichSu L;
@@ -301,6 +355,7 @@ BEGIN
     FROM AR_InvoiceTbl I WITH (NOLOCK)
     JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
     WHERE I.ObjectID = @MaKhachHang AND MONTH(I.DocumentDate) = MONTH(GETDATE()) AND YEAR(I.DocumentDate) = YEAR(GETDATE()) - 1
+      AND I.StatusID IN (3, 6, 7, 8)
     GROUP BY D.ItemID;
 
     -- TIÊU CHÍ 4: Khuyến mãi đang chạy
@@ -309,60 +364,49 @@ BEGIN
     JOIN AR_PromotionDetailTbl PD WITH (NOLOCK) ON P.DocumentID = PD.DocumentID
     WHERE GETDATE() BETWEEN P.FromDate AND P.ToDate AND ISNULL(P.isDisable, 0) = 0;
 
-    -- Fallback nếu không có KM chạy hôm nay
-    IF NOT EXISTS (SELECT 1 FROM #KhuyenMai)
-    BEGIN
-        INSERT INTO #KhuyenMai (ItemID)
-        SELECT TOP 100 PD.ItemID
-        FROM AR_PromotionTbl P WITH (NOLOCK)
-        JOIN AR_PromotionDetailTbl PD WITH (NOLOCK) ON P.DocumentID = PD.DocumentID
-        WHERE ISNULL(P.isDisable, 0) = 0
-        GROUP BY PD.ItemID
-        ORDER BY MAX(P.ToDate) DESC;
-    END
-
     -- TIÊU CHÍ 5: Sản phẩm trọng tâm (Focus Items)
     DECLARE @CurProgramID VARCHAR(50) = ''
     SELECT TOP 1 @CurProgramID = DocumentID FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
     WHERE GETDATE() BETWEEN FromDate AND ToDate ORDER BY ToDate DESC;
 
-    -- Fallback nếu không có chương trình chạy hôm nay
-    IF @CurProgramID = ''
-    BEGIN
-        SELECT TOP 1 @CurProgramID = DocumentID FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
-        ORDER BY ToDate DESC;
-    END
-
     SELECT DISTINCT ItemID INTO #TrongTam 
     FROM AR_SanPhamTrongTamDetailTbl WITH (NOLOCK) WHERE DocumentID = @CurProgramID;
 
-    -- TIÊU CHÍ 6: Đã mua hôm nay (Real-time Filter) quét cả đơn nháp (Order) và hóa đơn (Invoice)
+    -- TIÊU CHÍ 6: Đã mua hôm nay. Chỉ dùng hóa đơn hợp lệ; đơn nháp chưa giao
+    -- không được loại sản phẩm khỏi gợi ý (BR-SALES-001).
     SELECT DISTINCT ItemID INTO #DaMuaHomNay FROM (
         SELECT D.ItemID
         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        WHERE I.ObjectID = @MaKhachHang AND CAST(I.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND ISNULL(I.StatusID, 0) != 10
-        UNION
-        SELECT D.ItemID
-        FROM AR_OrderTbl O WITH (NOLOCK) JOIN AR_OrderDetailTbl D WITH (NOLOCK) ON O.DocumentID = D.DocumentID
-        WHERE O.ObjectID = @MaKhachHang AND CAST(O.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND ISNULL(O.StatusID, 0) != 10
+        WHERE I.ObjectID = @MaKhachHang AND CAST(I.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND I.StatusID IN (3, 6, 7, 8)
     ) T;
 
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
     SELECT TOP (@TopN)
+        @MaKhachHang                                   AS [MaKhachHang],
+        KH.ObjectName                                  AS [TenKhachHang],
         L.ItemID                                        AS [MaSanPham],
         CF.ItemName                                     AS [TenSanPham],
+        L.SoLanMua                                      AS [SoLanMua],
         CAST(L.TongTien AS BIGINT)                      AS [TongDaMua],
         FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [LanMuaCuoi],
         CK.ChuKyTrungBinh                               AS [ChuKyNgay],
-        CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0 
-             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [TonKho],
+        CASE WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN NULL
+             WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0
+             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [ConLaiNgay],
+        CAST(NULL AS DECIMAL(18,2))                     AS [AvailableStock],
+        N'PHYSICAL_STOCK_NOT_QUERIED'                   AS [StockDataStatus],
         CASE 
+            WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Khách mới cần chăm sóc'
             WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm'
             WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
             ELSE N'Ổn định'
         END                                             AS [TrangThai],
+        CASE WHEN L.SoLanMua >= 3 THEN N'PERSONAL_CYCLE_ELIGIBLE' ELSE N'INSUFFICIENT_HISTORY' END AS [DoTinCay],
+        CASE WHEN L.SoLanMua >= 3 THEN N'PERSONAL_PURCHASE_HISTORY' ELSE N'INSUFFICIENT_HISTORY' END AS [RuleSource],
+        N'BR-SALES-V1-DRAFT'                              AS [RuleVersion],
         CONCAT(
             CASE 
+                WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Chưa đủ 3 hóa đơn hợp lệ để ước tính chu kỳ mua lại'
                 WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
                 WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
                 ELSE N'Ổn định'
@@ -370,7 +414,19 @@ BEGIN
             CASE WHEN TT.ItemID IS NOT NULL THEN N' | Trọng tâm' ELSE '' END,
             CASE WHEN MV.ItemID IS NOT NULL THEN N' | Mùa vụ' ELSE '' END,
             CASE WHEN KM.ItemID IS NOT NULL THEN N' | Khuyến mãi' ELSE '' END
-        )                                               AS [ChiTiet]
+        )                                               AS [ChiTiet],
+        CONCAT(
+            CASE
+                WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'NEW_CUSTOMER|INSUFFICIENT_HISTORY'
+                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'REORDER_OVERDUE'
+                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'REORDER_WINDOW'
+                ELSE N'CYCLE_STABLE'
+            END,
+            CASE WHEN TT.ItemID IS NOT NULL THEN N'|FOCUS_ITEM' ELSE '' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N'|SEASONAL' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N'|ACTIVE_PROMOTION_REFERENCE' ELSE '' END
+        )                                               AS [RecommendationReason],
+        N'SIX_MONTH_WITH_ALL_HISTORY_FALLBACK'          AS [DataWindow]
     FROM #LichSu L
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
@@ -378,14 +434,16 @@ BEGIN
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
+    LEFT JOIN CF_ObjectTbl KH WITH (NOLOCK) ON KH.ObjectID = @MaKhachHang
     WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
       AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
-             (CASE WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC, 
-             (CASE WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
+             (CASE WHEN L.SoLanMua >= 3 AND CK.ChuKyTrungBinh IS NOT NULL THEN 1 ELSE 0 END) DESC,
+             (CASE WHEN L.SoLanMua >= 3 AND L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC,
+             (CASE WHEN L.SoLanMua >= 3 AND (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
              L.SoLanMua DESC;
 
-    DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
+    DROP TABLE #AllowedObjects; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
 END
 GO
 
