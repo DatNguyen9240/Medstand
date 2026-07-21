@@ -941,7 +941,7 @@
       "main": [
         [
           {
-            "node": "LIB ValidateParams",
+            "node": "Redis Get Symptom Cache",
             "type": "main",
             "index": 0
           }
@@ -1061,7 +1061,7 @@
       "main": [
         [
           {
-            "node": "Respond Fast",
+            "node": "Redis Set Symptom Cache",
             "type": "main",
             "index": 0
           }
