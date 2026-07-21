@@ -1,6 +1,6 @@
-﻿{
+{
   "id": "fCJwiyAT9r6eh1ys",
-  "name": "K0-C Â· Execute API",
+  "name": "K0-C · Execute API",
   "nodes": [
     {
       "parameters": {
@@ -221,7 +221,7 @@
           "__rl": true,
           "value": "xjb2EueFU0l3wt93",
           "mode": "list",
-          "cachedResultName": "K0-0 Â· Shared Auth Guard",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
           "cachedResultUrl": "/workflow/xjb2EueFU0l3wt93"
         },
         "workflowInputs": {

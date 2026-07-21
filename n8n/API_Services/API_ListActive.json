@@ -1,6 +1,6 @@
-﻿{
+{
   "id": "FRbuGdI9jz0ZZIvU",
-  "name": "K0-A Â· List Active APIs",
+  "name": "K0-A · List Active APIs",
   "nodes": [
     {
       "parameters": {
@@ -182,7 +182,7 @@
           "__rl": true,
           "value": "xjb2EueFU0l3wt93",
           "mode": "list",
-          "cachedResultName": "K0-0 Â· Shared Auth Guard",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
           "cachedResultUrl": "/workflow/xjb2EueFU0l3wt93"
         },
         "workflowInputs": {

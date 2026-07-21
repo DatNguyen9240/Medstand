@@ -1,6 +1,6 @@
-﻿{
+{
   "id": "sGPz8LMQQHVp0IiL",
-  "name": "K0-B Â· Get API Config",
+  "name": "K0-B · Get API Config",
   "nodes": [
     {
       "parameters": {
@@ -195,7 +195,7 @@
           "__rl": true,
           "value": "xjb2EueFU0l3wt93",
           "mode": "list",
-          "cachedResultName": "K0-0 Â· Shared Auth Guard",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
           "cachedResultUrl": "/workflow/xjb2EueFU0l3wt93"
         },
         "workflowInputs": {
