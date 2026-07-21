@@ -113,6 +113,11 @@ BEGIN
     IF @TuNgay IS NULL OR @DenNgay IS NULL
         SELECT @TuNgay = FromDate, @DenNgay = ToDate FROM AR_SanPhamTrongTamTbl WITH (NOLOCK) WHERE DocumentID = @ProgramID
 
+    DECLARE @ProgramName NVARCHAR(200) = N''
+    SELECT @ProgramName = ISNULL(Memo, N'')
+    FROM AR_SanPhamTrongTamTbl WITH (NOLOCK)
+    WHERE DocumentID = @ProgramID
+
 
     -- 3. DANH SÁCH SẢN PHẨM TRỌNG TÂM
     SELECT DISTINCT ItemID INTO #TrongTam FROM (
@@ -160,6 +165,7 @@ BEGIN
    -- ════════════════════════════════════════════════════
    SELECT
        @ProgramID      AS ProgramID,
+       @ProgramName    AS ProgramName,
        N'LEGACY_DEFAULT' AS RuleSource,
        N'BR-PROGRAM-V1-DRAFT' AS RuleVersion,
        CASE
@@ -176,6 +182,9 @@ BEGIN
        
        -- Quà tặng hiện tại
        ISNULL((SELECT TOP 1 QuaTang FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem <= ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem DESC), N'Chưa đạt quà') AS QuaDaDat,
+
+       ISNULL((SELECT TOP 1 QuaTang FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem > ISNULL(TL.TongTichLuy,0) ORDER BY TuDiem ASC),
+              N'Đã đạt mốc cao nhất') AS QuaMocTiepTheo,
        
        -- Số lượng quà
        CASE WHEN ISNULL(TL.TongTichLuy,0) >= 1000000 THEN (SELECT COUNT(*) FROM AR_PromotionGiftTbl WHERE DocumentID = @ProgramID AND TuDiem <= ISNULL(TL.TongTichLuy,0)) ELSE 0 END AS SoPhanQua,

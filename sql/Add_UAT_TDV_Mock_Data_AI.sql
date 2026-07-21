@@ -24,7 +24,7 @@ BEGIN TRY
     );
 
     INSERT INTO @Mapping (ManagerEmpID, TDVEmpID, BranchID) VALUES
-    ('MED0330', 'TDV_NAMDINHB', 'MB'),   -- QL Mai Anh Tuấn -> TDV Nam Định B
+    ('MED0330', 'MED0085', 'MB'),        -- QL Mai Anh Tuấn -> Đoàn Văn Thế
     ('MED0229', 'TDV_BACNINHA', 'MB'),   -- QL Trần Văn Hướng -> TDV Bắc Ninh A
     ('MED0185', 'TDV_HUEB', 'MT'),       -- QL Nguyễn Thế Anh -> TDV Huế B
     ('MED0096', 'TDV_DANANGA', 'MT'),    -- QL Nguyễn Văn Việt Anh -> TDV Đà Nẵng A

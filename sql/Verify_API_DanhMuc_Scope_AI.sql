@@ -124,6 +124,8 @@ CREATE TABLE #TDVStores (
 );
 INSERT INTO #TDVStores
 EXEC dbo.API_DanhMuc_Core_AI @Type = N'khohang', @timkiem = N'', @Username = @TDVUsername;
+IF EXISTS (SELECT 1 FROM #TDVStores WHERE MaDanhMuc NOT IN ('CTY', 'DL02', 'DL03'))
+    THROW 51323, N'TDV warehouse catalog returned a non-sales warehouse.', 1;
 IF EXISTS (
     SELECT 1
     FROM #TDVStores S
@@ -226,6 +228,8 @@ CREATE TABLE #ManagerStores (
 );
 INSERT INTO #ManagerStores
 EXEC dbo.API_DanhMuc_Core_AI @Type = N'khohang', @timkiem = N'', @Username = @ManagerUsername;
+IF EXISTS (SELECT 1 FROM #ManagerStores WHERE MaDanhMuc NOT IN ('CTY', 'DL02', 'DL03'))
+    THROW 51324, N'Manager warehouse catalog returned a non-sales warehouse.', 1;
 IF EXISTS (
     SELECT 1
     FROM #ManagerStores S

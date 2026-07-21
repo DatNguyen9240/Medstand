@@ -110,7 +110,7 @@ BEGIN
         A.ObjectID, O.ObjectName, O.Address, O.Phone,
         A.Memo, A.Notes, 
         M.ObjectName AS ManagerName, 
-        E.ObjectName AS EmployeeName,
+        COALESCE(EU.HoTen, E.ObjectName, A.EmployeeID) AS EmployeeName,
         A.EmployeeID, A.BranchID,
         A.BaseTotal, A.StatusID,
         S.StatusName, S.BackColor AS StatusBackColor
@@ -118,6 +118,13 @@ BEGIN
     FROM dbo.AR_InvoiceTbl A WITH (NOLOCK)
     LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
     LEFT JOIN dbo.CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
+    OUTER APPLY (
+        SELECT TOP 1 NULLIF(LTRIM(RTRIM(U.HoTen)), '') AS HoTen
+        FROM dbo.SY_User U WITH (NOLOCK)
+        WHERE U.EmployeeID = A.EmployeeID
+          AND COALESCE(U.Disable, 0) = 0
+        ORDER BY CASE WHEN U.UserName = @Username THEN 0 ELSE 1 END, U.UserName
+    ) EU
     LEFT JOIN dbo.CF_ObjectTbl M WITH (NOLOCK) ON M.ObjectID = A.ManagerID
     LEFT JOIN dbo.AR_InvoiceStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
     WHERE A.DocumentDate >= @TuNgay

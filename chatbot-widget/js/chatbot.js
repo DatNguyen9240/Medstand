@@ -444,7 +444,9 @@
             text.indexOf('ai-table') !== -1 || 
             text.indexOf('ai-summary') !== -1 || 
             text.indexOf('ai-sales-') !== -1 || 
-            text.indexOf('ai-catalog-') !== -1
+            text.indexOf('ai-loyalty-') !== -1 ||
+            text.indexOf('ai-catalog-') !== -1 ||
+            text.indexOf('ai-focus-products') !== -1
         );
         if (hasCard) cls += ' has-table';
         if (role === 'ai' && text.indexOf('ai-sales-dashboard') !== -1) {
@@ -978,10 +980,6 @@
 
     if ($btnClear) {
         $btnClear.onclick = window.ChatbotPage.clearChat;
-    }
-
-    if ($btnTheme) {
-        $btnTheme.onclick = window.ChatbotPage.toggleTheme;
     }
 
     $btnAttach.addEventListener('click', function () { $fileInput.click(); });
@@ -1733,12 +1731,20 @@
 
                 if (cleanData.length === 0) {
                     var emptyCode = String(res.errorCode ?? res.code ?? responseStatus ?? 'NO_DATA').toUpperCase();
+                    var emptyApiCode = String(res.apiCode ?? res.ApiCode ?? '').toLowerCase();
+                    var emptyRequestId = res.requestId ?? res.metadata?.requestId ?? res.meta?.requestId ?? null;
                     var emptyMessages = {
                         NO_DATA: 'Không có dữ liệu phù hợp với điều kiện tra cứu.',
                         OUT_OF_SCOPE: 'Bạn không có quyền xem dữ liệu này trong phạm vi được giao.',
                         VALIDATION_ERROR: 'Thông tin tra cứu chưa hợp lệ. Vui lòng kiểm tra và thử lại.',
                         SYSTEM_ERROR: 'Hệ thống chưa thể tải dữ liệu. Vui lòng thử lại sau.'
                     };
+                    if (emptyApiCode === '@san_pham_trong_tam') {
+                        emptyMessages.NO_DATA = 'Không có sản phẩm trọng tâm phù hợp.';
+                        emptyMessages.OUT_OF_SCOPE = 'Tài khoản không có quyền xem dữ liệu này.';
+                        emptyMessages.VALIDATION_ERROR = 'Thông tin tra cứu sản phẩm trọng tâm còn thiếu hoặc chưa hợp lệ.';
+                        emptyMessages.SYSTEM_ERROR = 'Hệ thống chưa thể tải sản phẩm trọng tâm. Vui lòng thử lại sau.' + (emptyRequestId ? ' Mã yêu cầu: ' + emptyRequestId : '');
+                    }
                     _addMessage('ai', emptyMessages[emptyCode] ?? emptyMessages.NO_DATA);
                     return;
                 }
@@ -1753,7 +1759,7 @@
 
                 // 3. Xác định UI Template & Renderer
 
-                var apiCode = (res.apiCode || '').toLowerCase();
+                var apiCode = (res.apiCode || res.ApiCode || '').toLowerCase();
 
                 var isDebtApi = apiCode.indexOf('@cong_no') === 0;
                 var uiTpl = isDebtApi ? 'CONG_NO' : (res.uiTemplate || ApiEngine.getUiTemplate(apiCode) || 'DEFAULT').toUpperCase();
@@ -1765,7 +1771,10 @@
                     return hasLabel && catalogAllowedTypes.indexOf(type) >= 0;
                 });
 
-                var renderFn = isCatalogRoot && ApiChatbot.__internal && typeof ApiChatbot.__internal.renderCatalog === 'function'
+                var isFocusProducts = apiCode === '@san_pham_trong_tam';
+                var renderFn = isFocusProducts && ApiChatbot.__internal && typeof ApiChatbot.__internal.renderFocusProducts === 'function'
+                    ? ApiChatbot.__internal.renderFocusProducts
+                    : isCatalogRoot && ApiChatbot.__internal && typeof ApiChatbot.__internal.renderCatalog === 'function'
                     ? ApiChatbot.__internal.renderCatalog
                     : apiCode === '@doanh_so'
                     ? _renderSalesDashboard
@@ -2152,12 +2161,62 @@
 
     }
 
-    function _formatBusinessCell(key, value) {
+    function _formatVietnameseDate(value) {
+        var text = String(value || '').trim();
+        var match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        return match ? match[3] + '/' + match[2] + '/' + match[1] : text;
+    }
+
+    function _formatPhoneNumber(value) {
+        var raw = String(value || '').trim();
+        var digits = raw.replace(/\D/g, '');
+        if (digits.length === 9 && digits.charAt(0) !== '0') digits = '0' + digits;
+        if (digits.length === 10 && digits.charAt(0) === '0') {
+            return digits.slice(0, 4) + ' ' + digits.slice(4, 7) + ' ' + digits.slice(7);
+        }
+        return raw;
+    }
+
+    function _formatCurrencyVnd(value) {
+        var amount = Number(value);
+        return Number.isFinite(amount) ? amount.toLocaleString('vi-VN') + ' ₫' : String(value || '');
+    }
+
+    function _formatOrderDocumentId(value) {
+        var text = String(value || '').trim();
+        var match = text.match(/^UAT(?:ALL|\d+)?_ORD_(.+)$/i);
+        return match ? 'ORD-' + match[1] : text;
+    }
+
+    function _formatBusinessCell(key, value, apiCode) {
         var normalizedKey = String(key || '').toLowerCase().replace(/[_\s]/g, '');
+        var isOrder = String(apiCode || '').toLowerCase() === '@don_hang';
+        var isInvoice = ['@hoa_don', '@hoa_don_chi_tiet'].indexOf(String(apiCode || '').toLowerCase()) !== -1;
         if (value === null || value === undefined || String(value).trim() === '') {
             if (normalizedKey === 'physicalstock') return 'Chưa truy vấn kho';
             if (normalizedKey === 'availablestock') return 'Chưa kiểm tra kho';
+            if (isOrder && normalizedKey === 'deliverdate') return 'Chưa xác định';
+            if (isOrder && normalizedKey === 'depositamount') return 'Chưa có';
+            if (isOrder && normalizedKey === 'notes') return 'Không có';
             return '—';
+        }
+
+        if (normalizedKey === 'phone' || normalizedKey === 'customerphone') {
+            return _formatPhoneNumber(value);
+        }
+        if (['documentdate', 'deliverdate', 'datecreate', 'expiredate', 'handung', 'asofdate', 'ngay', 'ngaytao'].indexOf(normalizedKey) !== -1) {
+            return _formatVietnameseDate(value);
+        }
+        if (normalizedKey === 'documentid' && isOrder) return _formatOrderDocumentId(value);
+        if (['employeeid', 'objectid', 'itemid', 'storehouseid', 'lot', 'statusid'].indexOf(normalizedKey) !== -1) {
+            return String(value);
+        }
+        if (isOrder && ['basetotal', 'depositamount'].indexOf(normalizedKey) !== -1) {
+            if (normalizedKey === 'depositamount' && Number(value) === 0) return 'Chưa có';
+            return _formatCurrencyVnd(value);
+        }
+        if (isInvoice && ['unitprice', 'amount', 'totalamount', 'basetotal', 'discountamount', 'taxamount'].indexOf(normalizedKey) !== -1) {
+            return _formatCurrencyVnd(value);
         }
 
         var normalizedValue = String(value).trim().toUpperCase();
@@ -2167,6 +2226,8 @@
             'PHYSICAL_AS_SELLABLE_TEMPORARY': 'Theo tồn kho hiện tại',
             'EXPIRED_NOT_SELLABLE': 'Hết hạn - không được bán',
             'STOCK_RECONCILIATION_REQUIRED': 'Cần đối soát kho',
+            'WAREHOUSE_SCOPE_UNAVAILABLE': 'Tài khoản chưa được phân quyền kho',
+            'NO_STOCK_RECORD': 'Chưa có phát sinh tồn kho',
             'NO_SELLABLE_STOCK': 'Không còn hàng có thể bán',
             'CHECKIN_SOURCE_UNAVAILABLE': 'Chưa có dữ liệu ghé',
             'REFERENCE_ONLY_APPROVAL_REQUIRED': 'Chỉ tham khảo, cần phê duyệt',
@@ -3242,8 +3303,14 @@
 
     // ── Inline Toggle & Modal table helpers ─────────────────────────
 
-    function _getFriendlyHeader(key) {
+    function _getFriendlyHeader(key, apiCode) {
         var dict = {
+            'unitprice': 'Đơn giá',
+            'totalamount': 'Thành tiền',
+            'discountpercent': 'Tỷ lệ giảm giá',
+            'discountamount': 'Tiền giảm giá',
+            'taxpercent': 'Thuế suất',
+            'taxamount': 'Tiền thuế',
             'itemid': 'Mã SP',
             'itemname': 'Sản phẩm',
             'unit': 'ĐVT',
@@ -3273,8 +3340,8 @@
             'expiredate': 'Hạn sử dụng',
             'nhap': 'Nhập',
             'xuat': 'Xuất',
-            'toncuoi': 'Tồn cuối',
-            'tonkho': 'Tồn kho',
+            'toncuoi': 'Tồn ERP',
+            'tonkho': 'Tồn ERP',
             'donvitinh': 'Đơn vị tính',
             // Order & general document columns translations
             'documentid': 'Mã đơn',
@@ -3283,6 +3350,9 @@
             'basetotal': 'Tổng tiền',
             'statusname': 'Trạng thái',
             'employeename': 'Nhân viên',
+            'employeeid': 'Mã nhân viên',
+            'datecreate': 'Ngày tạo trên hệ thống',
+            'notes': 'Ghi chú',
             'docno': 'Số CT',
             'customerphone': 'Số ĐT KH',
             'deliverdate': 'Ngày giao',
@@ -3308,8 +3378,8 @@
             'conlai': 'Còn Lại (Ngày)',
             'diemuutien': 'Điểm Ưu Tiên',
             'lydoghe': 'Lý Do Ghé',
-            'physicalstock': 'Tồn trong kho',
-            'availablestock': 'Có thể bán',
+            'physicalstock': 'Tồn ERP',
+            'availablestock': 'Tồn khả dụng tham khảo',
             'stockdatastatus': 'Trạng thái dữ liệu tồn kho',
             'freshnessstatus': 'Độ mới dữ liệu',
             'stockupdatedat': 'Cập nhật tồn kho lúc',
@@ -3335,9 +3405,47 @@
             'asofdate': 'Dữ liệu đến ngày',
             'datasource': 'Nguồn dữ liệu',
             'totaldebt': 'Tổng công nợ',
-            'customerid': 'Mã khách hàng'
+            'customerid': 'Mã khách hàng',
+            'handung': 'Hạn sử dụng',
+            'loaidexuat': 'Đề xuất xem xét',
+            'proposalreason': 'Lý do cần xem xét'
         };
         var lower = key.toLowerCase().replace(/_/g, '');
+        var api = String(apiCode || (typeof window !== 'undefined' ? window.__medstandFriendlyApiCode : '')).toLowerCase();
+        if (api === '@hoa_don' || api === '@hoa_don_chi_tiet') {
+            var invoiceDict = {
+                'documentid': 'Mã hóa đơn',
+                'documentdate': 'Ngày hóa đơn',
+                'itemid': 'Mã sản phẩm',
+                'itemname': 'Sản phẩm',
+                'quantity': 'Số lượng',
+                'amount': 'Tiền hàng',
+                'unitprice': 'Đơn giá',
+                'totalamount': 'Thành tiền',
+                'donvitinh': 'Đơn vị tính',
+                'storehouseid': 'Mã kho',
+                'storehousename': 'Tên kho'
+            };
+            if (invoiceDict[lower]) return invoiceDict[lower];
+        }
+        if (api === '@de_xuat_khuyen_mai') {
+            var promotionDict = {
+                'itemid': 'Mã sản phẩm',
+                'itemname': 'Sản phẩm',
+                'availablestock': 'Số lượng còn hạn',
+                'handung': 'Hạn sử dụng',
+                'loaidexuat': 'Mức độ cần xem xét'
+            };
+            if (promotionDict[lower]) return promotionDict[lower];
+        }
+        if (api === '@goi_ydon_hang') {
+            var orderSuggestionDict = {
+                'physicalstock': 'Tồn kho hiện tại',
+                'availablestock': 'Số lượng có thể bán',
+                'stockdatastatus': 'Tình trạng tồn kho'
+            };
+            if (orderSuggestionDict[lower]) return orderSuggestionDict[lower];
+        }
         return dict[lower] || key;
     }
 
@@ -3403,16 +3511,44 @@
         };
     }
 
-    function _isNumCol(k) {
+    function _splitKeysForApi(keys, forceShowAll, apiCode) {
+        if (String(apiCode || '').toLowerCase() !== '@de_xuat_khuyen_mai') {
+            return _splitKeysSmart(keys, forceShowAll);
+        }
+
+        var primaryOrder = ['itemid', 'itemname', 'availablestock', 'handung', 'loaidexuat'];
+        var primary = [];
+        primaryOrder.forEach(function (wanted) {
+            var matched = keys.find(function (key) {
+                return String(key || '').toLowerCase().replace(/[_\s]/g, '') === wanted;
+            });
+            if (matched && primary.indexOf(matched) === -1) primary.push(matched);
+        });
+
+        if (!primary.length && keys.length) primary.push(keys[0]);
+        return {
+            primary: primary,
+            secondary: keys.filter(function (key) { return primary.indexOf(key) === -1; })
+        };
+    }
+
+        function _isNumCol(k) {
         var lowerK = String(k || '').toLowerCase().replace(/_/g, '');
-        var numKeywords = ['doanhso', 'doanhthu', 'soluong', 'tonkho', 'tien', 'gia', 'chietkhau', 'thanhtien', 'dongia', 'amount', 'qty', 'price', 'revenue', 'sales', 'total', 'discount', 'sum', 'val'];
+        var numKeywords = ['doanhso', 'doanhthu', 'soluong', 'tonkho', 'physicalstock', 'availablestock', 'toncuoi', 'tien', 'gia', 'chietkhau', 'thanhtien', 'dongia', 'amount', 'qty', 'price', 'revenue', 'sales', 'total', 'discount', 'sum', 'val'];
         for (var i = 0; i < numKeywords.length; i++) {
             if (lowerK.indexOf(numKeywords[i]) !== -1) {
                 return true;
             }
         }
-        return false;
-    }
+            return false;
+        }
+
+        function _isNegativeStockCell(key, value) {
+            var normalized = String(key || '').toLowerCase().replace(/[_\s]/g, '');
+            if (['physicalstock', 'toncuoi', 'tonkho'].indexOf(normalized) === -1) return false;
+            var number = Number(value);
+            return Number.isFinite(number) && number < 0;
+        }
 
     /**
 
@@ -3425,6 +3561,7 @@
      */
 
     function _buildInlineTable(rows, keys, apiCode, cacheRows) {
+        if (typeof window !== 'undefined') window.__medstandFriendlyApiCode = apiCode || '';
 
         // Ẩn các cột nội bộ không nên hiển thị cho user
         var HIDDEN_COLS = [
@@ -3436,6 +3573,8 @@
             'metadata_uitemplate',
             'branchid', 'BranchID',
             'managerid', 'ManagerID',
+            'stt', 'STT',
+            'statusid', 'StatusID',
             'maxfromdate', 'MaxFromDate',
             'doanhsochinhanh', 'DoanhSoChiNhanh',
             'statusbackcolor', 'StatusBackColor',
@@ -3526,14 +3665,32 @@
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="B" type="button">Nhóm B</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="C" type="button">Nhóm C</button>';
         } else {
-            chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">Tất cả</button>';
+            chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">' + (String(apiCode || '').toLowerCase() === '@don_hang' ? 'Tất cả trạng thái' : 'Tất cả') + '</button>';
         }
 
         if (!isTierScoringTable && badgeKeyFound) {
 
             // Render chip cho từng giá trị phân loại thực tế trong data
 
-            Object.keys(badgeValues).sort().forEach(function (v) {
+            var sortedBadgeValues = Object.keys(badgeValues);
+            if (String(apiCode || '').toLowerCase() === '@don_hang') {
+                var orderStatusFlow = [
+                    'đơn nháp', 'tdv kiểm tra lại', 'chờ duyệt', 'nhận đơn',
+                    'đơn đã xử lý chưa chuyển kho', 'đã chuyển xuống kho', 'đã xuất hàng',
+                    'đã đi gửi hàng', 'khách đã nhận hàng', 'đã thu tiền', 'đã hủy'
+                ];
+                sortedBadgeValues.sort(function (left, right) {
+                    var leftRank = orderStatusFlow.indexOf(String(left).trim().toLowerCase());
+                    var rightRank = orderStatusFlow.indexOf(String(right).trim().toLowerCase());
+                    if (leftRank === -1) leftRank = orderStatusFlow.length;
+                    if (rightRank === -1) rightRank = orderStatusFlow.length;
+                    return leftRank - rightRank || String(left).localeCompare(String(right), 'vi');
+                });
+            } else {
+                sortedBadgeValues.sort();
+            }
+
+            sortedBadgeValues.forEach(function (v) {
 
                 var icon = (v === 'A' || v.toUpperCase() === 'VIP') ? '  ' :
 
@@ -3547,15 +3704,7 @@
 
         }
 
-        if (isTierScoringTable) {
-            var tierPageCount = Math.max(1, Math.ceil(tierTotalRows / tierPageSize));
-            chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' / ' + tierTotalRows + ' khách</span>';
-            chipsHtml += '<span class="ai-tier-page-nav">'
-                + '<button class="ai-tier-page-btn" data-tier-page-action="prev" type="button"' + (tierPage <= 1 ? ' disabled' : '') + '>Trang trước</button>'
-                + '<span class="ai-tier-page-label">Trang ' + tierPage + ' / ' + tierPageCount + '</span>'
-                + '<button class="ai-tier-page-btn" data-tier-page-action="next" type="button"' + (tierPage >= tierPageCount ? ' disabled' : '') + '>Trang sau</button>'
-                + '</span>';
-        } else {
+        if (!isTierScoringTable) {
             chipsHtml += '<span class="ai-sales-filter-count">' + rows.length + ' dòng</span>';
         }
 
@@ -3577,7 +3726,7 @@
 
         html += '<table class="ai-table"><thead><tr>';
 
-        var split = _splitKeysSmart(keys, forceShowAll);
+        var split = _splitKeysForApi(keys, forceShowAll, apiCode);
         var primaryKeys = split.primary;
         var secondaryKeys = split.secondary;
         var hasDetails = secondaryKeys.length > 0;
@@ -3590,13 +3739,15 @@
         }
         primaryKeys.forEach(function (k) {
             var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
-            var friendlyHeader = String(apiCode || '').toLowerCase() === '@doanh_so' && String(k).toLowerCase() === 'amount' ? 'Doanh số' : _getFriendlyHeader(k);
+            var friendlyHeader = String(apiCode || '').toLowerCase() === '@doanh_so' && String(k).toLowerCase() === 'amount' ? 'Doanh số' : _getFriendlyHeader(k, apiCode);
             html += '<th' + thClass + '>' + _esc(friendlyHeader) + '</th>';
         });
 
         html += '</tr></thead>';
 
-        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys, forceShowAll, apiCode) + '</tbody>';
+        var tablePageSize = isTierScoringTable ? tierPageSize : 25;
+        var tablePage = isTierScoringTable ? tierPage : 1;
+        html += '<tbody id="' + tbodyId + '">' + _renderTableBody(rows, keys, forceShowAll, apiCode, tablePage, tablePageSize) + '</tbody>';
 
         html += '</table></div>';
 
@@ -3616,6 +3767,8 @@
             currentPage: tierPage,
             pageSize: tierPageSize,
             totalRows: tierTotalRows,
+            currentTablePage: tablePage,
+            tablePageSize: tablePageSize,
             loading: false
         };
 
@@ -3629,23 +3782,212 @@
 
 
 
-    function _renderTableBody(filteredRows, keys, forceShowAll, apiCode, showAllRows) {
+    function _buildOrderDetail(row) {
+        var orderId = _formatBusinessCell('DocumentID', row.DocumentID, '@don_hang');
+        var statusName = _formatBusinessCell('StatusName', row.StatusName, '@don_hang');
+        var total = _formatBusinessCell('BaseTotal', row.BaseTotal, '@don_hang');
+        var points = row.DiemTichLuy === null || row.DiemTichLuy === undefined ? '0' : String(row.DiemTichLuy);
+        var employeeName = _formatBusinessCell('EmployeeName', row.EmployeeName, '@don_hang');
+        var employeeId = _formatBusinessCell('EmployeeID', row.EmployeeID, '@don_hang');
+        var employee = employeeName + (employeeId !== '—' ? ' · ' + employeeId : '');
 
-        var MAX = 50;
+        var html = '<div class="ai-order-detail-panel">';
+        html += '<div class="ai-order-detail-heading">'
+            + '<div><span>Mã đơn</span><strong>' + _esc(orderId) + '</strong></div>'
+            + '<span class="ai-order-status-pill">' + _esc(statusName) + '</span>'
+            + '</div>';
+        html += '<section class="ai-order-detail-section ai-order-overview">'
+            + '<h4>Tổng quan</h4>'
+            + '<div class="ai-order-overview-grid">'
+            + '<div><span>Tổng tiền</span><strong>' + _esc(total) + '</strong></div>'
+            + '<div><span>Tích lũy</span><strong>' + _esc(points) + '</strong></div>'
+            + '<div><span>Ngày tạo trên hệ thống</span><strong>' + _esc(_formatBusinessCell('DateCreate', row.DateCreate, '@don_hang')) + '</strong></div>'
+            + '</div></section>';
+        html += '<div class="ai-order-detail-groups">';
+        html += '<section class="ai-order-detail-section"><h4>Khách hàng và phụ trách</h4><dl>'
+            + '<div><dt>Số điện thoại</dt><dd>' + _esc(_formatBusinessCell('CustomerPhone', row.CustomerPhone, '@don_hang')) + '</dd></div>'
+            + '<div><dt>Nhân viên</dt><dd>' + _esc(employee) + '</dd></div>'
+            + '</dl></section>';
+        html += '<section class="ai-order-detail-section"><h4>Giao hàng và thanh toán</h4><dl>'
+            + '<div><dt>Ngày đặt</dt><dd>' + _esc(_formatBusinessCell('DocumentDate', row.DocumentDate, '@don_hang')) + '</dd></div>'
+            + '<div><dt>Ngày giao</dt><dd>' + _esc(_formatBusinessCell('DeliverDate', row.DeliverDate, '@don_hang')) + '</dd></div>'
+            + '<div><dt>Đặt cọc</dt><dd>' + _esc(_formatBusinessCell('DepositAmount', row.DepositAmount, '@don_hang')) + '</dd></div>'
+            + '<div><dt>Ghi chú</dt><dd>' + _esc(_formatBusinessCell('Notes', row.Notes, '@don_hang')) + '</dd></div>'
+            + '</dl></section>';
+        html += '</div></div>';
+        return html;
+    }
 
-        var shown = showAllRows ? filteredRows.length : Math.min(filteredRows.length, MAX);
+    function _buildTierScoringDetail(row) {
+        var customerId = row.ObjectID || row.CustomerID || row.MaKH || '';
+        var customerName = row.TenCuaHang || row.CustomerName || row.ObjectName || 'Khách hàng';
+        var tier = String(row.Nhom || row.ValueSegment || '').toUpperCase();
+        var tierName = tier === 'A' ? 'Khách VIP' : (tier === 'B' ? 'Khách hàng thường' : 'Khách giá trị thấp');
+        var risk = String(row.RiskLevel || '').toUpperCase();
+        var riskLabel = risk === 'HIGH' ? 'Rủi ro cao' : (risk === 'MEDIUM' ? 'Rủi ro vừa' : 'Rủi ro thấp');
+        var riskClass = risk === 'HIGH' ? 'high' : (risk === 'MEDIUM' ? 'medium' : 'low');
+        var reason = row.LyDoChinh || 'Chưa có lý do cảnh báo';
+        var trend = row.XuHuong || 'Chưa xác định';
+        var phone = _formatBusinessCell('Phone', row.Phone);
+        var lastPurchase = _formatBusinessCell('LanMuaCuoi', row.LanMuaCuoi);
+        var daysWithoutPurchase = row.SoNgayKhongMua === null || row.SoNgayKhongMua === undefined ? '—' : String(row.SoNgayKhongMua) + ' ngày';
+        var revenue12 = row.DoanhSo12Thang === null || row.DoanhSo12Thang === undefined ? '—' : _formatCurrencyVnd(row.DoanhSo12Thang);
+        var revenue3 = row.DoanhSo3ThangGan === null || row.DoanhSo3ThangGan === undefined ? '—' : _formatCurrencyVnd(row.DoanhSo3ThangGan);
+        var score = row.DiemTongHop === null || row.DiemTongHop === undefined ? '—' : String(row.DiemTongHop) + '/100';
+        var daysValue = Number(row.SoNgayKhongMua);
+        var rScore = Number(row.R_Score);
+        var fScore = Number(row.F_Score);
+        var mScore = Number(row.M_Score);
+        var scoreMeaning = function (value, high, middle) {
+            if (!Number.isFinite(value)) return 'Chưa xác định';
+            return value >= high ? 'Tốt' : (value >= middle ? 'Khá' : 'Cần chú ý');
+        };
+        // Hiển thị nghiệp vụ dựa trên số ngày thực tế; không suy diễn ngược từ R_SCORE.
+        var rMeaning = Number.isFinite(daysValue) ? (daysValue >= 90 ? 'Cần chú ý' : (daysValue >= 45 ? 'Theo dõi' : 'Tốt')) : scoreMeaning(rScore, 70, 40);
+        var fMeaning = scoreMeaning(fScore, 70, 40);
+        var mMeaning = scoreMeaning(mScore, 70, 40);
+        var detail = '<div class="ai-tier-detail">';
+        detail += '<div class="ai-tier-detail-head"><div><strong>' + _esc(customerName) + '</strong><span>' + _esc(phone) + '</span></div>'
+            + '<div class="ai-tier-detail-badges"><span class="ai-tier-badge tier-' + _esc(tier.toLowerCase()) + '">Nhóm ' + _esc(tier || '—') + ' · ' + _esc(tierName) + '</span>'
+            + '<span class="ai-tier-badge risk-' + riskClass + '">' + _esc(riskLabel) + '</span></div></div>';
+        detail += '<div class="ai-tier-alert" role="note"><strong>⚠ Lý do cảnh báo</strong><span>' + _esc(reason) + '</span><small>Doanh số 3 tháng gần nhất: ' + _esc(revenue3) + ' · Xu hướng: ' + _esc(trend) + '</small></div>';
+        detail += '<div class="ai-tier-interpretations"><div><span>Hoạt động mua gần đây</span><strong>' + _esc(rMeaning) + '</strong><small>' + _esc(daysWithoutPurchase) + ' chưa phát sinh đơn</small></div>'
+            + '<div><span>Tần suất mua</span><strong>' + _esc(fMeaning) + '</strong><small>Dựa trên số lần mua trong kỳ</small></div>'
+            + '<div><span>Giá trị mua hàng</span><strong>' + _esc(mMeaning) + '</strong><small>Doanh số 12 tháng: ' + _esc(revenue12) + '</small></div>'
+            + '<div><span>Nguy cơ giảm mua</span><strong>' + _esc(riskLabel) + '</strong><small>Xu hướng: ' + _esc(trend) + '</small></div></div>';
+        detail += '<div class="ai-tier-metrics"><div><span>Lần mua cuối</span><strong>' + _esc(lastPurchase) + '</strong></div>'
+            + '<div><span>Doanh số 12 tháng</span><strong>' + _esc(revenue12) + '</strong></div>'
+            + '<div><span>Doanh số 3 tháng gần nhất</span><strong>' + _esc(revenue3) + '</strong></div>'
+            + '<div><span>Số ngày chưa mua</span><strong>' + _esc(daysWithoutPurchase) + '</strong></div>'
+            + '<div><span>Điểm tổng hợp</span><strong>' + _esc(score) + '</strong></div></div>';
+        detail += '<div class="ai-tier-actions"><button type="button" data-tier-action="history" data-customer-id="' + _esc(customerId) + '">Xem lịch sử mua</button>'
+            + '<button type="button" data-tier-action="order-suggestion" data-customer-id="' + _esc(customerId) + '">Gợi ý đơn hàng</button>'
+            + '<button type="button" data-tier-action="debt" data-customer-id="' + _esc(customerId) + '">Xem công nợ</button></div>';
+        detail += '<details class="ai-tier-scoring-details"><summary>Chi tiết cách tính</summary><div>'
+            + '<span>Mức độ mua gần đây (R): <b>' + _esc(row.R_Score ?? '—') + '/100</b></span>'
+            + '<span>Tần suất mua (F): <b>' + _esc(row.F_Score ?? '—') + '/100</b></span>'
+            + '<span>Giá trị mua hàng (M): <b>' + _esc(row.M_Score ?? '—') + '/100</b></span>'
+            + '<span>Chỉ số bổ sung (C, cần xác nhận ý nghĩa): <b>' + _esc(row.C_Score ?? '—') + '/100</b></span></div></details></div>';
+        return detail;
+    }
+
+    function _translateRecommendationReasons(value) {
+        var labels = {
+            'NEW_CUSTOMER': 'Khách hàng mới',
+            'INSUFFICIENT_HISTORY': 'Chưa đủ lịch sử mua hàng',
+            'REORDER_OVERDUE': 'Đã đến hoặc quá thời điểm thường mua lại',
+            'REORDER_WINDOW': 'Sắp đến thời điểm thường mua lại',
+            'CYCLE_STABLE': 'Chu kỳ mua đang ổn định',
+            'FOCUS_ITEM': 'Sản phẩm trọng tâm',
+            'SEASONAL': 'Phù hợp mùa vụ',
+            'ACTIVE_PROMOTION_REFERENCE': 'Có chương trình khuyến mãi đang áp dụng'
+        };
+        return String(value || '').split('|').map(function (part) {
+            var key = String(part || '').trim().toUpperCase();
+            return labels[key] || '';
+        }).filter(Boolean).join(' · ') || 'Chưa có lý do cụ thể';
+    }
+
+    function _buildOrderSuggestionDetail(row) {
+        var customer = row.TenKhachHang || row.CustomerName || 'Khách hàng';
+        var product = row.TenSanPham || row.ItemName || 'Sản phẩm';
+        var status = row.TrangThai || 'Chưa xác định';
+        var confidence = _formatBusinessCell('DoTinCay', row.DoTinCay, '@goi_ydon_hang');
+        var purchaseCount = Number(row.SoLanMua || 0);
+        var totalPurchased = row.TongDaMua === null || row.TongDaMua === undefined ? '—' : _formatCurrencyVnd(row.TongDaMua);
+        var lastPurchase = row.LanMuaCuoi || '—';
+        var cycle = Number(row.ChuKyNgay);
+        var remaining = Number(row.ConLaiNgay);
+        var cycleText = Number.isFinite(cycle) && cycle > 0
+            ? 'Thường mua lại sau khoảng ' + cycle + ' ngày' + (Number.isFinite(remaining) ? ' · Còn khoảng ' + remaining + ' ngày' : '')
+            : 'Chưa đủ dữ liệu để dự kiến thời điểm mua lại';
+        var explanation = String(row.ChiTiet || '').replace(/\s*\|\s*/g, ' · ') || 'Chưa có giải thích bổ sung';
+        var reasons = _translateRecommendationReasons(row.RecommendationReason || row.LyDoDeXuat);
+        var html = '<div class="ai-order-suggestion-detail">';
+        html += '<div class="ai-order-suggestion-head"><div><strong>' + _esc(product) + '</strong><span>Khách hàng: ' + _esc(customer) + '</span></div>'
+            + '<div><span class="ai-suggestion-badge">' + _esc(status) + '</span><span class="ai-suggestion-badge neutral">' + _esc(confidence) + '</span></div></div>';
+        html += '<div class="ai-order-suggestion-metrics"><div><span>Số lần đã mua</span><strong>' + purchaseCount + ' lần</strong></div>'
+            + '<div><span>Tổng giá trị đã mua</span><strong>' + _esc(totalPurchased) + '</strong></div>'
+            + '<div><span>Lần mua gần nhất</span><strong>' + _esc(lastPurchase) + '</strong></div></div>';
+        html += '<div class="ai-order-suggestion-reason"><strong>Vì sao hệ thống gợi ý?</strong><span>' + _esc(reasons) + '</span><small>' + _esc(explanation) + '</small></div>';
+        html += '<div class="ai-order-suggestion-cycle"><strong>Dự kiến mua lại</strong><span>' + _esc(cycleText) + '</span></div>';
+        html += '<small class="ai-order-suggestion-window">Dữ liệu tham khảo: 6 tháng gần nhất; nếu chưa đủ, hệ thống sử dụng thêm lịch sử mua trước đó.</small></div>';
+        return html;
+    }
+
+    function _buildPromotionReviewDetail(row) {
+        var product = row.ItemName || row.TenSanPham || 'Sản phẩm';
+        var itemId = row.ItemID || row.MaSP || '';
+        var proposalType = row.LoaiDeXuat || 'Cần theo dõi';
+        var approval = String(row.ApprovalStatus || '').toUpperCase() === 'PENDING_COMPANY_APPROVAL'
+            ? 'Chờ công ty phê duyệt'
+            : 'Chưa xác định trạng thái phê duyệt';
+        var physicalStock = row.PhysicalStock ?? row.TonKho;
+        var availableStock = row.AvailableStock;
+        var expiry = _formatBusinessCell('ExpireDate', row.HanDung || row.NearestExpireDate);
+        var unit = row.Unit || row.DVT || row.DonViTinh || '';
+        var reason = row.ProposalReason || 'Chưa có lý do cụ thể';
+        var discount = row.PhanTramDeXuat === null || row.PhanTramDeXuat === undefined
+            ? 'Chưa đề xuất mức giảm'
+            : String(row.PhanTramDeXuat) + '%';
+        var physicalLabel = physicalStock === null || physicalStock === undefined || physicalStock === ''
+            ? 'Chưa xác định'
+            : _fmtCellVal(physicalStock) + (unit ? ' ' + unit : '');
+        var availableLabel = availableStock === null || availableStock === undefined || availableStock === ''
+            ? 'Chưa xác định'
+            : _fmtCellVal(availableStock) + (unit ? ' ' + unit : '');
+        var html = '<div class="ai-promotion-review-detail">';
+        html += '<div class="ai-promotion-review-head"><div><strong>' + _esc(product) + '</strong><span>Mã sản phẩm: ' + _esc(itemId || '—') + '</span></div>'
+            + '<div><span class="ai-promotion-review-badge urgent">' + _esc(proposalType) + '</span><span class="ai-promotion-review-badge">' + _esc(approval) + '</span></div></div>';
+        html += '<div class="ai-promotion-review-metrics"><div><span>Tồn kho hiện tại</span><strong>' + _esc(physicalLabel) + '</strong></div>'
+            + '<div><span>Tồn còn hạn để tham khảo</span><strong>' + _esc(availableLabel) + '</strong></div>'
+            + '<div><span>Hạn dùng gần nhất</span><strong>' + _esc(expiry) + '</strong></div>'
+            + '<div><span>Mức giảm dự kiến</span><strong>' + _esc(discount) + '</strong></div></div>';
+        html += '<div class="ai-promotion-review-reason"><strong>Vì sao cần xem xét?</strong><span>' + _esc(reason) + '</span></div>';
+        html += '<div class="ai-promotion-review-next"><strong>Bước tiếp theo</strong><span>Quản lý hoặc quản trị viên kiểm tra tồn kho, lô hàng và chính sách trước khi gửi người có thẩm quyền quyết định. Hệ thống không tự áp dụng giảm giá.</span></div>';
+        html += '</div>';
+        return html;
+    }
+
+    function _renderTableBody(filteredRows, keys, forceShowAll, apiCode, pageNumber, pageSize) {
+
+        var DEFAULT_PAGE_SIZE = 25;
+        var isTierScoringTable = String(apiCode || '').toLowerCase() === '@cham_diem_kh';
+        // Tương thích với call cũ truyền boolean showAllRows.
+        if (typeof pageNumber === 'boolean') pageNumber = 1;
+        pageNumber = Number(pageNumber);
+        pageSize = Number(pageSize);
+        if (!Number.isFinite(pageNumber) || pageNumber < 1) pageNumber = 1;
+        if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = DEFAULT_PAGE_SIZE;
+
+        var tierTotalRows = isTierScoringTable && filteredRows.length
+            ? Number(filteredRows[0].TotalRows || filteredRows[0].totalRows || filteredRows.length)
+            : filteredRows.length;
+        if (!Number.isFinite(tierTotalRows) || tierTotalRows < 0) tierTotalRows = filteredRows.length;
+        var totalPages = Math.max(1, Math.ceil(tierTotalRows / pageSize));
+        if (pageNumber > totalPages) pageNumber = totalPages;
+        var startIndex = (pageNumber - 1) * pageSize;
+        // API chấm điểm đã trả đúng dữ liệu của trang hiện tại.
+        var pageRows = isTierScoringTable
+            ? filteredRows.slice(0, pageSize)
+            : filteredRows.slice(startIndex, startIndex + pageSize);
+        var shown = pageRows.length;
 
         var html = '';
 
-        var split = _splitKeysSmart(keys, forceShowAll);
+        var split = _splitKeysForApi(keys, forceShowAll, apiCode);
         var primaryKeys = split.primary;
         var secondaryKeys = split.secondary;
         var hasDetails = secondaryKeys.length > 0;
         var isInvoiceList = apiCode === '@hoa_don';
+        var isOrderList = String(apiCode || '').toLowerCase() === '@don_hang';
+        var isOrderSuggestionTable = String(apiCode || '').toLowerCase() === '@goi_ydon_hang';
+        var isPromotionReviewTable = String(apiCode || '').toLowerCase() === '@de_xuat_khuyen_mai';
         var colSpan = primaryKeys.length + (hasDetails ? 1 : 0) + (isInvoiceList ? 1 : 0);
 
         for (var i = 0; i < shown; i++) {
 
+            var row = pageRows[i];
             html += '<tr>';
 
             if (hasDetails) {
@@ -3653,22 +3995,28 @@
             }
 
             primaryKeys.forEach(function (k) {
-                var val = filteredRows[i][k];
+                var val = row[k];
                 var cellHtml = '';
                 var lowerK = k.toLowerCase().replace(/_/g, '');
 
-                if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
-                    cellHtml = '<span class="ai-badge-recommend">' + _esc(_formatBusinessCell(k, val)) + '</span>';
+                if (lowerK === 'stockdatastatus' && String(val || '').trim().toUpperCase() === 'STOCK_RECONCILIATION_REQUIRED') {
+                    cellHtml = '<span class="ai-stock-status-warning">' + _esc(_formatBusinessCell(k, val, apiCode)) + '</span>';
+                } else if (_isNegativeStockCell(k, val)) {
+                    cellHtml = '<span class="ai-stock-negative" title="Tồn ERP đang âm; cần đối soát trước khi bán.">' + _esc(_formatBusinessCell(k, val, apiCode)) + '</span>';
+                } else if (lowerK === 'canhbaoai' || lowerK === 'canh_bao_ai') {
+                    cellHtml = '<span class="ai-badge-recommend">' + _esc(_formatBusinessCell(k, val, apiCode)) + '</span>';
                 } else {
-                    cellHtml = _esc(_formatBusinessCell(k, val));
+                    cellHtml = _esc(_formatBusinessCell(k, val, apiCode));
                 }
 
-                var tdClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
+                var tdClass = _isNumCol(k) ? 'ai-num-col' : '';
+                if (_isNegativeStockCell(k, val)) tdClass += ' ai-stock-negative-cell';
+                tdClass = tdClass ? ' class="' + tdClass + '"' : '';
                 html += '<td' + tdClass + '>' + cellHtml + '</td>';
             });
 
             if (isInvoiceList) {
-                var invoiceId = filteredRows[i].DocumentID || filteredRows[i].MaHoaDon || '';
+                var invoiceId = row.DocumentID || row.MaHoaDon || '';
                 html += '<td style="text-align:center"><button type="button" class="ai-table-btn ai-invoice-detail-btn" data-document-id="' + _esc(invoiceId) + '"' + (invoiceId ? '' : ' disabled') + '>Xem chi tiết</button></td>';
             }
 
@@ -3676,25 +4024,92 @@
 
             if (hasDetails) {
                 html += '<tr class="ai-table-detail-row" style="display: none;"><td colspan="' + colSpan + '">';
-                html += '<div class="ai-table-detail-grid">';
-                secondaryKeys.forEach(function (k) {
-                    html += '<div class="ai-table-detail-item">';
-                    html += '  <div class="ai-table-detail-label">' + _esc(_getFriendlyHeader(k)) + '</div>';
-                    html += '  <div class="ai-table-detail-value">' + _esc(_formatBusinessCell(k, filteredRows[i][k])) + '</div>';
+                if (isTierScoringTable) {
+                    html += _buildTierScoringDetail(row);
+                } else if (isOrderSuggestionTable) {
+                    html += _buildOrderSuggestionDetail(row);
+                } else if (isPromotionReviewTable) {
+                    html += _buildPromotionReviewDetail(row);
+                } else if (isOrderList) {
+                    html += _buildOrderDetail(row);
+                } else {
+                    html += '<div class="ai-table-detail-grid">';
+                    secondaryKeys.forEach(function (k) {
+                        html += '<div class="ai-table-detail-item">';
+                        html += '  <div class="ai-table-detail-label">' + _esc(_getFriendlyHeader(k)) + '</div>';
+                        html += '  <div class="ai-table-detail-value">' + _esc(_formatBusinessCell(k, row[k], apiCode)) + '</div>';
+                        html += '</div>';
+                    });
                     html += '</div>';
-                });
-                html += '</div>';
+                }
                 html += '</td></tr>';
             }
 
         }
 
-        if (filteredRows.length > MAX) {
+        if (isTierScoringTable && tierTotalRows > 0) {
+            var tierEndIndex = Math.min(startIndex + shown, tierTotalRows);
+            var tierPagination = '<div class="ai-table-pagination">'
+                + '<span class="ai-table-pagination-range">Hiển thị ' + (startIndex + 1) + ' - ' + tierEndIndex + ' / ' + tierTotalRows + ' khách hàng</span>'
+                + '<label class="ai-table-page-size-label">'
+                + '<span>Dòng/trang</span>'
+                + '<select class="ai-tier-page-size" aria-label="Số khách hàng mỗi trang">'
+                + '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10</option>'
+                + '<option value="25"' + (pageSize === 25 ? ' selected' : '') + '>25</option>'
+                + '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50</option>'
+                + '</select></label>'
+                + '<div class="ai-table-page-controls" aria-label="Phân trang khách hàng">'
+                + '<button type="button" class="ai-table-page-btn ai-table-page-arrow" data-tier-page-action="prev"' + (pageNumber <= 1 ? ' disabled' : '') + ' aria-label="Trang trước">‹</button>';
 
-            var pageAction = showAllRows ? 'collapse' : 'expand';
-            var pageLabel = showAllRows ? 'Thu gọn' : 'Xem thêm ' + (filteredRows.length - MAX) + ' dòng';
-            html += '<tr class="ai-table-page-row"><td colspan="' + colSpan + '"><button type="button" class="ai-table-page-btn" data-table-page-action="' + pageAction + '" aria-expanded="' + (showAllRows ? 'true' : 'false') + '">' + pageLabel + '</button></td></tr>';
+            var tierPageStart = Math.max(1, pageNumber - 2);
+            var tierPageEnd = Math.min(totalPages, pageNumber + 2);
+            if (tierPageStart > 1) {
+                tierPagination += '<button type="button" class="ai-table-page-btn" data-tier-page-number="1">1</button>';
+                if (tierPageStart > 2) tierPagination += '<span class="ai-table-page-ellipsis">…</span>';
+            }
+            for (var tierPageNumber = tierPageStart; tierPageNumber <= tierPageEnd; tierPageNumber++) {
+                tierPagination += '<button type="button" class="ai-table-page-btn' + (tierPageNumber === pageNumber ? ' active' : '') + '" data-tier-page-number="' + tierPageNumber + '" aria-current="' + (tierPageNumber === pageNumber ? 'page' : 'false') + '">' + tierPageNumber + '</button>';
+            }
+            if (tierPageEnd < totalPages) {
+                if (tierPageEnd < totalPages - 1) tierPagination += '<span class="ai-table-page-ellipsis">…</span>';
+                tierPagination += '<button type="button" class="ai-table-page-btn" data-tier-page-number="' + totalPages + '">' + totalPages + '</button>';
+            }
+            tierPagination += '<button type="button" class="ai-table-page-btn ai-table-page-arrow" data-tier-page-action="next"' + (pageNumber >= totalPages ? ' disabled' : '') + ' aria-label="Trang sau">›</button>'
+                + '</div></div>';
+            html += '<tr class="ai-table-page-row"><td colspan="' + colSpan + '">' + tierPagination + '</td></tr>';
+        } else if (filteredRows.length > pageSize) {
+            var endIndex = Math.min(startIndex + pageSize, filteredRows.length);
+            var paginationUnit = keys.some(function (key) {
+                return String(key || '').toLowerCase().replace(/[_\s]/g, '') === 'availablestock';
+            }) ? 'sản phẩm' : 'dòng';
+            var pagination = '<div class="ai-table-pagination">'
+                + '<span class="ai-table-pagination-range">Hiển thị ' + (startIndex + 1) + ' - ' + endIndex + ' / ' + filteredRows.length + ' ' + paginationUnit + '</span>'
+                + '<label class="ai-table-page-size-label">'
+                + '<span>Dòng/trang</span>'
+                + '<select class="ai-table-page-size" aria-label="Số dòng mỗi trang">'
+                + '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10</option>'
+                + '<option value="25"' + (pageSize === 25 ? ' selected' : '') + '>25</option>'
+                + '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50</option>'
+                + '</select></label>'
+                + '<div class="ai-table-page-controls" aria-label="Phân trang">'
+                + '<button type="button" class="ai-table-page-btn ai-table-page-arrow" data-table-page-action="prev"' + (pageNumber <= 1 ? ' disabled' : '') + ' aria-label="Trang trước">‹</button>';
 
+            var pageStart = Math.max(1, pageNumber - 2);
+            var pageEnd = Math.min(totalPages, pageNumber + 2);
+            if (pageStart > 1) {
+                pagination += '<button type="button" class="ai-table-page-btn" data-table-page-number="1">1</button>';
+                if (pageStart > 2) pagination += '<span class="ai-table-page-ellipsis">…</span>';
+            }
+            for (var page = pageStart; page <= pageEnd; page++) {
+                pagination += '<button type="button" class="ai-table-page-btn' + (page === pageNumber ? ' active' : '') + '" data-table-page-number="' + page + '" aria-current="' + (page === pageNumber ? 'page' : 'false') + '">' + page + '</button>';
+            }
+            if (pageEnd < totalPages) {
+                if (pageEnd < totalPages - 1) pagination += '<span class="ai-table-page-ellipsis">…</span>';
+                pagination += '<button type="button" class="ai-table-page-btn" data-table-page-number="' + totalPages + '">' + totalPages + '</button>';
+            }
+            pagination += '<button type="button" class="ai-table-page-btn ai-table-page-arrow" data-table-page-action="next"' + (pageNumber >= totalPages ? ' disabled' : '') + ' aria-label="Trang sau">›</button>'
+                + '</div></div>';
+            html += '<tr class="ai-table-page-row"><td colspan="' + colSpan + '">' + pagination + '</td></tr>';
         }
 
         return html;
@@ -3780,7 +4195,8 @@
         });
         filtered = _applyModalFilter(filtered, cached.keys, searchText, 'all', null);
         cached.visibleRows = filtered;
-        tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode);
+        cached.currentTablePage = 1;
+        tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode, cached.currentTablePage, cached.tablePageSize);
         var count = container.querySelector('.ai-sales-detail-count');
         if (count) count.textContent = (activeGroup ? activeGroup + ': ' : '') + filtered.length + ' dòng';
         var filterCount = container.querySelector('.ai-sales-filter-count');
@@ -3798,6 +4214,9 @@
         var next = container.querySelector('[data-tier-page-action="next"]');
         if (previous) previous.disabled = Boolean(cache.loading) || Number(cache.currentPage || 1) <= 1;
         if (next) next.disabled = Boolean(cache.loading) || Number(cache.currentPage || 1) >= pageCount;
+        container.querySelectorAll('[data-tier-page-number], .ai-tier-page-size').forEach(function (control) {
+            control.disabled = Boolean(cache.loading);
+        });
         var pageLabel = container.querySelector('.ai-tier-page-label');
         if (pageLabel) pageLabel.textContent = cache.loading
             ? 'Đang tải...'
@@ -3811,13 +4230,10 @@
     }
 
     function _loadTierScoringPage(control, tier, page) {
-        var controls = control ? control.closest('[data-tier-controls="true"]') : null;
-        var container = controls
-            ? (controls.closest('.ai-view-table') || (controls.parentElement && controls.parentElement.parentElement))
-            : null;
+        var container = control ? control.closest('.ai-view-table') : null;
         var tbody = container ? container.querySelector('tbody') : null;
         var cache = tbody ? _modalDataCache[tbody.id] : null;
-        if (!controls || !container || !tbody || !cache || cache.loading) return;
+        if (!container || !tbody || !cache || cache.loading) return;
         if (!window.ApiEngine || typeof window.ApiEngine.queryData !== 'function') return;
 
         var targetTier = String(tier || '').toUpperCase();
@@ -3844,10 +4260,12 @@
             cache.totalRows = newRows.length
                 ? Number(newRows[0].TotalRows || newRows[0].totalRows || newRows.length)
                 : 0;
+            cache.currentTablePage = targetPage;
+            cache.tablePageSize = Number(cache.pageSize || 50);
             var search = container.querySelector('.ai-sales-filter-input');
             if (search) search.value = '';
             tbody.innerHTML = newRows.length
-                ? _renderTableBody(newRows, cache.keys, cache.forceShowAll, cache.apiCode)
+                ? _renderTableBody(newRows, cache.keys, cache.forceShowAll, cache.apiCode, cache.currentPage, cache.pageSize)
                 : '<tr><td colspan="99" class="ai-tier-empty">Không có khách hàng trong nhóm này.</td></tr>';
         }).catch(function (error) {
             cache.loadError = true;
@@ -3869,19 +4287,48 @@
             return;
         }
 
-        var tierControl = e.target.closest('[data-server-tier], [data-tier-page-action]');
+        var tierAction = e.target.closest('[data-tier-action]');
+        if (tierAction) {
+            e.preventDefault();
+            e.stopPropagation();
+            var customerId = tierAction.getAttribute('data-customer-id') || '';
+            if (!customerId || !window.ApiEngine || typeof window.ApiEngine.execute !== 'function') return;
+            var action = tierAction.getAttribute('data-tier-action');
+            var today = new Date();
+            var todayIso = today.toISOString().slice(0, 10);
+            var from = new Date(today);
+            from.setFullYear(from.getFullYear() - 1);
+            var fromIso = from.toISOString().slice(0, 10);
+            var apiCode = action === 'history' ? '@hoa_don' : (action === 'order-suggestion' ? '@goi_ydon_hang' : '@cong_no_chi_tiet');
+            var params = { '@MaKhachHang': customerId };
+            if (action === 'history') {
+                params['@TuNgay'] = fromIso;
+                params['@DenNgay'] = todayIso;
+            } else if (action === 'debt') {
+                params['@DenNgay'] = todayIso;
+            }
+            tierAction.disabled = true;
+            tierAction.setAttribute('aria-busy', 'true');
+            window.ApiEngine.execute(apiCode, params);
+            setTimeout(function () {
+                tierAction.disabled = false;
+                tierAction.removeAttribute('aria-busy');
+            }, 900);
+            return;
+        }
+
+        var tierControl = e.target.closest('[data-server-tier], [data-tier-page-action], [data-tier-page-number]');
         if (tierControl) {
             e.preventDefault();
             e.stopPropagation();
-            var tierControls = tierControl.closest('[data-tier-controls="true"]');
-            var tierContainer = tierControls
-                ? (tierControls.closest('.ai-view-table') || (tierControls.parentElement && tierControls.parentElement.parentElement))
-                : null;
+            var tierContainer = tierControl.closest('.ai-view-table');
             var tierTbody = tierContainer ? tierContainer.querySelector('tbody') : null;
             var tierCache = tierTbody ? _modalDataCache[tierTbody.id] : null;
             if (!tierCache) return;
             if (tierControl.hasAttribute('data-server-tier')) {
                 _loadTierScoringPage(tierControl, tierControl.getAttribute('data-server-tier'), 1);
+            } else if (tierControl.hasAttribute('data-tier-page-number')) {
+                _loadTierScoringPage(tierControl, tierCache.currentTier, Number(tierControl.getAttribute('data-tier-page-number')) || 1);
             } else {
                 var direction = tierControl.getAttribute('data-tier-page-action');
                 var nextPage = Number(tierCache.currentPage || 1) + (direction === 'prev' ? -1 : 1);
@@ -3890,16 +4337,30 @@
             return;
         }
 
-        var tablePageBtn = e.target.closest('.ai-table-page-btn');
-        if (tablePageBtn) {
+        var tablePageControl = e.target.closest('.ai-table-page-btn, .ai-table-page-size');
+        if (tablePageControl) {
             e.preventDefault();
             e.stopPropagation();
-            var pageTbody = tablePageBtn.closest('tbody');
+            var pageTbody = tablePageControl.closest('tbody');
             var pageCache = pageTbody ? _modalDataCache[pageTbody.id] : null;
             if (!pageTbody || !pageCache) return;
             var pageRows = pageCache.visibleRows || pageCache.rows || [];
-            var showAllRows = tablePageBtn.getAttribute('data-table-page-action') === 'expand';
-            pageTbody.innerHTML = _renderTableBody(pageRows, pageCache.keys, pageCache.forceShowAll, pageCache.apiCode, showAllRows);
+            var pageSize = pageCache.tablePageSize || 25;
+            var currentPage = pageCache.currentTablePage || 1;
+            if (tablePageControl.classList.contains('ai-table-page-size')) {
+                pageSize = Number(tablePageControl.value) || 25;
+                currentPage = 1;
+            } else if (tablePageControl.hasAttribute('data-table-page-number')) {
+                currentPage = Number(tablePageControl.getAttribute('data-table-page-number')) || 1;
+            } else {
+                var pageAction = tablePageControl.getAttribute('data-table-page-action');
+                currentPage += pageAction === 'prev' ? -1 : 1;
+            }
+            var totalPages = Math.max(1, Math.ceil(pageRows.length / pageSize));
+            currentPage = Math.max(1, Math.min(currentPage, totalPages));
+            pageCache.currentTablePage = currentPage;
+            pageCache.tablePageSize = pageSize;
+            pageTbody.innerHTML = _renderTableBody(pageRows, pageCache.keys, pageCache.forceShowAll, pageCache.apiCode, currentPage, pageSize);
             return;
         }
 
@@ -4083,8 +4544,11 @@
                                     var currentRows = cached && cached.rows ? cached.rows : allRows;
                                     var filtered = _applyModalFilter(currentRows, keysF, curSearch, curFilter, curBadgeKey);
 
-                                    if (cached) cached.visibleRows = filtered;
-                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF, cached && cached.forceShowAll, cached && cached.apiCode);
+                                    if (cached) {
+                                        cached.visibleRows = filtered;
+                                        cached.currentTablePage = 1;
+                                    }
+                                    if (tbody) tbody.innerHTML = _renderTableBody(filtered, keysF, cached && cached.forceShowAll, cached && cached.apiCode, 1, cached && cached.tablePageSize);
 
                                     if (countEl2 && !(cached && cached.isTierScoring)) countEl2.textContent = filtered.length + ' dòng';
 
@@ -4163,6 +4627,30 @@
 
         }
 
+    });
+
+    $messages.addEventListener('change', function (e) {
+        var tierPageSizeControl = e.target.closest('.ai-tier-page-size');
+        if (tierPageSizeControl) {
+            var tierContainer = tierPageSizeControl.closest('.ai-view-table');
+            var tierTbody = tierContainer ? tierContainer.querySelector('tbody') : null;
+            var tierCache = tierTbody ? _modalDataCache[tierTbody.id] : null;
+            if (!tierCache) return;
+            tierCache.pageSize = Number(tierPageSizeControl.value) || 25;
+            tierCache.tablePageSize = tierCache.pageSize;
+            _loadTierScoringPage(tierPageSizeControl, tierCache.currentTier, 1);
+            return;
+        }
+        var pageSizeControl = e.target.closest('.ai-table-page-size');
+        if (!pageSizeControl) return;
+        var pageTbody = pageSizeControl.closest('tbody');
+        var pageCache = pageTbody ? _modalDataCache[pageTbody.id] : null;
+        if (!pageTbody || !pageCache) return;
+        var pageRows = pageCache.visibleRows || pageCache.rows || [];
+        var pageSize = Number(pageSizeControl.value) || 25;
+        pageCache.currentTablePage = 1;
+        pageCache.tablePageSize = pageSize;
+        pageTbody.innerHTML = _renderTableBody(pageRows, pageCache.keys, pageCache.forceShowAll, pageCache.apiCode, 1, pageSize);
     });
 
     $messages.addEventListener('input', function (e) {
@@ -5921,6 +6409,13 @@
                 var uiTpl = (meta && meta.uiTemplate) ? meta.uiTemplate.toUpperCase() : 'DEFAULT';
                 var debtCode = String(apiCode || '').toLowerCase();
                 var isDebtApi = debtCode.indexOf('@cong_no') === 0;
+
+                // @san_pham_trong_tam is commonly executed through ApiEngine's
+                // direct @command path. Do not let a missing/legacy UiTemplate
+                // send its mixed product + program result to the generic grouper.
+                if (debtCode === '@san_pham_trong_tam' && window.ApiChatbot && window.ApiChatbot.__internal && typeof window.ApiChatbot.__internal.renderFocusProducts === 'function') {
+                    return window.ApiChatbot.__internal.renderFocusProducts(rows, headerMsg, debtCode, meta);
+                }
 
                 if (String(apiCode || '').toLowerCase() === '@doanh_so') {
                     return _renderSalesDashboard(rows, headerMsg, '@doanh_so', meta);

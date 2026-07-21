@@ -129,7 +129,7 @@ async function build() {
                     .replace(/src\/js\/pages\//g, 'src/js/dist/pages/')
                     .replace(/src\/css\//g, 'src/css/dist/')
                     .replace(/chatbot-widget\/css\//g, 'chatbot-widget/css/dist/')
-                    .replace(/\?v=10\.9/g, '?v=11.63');
+                    .replace(/\?v=10\.9/g, '?v=11.73');
             }
 
             concatenatedJS += `\n/* --- BUNDLED JS: ${p} --- */\n`;
@@ -470,7 +470,7 @@ var _dec = function(b64) {
     // Thay thế các thẻ CSS bằng 1 thẻ duy nhất
     cssTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.63">');
+            prodHtmlContent = prodHtmlContent.replace(tag, '<link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.73">');
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
@@ -479,7 +479,7 @@ var _dec = function(b64) {
     // Thay thế các thẻ JS hệ thống bằng 1 thẻ duy nhất
     scriptTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<script src="src/js/dist/app.bundle.min.js?v=11.63"></script>');
+            prodHtmlContent = prodHtmlContent.replace(tag, '<script src="src/js/dist/app.bundle.min.js?v=11.73"></script>');
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
@@ -488,13 +488,13 @@ var _dec = function(b64) {
     // Thay thế script theme.js
     prodHtmlContent = prodHtmlContent.replace(
         /<script\s+src=["']src\/js\/utils\/theme\.js["']><\/script>/gi,
-        '<script src="src/js/dist/theme.min.js?v=11.63"></script>'
+        '<script src="src/js/dist/theme.min.js?v=11.73"></script>'
     );
 
     // Thay thế script chatbot module bằng bundle chatbot-core
     prodHtmlContent = prodHtmlContent.replace(
         /<script\s+type=["']module["']\s+src=["']chatbot-widget\/js\/main\.js["']><\/script>/gi,
-        '<script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.63"></script>'
+        '<script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.73"></script>'
     );
 
     // Loại bỏ thẻ env.js khỏi file production HTML vì đã gộp vào bundle

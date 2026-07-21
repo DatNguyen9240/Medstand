@@ -230,7 +230,7 @@ BEGIN
         O.ObjectName,
         O.Phone AS CustomerPhone,
         A.EmployeeID,
-        E.ObjectName AS EmployeeName,
+        COALESCE(EU.HoTen, E.ObjectName, A.EmployeeID) AS EmployeeName,
         A.StatusID,
         S.StatusName,
         A.BaseTotal,
@@ -239,9 +239,16 @@ BEGIN
         A.DateCreate,
         (SELECT SUM(COALESCE(DiemTichLuy, 0)) FROM AR_OrderDetailTbl X WITH (NOLOCK) WHERE X.DocumentID = A.DocumentID) AS DiemTichLuy
    FROM dbo.AR_OrderTbl A WITH (NOLOCK)
-   LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
-   LEFT JOIN dbo.CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
-   LEFT JOIN dbo.AR_OrderStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
+    LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK) ON O.ObjectID = A.ObjectID
+    LEFT JOIN dbo.CF_ObjectTbl E WITH (NOLOCK) ON E.ObjectID = A.EmployeeID
+    OUTER APPLY (
+        SELECT TOP 1 NULLIF(LTRIM(RTRIM(U.HoTen)), '') AS HoTen
+        FROM dbo.SY_User U WITH (NOLOCK)
+        WHERE U.EmployeeID = A.EmployeeID
+          AND COALESCE(U.Disable, 0) = 0
+        ORDER BY CASE WHEN U.UserName = @Username THEN 0 ELSE 1 END, U.UserName
+    ) EU
+    LEFT JOIN dbo.AR_OrderStatusTbl S WITH (NOLOCK) ON S.StatusID = A.StatusID
    WHERE A.DocumentDate BETWEEN @TuNgay AND @DenNgay
        AND (@StatusID IS NULL OR A.StatusID = @StatusID)
        AND (@MaKhachHang = '' OR A.ObjectID = @MaKhachHang)

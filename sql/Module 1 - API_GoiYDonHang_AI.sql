@@ -223,6 +223,72 @@ BEGIN
         RETURN;
     END
 
+    -- Lấy tồn kho theo đúng phạm vi kho của tài khoản. Theo quyết định Pilot,
+    -- tồn vật lý còn hạn được dùng làm số lượng có thể bán tạm thời cho tới khi
+    -- ERP xác nhận có cơ chế giữ chỗ/hàng khóa riêng.
+    DECLARE @IsGlobalStock BIT = 0;
+    DECLARE @IsManagerStock BIT = 0;
+    SELECT
+        @IsGlobalStock = CASE WHEN UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
+        @IsManagerStock = ISNULL(Manager, 0)
+    FROM dbo.SY_User WITH (NOLOCK)
+    WHERE UserName = @Username AND ISNULL(Disable, 0) = 0;
+
+    CREATE TABLE #AllowedStores (StoreHouseID VARCHAR(50) PRIMARY KEY);
+    INSERT INTO #AllowedStores (StoreHouseID)
+    SELECT DISTINCT US.StoreHouseID
+    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+    WHERE US.UserName = @Username
+      AND ISNULL(US.StoreHouseID, '') <> '';
+
+    IF @IsManagerStock = 1 AND ISNULL(@SYS_EmployeeID, '') <> ''
+    BEGIN
+        INSERT INTO #AllowedStores (StoreHouseID)
+        SELECT DISTINCT US.StoreHouseID
+        FROM dbo.SY_User U WITH (NOLOCK)
+        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
+          ON US.UserName = U.UserName
+        WHERE U.ManagerID = @SYS_EmployeeID
+          AND ISNULL(U.Disable, 0) = 0
+          AND ISNULL(US.StoreHouseID, '') <> ''
+          AND NOT EXISTS (
+              SELECT 1 FROM #AllowedStores S
+              WHERE S.StoreHouseID = US.StoreHouseID
+          );
+    END
+
+    CREATE TABLE #StockByItem
+    (
+        ItemID VARCHAR(50) PRIMARY KEY,
+        PhysicalStock DECIMAL(18, 2) NULL,
+        AvailableStock DECIMAL(18, 2) NULL
+    );
+
+    IF @IsGlobalStock = 1 OR EXISTS (SELECT 1 FROM #AllowedStores)
+    BEGIN
+        INSERT INTO #StockByItem (ItemID, PhysicalStock, AvailableStock)
+        SELECT
+            S.ItemID,
+            CAST(SUM(ISNULL(S.Quantity, 0)) AS DECIMAL(18, 2)),
+            CAST(CASE
+                WHEN SUM(CASE
+                    WHEN S.ExpireDate IS NULL OR CAST(S.ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
+                        THEN ISNULL(S.Quantity, 0)
+                    ELSE 0
+                END) > 0
+                THEN SUM(CASE
+                    WHEN S.ExpireDate IS NULL OR CAST(S.ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
+                        THEN ISNULL(S.Quantity, 0)
+                    ELSE 0
+                END)
+                ELSE 0
+            END AS DECIMAL(18, 2))
+        FROM dbo.IV_StockTransactionTbl S WITH (NOLOCK)
+        WHERE @IsGlobalStock = 1
+           OR S.StoreHouseID IN (SELECT StoreHouseID FROM #AllowedStores)
+        GROUP BY S.ItemID;
+    END
+
     -- ═══════════════════════════════════════════════════
     -- KHÔNG TRUYỀN khách hàng (khachhang) → Top sản phẩm bán chạy nhất
     -- ═══════════════════════════════════════════════════
@@ -277,6 +343,8 @@ BEGIN
         SELECT * FROM #TopChiNhanh ORDER BY [Doanh số] DESC;
         DROP TABLE #TopChiNhanh;
         DROP TABLE #AllowedObjects;
+        DROP TABLE #AllowedStores;
+        DROP TABLE #StockByItem;
         RETURN;
     END
 
@@ -328,13 +396,15 @@ BEGIN
 
         SELECT CONCAT(
                    N'Khách ', COALESCE(NULLIF(@CustomerName, ''), @MaKhachHang),
-                   N' chưa có hóa đơn hoàn tất (trạng thái 3/6/7/8), nên chưa đủ dữ liệu để gợi ý đơn hàng. Hãy chăm sóc như khách mới.'
+                   N' là khách mới hoặc chưa đủ lịch sử mua hàng. Hệ thống chưa dự đoán đơn hàng để tránh gợi ý sai. Sale nên tìm hiểu nhu cầu thực tế của khách trước khi chọn sản phẩm.'
                ) AS Msg,
                0 AS MsgType,
                N'NO_DATA' AS Severity,
                N'NEW_CUSTOMER_NO_FULFILLED_HISTORY' AS Code;
 
         DROP TABLE #AllowedObjects;
+        DROP TABLE #AllowedStores;
+        DROP TABLE #StockByItem;
         DROP TABLE #LichSu;
         RETURN;
     END
@@ -393,8 +463,21 @@ BEGIN
         CASE WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN NULL
              WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0
              ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [ConLaiNgay],
-        CAST(NULL AS DECIMAL(18,2))                     AS [AvailableStock],
-        N'PHYSICAL_STOCK_NOT_QUERIED'                   AS [StockDataStatus],
+        CASE
+            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores) THEN NULL
+            ELSE ISNULL(ST.PhysicalStock, 0)
+        END                                             AS [PhysicalStock],
+        CASE
+            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores) THEN NULL
+            ELSE ISNULL(ST.AvailableStock, 0)
+        END                                             AS [AvailableStock],
+        CASE
+            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores)
+                THEN N'WAREHOUSE_SCOPE_UNAVAILABLE'
+            WHEN ISNULL(ST.PhysicalStock, 0) < 0
+                THEN N'STOCK_RECONCILIATION_REQUIRED'
+            ELSE N'PHYSICAL_AS_SELLABLE_TEMPORARY'
+        END                                             AS [StockDataStatus],
         CASE 
             WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Khách mới cần chăm sóc'
             WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm'
@@ -433,6 +516,7 @@ BEGIN
     LEFT JOIN #KhuyenMai KM ON L.ItemID = KM.ItemID
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
+    LEFT JOIN #StockByItem ST ON L.ItemID = ST.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
     LEFT JOIN CF_ObjectTbl KH WITH (NOLOCK) ON KH.ObjectID = @MaKhachHang
     WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
@@ -443,7 +527,7 @@ BEGIN
              (CASE WHEN L.SoLanMua >= 3 AND (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
              L.SoLanMua DESC;
 
-    DROP TABLE #AllowedObjects; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
+    DROP TABLE #AllowedObjects; DROP TABLE #AllowedStores; DROP TABLE #StockByItem; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
 END
 GO
 

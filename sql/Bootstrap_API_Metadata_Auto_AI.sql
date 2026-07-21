@@ -529,6 +529,7 @@ BEGIN
                 WHEN FieldCode = '@MaKhachHang'  THEN N'Khách hàng'
                 WHEN FieldCode = '@ObjectID'   THEN N'Mã khách hàng'
                 WHEN FieldCode = '@ItemID'     THEN N'Mã sản phẩm'
+                WHEN FieldCode = '@DocumentID' AND ApiNameRaw LIKE '%HoaDon%' THEN N'Mã hóa đơn'
                 WHEN FieldCode = '@DocumentID' THEN N'Mã đơn hàng'
                 WHEN FieldCode = '@TenKhachHang' THEN N'Tên khách hàng'
                 WHEN FieldCode = '@ObjectName' THEN N'Tên khách hàng'
@@ -629,6 +630,7 @@ BEGIN
             END AS OptionsJson,
             CASE
                 WHEN StoredProcedure LIKE '%CongNoChiTiet%' THEN 'CONG_NO'
+                WHEN StoredProcedure LIKE '%SanPhamTrongTam%' AND StoredProcedure NOT LIKE '%Import%' THEN 'FOCUS_PRODUCTS'
                 WHEN StoredProcedure LIKE '%TichLuy%'       THEN 'TICH_LUY'
                 WHEN StoredProcedure LIKE '%DanhMuc%'       THEN 'CATALOG'
                 WHEN StoredProcedure LIKE '%TonKho%'        THEN 'CATALOG'
@@ -1138,6 +1140,19 @@ WHEN MATCHED THEN
 WHEN NOT MATCHED THEN
     INSERT (StoredProcedure, ApiCode)
     VALUES (s.StoredProcedure, s.ApiCode);
+GO
+
+/* Sản phẩm trọng tâm có hai result type PROGRAM/PRODUCT và renderer nghiệp vụ riêng. */
+MERGE dbo.API_Metadata_Override AS t
+USING (VALUES
+    ('API_SanPhamTrongTam_AI', 'FOCUS_PRODUCTS')
+) AS s (StoredProcedure, UiTemplate)
+ON t.StoredProcedure = s.StoredProcedure
+WHEN MATCHED THEN
+    UPDATE SET t.UiTemplate = s.UiTemplate
+WHEN NOT MATCHED THEN
+    INSERT (StoredProcedure, UiTemplate)
+    VALUES (s.StoredProcedure, s.UiTemplate);
 GO
 
 /*

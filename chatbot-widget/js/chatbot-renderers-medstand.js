@@ -47,7 +47,7 @@
     //  RENDERER: TICH_LUY — Milestone / Progress Bar
     // ════════════════════════════════════════════════════════════════
     function _renderTichLuy(rows, headerMsg, apiCode, meta) {
-        var khCode   = (meta && meta.khCode) ? meta.khCode : '';
+        var khCode = (meta && meta.khCode) ? meta.khCode : '';
         var safeRows = (rows && rows.length > 0) ? rows : [];
         if (!khCode && safeRows.length > 0) {
             khCode = h.pickValue(safeRows[0], 'CUSTOMER') || safeRows[0].ObjectID || safeRows[0].MaKH || safeRows[0].CustomerCode || '';
@@ -56,70 +56,84 @@
             return '<p class="ai-para">📭 Không có dữ liệu tích lũy.</p>';
         }
 
-        var r0    = safeRows[0];
-        // Dùng field roles + fallback sang field name thực nếu DB chưa map role PERCENT
-        var pct   = Math.min(100, Math.max(0, parseInt(h.pickValue(r0, 'PERCENT') || r0.Percentage || 0)));
-        var dat   = h.pickValue(r0, 'MONEY') || r0.TichLuyDatDuoc || 0;
-        var muc   = h.pickValue(r0, 'TARGET') || r0.MucTieu || 0;
+        var r0 = safeRows[0];
+        var achieved = _focusNumber(_focusValue(r0, ['TichLuyDatDuoc', 'Achieved'])) || 0;
+        var target = _focusNumber(_focusValue(r0, ['MucTieu', 'Target'])) || 0;
+        var remainingValue = _focusNumber(_focusValue(r0, ['Remaining']));
+        var remaining = remainingValue === null ? Math.max(0, target - achieved) : Math.max(0, remainingValue);
+        var rawPercent = _focusNumber(_focusValue(r0, ['Percentage']));
+        var pct = rawPercent === null ? (target > 0 ? Math.round(achieved / target * 100) : 0) : Math.round(rawPercent);
+        pct = Math.min(100, Math.max(0, pct));
 
-        var cardId  = 'tichluy-' + h.nextId() + '-' + Date.now();
-        var barCls  = pct >= 100 ? 'success' : (pct >= 70 ? 'warning' : 'danger');
+        var customerName = _focusValue(r0, ['TenCuaHang', 'CustomerName', 'ObjectName']) || khCode || 'Khách hàng';
+        var programName = _focusValue(r0, ['ProgramName', 'TenChuongTrinh', 'Chương Trình']) || 'Chương trình tích lũy đang áp dụng';
+        var programStatus = String(_focusValue(r0, ['ProgramStatus']) || '').toUpperCase();
+        var statusLabel = programStatus === 'EXPIRED' ? 'Đã kết thúc' : (programStatus === 'NO_DATA' ? 'Chưa có chương trình' : 'Đang áp dụng');
+        var statusClass = programStatus === 'EXPIRED' ? 'is-ended' : (programStatus === 'NO_DATA' ? 'is-empty' : 'is-active');
+        var fromDate = _focusValue(r0, ['EffectiveFrom', 'TuNgay']);
+        var toDate = _focusValue(r0, ['EffectiveTo', 'DenNgay']);
+        var period = fromDate || toDate ? _focusDate(fromDate) + ' – ' + _focusDate(toDate) : 'Theo kỳ chương trình hiện tại';
+        var nextGift = _focusValue(r0, ['QuaMocTiepTheo', 'NextGift']);
+        if (!nextGift) nextGift = remaining > 0 ? 'Chưa có thông tin quà mốc tiếp theo' : (_focusValue(r0, ['QuaDaDat']) || 'Đã đạt mốc cao nhất');
+        var reminder = remaining > 0
+            ? 'Còn thiếu ' + _focusMoney(remaining) + ' để đạt mốc tiếp theo.'
+            : 'Khách hàng đã đạt mốc cao nhất của chương trình.';
+        var cardId = 'tichluy-' + h.nextId() + '-' + Date.now();
+        var html = '<article class="ai-loyalty-card" id="' + h.esc(cardId) + '">';
 
-        var html  = '<div class="ai-sales-milestone-card" id="' + h.esc(cardId) + '">';
+        html += '<header class="ai-loyalty-header" id="hdr-' + h.esc(cardId) + '">'
+            + '<span class="ai-loyalty-icon" aria-hidden="true">★</span>'
+            + '<div class="ai-loyalty-heading"><span>Tiến độ tích lũy doanh số</span><h3>' + h.esc(String(customerName)) + '</h3>'
+            + '<p>Mã khách hàng: <strong>' + h.esc(khCode || 'Chưa xác định') + '</strong></p></div>'
+            + '<span class="ai-loyalty-status ' + statusClass + '">' + statusLabel + '</span></header>';
 
-        // Header
-        html += '<div class="ai-sales-milestone-header" id="hdr-' + h.esc(cardId) + '">';
-        html += '<div class="ai-sales-milestone-title">Đang xác định...</div>';
-        html += '<div class="ai-sales-milestone-subtitle">Mã: <b>' + h.esc(khCode || 'N/A') + '</b></div>';
-        html += '</div>';
+        html += '<section class="ai-loyalty-program"><div><span>Chương trình</span><strong>' + h.esc(String(programName)) + '</strong></div>'
+            + '<div><span>Thời gian áp dụng</span><strong>' + h.esc(period) + '</strong></div></section>';
 
-        // Progress bar
-        html += '<div class="ai-sales-progress-container">';
-        html += '<div class="ai-sales-progress-labels">'
-            +   '<span class="ai-sales-progress-current">' + h.fmtCellVal(dat) + '</span>'
-            +   '<span class="ai-sales-progress-target">Mục tiêu: ' + h.fmtCellVal(muc) + '</span>'
-            + '</div>';
-        html += '<div class="ai-sales-progress-bar-bg">'
-            +   '<div class="ai-sales-progress-bar-fill ' + barCls + '" style="width:' + pct + '%"></div>'
-            + '</div>';
-        html += '<div class="ai-sales-progress-pct">' + pct + '% Hoàn thành</div>';
-        html += '</div>';
+        html += '<section class="ai-loyalty-metrics">'
+            + '<div><span>Đã tích lũy</span><strong>' + h.esc(_focusMoney(achieved)) + '</strong></div>'
+            + '<div><span>Mốc kế tiếp</span><strong>' + h.esc(target > 0 ? _focusMoney(target) : 'Chưa xác định') + '</strong></div>'
+            + '<div><span>Còn thiếu</span><strong>' + h.esc(target > 0 ? _focusMoney(remaining) : 'Chưa xác định') + '</strong></div></section>';
 
-        // Stats — dùng field role BADGE cho phần thưởng nếu có, fallback field name
-        var gift  = h.pickValue(r0, 'BADGE') || r0.QuaDaDat || 'Chưa đạt';
-        var count = r0.SoPhanQua || 0;
-        html += '<div class="ai-sales-milestone-stats">';
-        html += '<div class="ai-sales-stat-box"><div class="ai-stat-val">' + h.esc(String(gift)) + '</div><div class="ai-stat-label">🎁 Quà tặng</div></div>';
-        html += '<div class="ai-sales-stat-box"><div class="ai-stat-val">' + h.esc(String(count)) + '</div><div class="ai-stat-label">🎫 Số phần</div></div>';
-        html += '</div>';
+        html += '<section class="ai-loyalty-progress"><div><span>Tiến độ</span><strong>' + pct + '%</strong></div>'
+            + '<div class="ai-loyalty-progress-track" role="progressbar" aria-label="Tiến độ tích lũy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '">'
+            + '<span style="width:' + pct + '%"></span></div></section>';
 
-        // Lời nhắc — dùng TREND role nếu mapped, fallback field
-        var loiNhac = h.pickValue(r0, 'TREND') || r0.LoiNhacAI || 'Tiếp tục nỗ lực để đạt mốc cao hơn!';
-        html += '<div class="ai-sales-milestone-reminder">'
-            +   '<div class="ai-reminder-title">📢 Lời nhắc AI</div>'
-            +   '<div class="ai-reminder-text">' + h.esc(String(loiNhac)) + '</div>'
-            + '</div>';
+        html += '<section class="ai-loyalty-next"><span class="ai-loyalty-gift-icon" aria-hidden="true">🎁</span><div><span>Quà ở mốc tiếp theo</span><strong>' + h.esc(String(nextGift)) + '</strong></div></section>';
+        html += '<p class="ai-loyalty-reminder">' + h.esc(reminder) + '</p>';
+        html += '<footer class="ai-loyalty-footer"><div class="ai-loyalty-actions">'
+            + '<button type="button" data-loyalty-action="invoices">Xem hóa đơn</button>'
+            + '<button type="button" data-loyalty-action="program">Xem chương trình</button></div>'
+            + '<small>Cập nhật: ' + h.esc(_focusDateTime(new Date())) + '</small></footer></article>';
 
-        // Action bar
-        html += '<div class="ai-sales-action-bar" id="act-' + h.esc(cardId) + '">'
-            +   '<button class="ai-sales-action-btn ai-sales-btn-disabled" disabled>Đang tải...</button>'
-            + '</div>';
-        html += '</div>'; // card
-
-        // Hydrate async
         setTimeout(function () {
+            var root = document.getElementById(cardId);
+            if (!root) return;
+
             _hydrateEntity(khCode, function (entity) {
                 var hdrEl = document.getElementById('hdr-' + cardId);
-                var actEl = document.getElementById('act-' + cardId);
-                var name  = entity ? entity.name  : (khCode || 'Khách hàng');
-                var phone = entity ? entity.phone : null;
-                if (hdrEl) hdrEl.querySelector('.ai-sales-milestone-title').textContent = '🏆 Tích lũy: ' + name;
-                if (actEl) {
-                    actEl.innerHTML = phone && h.isValidPhone(phone)
-                        ? '<a class="ai-sales-action-btn ai-sales-btn-call" href="tel:' + h.esc(phone) + '">📞 Liên hệ</a>'
-                          + '<a class="ai-sales-action-btn ai-sales-btn-zalo" href="https://zalo.me/' + h.esc(phone) + '" target="_blank" rel="noopener">💬 Nhắc Zalo</a>'
-                        : '<button class="ai-sales-action-btn ai-sales-btn-disabled" disabled>📞 Không rõ SĐT</button>';
+                var titleEl = hdrEl ? hdrEl.querySelector('h3') : null;
+                if (titleEl && entity && entity.name) titleEl.textContent = entity.name;
+            });
+
+            root.addEventListener('click', function (event) {
+                var actionButton = event.target.closest('[data-loyalty-action]');
+                if (!actionButton || !window.ApiEngine || typeof window.ApiEngine.execute !== 'function') return;
+                var action = actionButton.getAttribute('data-loyalty-action');
+                actionButton.disabled = true;
+                actionButton.setAttribute('aria-busy', 'true');
+                if (action === 'invoices') {
+                    var invoiceParams = { '@MaKhachHang': khCode };
+                    if (fromDate) invoiceParams['@TuNgay'] = String(fromDate).slice(0, 10);
+                    if (toDate) invoiceParams['@DenNgay'] = String(toDate).slice(0, 10);
+                    window.ApiEngine.execute('@hoa_don', invoiceParams);
+                } else {
+                    window.ApiEngine.execute('@san_pham_trong_tam', { '@MaKhachHang': khCode });
                 }
+                setTimeout(function () {
+                    actionButton.disabled = false;
+                    actionButton.removeAttribute('aria-busy');
+                }, 900);
             });
         }, 50);
 
@@ -348,7 +362,6 @@
                 paymentStatus: _debtFirst(row, ['PaymentStatus', 'DueStatus']),
                 debtSize: _debtFirst(row, ['DebtSize', 'PhanLoai']),
                 asOfDate: _debtFirst(row, ['AsOfDate']),
-                dataSource: _debtFirst(row, ['DataSource']),
                 raw: row
             };
             var missing = [];
@@ -405,7 +418,6 @@
         html += '<header class="ai-sales-debt-portfolio-header"><div><h3 id="' + h.esc(cardId) + '-title">Công nợ khách hàng</h3>'
             + '<p>' + validRows.length + ' khách hàng'
             + (first.asOfDate ? ' · Đến ngày ' + h.esc(_debtDate(first.asOfDate)) : '')
-            + (first.dataSource ? ' · Nguồn: ' + h.esc(String(first.dataSource)) : '')
             + '</p></div></header>';
         if (drifts.length) html += '<div class="ai-sales-debt-drift" role="status">Đã bỏ qua ' + drifts.length + ' bản ghi không đúng contract.</div>';
         html += '<div class="ai-sales-debt-customer-table-wrap"><table class="ai-sales-debt-customer-table"><thead><tr>'
@@ -469,7 +481,6 @@
         var debtItemCount = _debtNumber(_debtFirst(firstRow, ['DebtItemCount', 'TongSoKhoanCongNo']));
         var debitTotal = _debtNumber(_debtFirst(firstRow, ['TotalDebitAmount', 'TongGiaTriBanDau']));
         var creditTotal = _debtNumber(_debtFirst(firstRow, ['TotalCreditAmount', 'TongDaThanhToanTra']));
-        var dataSource = _debtFirst(firstRow, ['DataSource']);
 
         var debtItems = safeRows.map(function (row) {
             var statusRaw = _debtFirst(row, ['CollectionStatus', 'TrangThaiThanhToan', 'PaymentStatus', 'TrangThaiCongNo']);
@@ -495,45 +506,59 @@
         var cardId = 'debt-detail-' + h.nextId() + '-' + Date.now();
 
         function moneyOrUnknown(value) { return value === null ? 'Chưa xác định' : h.fmtCellVal(value); }
+        function queryTimestamp() {
+            var now = new Date();
+            var pad = function (value) { return String(value).padStart(2, '0'); };
+            return pad(now.getDate()) + '/' + pad(now.getMonth() + 1) + '/' + now.getFullYear() + ' ' + pad(now.getHours()) + ':' + pad(now.getMinutes());
+        }
         function debtItemRow(item) {
-            return '<tr><td><strong>' + h.esc(String(item.id)) + '</strong>'
-                + (item.description ? '<small>' + h.esc(String(item.description)) + '</small>' : '') + '</td>'
-                + '<td><span class="ai-sales-debt-item-type is-' + h.esc(item.documentType.key.toLowerCase()) + '">' + h.esc(item.documentType.label) + '</span>'
-                + (item.matchStatus ? '<small>' + h.esc(String(item.matchStatus)) + '</small>' : '') + '</td>'
+            var invoice = item.documentType.key === 'INVOICE';
+            var title = invoice ? 'Hóa đơn số ' + String(item.id) : (item.documentType.key === 'OPENING_BALANCE' ? 'Số dư đầu kỳ' : 'Khoản công nợ khác');
+            var subtitle = invoice
+                ? 'Ngày hóa đơn: ' + _debtDate(item.debtDate)
+                : (item.description || 'Khoản công nợ khác');
+            var typeHint = invoice ? 'Đối chiếu theo hóa đơn' : 'Khoản công nợ khác';
+            return '<tr><td><strong>' + h.esc(title) + '</strong><small>' + h.esc(String(subtitle)) + '</small></td>'
+                + '<td><span class="ai-sales-debt-item-type is-' + h.esc(item.documentType.key.toLowerCase()) + '">' + h.esc(item.documentType.label) + '</span><small>' + h.esc(typeHint) + '</small></td>'
                 + '<td>' + h.esc(_debtDate(item.debtDate)) + '</td>'
                 + '<td>' + h.esc(_debtDate(item.dueDate)) + '</td>'
                 + '<td class="ai-sales-debt-number">' + moneyOrUnknown(item.debit) + '</td>'
                 + '<td class="ai-sales-debt-number">' + moneyOrUnknown(item.credit) + '</td>'
                 + '<td class="ai-sales-debt-number"><strong>' + moneyOrUnknown(item.remaining) + '</strong></td>'
-                + '<td>' + (item.overdueDays === null ? '—' : item.overdueDays + ' ngày') + '</td>'
+                + '<td>' + (item.overdueDays === null ? 'Chưa xác định' : item.overdueDays + ' ngày') + '</td>'
                 + '<td>' + (item.status ? '<span class="ai-sales-debt-status is-' + item.status.cls + '">' + h.esc(item.status.label) + '</span>' : '—')
                 + (item.dueStatus && (!item.status || item.dueStatus.key !== item.status.key) ? ' <span class="ai-sales-debt-status is-' + item.dueStatus.cls + '">' + h.esc(item.dueStatus.label) + '</span>' : '')
                 + '</td></tr>';
         }
 
+        var icons = {
+            building: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17M2 21h20M8 7h2M8 11h2M8 15h2M12 7h2M12 11h2M12 15h2M19 21v-8h2v8"/></svg>',
+            calendar: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 9h18"/></svg>',
+            clock: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+            coins: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
+            document: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6"/></svg>',
+            list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+            close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+            info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>'
+        };
         var html = '<section class="ai-sales-debt-card ai-sales-debt-detail" id="' + h.esc(cardId) + '" data-debt-detail-customer="' + h.esc(String(customerId ?? '')) + '" tabindex="-1">';
         html += '<header class="ai-sales-debt-header"><div class="ai-sales-debt-header-main"><div class="ai-sales-debt-customer">'
-            + '<div class="ai-sales-debt-title">' + h.esc(String(customerName ?? 'Khách hàng chưa xác định')) + '</div>'
-            + '<div class="ai-sales-debt-subtitle">Mã khách hàng: <b>' + h.esc(String(customerId ?? 'Chưa xác định')) + '</b></div>'
-            + '<div class="ai-sales-debt-contact-line">' + h.esc(phone && h.isValidPhone(String(phone)) ? 'SĐT: ' + phone : 'Chưa có số điện thoại') + '</div>'
-            + '<div class="ai-sales-debt-contact-line">Ngày đối soát: ' + h.esc(_debtDate(asOfDate)) + '</div>'
-            + (dataSource ? '<div class="ai-sales-debt-contact-line">Nguồn: ' + h.esc(String(dataSource)) + '</div>' : '')
-            + '</div><button type="button" class="ai-sales-debt-close" aria-label="Đóng chi tiết công nợ">Đóng</button></div>';
+            + '<div class="ai-sales-debt-identity"><span class="ai-sales-debt-customer-icon">' + icons.building + '</span><div><div class="ai-sales-debt-title">' + h.esc(String(customerName ?? 'Khách hàng chưa xác định')) + '</div>'
+            + '<div class="ai-sales-debt-subtitle">Mã khách hàng: <b>' + h.esc(String(customerId ?? 'Chưa xác định')) + '</b>'
+            + (phone && h.isValidPhone(String(phone)) ? ' <i></i> SĐT: ' + h.esc(String(phone)) : '') + '</div></div></div>'
+            + '</div><button type="button" class="ai-sales-debt-close" aria-label="Đóng chi tiết công nợ">' + icons.close + '<span>Đóng</span></button></div>';
         if (drifts.length) html += '<div class="ai-sales-debt-drift" role="status">Một số khoản thiếu trạng thái hạn từ API.</div>';
+        html += '<div class="ai-sales-debt-meta-strip"><span>' + icons.calendar + '<span>Dữ liệu tính đến: <b>' + h.esc(_debtDate(asOfDate)) + '</b></span></span><span class="ai-sales-debt-meta-separator"></span><span>' + icons.clock + '<span>Truy vấn lúc: <b>' + h.esc(queryTimestamp()) + '</b></span></span></div>';
         html += '<div class="ai-sales-debt-metrics">'
-            + '<div class="ai-sales-debt-metric"><span>Tổng còn nợ</span><strong class="ai-sales-debt-amount">' + moneyOrUnknown(totalOutstanding) + '</strong></div>'
-            + '<div class="ai-sales-debt-metric"><span>Số hóa đơn</span><strong>' + (invoiceCount === null ? '—' : invoiceCount) + '</strong></div>'
-            + '<div class="ai-sales-debt-metric"><span>Số khoản công nợ</span><strong>' + (debtItemCount === null ? debtItems.length : debtItemCount) + '</strong></div>'
-            + '</div>';
-        html += '</header>';
+            + '<div class="ai-sales-debt-metric is-blue"><span class="ai-sales-debt-metric-icon">' + icons.coins + '</span><div><span>Tổng còn nợ</span><strong class="ai-sales-debt-amount">' + moneyOrUnknown(totalOutstanding) + '</strong></div></div>'
+            + '<div class="ai-sales-debt-metric is-green"><span class="ai-sales-debt-metric-icon">' + icons.document + '</span><div><span>Số hóa đơn</span><strong>' + (invoiceCount === null ? '—' : invoiceCount) + '</strong></div></div>'
+            + '<div class="ai-sales-debt-metric is-orange"><span class="ai-sales-debt-metric-icon">' + icons.list + '</span><div><span>Số khoản công nợ</span><strong>' + (debtItemCount === null ? debtItems.length : debtItemCount) + '</strong></div></div>'
+            + '</div></header>';
         html += '<div class="ai-sales-debt-list"><div class="ai-sales-debt-table-wrap"><table class="ai-sales-debt-table"><thead><tr>'
-            + '<th>Mã khoản</th><th>Loại khoản</th><th>Ngày khoản nợ</th><th>Ngày đến hạn</th><th>Phát sinh tăng</th>'
+            + '<th>Nội dung</th><th>Loại khoản</th><th>Ngày khoản nợ</th><th>Ngày đến hạn</th><th>Phát sinh tăng</th>'
             + '<th>Phát sinh giảm</th><th>Còn lại</th><th>Số ngày quá hạn</th><th>Trạng thái</th>'
-            + '</tr></thead><tbody>' + debtItems.map(debtItemRow).join('') + '</tbody></table></div></div>';
-        html += '<footer class="ai-sales-debt-footer"><div class="ai-sales-debt-summary">'
-            + '<span>Tổng phát sinh tăng <b>' + moneyOrUnknown(debitTotal) + '</b></span>'
-            + '<span>Tổng phát sinh giảm <b>' + moneyOrUnknown(creditTotal) + '</b></span>'
-            + '</div></footer></section>';
+            + '</tr></thead><tbody>' + debtItems.map(debtItemRow).join('') + '</tbody><tfoot><tr><td colspan="4"></td><td class="ai-sales-debt-number"><strong>' + moneyOrUnknown(debitTotal) + '</strong></td><td class="ai-sales-debt-number"><strong>' + moneyOrUnknown(creditTotal) + '</strong></td><td class="ai-sales-debt-number"><strong>' + moneyOrUnknown(totalOutstanding) + '</strong></td><td colspan="2"></td></tr></tfoot></table></div></div>';
+        html += '<footer class="ai-sales-debt-footer"><aside class="ai-sales-debt-note"><h4>' + icons.info + '<span>Ghi chú</span></h4><ul><li>Tổng còn nợ = Tổng phát sinh tăng − Tổng phát sinh giảm.</li><li>“Chưa xác định hạn” nghĩa là hệ thống chưa có thông tin ngày đến hạn của khoản nợ.</li></ul></aside></footer></section>';
 
         setTimeout(function () {
             var root = document.getElementById(cardId);
@@ -734,6 +759,455 @@
         return html;
     }
 
+    function _focusValue(row, keys) {
+        if (!row) return null;
+        for (var i = 0; i < keys.length; i++) {
+            var value = row[keys[i]];
+            if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+        }
+        return null;
+    }
+
+    function _focusNumber(value) {
+        if (value === null || value === undefined || value === '') return null;
+        var number = Number(String(value).replace(/\s/g, '').replace(/,/g, ''));
+        return Number.isFinite(number) ? number : null;
+    }
+
+    function _focusMoney(value) {
+        var number = _focusNumber(value);
+        return number === null ? 'Chưa cập nhật giá' : new Intl.NumberFormat('vi-VN').format(number) + ' ₫';
+    }
+
+    function _focusQuantity(value) {
+        var number = _focusNumber(value);
+        return number === null ? 'Chưa xác định' : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(number);
+    }
+
+    function _focusDate(value) {
+        if (!value) return 'Chưa xác định';
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
+    }
+
+    function _focusGiftLadder(program) {
+        var raw = _focusValue(program, ['GiftLadderJson', 'Thang Quà Tặng Toàn Bộ']);
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw;
+        try {
+            var parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return parsed;
+        } catch (_) {}
+        var gifts = [];
+        String(raw).replace(/\[\s*([\d.,]+)\s*:\s*([^\]]+)\]/g, function (_, target, name) {
+            gifts.push({ TargetAmount: Number(String(target).replace(/[.,]/g, '')), GiftName: name.trim() });
+            return _;
+        });
+        return gifts;
+    }
+
+    function _focusDateTime(value) {
+        var date = value ? new Date(value) : new Date();
+        if (Number.isNaN(date.getTime())) date = new Date();
+        var parts = new Intl.DateTimeFormat('vi-VN', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        }).formatToParts(date).reduce(function (result, part) {
+            result[part.type] = part.value;
+            return result;
+        }, {});
+        return parts.day + '/' + parts.month + '/' + parts.year + ' ' + parts.hour + ':' + parts.minute;
+    }
+
+    function _focusArray(value) {
+        if (Array.isArray(value)) return value;
+        if (!value || typeof value !== 'string') return [];
+        try {
+            var parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function _normalizeFocusProducts(rows, meta) {
+        var safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
+        var suppliedSections = [];
+        if (safeRows.length && safeRows.every(function (row) { return row && row.type && Array.isArray(row.data); })) {
+            suppliedSections = safeRows;
+        } else {
+            var sectionCarrier = safeRows.find(function (row) { return row && Array.isArray(row.sections); });
+            if (sectionCarrier) suppliedSections = sectionCarrier.sections;
+            else if (meta && Array.isArray(meta.sections)) suppliedSections = meta.sections;
+        }
+
+        var productRows = [];
+        var programRows = [];
+        var declaredProductCount = null;
+        var declaredProgramCount = null;
+
+        suppliedSections.forEach(function (section) {
+            var sectionType = String(section.type || '').toUpperCase();
+            if (sectionType === 'FOCUS_PRODUCTS') {
+                productRows = productRows.concat(Array.isArray(section.data) ? section.data : []);
+                declaredProductCount = _focusNumber(section.count);
+            } else if (sectionType === 'ACTIVE_PROGRAMS') {
+                programRows = programRows.concat(Array.isArray(section.data) ? section.data : []);
+                declaredProgramCount = _focusNumber(section.count);
+            }
+        });
+
+        if (!suppliedSections.length) {
+            safeRows.forEach(function (row) {
+                var type = String(row.RecordType || '').toUpperCase();
+                if (type === 'PROGRAM' || (!type && _focusValue(row, ['ProgramName', 'Chương Trình']) !== null)) programRows.push(row);
+                else if (type === 'PRODUCT' || (!type && _focusValue(row, ['ItemID', 'Mã sp', 'Mã SP']) !== null)) productRows.push(row);
+            });
+            if (programRows.length) declaredProductCount = _focusNumber(_focusValue(programRows[0], ['ProductCount']));
+        }
+
+        var productCount = declaredProductCount === null ? productRows.length : Math.max(productRows.length, declaredProductCount);
+        var programCount = declaredProgramCount === null ? programRows.length : Math.max(programRows.length, declaredProgramCount);
+        return {
+            sections: [
+                { type: 'FOCUS_PRODUCTS', title: 'Sản phẩm trọng tâm', count: productCount, data: productRows },
+                { type: 'ACTIVE_PROGRAMS', title: 'Chương trình áp dụng', count: programCount, data: programRows }
+            ],
+            productCount: productCount,
+            programCount: programCount,
+            products: productRows,
+            programs: programRows
+        };
+    }
+
+    function _focusStockDetails(row) {
+        var detailKeys = ['StockDetails', 'WarehouseLots', 'LotDetails', 'InventoryDetails', 'ChiTietKhoLo'];
+        var details = [];
+        for (var i = 0; i < detailKeys.length; i++) {
+            details = _focusArray(row && row[detailKeys[i]]);
+            if (details.length) break;
+            if (row && Array.isArray(row[detailKeys[i]])) {
+                details = row[detailKeys[i]];
+                break;
+            }
+        }
+        var hasInlineDetail = _focusValue(row, ['WarehouseName', 'StoreHouseName', 'Tên Kho', 'WarehouseID', 'StoreHouseID', 'Mã Kho', 'LotNumber', 'BatchNumber', 'Số Lô']) !== null;
+        if (!details.length && hasInlineDetail) details = [row];
+        return details.map(function (detail) {
+            var ending = _focusNumber(_focusValue(detail, ['EndingStock', 'ClosingStock', 'Tồn Cuối', 'PhysicalStock', 'Tồn Kho']));
+            return {
+                warehouse: String(_focusValue(detail, ['WarehouseName', 'StoreHouseName', 'Tên Kho']) || 'Chưa cập nhật'),
+                warehouseId: String(_focusValue(detail, ['WarehouseID', 'StoreHouseID', 'Mã Kho']) || '—'),
+                lot: String(_focusValue(detail, ['LotNumber', 'BatchNumber', 'Số Lô']) || '—'),
+                expiry: _focusValue(detail, ['ExpiryDate', 'ExpireDate', 'Hạn Sử Dụng']),
+                unit: String(_focusValue(detail, ['Unit', 'ĐVT', 'Đơn vị tính']) || _focusValue(row, ['Unit', 'ĐVT', 'Đơn vị tính']) || '—'),
+                received: _focusNumber(_focusValue(detail, ['ReceivedQuantity', 'ImportQuantity', 'Nhập'])),
+                issued: _focusNumber(_focusValue(detail, ['IssuedQuantity', 'ExportQuantity', 'Xuất'])),
+                ending: ending
+            };
+        });
+    }
+
+    function _renderFocusProducts(rows, headerMsg, apiCode, meta) {
+        var normalized = _normalizeFocusProducts(rows, meta);
+        var programs = normalized.programs;
+        var cardId = 'focus-products-' + h.nextId() + '-' + Date.now();
+        var responseMeta = meta && meta.responseMetadata ? meta.responseMetadata : {};
+        var updatedAt = _focusValue(responseMeta, ['stockUpdatedAt', 'dataUpdatedAt', 'generatedAt', 'timestamp'])
+            || _focusValue(normalized.products[0], ['StockUpdatedAt'])
+            || new Date();
+        var updatedDate = new Date(updatedAt);
+        if (Number.isNaN(updatedDate.getTime())) updatedDate = new Date();
+
+        function productModel(row) {
+            return {
+                id: String(_focusValue(row, ['ItemID', 'Mã sp', 'Mã SP']) || '—'),
+                name: String(_focusValue(row, ['ItemName', 'Sản Phẩm', 'Tên sản phẩm']) || 'Sản phẩm chưa xác định'),
+                group: String(_focusValue(row, ['ItemGroupName', 'ProductGroupName', 'CategoryName', 'Nhóm sản phẩm']) || ''),
+                unit: String(_focusValue(row, ['Unit', 'ĐVT', 'Đơn vị tính']) || '—'),
+                physical: _focusNumber(_focusValue(row, ['PhysicalStock', 'Tồn Kho', 'Tồn kho'])),
+                available: _focusNumber(_focusValue(row, ['AvailableStock', 'Tồn khả dụng tham khảo'])),
+                stockStatus: String(_focusValue(row, ['StockDataStatus']) || ''),
+                updatedAt: _focusValue(row, ['StockUpdatedAt']),
+                details: _focusStockDetails(row)
+            };
+        }
+
+        function programModel(row) {
+            var customerId = _focusValue(row, ['CustomerID', 'Mã Khách']);
+            var customerFlag = _focusNumber(_focusValue(row, ['HasCustomer']));
+            return {
+                name: String(_focusValue(row, ['ProgramName', 'Chương Trình']) || 'Chương trình sản phẩm trọng tâm'),
+                fromDate: _focusValue(row, ['EffectiveFrom', 'Từ Ngày']),
+                toDate: _focusValue(row, ['EffectiveTo', 'Đến Ngày']),
+                description: _focusValue(row, ['ProgramDescription', 'Description', 'ConditionText', 'Nội dung chương trình', 'Điều kiện']),
+                gifts: _focusGiftLadder(row),
+                hasCustomer: Boolean(customerId) && (customerFlag === null || customerFlag === 1),
+                customerId: customerId,
+                customerName: _focusValue(row, ['CustomerName', 'Tên Khách Hàng']) || customerId,
+                currentSales: _focusNumber(_focusValue(row, ['CurrentSales', 'Doanh Số Hiện Tại'])),
+                nextTarget: _focusNumber(_focusValue(row, ['NextTarget', 'Mốc Kế Tiếp'])),
+                remaining: _focusNumber(_focusValue(row, ['RemainingToNextTarget', 'Còn Thiếu'])),
+                nextGift: _focusValue(row, ['NextGift', 'Quà Kế Tiếp'])
+            };
+        }
+
+        function uniqueValues(list, key) {
+            return list.map(function (item) { return item[key]; }).filter(function (value, index, all) {
+                return value && all.indexOf(value) === index;
+            }).sort(function (a, b) { return a.localeCompare(b, 'vi'); });
+        }
+
+        function options(values, emptyLabel) {
+            return '<option value="">' + h.esc(emptyLabel) + '</option>' + values.map(function (value) {
+                return '<option value="' + h.esc(value) + '">' + h.esc(value) + '</option>';
+            }).join('');
+        }
+
+        function renderProgramCard(program) {
+            var html = '<article class="ai-focus-program-card">'
+                + '<div class="ai-focus-program-title"><div><span class="ai-focus-program-kicker">Chương trình trọng tâm</span><h4>' + h.esc(program.name) + '</h4></div><span>Đang áp dụng</span></div>'
+                + '<dl class="ai-focus-program-info"><div><dt>Thời gian hiệu lực</dt><dd>' + h.esc(_focusDate(program.fromDate)) + ' – ' + h.esc(_focusDate(program.toDate)) + '</dd></div>'
+                + (program.description ? '<div><dt>Nội dung / điều kiện</dt><dd>' + h.esc(String(program.description)) + '</dd></div>' : '') + '</dl>';
+
+            if (program.gifts.length) {
+                html += '<section class="ai-focus-gifts"><h4>Thang thưởng</h4><div class="ai-focus-gift-table-wrap"><table><thead><tr><th>Doanh số tích lũy</th><th>Quà tặng</th></tr></thead><tbody>'
+                    + program.gifts.map(function (gift) {
+                        var target = _focusValue(gift, ['TargetAmount', 'TuDiem', 'Mốc']);
+                        var name = _focusValue(gift, ['GiftName', 'QuaTang', 'Quà']);
+                        return '<tr><td class="ai-focus-number">' + h.esc(_focusMoney(target)) + '</td><td>' + h.esc(String(name || 'Chưa cập nhật')) + '</td></tr>';
+                    }).join('') + '</tbody></table></div></section>';
+            } else {
+                html += '<section class="ai-focus-gifts"><h4>Thang thưởng</h4><p>Chương trình chưa có thông tin thang thưởng.</p></section>';
+            }
+
+            if (program.hasCustomer) {
+                var percent = program.nextTarget && program.currentSales !== null
+                    ? Math.max(0, Math.min(100, Math.round(program.currentSales / program.nextTarget * 100)))
+                    : (program.currentSales !== null && program.nextTarget === null ? 100 : 0);
+                html += '<section class="ai-focus-progress"><div class="ai-focus-progress-head"><div><span>Khách hàng</span><strong>' + h.esc(String(program.customerName)) + '</strong><small>Mã khách hàng: ' + h.esc(String(program.customerId)) + '</small></div><strong>' + percent + '%</strong></div>'
+                    + '<div class="ai-focus-progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + percent + '"><span style="width:' + percent + '%"></span></div>'
+                    + '<div class="ai-focus-progress-metrics"><div><span>Đã tích lũy</span><strong>' + h.esc(program.currentSales === null ? 'Chưa cập nhật' : _focusMoney(program.currentSales)) + '</strong></div>'
+                    + '<div><span>Mốc kế tiếp</span><strong>' + h.esc(program.nextTarget === null ? 'Đã đạt mốc cao nhất' : _focusMoney(program.nextTarget)) + '</strong></div>'
+                    + '<div><span>Còn thiếu</span><strong>' + h.esc(program.remaining === null ? '—' : _focusMoney(program.remaining)) + '</strong></div>'
+                    + '<div><span>Quà dự kiến</span><strong>' + h.esc(String(program.nextGift || 'Đã đạt mốc cao nhất')) + '</strong></div></div></section>';
+            } else {
+                html += '<div class="ai-focus-customer-prompt"><div><strong>Chưa chọn khách hàng</strong><span>Chọn khách hàng để xem tiến độ tích lũy và mốc thưởng tiếp theo.</span></div><button type="button" data-focus-choose-customer>Chọn khách hàng</button></div>';
+            }
+            return html + '</article>';
+        }
+
+        var models = normalized.products.map(productModel);
+        var hasExpandableProducts = models.some(function (product) {
+            return product.details.length > 0;
+        });
+        var programModels = programs.map(programModel);
+        var groups = uniqueValues(models, 'group');
+        var units = uniqueValues(models, 'unit').filter(function (unit) { return unit !== '—'; });
+        var productPanelId = cardId + '-products';
+        var programPanelId = cardId + '-programs';
+        var html = '<section class="ai-focus-products" id="' + h.esc(cardId) + '">'
+            + '<header class="ai-focus-header"><div><span class="ai-focus-eyebrow">Tra cứu nghiệp vụ</span><h3>SẢN PHẨM TRỌNG TÂM</h3><p>Tìm thấy <strong>' + normalized.productCount + '</strong> sản phẩm trọng tâm thuộc <strong>' + normalized.programCount + '</strong> chương trình đang áp dụng</p></div>'
+            + '<time datetime="' + h.esc(updatedDate.toISOString()) + '">Cập nhật lúc: ' + h.esc(_focusDateTime(updatedDate)) + '</time></header>'
+            + '<div class="ai-focus-tabs" role="tablist" aria-label="Nội dung sản phẩm trọng tâm">'
+            + '<button id="' + h.esc(cardId + '-tab-products') + '" type="button" class="active" role="tab" aria-selected="true" aria-controls="' + h.esc(productPanelId) + '" tabindex="0" data-focus-tab="products">Sản phẩm trọng tâm <span>' + normalized.productCount + '</span></button>'
+            + '<button id="' + h.esc(cardId + '-tab-programs') + '" type="button" role="tab" aria-selected="false" aria-controls="' + h.esc(programPanelId) + '" tabindex="-1" data-focus-tab="programs">Chương trình áp dụng <span>' + normalized.programCount + '</span></button>'
+            + '</div>'
+            + '<div id="' + h.esc(productPanelId) + '" class="ai-focus-panel" role="tabpanel" aria-labelledby="' + h.esc(cardId + '-tab-products') + '" data-focus-panel="products">'
+            + '<div class="ai-focus-toolbar"><label class="ai-focus-search"><span class="sr-only">Tìm sản phẩm</span><input type="search" data-focus-search placeholder="Tìm theo mã hoặc tên sản phẩm..." aria-label="Tìm theo mã hoặc tên sản phẩm"></label>'
+            + '<button type="button" class="ai-focus-filter-toggle" data-focus-filter-toggle aria-expanded="false">Bộ lọc</button>'
+            + '<div class="ai-focus-filter-controls" data-focus-filter-controls>'
+            + '<label><span class="sr-only">Nhóm sản phẩm</span><select data-focus-group' + (groups.length ? '' : ' disabled') + ' aria-label="Lọc theo nhóm sản phẩm">' + options(groups, 'Tất cả nhóm') + '</select></label>'
+            + '<label><span class="sr-only">Đơn vị tính</span><select data-focus-unit' + (units.length ? '' : ' disabled') + ' aria-label="Lọc theo đơn vị tính">' + options(units, 'Tất cả đơn vị') + '</select></label>'
+            + '<label><span class="sr-only">Trạng thái tồn kho</span><select data-focus-stock aria-label="Lọc theo trạng thái tồn kho"><option value="all">Tất cả tồn kho</option><option value="in-stock">Còn hàng</option><option value="out-of-stock">Hết hàng</option><option value="negative">Cần đối soát</option><option value="unknown">Chưa cập nhật</option></select></label>'
+            + '<label><span class="sr-only">Sắp xếp</span><select data-focus-sort aria-label="Sắp xếp sản phẩm"><option value="name-asc">Tên A–Z</option><option value="stock-desc">Tồn cao đến thấp</option><option value="stock-asc">Tồn thấp đến cao</option><option value="code-asc">Mã sản phẩm</option></select></label>'
+            + '</div></div>'
+            + '<p class="ai-focus-stock-note">Số lượng hiển thị theo các kho tài khoản được quyền xem.</p>'
+            + '<div class="ai-focus-table-wrap"><table class="ai-focus-table"><thead><tr><th>Mã SP</th><th>Sản phẩm</th><th>Đơn vị tính</th><th class="ai-focus-number">Tồn trong kho</th><th class="ai-focus-number">Khả dụng tham khảo</th><th>Trạng thái</th></tr></thead><tbody data-focus-body></tbody></table></div>'
+            + '<div class="ai-focus-pagination" data-focus-pagination></div></div>'
+            + '<div id="' + h.esc(programPanelId) + '" class="ai-focus-panel ai-focus-program-list" role="tabpanel" aria-labelledby="' + h.esc(cardId + '-tab-programs') + '" data-focus-panel="programs" hidden>'
+            + (programModels.length ? programModels.map(renderProgramCard).join('') : '<div class="ai-focus-empty"><strong>Chưa có chương trình đang áp dụng.</strong><span>Không có thông tin chương trình phù hợp tại thời điểm tra cứu.</span></div>')
+            + '</div></section>';
+
+        setTimeout(function () {
+            var root = document.getElementById(cardId);
+            if (!root) return;
+            var body = root.querySelector('[data-focus-body]');
+            var pagination = root.querySelector('[data-focus-pagination]');
+            var collator = new Intl.Collator('vi', { sensitivity: 'base', numeric: true });
+            var state = { page: 1, pageSize: 25, search: '', group: '', unit: '', stock: 'all', sort: 'name-asc', expanded: {} };
+
+            function stockState(product) {
+                if (product.stockStatus === 'STOCK_RECONCILIATION_REQUIRED' || (product.physical !== null && product.physical < 0)) return { cls: 'danger', label: 'Cần đối soát' };
+                if (product.physical === null) return { cls: 'muted', label: 'Chưa cập nhật' };
+                if (product.physical === 0) return { cls: 'danger-soft', label: 'Hết hàng' };
+                return { cls: 'success', label: 'Còn hàng' };
+            }
+
+            function filteredProducts() {
+                var keyword = String(state.search || '').toLocaleLowerCase('vi-VN');
+                return models.filter(function (product) {
+                    if (keyword && (product.id + ' ' + product.name).toLocaleLowerCase('vi-VN').indexOf(keyword) < 0) return false;
+                    if (state.group && product.group !== state.group) return false;
+                    if (state.unit && product.unit !== state.unit) return false;
+                    if (state.stock === 'in-stock' && !(product.physical > 0)) return false;
+                    if (state.stock === 'out-of-stock' && product.physical !== 0) return false;
+                    if (state.stock === 'negative' && !(product.physical < 0)) return false;
+                    if (state.stock === 'unknown' && product.physical !== null) return false;
+                    return true;
+                }).sort(function (a, b) {
+                    if (state.sort === 'stock-desc') return (b.physical === null ? -Infinity : b.physical) - (a.physical === null ? -Infinity : a.physical);
+                    if (state.sort === 'stock-asc') return (a.physical === null ? Infinity : a.physical) - (b.physical === null ? Infinity : b.physical);
+                    if (state.sort === 'code-asc') return collator.compare(a.id, b.id);
+                    return collator.compare(a.name, b.name);
+                });
+            }
+
+            function renderDetails(product) {
+                if (!state.expanded[product.id] || !product.details.length) return '';
+                var updatedHtml = product.updatedAt
+                    ? '<span>Cập nhật lúc ' + h.esc(_focusDateTime(product.updatedAt)) + '</span>'
+                    : '';
+                var html = '<tr class="ai-focus-detail-row"><td colspan="6"><div class="ai-focus-detail">'
+                    + '<div class="ai-focus-detail-heading"><div><strong>Chi tiết tồn theo kho và lô</strong><span>Đối chiếu số lượng nhập, xuất và tồn cuối của từng lô hàng.</span></div>' + updatedHtml + '</div>'
+                    + '<div class="ai-focus-detail-table-wrap"><table><thead><tr><th>Kho</th><th>Mã kho</th><th>Số lô</th><th>Hạn sử dụng</th><th>ĐVT</th><th class="ai-focus-number">Nhập</th><th class="ai-focus-number">Xuất</th><th class="ai-focus-number">Tồn cuối</th><th>Trạng thái</th></tr></thead><tbody>';
+                product.details.forEach(function (detail) {
+                    var detailStatus = detail.ending !== null && detail.ending < 0 ? { cls: 'danger', label: 'Cần đối soát' }
+                        : detail.ending === 0 ? { cls: 'danger-soft', label: 'Hết hàng' }
+                        : detail.ending === null ? { cls: 'muted', label: 'Chưa cập nhật' }
+                        : { cls: 'success', label: 'Còn hàng' };
+                    html += '<tr><td>' + h.esc(detail.warehouse) + '</td><td>' + h.esc(detail.warehouseId) + '</td><td>' + h.esc(detail.lot) + '</td><td>' + h.esc(detail.expiry ? _focusDate(detail.expiry) : '—') + '</td><td>' + h.esc(detail.unit) + '</td>'
+                        + '<td class="ai-focus-number">' + h.esc(detail.received === null ? '—' : _focusQuantity(detail.received)) + '</td><td class="ai-focus-number">' + h.esc(detail.issued === null ? '—' : _focusQuantity(detail.issued)) + '</td><td class="ai-focus-number">' + h.esc(detail.ending === null ? '—' : _focusQuantity(detail.ending)) + '</td><td><span class="ai-focus-stock-status ' + detailStatus.cls + '">' + h.esc(detailStatus.label) + '</span></td></tr>';
+                });
+                return html + '</tbody></table></div></div></td></tr>';
+            }
+
+            function render() {
+                var filtered = filteredProducts();
+                var totalPages = Math.max(1, Math.ceil(filtered.length / state.pageSize));
+                state.page = Math.max(1, Math.min(state.page, totalPages));
+                var start = (state.page - 1) * state.pageSize;
+                var pageRows = filtered.slice(start, start + state.pageSize);
+                if (!pageRows.length) {
+                    body.innerHTML = '<tr><td colspan="6" class="ai-focus-empty"><strong>Không có sản phẩm trọng tâm phù hợp.</strong><span>Hãy thay đổi từ khóa hoặc bộ lọc để thử lại.</span></td></tr>';
+                } else {
+                    body.innerHTML = pageRows.map(function (product) {
+                        var status = stockState(product);
+                        var canExpand = product.details.length > 0;
+                        var open = canExpand && Boolean(state.expanded[product.id]);
+                        var expandControl = canExpand
+                            ? '<button type="button" data-focus-expand="' + h.esc(product.id) + '" aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + (open ? 'Thu gọn' : 'Xem chi tiết tồn theo kho và lô của') + ' sản phẩm ' + h.esc(product.id) + '">›</button>'
+                            : (hasExpandableProducts ? '<span class="ai-focus-code-spacer" aria-hidden="true"></span>' : '');
+                        var rowClass = product.physical !== null && product.physical < 0 ? ' class="ai-focus-negative-row"' : '';
+                        return '<tr' + rowClass + '><td><div class="ai-focus-code">' + expandControl + '<strong>' + h.esc(product.id) + '</strong></div></td><td>' + h.esc(product.name) + '</td><td>' + h.esc(product.unit) + '</td>'
+                            + '<td class="ai-focus-number">' + h.esc(product.physical === null ? 'Chưa cập nhật' : _focusQuantity(product.physical)) + '</td>'
+                            + '<td class="ai-focus-number">' + h.esc(product.available === null ? 'Chưa cập nhật' : _focusQuantity(product.available)) + '</td>'
+                            + '<td><span class="ai-focus-stock-status ' + status.cls + '">' + h.esc(status.label) + '</span></td></tr>' + renderDetails(product);
+                    }).join('');
+                }
+
+                var visiblePages = [];
+                for (var page = 1; page <= totalPages; page++) {
+                    if (page === 1 || page === totalPages || Math.abs(page - state.page) <= 1) visiblePages.push(page);
+                }
+                var pageButtons = '';
+                var previousPage = 0;
+                visiblePages.forEach(function (page) {
+                    if (previousPage && page - previousPage > 1) pageButtons += '<span aria-hidden="true">…</span>';
+                    pageButtons += '<button type="button" data-focus-page="' + page + '" class="' + (page === state.page ? 'active' : '') + '" aria-label="Trang ' + page + '"' + (page === state.page ? ' aria-current="page"' : '') + '>' + page + '</button>';
+                    previousPage = page;
+                });
+                pagination.innerHTML = '<span>Hiển thị ' + (filtered.length ? start + 1 : 0) + ' – ' + Math.min(start + state.pageSize, filtered.length) + ' / ' + filtered.length + ' sản phẩm</span>'
+                    + '<label>Dòng/trang <select data-focus-page-size aria-label="Số dòng mỗi trang"><option value="10"' + (state.pageSize === 10 ? ' selected' : '') + '>10</option><option value="25"' + (state.pageSize === 25 ? ' selected' : '') + '>25</option><option value="50"' + (state.pageSize === 50 ? ' selected' : '') + '>50</option></select></label>'
+                    + '<div><button type="button" data-focus-page-action="prev" aria-label="Trang trước"' + (state.page <= 1 ? ' disabled' : '') + '>‹</button>' + pageButtons + '<button type="button" data-focus-page-action="next" aria-label="Trang sau"' + (state.page >= totalPages ? ' disabled' : '') + '>›</button></div>';
+            }
+
+            function switchTab(tab) {
+                var target = tab.getAttribute('data-focus-tab');
+                root.querySelectorAll('[data-focus-tab]').forEach(function (button) {
+                    var active = button === tab;
+                    button.classList.toggle('active', active);
+                    button.setAttribute('aria-selected', active ? 'true' : 'false');
+                    button.setAttribute('tabindex', active ? '0' : '-1');
+                });
+                root.querySelectorAll('[data-focus-panel]').forEach(function (panel) {
+                    panel.hidden = panel.getAttribute('data-focus-panel') !== target;
+                });
+            }
+
+            root.addEventListener('click', function (event) {
+                var tab = event.target.closest('[data-focus-tab]');
+                if (tab) { switchTab(tab); return; }
+                var filterToggle = event.target.closest('[data-focus-filter-toggle]');
+                if (filterToggle) {
+                    var controls = root.querySelector('[data-focus-filter-controls]');
+                    var open = controls.classList.toggle('open');
+                    filterToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    return;
+                }
+                var expand = event.target.closest('[data-focus-expand]');
+                if (expand) {
+                    var scrollHost = root.closest('.chat-messages, #chat-messages, .chatbot-messages') || document.scrollingElement;
+                    var oldScrollTop = scrollHost ? scrollHost.scrollTop : 0;
+                    var itemId = expand.getAttribute('data-focus-expand');
+                    state.expanded[itemId] = !state.expanded[itemId];
+                    render();
+                    if (scrollHost) requestAnimationFrame(function () { scrollHost.scrollTop = oldScrollTop; });
+                    return;
+                }
+                var pageButton = event.target.closest('[data-focus-page]');
+                if (pageButton) { state.page = Number(pageButton.getAttribute('data-focus-page')) || 1; render(); return; }
+                var pageAction = event.target.closest('[data-focus-page-action]');
+                if (pageAction) { state.page += pageAction.getAttribute('data-focus-page-action') === 'prev' ? -1 : 1; render(); return; }
+                if (event.target.closest('[data-focus-choose-customer]')) {
+                    var input = document.getElementById('chat-input');
+                    if (input) {
+                        input.value = '@tich_luy';
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.focus();
+                    }
+                    if (window.ApiEngine && typeof window.ApiEngine.openCustomerPicker === 'function') {
+                        window.ApiEngine.openCustomerPicker('@tich_luy');
+                    } else if (window.ApiEngine && typeof window.ApiEngine.open === 'function') {
+                        window.ApiEngine.open('@tich_luy');
+                    }
+                }
+            });
+            root.addEventListener('keydown', function (event) {
+                var currentTab = event.target.closest('[data-focus-tab]');
+                if (!currentTab || ['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(event.key) < 0) return;
+                event.preventDefault();
+                var tabs = Array.prototype.slice.call(root.querySelectorAll('[data-focus-tab]'));
+                var index = tabs.indexOf(currentTab);
+                if (event.key === 'Home') index = 0;
+                else if (event.key === 'End') index = tabs.length - 1;
+                else index = (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+                tabs[index].focus();
+                switchTab(tabs[index]);
+            });
+            root.addEventListener('input', function (event) {
+                if (!event.target.matches('[data-focus-search]')) return;
+                state.search = event.target.value;
+                state.page = 1;
+                render();
+            });
+            root.addEventListener('change', function (event) {
+                if (event.target.matches('[data-focus-page-size]')) state.pageSize = Number(event.target.value) || 25;
+                else if (event.target.matches('[data-focus-group]')) state.group = event.target.value;
+                else if (event.target.matches('[data-focus-unit]')) state.unit = event.target.value;
+                else if (event.target.matches('[data-focus-stock]')) state.stock = event.target.value;
+                else if (event.target.matches('[data-focus-sort]')) state.sort = event.target.value;
+                else return;
+                state.page = 1;
+                render();
+            });
+            render();
+        }, 50);
+
+        return html;
+    }
+
     function _isDebtListApi(apiCode) {
         var code = String(apiCode || '').toLowerCase();
         return code.indexOf('@cong_no') === 0 && code !== '@cong_no_chi_tiet';
@@ -749,6 +1223,9 @@
     if (ApiChatbot.__internal) ApiChatbot.__internal.renderDebt = _renderCongNo;
     if (ApiChatbot.__internal) ApiChatbot.__internal.renderCatalog = _renderCatalogMenu;
     if (ApiChatbot.__internal) ApiChatbot.__internal.renderCatalogFooter = _renderCatalogFooter;
+    if (ApiChatbot.__internal) ApiChatbot.__internal.normalizeFocusProducts = _normalizeFocusProducts;
+    if (ApiChatbot.__internal) ApiChatbot.__internal.renderFocusProducts = _renderFocusProducts;
+    ApiChatbot.registerRenderer('FOCUS_PRODUCTS', _renderFocusProducts);
     ApiChatbot.registerRenderer('TICH_LUY', _renderTichLuy);
     ApiChatbot.registerRenderer('METRIC_CARD', _renderMetricCard);
     ApiChatbot.registerRenderer('ALERT_CARD', _renderAlertCard);

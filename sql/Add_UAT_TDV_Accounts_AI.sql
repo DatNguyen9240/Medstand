@@ -114,14 +114,14 @@ BEGIN TRY
     IF EXISTS (SELECT 1 FROM SY_User WHERE UserName = 'NAMDINHB.MED')
     BEGIN
         UPDATE SY_User 
-        SET Manager = 0, EmployeeID = 'TDV_NAMDINHB', ManagerID = 'MED0330', BranchID = 'MB', Disable = 0
+        SET HoTen = N'Đoàn Văn Thế', Manager = 0, EmployeeID = 'MED0085', ManagerID = 'MED0330', BranchID = 'MB', Disable = 0
         WHERE UserName = 'NAMDINHB.MED';
         PRINT '✅ Liên kết TDV NAMDINHB.MED -> Manager QLBH013.MED (Mai Anh Tuấn)';
     END
     ELSE
     BEGIN
         INSERT INTO SY_User (UserName, HoTen, EmployeeID, Manager, ManagerID, BranchID, Disable)
-        VALUES ('NAMDINHB.MED', N'TDV Nam Định B', 'TDV_NAMDINHB', 0, 'MED0330', 'MB', 0);
+        VALUES ('NAMDINHB.MED', N'Đoàn Văn Thế', 'MED0085', 0, 'MED0330', 'MB', 0);
         PRINT '🆕 Tạo mới & Liên kết TDV NAMDINHB.MED -> Manager QLBH013.MED (Mai Anh Tuấn)';
     END
 

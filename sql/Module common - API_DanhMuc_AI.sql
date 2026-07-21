@@ -521,7 +521,8 @@ BEGIN
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
         FROM CF_StoreHouseTbl WITH (NOLOCK)
-        WHERE (
+        WHERE StoreHouseID IN ('CTY', 'DL02', 'DL03')
+          AND (
               @SYSIsGlobal = 1
               OR StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
           )

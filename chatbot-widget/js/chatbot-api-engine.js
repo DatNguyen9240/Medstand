@@ -926,6 +926,18 @@
     function _friendlyApiMessage(message, fallback) {
         var raw = String(message || '').trim();
         if (!raw) return fallback || 'Không thể thực hiện yêu cầu. Vui lòng thử lại.';
+        if (/chưa có hóa đơn hoàn tất.*gợi ý bán kèm/i.test(raw)) {
+            var upsellCustomer = raw.match(/^Khách\s+(.+?)\s+chưa có hóa đơn hoàn tất/i);
+            return (upsellCustomer ? 'Khách ' + upsellCustomer[1] + ' ' : 'Khách hàng ')
+                + 'là khách mới hoặc chưa đủ lịch sử mua hàng. Hệ thống chưa gợi ý bán kèm riêng để tránh tư vấn sai. '
+                + 'Hãy hỏi sản phẩm khách đang quan tâm, sau đó tìm sản phẩm liên quan và kiểm tra tồn kho trước khi bán.';
+        }
+        if (/chưa có hóa đơn hoàn tất.*gợi ý đơn hàng/i.test(raw)) {
+            var orderCustomer = raw.match(/^Khách\s+(.+?)\s+chưa có hóa đơn hoàn tất/i);
+            return (orderCustomer ? 'Khách ' + orderCustomer[1] + ' ' : 'Khách hàng ')
+                + 'là khách mới hoặc chưa đủ lịch sử mua hàng. Hệ thống chưa dự đoán đơn hàng để tránh gợi ý sai. '
+                + 'Sale nên tìm hiểu nhu cầu thực tế của khách trước khi chọn sản phẩm.';
+        }
         if (/IDENTITY_MAPPING_NOT_FOUND|Authenticated identity is not mapped to an internal account/i.test(raw)) {
             return 'Phiên đăng nhập chưa gắn đúng với tài khoản nội bộ. Vui lòng đăng xuất, đăng nhập lại; nếu vẫn lỗi hãy liên hệ quản trị viên.';
         }
@@ -2326,6 +2338,16 @@
 
         _inputEl.focus();
 
+        // Selecting a customer for the focus program completes the action.
+        // Query that customer's accumulation immediately instead of leaving
+        // the input in a stale API context.
+        if (_activeApi && _activeApi.autoSubmitAfterCustomerPick &&
+            (bare === 'makhachhang' || bare === 'objectid')) {
+            _activeApi.autoSubmitAfterCustomerPick = false;
+            setTimeout(function () { window.ApiEngine.handleSend(); }, 0);
+            return;
+        }
+
         // Luồng danh mục: chọn Loại xong thì chuyển thẳng sang trường tìm kiếm.
         // Tránh bắt người dùng phải nhấn Space rồi tự chọn @timkiem.
         if (bare === 'type' && _activeApi && _activeApi.config) {
@@ -2469,11 +2491,23 @@
 
 
 
-        _activeApi = { apiCode: apiCode, dispName: dispName, execType: execType, config: null, pendingUpdate: pendingUpdate };
+        _activeApi = {
+            apiCode: apiCode,
+            dispName: dispName,
+            execType: execType,
+            config: null,
+            pendingUpdate: pendingUpdate,
+            // A customer picker opened for a specific business action must
+            // execute that selected API. Catalog metadata can reference other
+            // APIs, but it must not replace the intended action after picking.
+            lockSelectedApi: !!(pendingUpdate && pendingUpdate.focusCustomer)
+        };
 
         // Keep API tag state but do not leave visible '#' text: store on input dataset
 
-        _replaceAtTag(apiCode);
+        if (!(pendingUpdate && pendingUpdate.preserveInput)) {
+            _replaceAtTag(apiCode);
+        }
 
         try { if (_inputEl) { _inputEl.dataset.apiTag = apiCode.replace('@', ''); } } catch (e) { }
 
@@ -2488,6 +2522,31 @@
         _loadConfig(apiCode, function (config) {
 
             _activeApi.config = config;
+
+            if (execType === 'QUERY' && _activeApi.pendingUpdate && _activeApi.pendingUpdate.focusCustomer) {
+                delete _activeApi.pendingUpdate;
+                var customerFields = (config && config.filters && config.filters.length > 0)
+                    ? config.filters : (config ? config.fields || [] : []);
+                var customerField = customerFields.find(function (field) {
+                    var fieldCode = String(field.FieldCode || field.field || '').toLowerCase();
+                    return fieldCode === '@makhachhang' || fieldCode === '@objectid';
+                });
+                if (customerField && _inputEl) {
+                    var customerFieldCode = customerField.FieldCode || customerField.field || '@MaKhachHang';
+                    _activeApi.autoSubmitAfterCustomerPick = true;
+                    _inputEl.value = '#' + apiCode.replace(/^@/, '') + ' ' + customerFieldCode + '=';
+                    _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                    _inputEl.focus();
+                    setTimeout(function () { _showInlineValues(customerFieldCode, ''); }, 0);
+                    return;
+                }
+            }
+
+            if (execType === 'QUERY' && _activeApi.pendingUpdate && _activeApi.pendingUpdate.autoSubmit) {
+                delete _activeApi.pendingUpdate;
+                setTimeout(function () { window.ApiEngine.handleSend(); }, 0);
+                return;
+            }
 
 
 
@@ -4128,6 +4187,16 @@
 
             });
 
+            // Customer values selected from the friendly picker are displayed as
+            // "MaKhachHang Customer name(CODE)". Recover the real code if the
+            // hidden selection state was reset while switching API contexts.
+            ['@MaKhachHang', '@ObjectID'].forEach(function (customerKey) {
+                var customerValue = params[customerKey];
+                if (customerValue === undefined || customerValue === null) return;
+                var customerMatch = String(customerValue).trim().match(/^MaKhachHang\s+.*\(([^()]+)\)$/i);
+                if (customerMatch) params[customerKey] = customerMatch[1].trim();
+            });
+
 
 
             // Kiểm tra tham số bắt buộc từ config
@@ -5472,14 +5541,18 @@
 
             // Khôi phục nghiệp vụ từ tag đang hiển thị nếu state bị mất do tải config,
             // đổi route hoặc người dùng nhập trực tiếp #api_code.
-            if (!_activeApi && _inputEl) {
+            if (_inputEl) {
                 var tagMatch = _inputEl.value.trim().match(/^#([\w-]+)/);
                 if (tagMatch) {
                     var requestedCode = '@' + tagMatch[1];
                     var knownApi = _apiList.find(function (a) {
                         return String(a.ApiCode || '').toLowerCase() === requestedCode.toLowerCase();
                     });
-                    if (knownApi) _onApiSelected(knownApi.ApiCode);
+                    var activeCode = String(_activeApi && _activeApi.apiCode || '').toLowerCase();
+                    if (knownApi && activeCode !== String(knownApi.ApiCode || '').toLowerCase()) {
+                        _onApiSelected(knownApi.ApiCode, { preserveInput: true, autoSubmit: true });
+                        return true;
+                    }
                 }
             }
 
@@ -5499,7 +5572,7 @@
 
             // → Redirect execute sang API đ thay v API hiện tại (trnh lỗi too many args)
 
-            if (_catalogDsMap && _pillParams) {
+            if (!api.lockSelectedApi && _catalogDsMap && _pillParams) {
 
                 var sysUserK = (CFG.SYS_PARAMS && CFG.SYS_PARAMS.USERNAME) || '@Username';
 
@@ -5598,6 +5671,11 @@
         configure: function (cfg) { Object.assign(CFG, cfg); },
 
         open: function (code) { _onApiSelected(code); return true; },
+
+        openCustomerPicker: function (code) {
+            _onApiSelected(code, { focusCustomer: true });
+            return true;
+        },
 
         execute: function (code, params) {
             var apiCode = code && code.charAt(0) === '@' ? code : '@' + code;

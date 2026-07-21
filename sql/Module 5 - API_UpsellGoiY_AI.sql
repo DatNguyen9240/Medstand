@@ -279,7 +279,7 @@ BEGIN
 
         SELECT CONCAT(
                    N'Khách ', COALESCE(NULLIF(@UpsellCustomerName, ''), @MaKhachHang),
-                   N' chưa có hóa đơn hoàn tất (trạng thái 3/6/7/8), nên chưa đủ dữ liệu để gợi ý bán kèm riêng.'
+                   N' là khách mới hoặc chưa đủ lịch sử mua hàng. Hệ thống chưa gợi ý bán kèm riêng để tránh tư vấn sai. Hãy hỏi sản phẩm khách đang quan tâm, sau đó tìm sản phẩm liên quan và kiểm tra tồn kho trước khi bán.'
                ) AS Msg,
                0 AS MsgType,
                N'NO_DATA' AS Severity,
