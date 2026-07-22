@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
 
+const APP_VERSION = '11.77';
+
 function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5) {
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
         try {
@@ -129,7 +131,7 @@ async function build() {
                     .replace(/src\/js\/pages\//g, 'src/js/dist/pages/')
                     .replace(/src\/css\//g, 'src/css/dist/')
                     .replace(/chatbot-widget\/css\//g, 'chatbot-widget/css/dist/')
-                    .replace(/\?v=11\.73/g, '?v=11.74');
+                    .replace(/\?v=\d+\.\d+/g, `?v=${APP_VERSION}`);
             }
 
             concatenatedJS += `\n/* --- BUNDLED JS: ${p} --- */\n`;
@@ -465,12 +467,12 @@ var _dec = function(b64) {
     console.log('✅ Đã nén thành công toàn bộ file CSS động.');
 
     // ─── 3. TẠO TRANG INDEX PRODUCTION ĐÃ TỐI ƯU ───
-    let prodHtmlContent = htmlContent;
+    let prodHtmlContent = htmlContent.replace(/__APP_VERSION__/g, APP_VERSION);
 
     // Thay thế các thẻ CSS bằng 1 thẻ duy nhất
     cssTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.74">');
+            prodHtmlContent = prodHtmlContent.replace(tag, `<link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=${APP_VERSION}">`);
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
@@ -479,7 +481,7 @@ var _dec = function(b64) {
     // Thay thế các thẻ JS hệ thống bằng 1 thẻ duy nhất
     scriptTags.forEach((tag, index) => {
         if (index === 0) {
-            prodHtmlContent = prodHtmlContent.replace(tag, '<script src="src/js/dist/app.bundle.min.js?v=11.74"></script>');
+            prodHtmlContent = prodHtmlContent.replace(tag, `<script src="src/js/dist/app.bundle.min.js?v=${APP_VERSION}"></script>`);
         } else {
             prodHtmlContent = prodHtmlContent.replace(tag, '');
         }
@@ -488,17 +490,26 @@ var _dec = function(b64) {
     // Thay thế script theme.js
     prodHtmlContent = prodHtmlContent.replace(
         /<script\s+src=["']src\/js\/utils\/theme\.js["']><\/script>/gi,
-                '<script src="src/js/dist/theme.min.js?v=11.74"></script>'
+                `<script src="src/js/dist/theme.min.js?v=${APP_VERSION}"></script>`
     );
 
     // Thay thế script chatbot module bằng bundle chatbot-core
     prodHtmlContent = prodHtmlContent.replace(
         /<script\s+type=["']module["']\s+src=["']chatbot-widget\/js\/main\.js["']><\/script>/gi,
-                '<script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.74"></script>'
+                `<script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=${APP_VERSION}"></script>`
     );
 
     // Loại bỏ thẻ env.js khỏi file production HTML vì đã gộp vào bundle
     prodHtmlContent = prodHtmlContent.replace(/<script\s+src=["']env\.js["']><\/script>/gi, '');
+
+    // Đồng bộ phiên bản Service Worker để trình duyệt tự xóa cache của bản cũ.
+    const serviceWorkerPath = path.join(__dirname, '../sw.js');
+    if (fs.existsSync(serviceWorkerPath)) {
+        const serviceWorkerContent = fs.readFileSync(serviceWorkerPath, 'utf-8')
+            .replace(/const CACHE_VERSION = ['"]medstand-[^'"]+['"];/,
+                `const CACHE_VERSION = 'medstand-${APP_VERSION}';`);
+        writeFileWithRetry(serviceWorkerPath, serviceWorkerContent);
+    }
 
     // Loại bỏ các dòng trống thừa
     prodHtmlContent = prodHtmlContent.replace(/\r?\n\s*\r?\n/g, '\n');

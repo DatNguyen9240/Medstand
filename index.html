@@ -3,6 +3,55 @@
 <head>
   <!-- Inline Cache-Clearing Script (Bypasses Service Worker traps) -->
   <script>
+    (function () {
+      var appVersion = '11.77';
+      var versionKey = 'medstand_asset_version';
+      var previousVersion = localStorage.getItem(versionKey);
+      // Chỉ dọn cache kỹ thuật khi phát hiện một bản deploy mới. Không xóa
+      // auth_user, cookie đăng nhập, theme hoặc lịch sử hội thoại của người dùng.
+      if (previousVersion && previousVersion !== appVersion) {
+        localStorage.setItem(versionKey, appVersion);
+        var cleanupTasks = [];
+        if ('caches' in window) {
+          cleanupTasks.push(
+            caches.keys().then(function (names) {
+              return Promise.all(names
+                .filter(function (name) { return name.indexOf('medstand-') === 0; })
+                .map(function (name) { return caches.delete(name); }));
+            })
+          );
+        }
+        if ('serviceWorker' in navigator) {
+          cleanupTasks.push(
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(registrations.map(function (registration) {
+                return registration.update();
+              }));
+            })
+          );
+        }
+        try {
+          sessionStorage.removeItem('api_engine_v4_list');
+          var cacheKeys = [];
+          for (var cacheIndex = 0; cacheIndex < sessionStorage.length; cacheIndex++) {
+            var cacheKey = sessionStorage.key(cacheIndex);
+            if (cacheKey && cacheKey.indexOf('_hc_') === 0) cacheKeys.push(cacheKey);
+          }
+          cacheKeys.forEach(function (cacheKey) { sessionStorage.removeItem(cacheKey); });
+        } catch (error) {
+          console.warn('[Cache] Không thể dọn session cache:', error);
+        }
+        var reloadKey = 'medstand_asset_reload_' + appVersion;
+        Promise.allSettled(cleanupTasks).then(function () {
+          if (!sessionStorage.getItem(reloadKey)) {
+            sessionStorage.setItem(reloadKey, '1');
+            window.location.reload();
+          }
+        });
+      } else {
+        localStorage.setItem(versionKey, appVersion);
+      }
+    })();
     if (window.location.href.indexOf('clean=true') > -1) {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -18,7 +67,12 @@
           }
         });
       }
-      localStorage.removeItem('ai_chat_history');
+      Object.keys(localStorage).forEach(function (key) {
+        if (/^ai_chat_history(?:_v2)?(?:_|$)/.test(key)) {
+          localStorage.removeItem(key);
+        }
+      });
+      if (window.indexedDB) indexedDB.deleteDatabase('MedstandChatDB');
       var cleanUrl = window.location.href.replace(/[?&]clean=true/g, '').replace(/clean=true/g, '');
       setTimeout(function () { window.location.href = cleanUrl; }, 300);
     }
@@ -32,9 +86,9 @@
   <link rel="shortcut icon" href="images/logo/medstand-logo.png" type="image/png">
   <title>Medstand</title>
   <!-- ── Core CSS ─────────────────────────────────── -->
-  <link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.74">
+  <link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.77">
   <!-- ── Theme (must be before body) ─────────────── -->
-  <script src="src/js/dist/theme.min.js?v=11.74"></script>
+  <script src="src/js/dist/theme.min.js?v=11.77"></script>
   <!-- ── Cash.js (jQuery-like) ───────────────────── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
 </head>
@@ -52,7 +106,7 @@
   <div id="nav-container"></div>
   <!-- Môi trường — SỬA FILE NÀY KHI DEPLOY SANG SERVER MỚI -->
   <!-- ── Shared JS ────────────────────────────────── -->
-  <script src="src/js/dist/app.bundle.min.js?v=11.74"></script>
+  <script src="src/js/dist/app.bundle.min.js?v=11.77"></script>
   <!-- API layer -->
   <!-- Components -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -71,7 +125,7 @@
     Router.js load đúng lúc khi user navigate vào trang #/chatbot.
     main.js chỉ tạo floating button + Shadow DOM overlay.
   -->
-  <script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.74"></script>
+  <script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.77"></script>
   <script src="src/pwa/pwa-register.js"></script>
 </body>
 </html>
