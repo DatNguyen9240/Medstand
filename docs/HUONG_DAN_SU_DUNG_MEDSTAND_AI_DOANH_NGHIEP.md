@@ -1,5 +1,15 @@
 # Hướng dẫn sử dụng Medstand AI cho doanh nghiệp
 
+> **Phân loại: TÀI LIỆU NGUỒN NỘI BỘ.** Bản rút gọn để gửi người dùng Pilot nằm trong thư mục `docs/GOI_UAT_KHACH_HANG`.
+
+| Thông tin kiểm soát | Giá trị |
+|---|---|
+| Ngày cập nhật | 22/07/2026 |
+| Phạm vi | Sale, Quản lý và Admin trong Pilot read-only |
+| Hội thoại tự nhiên | 24 chức năng đã duyệt |
+| Trạng thái n8n | Đã import workflow mới; chờ xác nhận Published/Active và kiểm thử runtime |
+| Nguyên tắc phát hành | Chỉ giao test sau smoke Manager/Sale; không coi import là Runtime PASS |
+
 ## 1. Medstand AI dùng để làm gì?
 
 Medstand AI hỗ trợ tra cứu nhanh dữ liệu ERP và đưa ra gợi ý cho Sale, Quản lý và Admin. Hệ thống không thay thế quyết định nghiệp vụ, không tự duyệt khuyến mãi và không tự ghi đơn thật trong giai đoạn Pilot.
@@ -14,6 +24,8 @@ Medstand AI hỗ trợ tra cứu nhanh dữ liệu ERP và đưa ra gợi ý cho
 4. Chỉ hỏi dữ liệu thuộc miền, kho, khách hàng và nhân viên được giao.
 
 Nếu vừa đổi tài khoản, hãy đăng xuất rồi đăng nhập lại để làm mới quyền. Không dùng chung phiên trình duyệt khi kiểm thử nhiều tài khoản.
+
+Trước buổi Pilot, điều phối viên phải xác nhận frontend và n8n cùng trỏ vào một môi trường, workflow chính đang Published/Active và Node gateway đã được khởi động lại sau cập nhật.
 
 ## 3. Hai cách hỏi chatbot
 

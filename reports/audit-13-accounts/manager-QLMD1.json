@@ -1,0 +1,13 @@
+{
+  "suite": "live-smoke",
+  "endpoint": "http://localhost:3000/api/gateway",
+  "transport": "gateway",
+  "authenticated": true,
+  "total": 8,
+  "passed": 8,
+  "failed": 0,
+  "p50Ms": 406,
+  "p95Ms": 14789,
+  "maxMs": 14789,
+  "failures": []
+}

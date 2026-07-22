@@ -91,7 +91,12 @@ BEGIN
              SELECT 1 FROM dbo.CF_ObjectTbl O WITH (NOLOCK)
              WHERE O.ObjectID = @MaKhachHang
                AND (ISNULL(@SYS_BranchID, '') = '' OR O.BranchID = @SYS_BranchID)
-               AND O.ObjectID IN (SELECT ObjectID FROM AR_GetObjectByUserFnc(@Username))
+               AND EXISTS
+               (
+                   SELECT 1
+                   FROM AR_GetObjectByUserFnc(@Username) P
+                   WHERE P.ObjectID = O.ObjectID
+               )
          )
          BEGIN
              SELECT N'Bạn không có quyền xem công nợ khách hàng này.' AS [Msg], 1 AS [MsgType]
@@ -106,17 +111,17 @@ BEGIN
         @DenNgay AS [AsOfDate],
         I.DocumentID AS [MaHD],
         COALESCE(
-            NULLIF(LTRIM(RTRIM(A.DocumentID)), ''),
-            CASE WHEN M.CandidateCount = 1 THEN M.DocumentID END
+            X.CleanDocumentID,
+            CASE WHEN U.CandidateCount = 1 THEN U.DocumentID END
         ) AS [MaChungTu],
-        FORMAT(COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate), 'dd/MM/yyyy') AS [Ngay],
+        CONVERT(CHAR(10), COALESCE(I.DocumentDate, E.DocumentDate, U.DocumentDate, A.DocumentDate), 103) AS [Ngay],
         I.DocumentDate AS [NgayHoaDon],
-        COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) AS [NgayKhoanCongNo],
+        COALESCE(I.DocumentDate, E.DocumentDate, U.DocumentDate, A.DocumentDate) AS [NgayKhoanCongNo],
         I.DueDate AS [NgayDenHan],
         I.DocumentID AS [InvoiceID],
         I.DocumentID AS [InvoiceNumber],
         I.DocumentDate AS [InvoiceDate],
-        COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) AS [DebtDate],
+        COALESCE(I.DocumentDate, E.DocumentDate, U.DocumentDate, A.DocumentDate) AS [DebtDate],
         I.DueDate AS [DueDate],
         CASE
             WHEN I.DocumentID IS NOT NULL THEN 'INVOICE'
@@ -130,8 +135,8 @@ BEGIN
         END AS [DocumentType],
         CASE
             WHEN I.DocumentID IS NOT NULL THEN 'EXACT_INVOICE_MATCH'
-            WHEN NULLIF(LTRIM(RTRIM(A.DocumentID)), '') IS NOT NULL THEN 'NON_INVOICE_DOCUMENT'
-            WHEN M.CandidateCount = 1 THEN 'UNIQUE_RAW_SOURCE_MATCH'
+            WHEN X.CleanDocumentID IS NOT NULL THEN 'NON_INVOICE_DOCUMENT'
+            WHEN U.CandidateCount = 1 THEN 'UNIQUE_RAW_SOURCE_MATCH'
             ELSE 'UNRESOLVED_DOCUMENT'
         END AS [DocumentMatchStatus],
         A.DebitAmount AS [GiaTriBanDau],
@@ -194,38 +199,55 @@ BEGIN
         O.ObjectName AS [TenKH],
         O.Phone AS [SoDienThoai]
     FROM SY_GetDebitDocFnc(@DenNgay, @MaKhachHang, '131', '') A
+    CROSS APPLY
+    (
+        VALUES
+        (
+            NULLIF(LTRIM(RTRIM(A.DocumentID)), ''),
+            ISNULL(A.DebitAmount - A.CreditAmount, 0)
+        )
+    ) X (CleanDocumentID, RemainingAmount)
+    -- Fast path: a debt row that already has a document ID only needs one indexed lookup.
     OUTER APPLY
     (
         SELECT TOP 1
             V.DocumentID,
-            V.DocumentDate,
-            V.EmployeeID,
-            COUNT_BIG(*) OVER() AS CandidateCount
+            V.DocumentDate
         FROM dbo.vCongNoBanHang V
         WHERE V.ObjectID = A.ObjectID
           AND V.AccountID = A.AccountID
           AND V.DocumentDate <= @DenNgay
-          AND ABS(ISNULL(V.Amount, 0) - ISNULL(A.DebitAmount - A.CreditAmount, 0)) < 0.01
-          AND
-          (
-              NULLIF(LTRIM(RTRIM(A.DocumentID)), '') IS NULL
-              OR V.DocumentID = A.DocumentID
-          )
-        ORDER BY
-            CASE WHEN V.DocumentID = A.DocumentID THEN 0 ELSE 1 END,
-            V.DocumentDate DESC,
-            V.DocumentID
-    ) M
+          AND X.CleanDocumentID IS NOT NULL
+          AND V.DocumentID = X.CleanDocumentID
+          AND ISNULL(V.Amount, 0) > X.RemainingAmount - 0.01
+          AND ISNULL(V.Amount, 0) < X.RemainingAmount + 0.01
+        ORDER BY V.DocumentDate DESC
+    ) E
+    -- Slow fallback is only evaluated for legacy debt rows without a document ID.
+    OUTER APPLY
+    (
+        SELECT
+            MIN(V.DocumentID) AS DocumentID,
+            MIN(V.DocumentDate) AS DocumentDate,
+            COUNT_BIG(*) AS CandidateCount
+        FROM dbo.vCongNoBanHang V
+        WHERE V.ObjectID = A.ObjectID
+          AND V.AccountID = A.AccountID
+          AND V.DocumentDate <= @DenNgay
+          AND X.CleanDocumentID IS NULL
+          AND ISNULL(V.Amount, 0) > X.RemainingAmount - 0.01
+          AND ISNULL(V.Amount, 0) < X.RemainingAmount + 0.01
+    ) U
     LEFT JOIN dbo.AR_InvoiceTbl I WITH (NOLOCK)
         ON I.DocumentID = COALESCE(
-            NULLIF(LTRIM(RTRIM(A.DocumentID)), ''),
-            CASE WHEN M.CandidateCount = 1 THEN M.DocumentID END
+            X.CleanDocumentID,
+            CASE WHEN U.CandidateCount = 1 THEN U.DocumentID END
         )
        AND I.ObjectID = A.ObjectID
     LEFT JOIN dbo.CF_ObjectTbl O WITH (NOLOCK)
         ON O.ObjectID = A.ObjectID
     WHERE (A.DebitAmount - A.CreditAmount) <> 0
-    ORDER BY COALESCE(I.DocumentDate, M.DocumentDate, A.DocumentDate) DESC
+    ORDER BY COALESCE(I.DocumentDate, E.DocumentDate, U.DocumentDate, A.DocumentDate) DESC
 END
 
 

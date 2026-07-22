@@ -1,5 +1,7 @@
 # Bộ tài liệu Pilot Medstand AI
 
+> Báo cáo hiện hành: [`BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md`](BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md). Trạng thái ngày 22/07/2026: `N8N_IMPORTED_RUNTIME_RETEST_PENDING`. Báo cáo audit `NO-GO` cũ được giữ làm baseline trước khắc phục.
+
 ## Tài liệu dành cho doanh nghiệp
 
 1. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)  
@@ -7,6 +9,9 @@
 
 2. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)  
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
+
+3. [`GOI_UAT_KHACH_HANG/README.md`](GOI_UAT_KHACH_HANG/README.md)
+   Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn nhanh, phiếu ghi kết quả, mẫu báo lỗi và kịch bản 13 tài khoản dạng copy-paste.
 
 ## Tài liệu kỹ thuật liên quan
 
@@ -24,6 +29,11 @@
 
 ## Trạng thái tài liệu
 
-- Dùng được cho Pilot trên `medtest` với dữ liệu chốt đến 20/07/2026.
+- Hai workflow n8n mới đã được người triển khai xác nhận import; còn chờ xác nhận Published/Active và runtime retest.
+- Dùng để điều phối vòng test kỹ thuật trên `medtest` với dữ liệu chuẩn đã đối soát đến 20/07/2026.
 - Chưa phải hướng dẫn vận hành production-final.
 - Khi URL, tài khoản, business rule hoặc workflow thay đổi sau deploy, phải cập nhật tài liệu và chạy regression lại.
+
+## Tài liệu vận hành kỹ thuật
+
+- [Cập nhật ngầm công nợ](VAN_HANH_CAP_NHAT_NGAM_CONG_NO.md): polling gần realtime cho card công nợ hiện tại, điều kiện dừng và cấu hình tải.

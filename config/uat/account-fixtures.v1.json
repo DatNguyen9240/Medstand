@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Dữ liệu đại diện đúng phạm vi cho 13 tài khoản Pilot; không chứa mật khẩu hoặc token.",
+  "accounts": {
+    "QLBH013.MED": { "role": "manager", "region": "MB", "customerId": "NDB001" },
+    "NAMDINHB.MED": { "role": "sale", "region": "MB", "customerId": "NDB001" },
+    "QLBH016.MED": { "role": "manager", "region": "MB", "customerId": "BNA051" },
+    "BACNINHA.MED": { "role": "sale", "region": "MB", "customerId": "BNA051" },
+    "QLBH005.MED": { "role": "manager", "region": "MT", "customerId": "HUEA043" },
+    "HUEB.MED": { "role": "sale", "region": "MT", "customerId": "HUEA043" },
+    "QLBH010.MED": { "role": "manager", "region": "MT", "customerId": "QANA002" },
+    "DANANGA.MED": { "role": "sale", "region": "MT", "customerId": "QANA002" },
+    "QLMN2": { "role": "manager", "region": "MN", "customerId": "DL012" },
+    "CanThoA": { "role": "sale", "region": "MN", "customerId": "DL012" },
+    "QLMD1": { "role": "manager", "region": "MN", "customerId": "SGNB0001" },
+    "BinhPhuocA": { "role": "sale", "region": "MN", "customerId": "SGNB0001" },
+    "QLBH024.MED": { "role": "manager", "region": "MN", "customerId": "AG0020" }
+  }
+}

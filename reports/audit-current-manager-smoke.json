@@ -1,0 +1,34 @@
+{
+  "suite": "live-smoke",
+  "endpoint": "http://localhost:3000/api/gateway",
+  "transport": "gateway",
+  "authenticated": true,
+  "total": 8,
+  "passed": 6,
+  "failed": 2,
+  "p50Ms": 414,
+  "p95Ms": 3602,
+  "maxMs": 3602,
+  "failures": [
+    {
+      "id": "debt-detail",
+      "text": "coi cn kh AG0031",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 500,
+      "latencyMs": 3567,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    },
+    {
+      "id": "order-recommendation",
+      "text": "gợi ý đơn hàng cho AG0031",
+      "expectedApi": "@goi_ydon_hang",
+      "httpStatus": 500,
+      "latencyMs": 3602,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    }
+  ]
+}

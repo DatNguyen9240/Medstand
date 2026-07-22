@@ -4549,7 +4549,16 @@
                 var semantic = /tu.?ngay|fromdate|startdate/i.test(k) ? 'fromDate' : (/den.?ngay|todate|enddate/i.test(k) ? 'toDate' : label);
                 if (seenDisplayFields[semantic]) return '';
                 seenDisplayFields[semantic] = true;
-                return label + ': ' + params[k];
+                var displayValue = params[k];
+                var isDateField = semantic === 'fromDate'
+                    || semantic === 'toDate'
+                    || /ngay|date/i.test(k)
+                    || (f && (/date/i.test(String(f.DataType || '')) || /date/i.test(String(f.ControlType || ''))));
+                if (isDateField) {
+                    var dateMatch = String(displayValue || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+                    if (dateMatch) displayValue = dateMatch[3] + '/' + dateMatch[2] + '/' + dateMatch[1];
+                }
+                return label + ': ' + displayValue;
             })
             .filter(Boolean)
             .join(' | ');

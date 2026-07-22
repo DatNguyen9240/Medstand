@@ -1,0 +1,45 @@
+{
+  "suite": "infrastructure-load",
+  "remote": false,
+  "thresholds": {
+    "minSuccessRate": 99.9,
+    "maxP95Ms": 1000
+  },
+  "results": [
+    {
+      "url": "http://localhost:3000/",
+      "requests": 100,
+      "concurrency": 10,
+      "passed": 100,
+      "failed": 0,
+      "successRate": 100,
+      "durationMs": 138,
+      "throughputRps": 724.64,
+      "p50Ms": 9,
+      "p95Ms": 28,
+      "p99Ms": 29,
+      "maxMs": 56,
+      "statusCounts": {
+        "200": 100
+      }
+    },
+    {
+      "url": "http://localhost:5678/healthz",
+      "requests": 100,
+      "concurrency": 10,
+      "passed": 100,
+      "failed": 0,
+      "successRate": 100,
+      "durationMs": 33,
+      "throughputRps": 3030.3,
+      "p50Ms": 2,
+      "p95Ms": 7,
+      "p99Ms": 7,
+      "maxMs": 8,
+      "statusCounts": {
+        "200": 100
+      }
+    }
+  ],
+  "note": "This checks HTTP availability only; authenticated chat load must use the load command."
+}
