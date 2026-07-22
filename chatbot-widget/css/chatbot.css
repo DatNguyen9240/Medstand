@@ -4224,11 +4224,16 @@ tr.expanded .ai-row-toggle::before {
   gap: 14px;
   min-height: 92px;
   padding: 16px 18px;
-  border: 1px solid var(--ai-border);
+  border: 1px solid #d5dfec;
+  border-top-width: 3px;
   border-radius: 12px;
-  background: var(--ai-bg-main);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.035);
+  background: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
 }
+
+.ai-sales-debt-detail .ai-sales-debt-metric.is-blue { border-top-color: #4f6fe8; }
+.ai-sales-debt-detail .ai-sales-debt-metric.is-green { border-top-color: #22a06b; }
+.ai-sales-debt-detail .ai-sales-debt-metric.is-orange { border-top-color: #e8791a; }
 
 .ai-sales-debt-detail .ai-sales-debt-metric > div {
   display: flex;
@@ -4237,7 +4242,9 @@ tr.expanded .ai-row-toggle::before {
 }
 
 .ai-sales-debt-detail .ai-sales-debt-metric > div > span {
+  color: #475569;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .ai-sales-debt-detail .ai-sales-debt-metric strong {
@@ -4252,15 +4259,35 @@ tr.expanded .ai-row-toggle::before {
   flex: 0 0 46px;
   width: 46px;
   height: 46px;
+  border: 1px solid transparent;
   border-radius: 11px;
 }
 
-.ai-sales-debt-metric.is-blue .ai-sales-debt-metric-icon { background: #eef4ff; color: #3158d9; }
+.ai-sales-debt-metric.is-blue .ai-sales-debt-metric-icon { border-color: #c9d8ff; background: #e7efff; color: #3158d9; }
 .ai-sales-debt-metric.is-blue strong { color: #3158d9; }
-.ai-sales-debt-metric.is-green .ai-sales-debt-metric-icon { background: #eaf8f0; color: #16945c; }
+.ai-sales-debt-metric.is-green .ai-sales-debt-metric-icon { border-color: #bce8cf; background: #e2f5e9; color: #118052; }
 .ai-sales-debt-metric.is-green strong { color: #16945c; }
-.ai-sales-debt-metric.is-orange .ai-sales-debt-metric-icon { background: #fff6e5; color: #e56a10; }
+.ai-sales-debt-metric.is-orange .ai-sales-debt-metric-icon { border-color: #ffd8a3; background: #fff0d8; color: #d95f08; }
 .ai-sales-debt-metric.is-orange strong { color: #e56a10; }
+
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric {
+  border-color: #46556d;
+  background: #202a3b;
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-blue { border-top-color: #7c9cff; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-green { border-top-color: #53d99a; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-orange { border-top-color: #ffad5c; }
+
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric > div > span { color: #cbd5e1; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-blue .ai-sales-debt-metric-icon { border-color: #4562a8; background: #25386b; color: #a9beff; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-green .ai-sales-debt-metric-icon { border-color: #28775a; background: #173f32; color: #70e0ad; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-orange .ai-sales-debt-metric-icon { border-color: #8a5729; background: #4a311a; color: #ffc078; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-blue strong { color: #a9beff; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-green strong { color: #70e0ad; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-metric.is-orange strong { color: #ffc078; }
+[data-theme="dark"] .ai-sales-debt-detail .ai-sales-debt-amount { color: #f8fafc !important; }
 
 .ai-sales-debt-detail .ai-sales-debt-list {
   border-top: 1px solid var(--ai-border);
@@ -4790,6 +4817,8 @@ tr.expanded .ai-row-toggle::before {
 }
 
 .ai-loyalty-card {
+  /* Keep this rich card on the same design-token set as the host page. */
+  --color-surface-subtle: var(--color-background, #f8fafc);
   width: 100%;
   overflow: hidden;
   border: 1px solid var(--color-border-strong, #d9e2ef);
@@ -5020,6 +5049,38 @@ tr.expanded .ai-row-toggle::before {
 [data-theme="dark"] .ai-loyalty-status.is-active {
   background: rgba(34, 197, 94, .16);
   color: #86efac;
+}
+
+[data-theme="dark"] .ai-loyalty-card {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+}
+
+[data-theme="dark"] .ai-loyalty-status.is-ended,
+[data-theme="dark"] .ai-loyalty-status.is-empty {
+  background: rgba(148, 163, 184, .14);
+  color: var(--color-text-secondary, #a1aec0);
+}
+
+[data-theme="dark"] .ai-loyalty-program {
+  background: var(--color-background, #1a222c);
+}
+
+[data-theme="dark"] .ai-loyalty-metrics > div,
+[data-theme="dark"] .ai-loyalty-actions button {
+  border-color: var(--color-border, #2e3a47);
+  background: var(--color-surface, #1c2536);
+}
+
+[data-theme="dark"] .ai-loyalty-progress-track {
+  background: var(--color-border, #2e3a47);
+}
+
+[data-theme="dark"] .ai-loyalty-actions button {
+  color: #a5b4fc;
+}
+
+[data-theme="dark"] .ai-loyalty-actions button:hover {
+  background: rgba(99, 102, 241, .14);
 }
 
 [data-theme="dark"] .ai-loyalty-next {
@@ -6032,6 +6093,13 @@ tr.expanded .ai-row-toggle::before {
 
 /* Sản phẩm trọng tâm: giao diện nghiệp vụ riêng, không lộ result set kỹ thuật. */
 .ai-focus-products {
+  /* Focus-products originally used legacy tokens that stayed light in dark mode. */
+  --bg-card: var(--color-surface, #fff);
+  --bg-input: var(--color-surface, #fff);
+  --bg-secondary: var(--color-background, #f8fafc);
+  --text-primary: var(--color-text, #1f2937);
+  --text-secondary: var(--color-text-secondary, #64748b);
+  --border-color: var(--color-border, #dbe3ee);
   overflow: hidden;
   border: 1px solid var(--border-color, #dbe3ee);
   border-radius: 18px;
@@ -6815,6 +6883,32 @@ tr.expanded .ai-row-toggle::before {
 
 [data-theme="dark"] .ai-focus-header {
   background: linear-gradient(135deg, rgba(99, 102, 241, .14), transparent 58%);
+}
+
+[data-theme="dark"] .ai-focus-products {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
+}
+
+[data-theme="dark"] .ai-focus-products input,
+[data-theme="dark"] .ai-focus-products select,
+[data-theme="dark"] .ai-focus-filter-toggle,
+[data-theme="dark"] .ai-focus-pagination select {
+  border-color: var(--color-border, #2e3a47);
+  background-color: var(--color-surface, #1c2536);
+  color: var(--color-text, #dee4ee);
+}
+
+[data-theme="dark"] .ai-focus-products option {
+  background: var(--color-surface, #1c2536);
+  color: var(--color-text, #dee4ee);
+}
+
+[data-theme="dark"] .ai-focus-table tbody > tr:not(.ai-focus-detail-row):hover td {
+  background: rgba(99, 102, 241, .1);
+}
+
+[data-theme="dark"] .ai-focus-code button:hover {
+  background: rgba(99, 102, 241, .14);
 }
 
 [data-theme="dark"] .ai-focus-stock-note {

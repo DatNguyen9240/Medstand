@@ -1,0 +1,460 @@
+'use strict';
+
+const SCHEMA_VERSION = '1.0.0';
+
+const RESPONSES = Object.freeze({
+  CASUAL_GREETING:
+    'Xin chào! Tôi có thể hỗ trợ tra cứu doanh số, khách hàng, công nợ, tồn kho và gợi ý bán hàng.',
+  CASUAL_THANKS: 'Rất vui được hỗ trợ bạn. Bạn có thể tiếp tục hỏi nghiệp vụ Medstand bất cứ lúc nào.',
+  CASUAL_CAPABILITIES:
+    'Tôi hỗ trợ tra cứu doanh số, khách hàng, công nợ, tồn kho và gợi ý bán hàng trong phạm vi được phân quyền.',
+  BOT_IDENTITY_QUERY:
+    'Tôi là Medstand AI, trợ lý hỗ trợ tra cứu dữ liệu và nghiệp vụ bán hàng trong phạm vi được phân quyền.',
+  USER_IDENTITY_QUERY:
+    'Tôi sẽ trả thông tin của tài khoản đang đăng nhập từ danh tính đã được hệ thống xác thực.',
+  USER_ROLE_QUERY:
+    'Tôi sẽ trả vai trò của tài khoản đang đăng nhập từ danh tính đã được hệ thống xác thực.',
+  USER_SCOPE_QUERY:
+    'Tôi sẽ trả phạm vi dữ liệu của tài khoản đang đăng nhập từ thông tin đã được hệ thống xác thực.',
+  CASUAL_UNDERSTAND_CONFIRMATION:
+    'Tôi vẫn hiểu cách nhắn tự nhiên và một số từ viết tắt. Bạn có thể hỏi về doanh số, khách hàng, công nợ, tồn kho hoặc gợi ý bán hàng.',
+  UNSUPPORTED_OUTSIDE_MEDSTAND_SCOPE:
+    'Hiện tôi chưa hỗ trợ nội dung này. Tôi chuyên hỗ trợ các nghiệp vụ Medstand như doanh số, công nợ và tồn kho.',
+  UNKNOWN_REPHRASE:
+    'Tôi chưa hiểu rõ yêu cầu. Bạn có thể diễn đạt lại hoặc chọn một chức năng bên dưới.',
+  MUTATION_PREVIEW_ONLY:
+    'Giai đoạn Pilot hiện chỉ hỗ trợ tra cứu hoặc xem trước. Hệ thống chưa ghi dữ liệu thật từ hội thoại.',
+  ASK_CUSTOMER_FOR_DEBT: 'Bạn muốn xem công nợ của khách hàng nào?',
+  ASK_PRODUCT_FOR_INVENTORY: 'Bạn muốn kiểm tra tồn kho của sản phẩm nào?',
+  ASK_CUSTOMER_FOR_ORDER_RECOMMENDATION: 'Bạn muốn xem gợi ý đơn hàng cho khách hàng nào?',
+  ASK_DOCUMENT_FOR_INVOICE_DETAIL: 'Bạn muốn xem chi tiết hóa đơn nào?',
+  ASK_CUSTOMER_FOR_SURVEY: 'Bạn muốn xem thông tin khảo sát của khách hàng nào?',
+  ASK_CUSTOMER_FOR_UPSELL: 'Bạn muốn xem gợi ý bán kèm cho khách hàng nào?',
+  ASK_CUSTOMER_FOR_LOYALTY: 'Bạn muốn xem tiến độ tích lũy của khách hàng nào?',
+  ASK_PRODUCT_FOR_PRESCRIPTION: 'Bạn muốn xem gợi ý đơn thuốc cho sản phẩm nào?',
+  ASK_PRODUCT_FOR_SEARCH: 'Bạn muốn tìm sản phẩm nào?',
+  FOLLOW_UP_NEEDS_CONTEXT:
+    'Bạn muốn tiếp tục với kết quả nào? Hãy chọn lại khách hàng hoặc chức năng cần xem.',
+});
+
+function isErpCode(token) {
+  return /^[A-Z]{1,8}[A-Z0-9._-]*\d{2,}[A-Z0-9._-]*$/i.test(String(token || ''));
+}
+
+function foldForMatch(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9@._/-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeNaturalText(input) {
+  const originalText = String(input || '').replace(/\s+/g, ' ').trim();
+  const rawTokens = originalText.split(' ');
+  const replacements = new Map([
+    ['tui', 'tôi'],
+    ['ko', 'không'],
+    ['k', 'không'],
+    ['z', 'vậy'],
+    ['dc', 'được'],
+    ['đc', 'được'],
+    ['r', 'rồi'],
+    ['trc', 'trước'],
+    ['cn', 'công nợ'],
+    ['sp', 'sản phẩm'],
+    ['ds', 'doanh số'],
+    ['h', 'giờ'],
+  ]);
+
+  const normalized = rawTokens.map((token, index) => {
+    const clean = token.replace(/^[^\p{L}\p{N}@]+|[^\p{L}\p{N}._@/-]+$/gu, '');
+    if (!clean || isErpCode(clean) || /^@[a-z0-9_]+$/i.test(clean)) return token;
+    const lowered = clean.toLowerCase();
+    let replacement = replacements.get(lowered);
+    if (lowered === 'kh') {
+      const next = (rawTokens[index + 1] || '').replace(/[^A-Za-z0-9._-]/g, '');
+      replacement = isErpCode(next) ? 'khách hàng' : 'không';
+    }
+    if (!replacement) return token.toLowerCase();
+    return token.replace(clean, replacement);
+  });
+
+  return {
+    originalText,
+    normalizedText: normalized.join(' ').replace(/\s+/g, ' ').trim(),
+  };
+}
+
+function extractErpCode(originalText) {
+  const tokens = String(originalText || '').match(/[A-Za-z][A-Za-z0-9._-]*\d{2,}[A-Za-z0-9._-]*/g) || [];
+  return tokens.find(isErpCode) || null;
+}
+
+function baseResult(normalized, overrides) {
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    messageType: 'UNKNOWN',
+    intent: null,
+    internalIntent: null,
+    apiCode: null,
+    confidence: 0,
+    entities: {},
+    missingFields: [],
+    requiresClarification: true,
+    supported: false,
+    responseKey: 'UNKNOWN_REPHRASE',
+    responseMessage: RESPONSES.UNKNOWN_REPHRASE,
+    originalText: normalized.originalText,
+    normalizedText: normalized.normalizedText,
+    ...overrides,
+  };
+}
+
+function classifyNaturalMessage(input, options = {}) {
+  const normalized = normalizeNaturalText(input);
+  const folded = foldForMatch(normalized.normalizedText);
+  const originalCode = extractErpCode(normalized.originalText);
+  const hasContext = Boolean(options.hasContext);
+
+  if (!folded) {
+    return baseResult(normalized, { confidence: 1 });
+  }
+
+  if (/\b(ban co hieu|co hieu toi|hieu toi khong|hieu toi noi khong|nhan vay hieu|nhan z hieu|hieu khong nhi|hieu kh nhi)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'CASUAL_UNDERSTAND_CONFIRMATION',
+      responseMessage: RESPONSES.CASUAL_UNDERSTAND_CONFIRMATION,
+    });
+  }
+
+  if (/^(xin chao|chao|hello|hi|alo|e|ê)(\s+(ban|bot|tro ly|anh|chi|nha|nhe|a))?$/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'CASUAL_GREETING',
+      responseMessage: RESPONSES.CASUAL_GREETING,
+    });
+  }
+
+  if (/\b(cam on|thanks|thank you)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'CASUAL_THANKS',
+      responseMessage: RESPONSES.CASUAL_THANKS,
+    });
+  }
+
+  const correctionToUserIdentity = /\b(toi chu toi khong hoi ban|toi chu khong hoi ban|khong toi hoi toi|khong hoi ban hoi toi|toi hoi toi co|y toi la toi|y la toi hoi toi la ai|toi dang hoi toi la ai|tai khoan cua toi co)\b/.test(folded);
+  if (correctionToUserIdentity) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'USER_IDENTITY_QUERY',
+      responseMessage: RESPONSES.USER_IDENTITY_QUERY,
+    });
+  }
+
+  if (/\b(tui hoi ban la ai|toi hoi ban la ai|ban la ai|bot la ai|medstand ai la gi)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'BOT_IDENTITY_QUERY',
+      responseMessage: RESPONSES.BOT_IDENTITY_QUERY,
+    });
+  }
+
+  if (/\b(ban lam duoc gi|ban giup duoc gi|chuc nang cua ban)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'CASUAL_CAPABILITIES',
+      responseMessage: RESPONSES.CASUAL_CAPABILITIES,
+    });
+  }
+
+  if (/\b(vai tro cua toi|toi co vai tro gi|toi la sale hay quan ly|toi la quan ly hay sale)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'USER_ROLE_QUERY',
+      responseMessage: RESPONSES.USER_ROLE_QUERY,
+    });
+  }
+
+  if (/\b(toi duoc xem (du lieu nao|khach nao|nhung gi)|pham vi cua toi|chi nhanh cua toi|khu vuc cua toi)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'USER_SCOPE_QUERY',
+      responseMessage: RESPONSES.USER_SCOPE_QUERY,
+    });
+  }
+
+  if (/\b(toi la ai|minh la ai|ten toi la gi|toi dang dang nhap tai khoan nao|tai khoan cua toi la gi|ban biet toi la ai khong)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'CASUAL_META',
+      confidence: 0.99,
+      requiresClarification: false,
+      supported: true,
+      responseKey: 'USER_IDENTITY_QUERY',
+      responseMessage: RESPONSES.USER_IDENTITY_QUERY,
+    });
+  }
+
+  const unsupportedTopic = /\b(thoi tiet|bong da|ket qua xo so|bai tho|viet tho|dich sang tieng anh|gia vang|chung khoan)\b/.test(folded);
+  if (unsupportedTopic) {
+    let topic = 'OTHER';
+    if (folded.includes('thoi tiet')) topic = 'WEATHER';
+    else if (folded.includes('bong da')) topic = 'SPORTS';
+    else if (folded.includes('bai tho') || folded.includes('viet tho')) topic = 'POETRY';
+    else if (folded.includes('dich sang')) topic = 'TRANSLATION';
+    return baseResult(normalized, {
+      messageType: 'UNSUPPORTED',
+      confidence: 0.99,
+      entities: { topic },
+      requiresClarification: false,
+      supported: false,
+      responseKey: 'UNSUPPORTED_OUTSIDE_MEDSTAND_SCOPE',
+      responseMessage: RESPONSES.UNSUPPORTED_OUTSIDE_MEDSTAND_SCOPE,
+    });
+  }
+
+  const mutation = /\b(tao|them|sua|xoa|duyet|huy|ghi)\b.*\b(don hang|hoa don|khuyen mai|khach hang|du lieu)\b/.test(folded);
+  if (mutation && !/\b(goi y|xem truoc|tra cuu)\b/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'MUTATION_REQUEST',
+      confidence: 0.98,
+      requiresClarification: false,
+      supported: false,
+      responseKey: 'MUTATION_PREVIEW_ONLY',
+      responseMessage: RESPONSES.MUTATION_PREVIEW_ONLY,
+    });
+  }
+
+  if (/^(thang truoc thi sao|con cai nay|chi tiet hon|doi sang khach|cung ky truoc|tuan truoc thi sao)$/.test(folded)) {
+    return baseResult(normalized, {
+      messageType: 'FOLLOW_UP',
+      confidence: 0.96,
+      requiresClarification: !hasContext,
+      supported: hasContext,
+      responseKey: hasContext ? 'FOLLOW_UP_USE_CONTEXT' : 'FOLLOW_UP_NEEDS_CONTEXT',
+      responseMessage: hasContext ? '' : RESPONSES.FOLLOW_UP_NEEDS_CONTEXT,
+    });
+  }
+
+  const debtQuery = folded.includes('cong no')
+    || /\b(chi tiet no|con no|no bao nhieu|no nhieu|khoan nao chua tra|da tra het no|tra het no)\b/.test(folded);
+  const business = debtQuery
+    || /\b(doanh so|doanh thu|hoa don|don hang|ton kho|san pham|khach hang|goi y|ban kem|tich luy|tuyen|cham diem|khuyen mai|danh muc|khao sat|thong bao)\b/.test(folded);
+  if (business) {
+    let internalIntent = null;
+    let apiCode = null;
+    let entities = {};
+    let missingFields = [];
+    let responseKey = null;
+
+    if (/\bkhao sat 360\b/.test(folded)) {
+      internalIntent = 'SURVEY_360';
+      apiCode = '@khao_sat360';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
+      }
+    } else if (/\b(danh sach )?cau hoi khao sat\b/.test(folded)) {
+      internalIntent = 'SURVEY_QUESTIONS';
+      apiCode = '@danh_sach_cau_hoi_khao_sat';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
+      }
+    } else if (/\b(lich su khao sat|khao sat.*lich su)\b/.test(folded)) {
+      internalIntent = 'SURVEY_HISTORY';
+      apiCode = '@lich_su_khao_sat';
+    } else if (/\b(hom nay.*khao sat|khao sat.*hom nay|kiem tra khao sat ngay)\b/.test(folded)) {
+      internalIntent = 'SURVEY_DAILY_STATUS';
+      apiCode = '@kiem_tra_khao_sat_ngay';
+    } else if (/\b(trang thai khao sat|kiem tra khao sat)\b/.test(folded)) {
+      internalIntent = 'SURVEY_STATUS';
+      apiCode = '@kiem_tra_khao_sat';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
+      }
+    } else if (/^(xem |coi |kiem tra )?cong no khach hang$/.test(folded)) {
+      internalIntent = 'CUSTOMER_DEBT_SUMMARY';
+      apiCode = '@cong_no_khach_hang';
+    } else if (debtQuery) {
+      internalIntent = 'CUSTOMER_DEBT_DETAIL';
+      apiCode = '@cong_no_chi_tiet';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_DEBT';
+      }
+    } else if (folded.includes('ton kho')) {
+      internalIntent = 'INVENTORY_LIST';
+      apiCode = '@danh_sach_tonkho';
+      if (originalCode) entities.searchTerm = originalCode;
+      else {
+        const match = normalized.originalText.match(/(?:tồn kho|ton kho)\s+(.+)$/i);
+        const term = match ? match[1].trim() : '';
+        if (term && !/^(còn bao nhiêu|bao nhiêu|giúp|nha|ạ)$/i.test(term)) entities.searchTerm = term;
+        else {
+          missingFields = ['searchTerm'];
+          responseKey = 'ASK_PRODUCT_FOR_INVENTORY';
+        }
+      }
+    } else if (/\b(goi y ban kem|ban kem|upsell)\b/.test(folded)) {
+      internalIntent = 'UPSELL_RECOMMENDATION';
+      apiCode = '@upsell_goi_y';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_UPSELL';
+      }
+    } else if (/\b(goi y don thuoc|don thuoc)\b/.test(folded)) {
+      internalIntent = 'PRESCRIPTION_BUNDLE_RECOMMENDATION';
+      apiCode = '@goi_ydon_thuoc';
+      if (originalCode) entities.searchTerm = originalCode;
+      else {
+        missingFields = ['searchTerm'];
+        responseKey = 'ASK_PRODUCT_FOR_PRESCRIPTION';
+      }
+    } else if (/\b(goi y don hang)\b/.test(folded)) {
+      internalIntent = 'ORDER_RECOMMENDATION';
+      apiCode = '@goi_ydon_hang';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_ORDER_RECOMMENDATION';
+      }
+    } else if (/\b(chi tiet hoa don)\b/.test(folded)) {
+      internalIntent = 'INVOICE_DETAIL';
+      apiCode = '@hoa_don_chi_tiet';
+      if (originalCode) entities.documentId = originalCode;
+      else {
+        missingFields = ['documentId'];
+        responseKey = 'ASK_DOCUMENT_FOR_INVOICE_DETAIL';
+      }
+    } else if (/\b(hoa don)\b/.test(folded)) {
+      internalIntent = 'INVOICE_LIST';
+      apiCode = '@hoa_don';
+    } else if (/\b(don hang)\b/.test(folded)) {
+      internalIntent = 'ORDER_LIST';
+      apiCode = '@don_hang';
+    } else if (/\b(cham diem khach hang|cham diem)\b/.test(folded)) {
+      internalIntent = 'CUSTOMER_SCORING';
+      apiCode = '@cham_diem_kh';
+    } else if (/\b(tich luy)\b/.test(folded)) {
+      internalIntent = 'LOYALTY_PROGRESS';
+      apiCode = '@tich_luy';
+      if (originalCode) entities.customerId = originalCode;
+      else {
+        missingFields = ['customerId'];
+        responseKey = 'ASK_CUSTOMER_FOR_LOYALTY';
+      }
+    } else if (/\b(tuyen ban hang|tuyen hom nay|lich tuyen)\b/.test(folded)) {
+      internalIntent = 'SALES_ROUTE';
+      apiCode = '@tuyen_ban_hang';
+    } else if (/\b(san pham trong tam|hang trong tam)\b/.test(folded)) {
+      internalIntent = 'FOCUS_PRODUCTS';
+      apiCode = '@san_pham_trong_tam';
+    } else if (/\b(de xuat khuyen mai|can khuyen mai|khuyen mai)\b/.test(folded)) {
+      internalIntent = 'PROMOTION_REVIEW';
+      apiCode = '@de_xuat_khuyen_mai';
+    } else if (/\b(danh muc)\b/.test(folded)) {
+      internalIntent = 'CATALOG_LOOKUP';
+      apiCode = '@danh_muc';
+      if (/\b(kho hang|kho)\b/.test(folded)) entities.catalogType = 'khohang';
+      else if (/\b(khach hang|khach)\b/.test(folded)) entities.catalogType = 'khachhang';
+      else if (/\b(san pham|hang hoa)\b/.test(folded)) entities.catalogType = 'sanpham';
+    } else if (!/\btrieu chung\b/.test(folded) && /\b(tim|tra cuu)\b.*\b(san pham|thuoc)\b/.test(folded)) {
+      internalIntent = 'PRODUCT_SEARCH';
+      apiCode = '@tra_cuu_san_pham';
+      if (originalCode) entities.searchTerm = originalCode;
+      else {
+        const match = normalized.originalText.match(/(?:sản phẩm|san pham|thuốc|thuoc)\s+(.+)$/i);
+        const term = match ? match[1].trim() : '';
+        if (term) entities.searchTerm = term;
+        else {
+          missingFields = ['searchTerm'];
+          responseKey = 'ASK_PRODUCT_FOR_SEARCH';
+        }
+      }
+    } else if (/\b(thong bao)\b/.test(folded)) {
+      internalIntent = 'NOTIFICATIONS';
+      apiCode = '@thong_bao';
+    } else if (/\b(trieu chung)\b/.test(folded)) {
+      internalIntent = 'SYMPTOM_PRODUCT_SEARCH';
+      apiCode = '@tim_san_pham_theo_trieu_chung';
+      const match = normalized.originalText.match(/(?:triệu chứng|trieu chung)\s+(.+)$/i);
+      if (match && match[1].trim()) entities.keyword = match[1].trim();
+    } else if (/\b(doanh so|doanh thu)\b/.test(folded)) {
+      internalIntent = 'SALES_REVENUE';
+      apiCode = '@doanh_so';
+    }
+
+    return baseResult(normalized, {
+      messageType: 'BUSINESS',
+      intent: internalIntent,
+      internalIntent,
+      apiCode,
+      confidence: internalIntent ? 0.97 : 0.82,
+      entities,
+      missingFields,
+      requiresClarification: missingFields.length > 0 || !internalIntent,
+      supported: Boolean(internalIntent),
+      responseKey,
+      responseMessage: responseKey ? RESPONSES[responseKey] : '',
+    });
+  }
+
+  return baseResult(normalized, { confidence: 0.9 });
+}
+
+function getN8nRuntimeSource() {
+  return [
+    `const NATURAL_CHAT_SCHEMA_VERSION = ${JSON.stringify(SCHEMA_VERSION)};`,
+    `const NATURAL_CHAT_RESPONSES = ${JSON.stringify(RESPONSES)};`,
+    isErpCode.toString(),
+    foldForMatch.toString(),
+    normalizeNaturalText.toString(),
+    extractErpCode.toString(),
+    baseResult.toString().replace(/SCHEMA_VERSION/g, 'NATURAL_CHAT_SCHEMA_VERSION').replace(/RESPONSES/g, 'NATURAL_CHAT_RESPONSES'),
+    classifyNaturalMessage.toString().replace(/RESPONSES/g, 'NATURAL_CHAT_RESPONSES'),
+  ].join('\n\n');
+}
+
+module.exports = {
+  RESPONSES,
+  classifyNaturalMessage,
+  foldForMatch,
+  getN8nRuntimeSource,
+  normalizeNaturalText,
+};

@@ -241,7 +241,18 @@ function initDashboard() {
     };
     $('.analytics-subtitle').text(subtitleMap[currentTab] || 'Theo ngày trong kỳ');
 
-    // Tự động mở rộng khoảng ngày khi xem theo tháng/quý
+    // Quay lại chế độ Ngày: mặc định chỉ xem từ đầu tháng hiện tại đến hôm nay.
+    if (currentTab === 'day' && elFrom && elTo) {
+      hasCustomDateRange = false;
+      if (elFrom.value !== defaultFrom || elTo.value !== defaultTo) {
+        elFrom.value = defaultFrom;
+        elTo.value = defaultTo;
+        loadAll();
+        return;
+      }
+    }
+
+    // Tự động mở rộng khoảng ngày khi xem theo tháng/quý.
     if ((currentTab === 'month' || currentTab === 'quarter') && !hasCustomDateRange && elFrom && elTo) {
       var currentDate = new Date();
       var yearStart = currentDate.getFullYear() + '-01-01';

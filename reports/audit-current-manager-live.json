@@ -1,0 +1,124 @@
+{
+  "suite": "live-functional",
+  "endpoint": "http://localhost:3000/api/gateway",
+  "transport": "gateway",
+  "authenticated": true,
+  "total": 31,
+  "passed": 20,
+  "failed": 11,
+  "p50Ms": 1831,
+  "p95Ms": 5159,
+  "maxMs": 5325,
+  "failures": [
+    {
+      "id": "order-list",
+      "text": "xem đơn hàng tháng này",
+      "expectedApi": "@don_hang",
+      "httpStatus": 422,
+      "latencyMs": 3517,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_422"
+    },
+    {
+      "id": "debt-detail",
+      "text": "coi cn kh AG0031",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 500,
+      "latencyMs": 3327,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    },
+    {
+      "id": "debt-natural",
+      "text": "AG0031 còn nợ bao nhiêu",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 500,
+      "latencyMs": 3388,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    },
+    {
+      "id": "loyalty",
+      "text": "xem tích lũy của AG0031",
+      "expectedApi": "@tich_luy",
+      "httpStatus": 500,
+      "latencyMs": 5325,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    },
+    {
+      "id": "order-recommendation",
+      "text": "gợi ý đơn hàng cho AG0031",
+      "expectedApi": "@goi_ydon_hang",
+      "httpStatus": 500,
+      "latencyMs": 3352,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_500"
+    },
+    {
+      "id": "product-search",
+      "text": "tìm sản phẩm A003",
+      "expectedApi": "@tra_cuu_san_pham",
+      "httpStatus": 200,
+      "latencyMs": 3678,
+      "jsonError": "Unexpected end of JSON input",
+      "pass": false,
+      "reason": "INVALID_OR_EMPTY_JSON"
+    },
+    {
+      "id": "catalog",
+      "text": "xem danh mục kho hàng",
+      "expectedApi": "@danh_muc",
+      "httpStatus": 422,
+      "latencyMs": 261,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_422"
+    },
+    {
+      "id": "survey-360",
+      "text": "xem khảo sát 360 của AG0031",
+      "expectedApi": "@khao_sat360",
+      "httpStatus": 200,
+      "latencyMs": 1528,
+      "jsonError": null,
+      "pass": false,
+      "reason": "WRONG_API:@danh_sach_cau_hoi_khao_sat"
+    },
+    {
+      "id": "survey-status",
+      "text": "kiểm tra trạng thái khảo sát",
+      "expectedApi": "@kiem_tra_khao_sat",
+      "httpStatus": 200,
+      "latencyMs": 1792,
+      "jsonError": null,
+      "pass": false,
+      "reason": "WRONG_API:@danh_sach_cau_hoi_khao_sat"
+    },
+    {
+      "id": "survey-daily",
+      "text": "hôm nay tôi đã khảo sát chưa",
+      "expectedApi": "@kiem_tra_khao_sat_ngay",
+      "httpStatus": 200,
+      "latencyMs": 1598,
+      "jsonError": null,
+      "pass": false,
+      "reason": "WRONG_API:@danh_sach_cau_hoi_khao_sat"
+    },
+    {
+      "id": "survey-history",
+      "text": "xem lịch sử khảo sát",
+      "expectedApi": "@lich_su_khao_sat",
+      "httpStatus": 200,
+      "latencyMs": 1455,
+      "jsonError": null,
+      "pass": false,
+      "reason": "WRONG_API:@danh_sach_cau_hoi_khao_sat"
+    }
+  ]
+}

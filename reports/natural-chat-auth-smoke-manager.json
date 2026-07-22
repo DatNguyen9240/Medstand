@@ -1,0 +1,63 @@
+{
+  "suite": "live-smoke",
+  "endpoint": "http://localhost:3000/api/chat",
+  "authenticated": true,
+  "total": 8,
+  "passed": 3,
+  "failed": 5,
+  "p50Ms": 232,
+  "p95Ms": 404,
+  "maxMs": 404,
+  "failures": [
+    {
+      "id": "sales-today",
+      "text": "doanh số hôm nay",
+      "expectedApi": "@doanh_so",
+      "httpStatus": 200,
+      "latencyMs": 238,
+      "jsonError": null,
+      "pass": false,
+      "reason": "AUTH001"
+    },
+    {
+      "id": "debt-detail",
+      "text": "coi cn kh AG0031",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 200,
+      "latencyMs": 225,
+      "jsonError": null,
+      "pass": false,
+      "reason": "AUTH001"
+    },
+    {
+      "id": "order-recommendation",
+      "text": "gợi ý đơn hàng cho AG0031",
+      "expectedApi": "@goi_ydon_hang",
+      "httpStatus": 200,
+      "latencyMs": 218,
+      "jsonError": null,
+      "pass": false,
+      "reason": "AUTH001"
+    },
+    {
+      "id": "inventory",
+      "text": "kiểm tra tồn kho A003",
+      "expectedApi": "@danh_sach_tonkho",
+      "httpStatus": 200,
+      "latencyMs": 233,
+      "jsonError": null,
+      "pass": false,
+      "reason": "AUTH001"
+    },
+    {
+      "id": "missing-customer",
+      "text": "xem công nợ",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 200,
+      "latencyMs": 232,
+      "jsonError": null,
+      "pass": false,
+      "reason": "AUTH001"
+    }
+  ]
+}

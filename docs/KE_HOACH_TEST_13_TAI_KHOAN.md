@@ -1,6 +1,10 @@
 # Kế hoạch kiểm thử Medstand AI — 13 tài khoản UAT
 
+> **Phân loại: NỘI BỘ — Điều phối UAT/QA.** Không gửi nguyên tài liệu này cho toàn bộ người dùng Pilot vì có danh sách tài khoản, dữ liệu đại diện và kịch bản kiểm tra sâu.
+
 **Phạm vi:** dữ liệu UAT trên `medtest`, chỉ đọc và xem trước; không ghi đơn thật, không áp giá thật.
+
+**Cập nhật triển khai 22/07/2026:** người triển khai xác nhận đã import `AI_Intent_Parser` và `MAIN_ChatBot_V5`. Kế hoạch hiện ở trạng thái `READY_FOR_POST_IMPORT_TECHNICAL_RETEST`; chưa ghi PASS cho đến khi xác nhận Published/Active và chạy lại runtime.
 
 ## 1. Tài khoản và phạm vi
 
@@ -24,11 +28,14 @@ Mỗi tài khoản chỉ được thấy khách, nhân viên, kho và doanh số
 
 ## 2. Cách chạy
 
-1. Đăng xuất tài khoản trước, đăng nhập đúng tài khoản trong bảng.
-2. Mở **Trợ lý AI**, chạy các câu hỏi trong mục 3 theo thứ tự.
-3. Chụp kết quả có tên tài khoản, thời gian và mã khách đại diện.
-4. Với mỗi câu, ghi `PASS`, `FAIL` hoặc `BLOCKED`, kèm ảnh lỗi nếu có.
-5. Đăng xuất và lặp lại cho tài khoản tiếp theo.
+1. Điều phối viên xác nhận workflow mới đang Published/Active và chỉ một parser canonical được gọi.
+2. Xác nhận Node gateway đã restart và trình duyệt đã hard refresh.
+3. Chạy smoke một Manager và một Sale trước; chỉ tiếp tục khi không có lỗi P0/P1.
+4. Đăng xuất tài khoản trước, đăng nhập đúng tài khoản trong bảng.
+5. Mở **Trợ lý AI**, chạy các câu hỏi trong mục 3 theo thứ tự.
+6. Chụp kết quả có tên tài khoản, thời gian và mã khách đại diện.
+7. Với mỗi câu, ghi `PASS`, `FAIL` hoặc `BLOCKED`, kèm ảnh lỗi nếu có.
+8. Đăng xuất và lặp lại cho tài khoản tiếp theo.
 
 Không nhập mật khẩu, token hoặc dữ liệu khách thật vào file ghi nhận UAT.
 
@@ -129,12 +136,17 @@ PASS / FAIL / BLOCKED:
 - Không phát hiện rò rỉ khách/nhân viên/kho khác miền.
 - Không có mutation ghi dữ liệu thật.
 - Các lỗi còn lại được phân loại: lỗi dữ liệu, lỗi API, lỗi giao diện hoặc yêu cầu nghiệp vụ.
+- 24/24 lệnh `@` và 24/24 câu tự nhiên chuẩn gọi đúng API trên cùng release.
+- Request thiếu đăng nhập bị từ chối đúng `AUTH_REQUIRED`; không chạy xuống SQL.
+- Load test chỉ được chạy sau functional PASS và phải đạt tối thiểu 99% request hợp lệ.
 
 ## 8. Thông tin kiểm soát tài liệu
 
 | Thuộc tính | Giá trị |
 |---|---|
 | Môi trường | `medtest` / frontend local hoặc server Pilot |
+| Ngày cập nhật tài liệu | 22/07/2026 |
+| Trạng thái workflow | Đã import; chờ xác nhận Published/Active và runtime retest |
 | Ngày dữ liệu chốt | 20/07/2026 |
 | Số tài khoản | 13 |
 | Vai trò | 7 Quản lý, 6 Sale |
@@ -167,7 +179,11 @@ Người điều phối phải ghi commit/source version, URL frontend, URL n8n 
 ## 10. Điều kiện đầu vào trước khi test
 
 - [ ] Frontend mở được và trỏ đúng môi trường Pilot.
-- [ ] n8n workflow chính cần thiết đã Published; workflow migration/audit không cần bật để sử dụng hàng ngày.
+- [x] Hai workflow n8n mới đã được người triển khai xác nhận import.
+- [ ] `AI_Intent_Parser` và `MAIN_ChatBot_V5` đúng bản mới đang Published/Active.
+- [ ] Chỉ một Intent Parser canonical được MAIN gọi; không có hai parser cùng nhận production traffic.
+- [ ] Node gateway đã restart sau cập nhật `server.js` và frontend bundle.
+- [ ] Workflow migration/audit/backup không được bật như workflow sử dụng hằng ngày.
 - [ ] `API_ListActive`, `API_GetConfig`, `API_Execute` hoạt động.
 - [ ] 13 tài khoản đăng nhập được và chưa bị khóa.
 - [ ] Dữ liệu `U13D_` có đủ 84 đơn và 168 dòng chi tiết.

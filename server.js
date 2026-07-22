@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const compression = require('compression');
+const crypto = require('crypto');
 
 // ============================================================
 //  MEDSTAND — TỰ ĐỘNG ĐỌC BẢN CẤU HÌNH CỤC BỘ .ENV
@@ -117,8 +118,34 @@ const Cipher = {
     }
 };
 
+const getBearerAuthorization = (req) => {
+    const authorization = String(req.headers['authorization'] || '').trim();
+    return /^Bearer\s+\S+$/i.test(authorization) ? authorization : '';
+};
+
+const requestIdOf = (req) => String(req.headers['x-request-id'] || req.headers['x-correlation-id'] || crypto.randomUUID());
+
+const authRequiredPayload = (requestId) => ({
+    success: false,
+    status: 'AUTH_REQUIRED',
+    code: 'AUTH_REQUIRED',
+    errorCode: 'AUTH_REQUIRED',
+    message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+    requestId
+});
+
+const upstreamErrorPayload = (requestId, code, message) => ({
+    success: false,
+    status: 'SYSTEM_ERROR',
+    code,
+    errorCode: code,
+    message,
+    requestId
+});
+
 // ─── GLOBAL API GATEWAY (Encrypted Tunnel) ───
 app.post('/api/gateway', async (req, res) => {
+    const requestId = requestIdOf(req);
     try {
         if (!req.body || !req.body.data) {
             return res.status(400).json({ error: 'Yêu cầu không hợp lệ.' });
@@ -144,11 +171,19 @@ app.post('/api/gateway', async (req, res) => {
         const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
         const targetUrl = `${baseUrl}${endpoint}`;
 
+        // Chat/business webhooks are never anonymous. Login and other ERP APIs
+        // remain reachable because they do not use the /webhook namespace.
+        const authorization = getBearerAuthorization(req);
+        if (isN8n && !authorization) {
+            const encryptedRes = Cipher.encrypt(JSON.stringify(authRequiredPayload(requestId)));
+            return res.status(401).json({ data: encryptedRes });
+        }
+
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);
         
         const headers = {
             'Content-Type': 'application/json',
-            ...(req.headers['authorization'] ? { 'Authorization': req.headers['authorization'] } : {}),
+            ...(authorization ? { 'Authorization': authorization } : {}),
             ...(req.headers['idempotency-key'] ? { 'Idempotency-Key': req.headers['idempotency-key'] } : {}),
             ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {})
         };
@@ -190,25 +225,41 @@ app.post('/api/gateway', async (req, res) => {
         // Login response có thể chứa access/refresh token, vì vậy chỉ log kích thước.
         console.log(`[Proxy Gateway] Response bytes: ${Buffer.byteLength(resDataText, 'utf8')}`);
 
+        if (isN8n && !resDataText.trim()) {
+            const payload = upstreamErrorPayload(
+                requestId,
+                'EMPTY_UPSTREAM_RESPONSE',
+                'Hệ thống nghiệp vụ chưa trả dữ liệu. Vui lòng thử lại hoặc liên hệ quản trị viên.',
+            );
+            const encryptedRes = Cipher.encrypt(JSON.stringify(payload));
+            return res.status(502).json({ data: encryptedRes });
+        }
+
         // 3. Mã hóa kết quả trả về cho Client
         const encryptedRes = Cipher.encrypt(resDataText);
         res.status(response.status).json({ data: encryptedRes });
 
     } catch (error) {
         console.error('[Proxy Gateway Dynamic Error]:', error);
-        res.status(500).json({ error: 'Không thể kết nối đến máy chủ hệ thống.' });
+        res.status(502).json(upstreamErrorPayload(requestId, 'UPSTREAM_UNAVAILABLE', 'Không thể kết nối đến máy chủ hệ thống.'));
     }
 });
 
 // ─── 1. PROXY API CHO CHATBOT (Có đính kèm CHAT_API_KEY bảo mật) ───
 app.post('/api/chat', async (req, res) => {
+    const requestId = requestIdOf(req);
     try {
+        const authorization = getBearerAuthorization(req);
+        if (!authorization) {
+            return res.status(401).json(authRequiredPayload(requestId));
+        }
+
         console.log('[Proxy Gateway] Forwarding chat request to N8N...');
         const response = await fetch(`${getN8nUrl()}/webhook/hook-ai-dainao`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': req.headers['authorization'] || '',
+                'Authorization': authorization,
                 'x-api-key': process.env.CHAT_API_KEY || ''
             },
             body: JSON.stringify(req.body)
@@ -217,6 +268,13 @@ app.post('/api/chat', async (req, res) => {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
             const text = await response.text();
+            if (!text.trim()) {
+                return res.status(502).json(upstreamErrorPayload(
+                    requestId,
+                    'EMPTY_UPSTREAM_RESPONSE',
+                    'Trợ lý AI chưa trả dữ liệu. Vui lòng thử lại.',
+                ));
+            }
             let data = {};
             if (text.trim()) {
                 try {
@@ -228,11 +286,18 @@ app.post('/api/chat', async (req, res) => {
             res.status(response.status).json(data);
         } else {
             const text = await response.text();
+            if (!text.trim()) {
+                return res.status(502).json(upstreamErrorPayload(
+                    requestId,
+                    'EMPTY_UPSTREAM_RESPONSE',
+                    'Trợ lý AI chưa trả dữ liệu. Vui lòng thử lại.',
+                ));
+            }
             res.status(response.status).send(text);
         }
     } catch (error) {
         console.error('[Proxy Gateway Error]:', error);
-        res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
+        res.status(502).json(upstreamErrorPayload(requestId, 'UPSTREAM_UNAVAILABLE', 'Không thể kết nối đến Trợ lý AI.'));
     }
 });
 

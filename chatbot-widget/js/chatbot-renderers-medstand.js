@@ -343,6 +343,127 @@
             + '<strong>' + h.esc(title) + '</strong><span>' + h.esc(message) + '</span></section>';
     }
 
+    // Silent near-realtime refresh for the latest current debt-detail card.
+    // This is intentionally not exposed as a user-facing toggle. Historical
+    // snapshots never start a timer, and only one debt card may poll at a time.
+    var _activeDebtRefreshStop = null;
+    var _debtAutoRefreshEnabled = _cfg.DEBT_AUTO_REFRESH_ENABLED !== false;
+    var _debtAutoRefreshMs = Math.max(30000, Number(_cfg.DEBT_AUTO_REFRESH_MS) || 60000);
+    var _debtAutoRefreshMaxFailures = Math.max(1, Number(_cfg.DEBT_AUTO_REFRESH_MAX_FAILURES) || 3);
+
+    function _debtLocalDateKey(date) {
+        var value = date instanceof Date ? date : new Date(date);
+        if (isNaN(value.getTime())) return '';
+        var pad = function (part) { return String(part).padStart(2, '0'); };
+        return value.getFullYear() + '-' + pad(value.getMonth() + 1) + '-' + pad(value.getDate());
+    }
+
+    function _debtDateKey(value) {
+        if (value === null || value === undefined || value === '') return '';
+        var text = String(value).trim();
+        var iso = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (iso) return iso[1] + '-' + iso[2] + '-' + iso[3];
+        var vn = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (vn) return vn[3] + '-' + String(vn[2]).padStart(2, '0') + '-' + String(vn[1]).padStart(2, '0');
+        return _debtLocalDateKey(text);
+    }
+
+    function _debtRefreshFingerprint(rows) {
+        var ignored = { AsOfDate: true, NgayChot: true };
+        return JSON.stringify((Array.isArray(rows) ? rows : []).map(function (row) {
+            return Object.keys(row || {}).filter(function (key) { return !ignored[key]; }).sort().map(function (key) {
+                return [key, row[key]];
+            });
+        }));
+    }
+
+    function _debtShouldAutoRefresh(meta, asOfDate) {
+        if (!_debtAutoRefreshEnabled || !window.ApiEngine || typeof window.ApiEngine.queryData !== 'function') return false;
+        var queryParams = meta && meta.queryParams ? meta.queryParams : {};
+        var requestedDate = queryParams['@DenNgay'] || queryParams.DenNgay || asOfDate;
+        var requestedKey = _debtDateKey(requestedDate);
+        return !requestedKey || requestedKey === _debtLocalDateKey(new Date());
+    }
+
+    function _startDebtAutoRefresh(root, context) {
+        if (!root || !_debtShouldAutoRefresh(context.meta, context.asOfDate)) return;
+        if (typeof _activeDebtRefreshStop === 'function') _activeDebtRefreshStop();
+
+        var timer = null;
+        var stopped = false;
+        var inFlight = false;
+        var failures = 0;
+        var emptyResponses = 0;
+        var fingerprint = _debtRefreshFingerprint(context.rows);
+
+        function stop() {
+            stopped = true;
+            if (timer) clearTimeout(timer);
+            timer = null;
+            if (_activeDebtRefreshStop === stop) _activeDebtRefreshStop = null;
+        }
+
+        function schedule(delay) {
+            if (stopped) return;
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(refresh, delay);
+        }
+
+        function replaceCard(nextRows) {
+            var nextMeta = Object.assign({}, context.meta || {}, { queryParams: Object.assign({}, context.params) });
+            var markup = _renderCongNoChiTiet(nextRows, context.headerMsg, context.apiCode, nextMeta);
+            var holder = document.createElement('div');
+            holder.innerHTML = String(markup || '').trim();
+            var nextRoot = holder.firstElementChild;
+            if (!nextRoot || !root.isConnected) return false;
+            root.replaceWith(nextRoot);
+            stop();
+            return true;
+        }
+
+        function refresh() {
+            timer = null;
+            if (stopped || !root.isConnected || root.hidden) { stop(); return; }
+            if (document.visibilityState && document.visibilityState !== 'visible') { schedule(_debtAutoRefreshMs); return; }
+            if (inFlight) { schedule(_debtAutoRefreshMs); return; }
+
+            inFlight = true;
+            window.ApiEngine.queryData('@cong_no_chi_tiet', Object.assign({}, context.params)).then(function (nextRows) {
+                failures = 0;
+                if (!Array.isArray(nextRows) || nextRows.length === 0) {
+                    emptyResponses += 1;
+                    // Require two consecutive empty responses before replacing
+                    // valid data, protecting the card from a transient empty read.
+                    if (emptyResponses >= 2) {
+                        replaceCard([]);
+                        return;
+                    }
+                    schedule(_debtAutoRefreshMs);
+                    return;
+                }
+
+                emptyResponses = 0;
+                var nextFingerprint = _debtRefreshFingerprint(nextRows);
+                if (nextFingerprint !== fingerprint && replaceCard(nextRows)) return;
+                fingerprint = nextFingerprint;
+                schedule(_debtAutoRefreshMs);
+            }).catch(function (error) {
+                failures += 1;
+                var errorText = String(error && (error.code || error.message) || '');
+                if (/AUTH|TOKEN|UNAUTHORIZED|401/i.test(errorText) || failures >= _debtAutoRefreshMaxFailures) {
+                    stop();
+                    return;
+                }
+                schedule(Math.min(_debtAutoRefreshMs * Math.pow(2, failures), 5 * 60 * 1000));
+            }).finally(function () {
+                inFlight = false;
+            });
+        }
+
+        _activeDebtRefreshStop = stop;
+        schedule(_debtAutoRefreshMs);
+    }
+
     function _renderCongNoDanhSach(rows, headerMsg, apiCode, meta) {
         var sourceRows = Array.isArray(rows) ? rows : [];
         var validRows = [];
@@ -565,7 +686,22 @@
             if (!root) return;
             var closeButton = root.querySelector('.ai-sales-debt-close');
 
+            var refreshParams = Object.assign({}, meta && meta.queryParams ? meta.queryParams : {});
+            refreshParams['@MaKhachHang'] = customerId;
+            if (!refreshParams['@DenNgay'] && _debtDateKey(asOfDate)) refreshParams['@DenNgay'] = _debtDateKey(asOfDate);
+
+            _startDebtAutoRefresh(root, {
+                rows: safeRows,
+                headerMsg: headerMsg,
+                apiCode: apiCode,
+                meta: meta,
+                customerId: customerId,
+                asOfDate: asOfDate,
+                params: refreshParams
+            });
+
             function closeDetail() {
+                if (typeof _activeDebtRefreshStop === 'function') _activeDebtRefreshStop();
                 root.hidden = true;
                 var sourceButton = document.querySelector('[data-debt-customer="' + String(customerId ?? '').replace(/"/g, '\\"') + '"]');
                 if (sourceButton) sourceButton.focus();
