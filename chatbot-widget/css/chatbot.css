@@ -6,7 +6,7 @@
 .chatbot-page {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - 32px - var(--nav-height));
+  height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
   min-height: 0;
   overflow: hidden;
   background: var(--color-background);
@@ -1906,7 +1906,7 @@ tr.expanded .ai-row-toggle::before {
    remains anchored above the bottom navigation. */
 @media (max-width: 767px) {
   .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
-    height: calc(100dvh - 32px - var(--nav-height));
+    height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
     overflow: hidden;
   }
@@ -1929,7 +1929,7 @@ tr.expanded .ai-row-toggle::before {
     position: sticky;
     bottom: 0;
     margin-top: auto;
-    margin-bottom: max(4px, env(safe-area-inset-bottom, 0px));
+    margin-bottom: 0;
   }
 
   .chat-welcome-avatar {
