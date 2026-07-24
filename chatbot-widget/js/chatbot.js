@@ -4831,6 +4831,12 @@
 
                 }
 
+            } else if (grew > 100) {
+
+                // Một số trình duyệt Android đóng bàn phím mà không phát blur.
+
+                _setMobileKeyboardLayout(false);
+
             }
 
         });
@@ -6480,15 +6486,31 @@
 
 
 
-    $input.addEventListener('focus', function () {
+    function _setMobileKeyboardLayout(isOpen) {
 
-        if (window.innerWidth <= 768 && $nav) {
+        if (window.innerWidth > 768) return;
 
-            $nav.style.display = 'none';
+        document.body.classList.toggle('chatbot-keyboard-open', Boolean(isOpen));
 
-            $inputBar.style.bottom = '0';
+        if ($nav) {
+
+            $nav.style.display = isOpen ? 'none' : '';
 
         }
+
+        if ($inputBar) {
+
+            $inputBar.style.bottom = isOpen ? '0' : '';
+
+        }
+
+    }
+
+
+
+    $input.addEventListener('focus', function () {
+
+        _setMobileKeyboardLayout(true);
 
     });
 
@@ -6510,13 +6532,7 @@
 
             if (document.activeElement === $input) return;
 
-            if ($nav) {
-
-                $nav.style.display = '';
-
-            }
-
-            $inputBar.style.bottom = '';
+            _setMobileKeyboardLayout(false);
 
         }, 300);
 
@@ -6526,7 +6542,13 @@
 
     _updateSendBtn();
 
-    $input.focus();
+    // Desktop có thể focus sẵn để nhập nhanh. Trên mobile, focus tự động sẽ
+    // ẩn thanh điều hướng dù người dùng chưa chạm vào ô nhập.
+    if (window.innerWidth > 768) {
+
+        $input.focus();
+
+    }
 
 
 

@@ -1905,6 +1905,13 @@ tr.expanded .ai-row-toggle::before {
 /* Mobile welcome state: keep the welcome content compact while the composer
    remains anchored above the bottom navigation. */
 @media (max-width: 767px) {
+  /* Khi bàn phím ảo mở, thanh điều hướng dưới được ẩn. Khi đó vùng chat
+     phải dùng toàn bộ visual viewport thay vì tiếp tục chừa chỗ cho nav. */
+  body.chatbot-keyboard-open .chatbot-page,
+  body.chatbot-keyboard-open .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
+    height: 100dvh;
+  }
+
   .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
     height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
