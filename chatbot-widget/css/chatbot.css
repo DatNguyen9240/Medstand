@@ -1902,6 +1902,81 @@ tr.expanded .ai-row-toggle::before {
 
 }
 
+/* Mobile welcome state: keep the landing view compact instead of stretching it
+   to the same full-height layout used by an active conversation. Once the
+   welcome panel is hidden, the regular full-height chat layout applies again. */
+@media (max-width: 767px) {
+  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) .chat-container {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 18px 12px 10px;
+  }
+
+  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) .chat-welcome {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    min-height: 0;
+    padding: 0;
+  }
+
+  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) .chat-input-bar {
+    position: relative;
+    bottom: auto;
+    margin-top: 8px;
+    margin-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .chat-welcome-avatar {
+    width: 96px;
+    height: 96px;
+    margin-bottom: 6px;
+  }
+
+  .chat-welcome-icon-wrap {
+    width: 66px;
+    height: 66px;
+  }
+
+  .chat-welcome-icon-wrap img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .chat-welcome-title {
+    font-size: 1.25rem;
+    margin-bottom: 4px;
+  }
+
+  .chat-welcome-text {
+    margin-bottom: 14px;
+    max-width: 360px;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  .chat-suggestions {
+    max-width: 100%;
+    gap: 8px;
+  }
+
+  .chat-chip {
+    min-height: 76px;
+    padding: 10px 12px;
+  }
+
+  .chat-ai-disclaimer {
+    margin-top: 5px;
+    line-height: 1.3;
+  }
+}
+
 /* ── Mobile: shrink buttons for more textarea space ── */
 @media (max-width: 480px) {
   .chat-action-btn {
