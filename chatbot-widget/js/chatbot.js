@@ -46,13 +46,8 @@
 
 
 
-    // Khởi tạo Engine và tải Metadata hệ thống ngay khi load
-
-    if (typeof ApiEngine !== 'undefined') {
-
-        ApiEngine.loadSystemMeta();
-
-    }
+    // Khởi tạo Engine: loadSystemMeta sẽ được gọi SAU init() để đảm bảo
+    // _cbGetToken đã được set trước khi gửi request (tránh 401 không có token).
 
 
 
@@ -344,9 +339,15 @@
 
             container: $container,
 
-            apiBtn: $btnApi
+            apiBtn: $btnApi,
+
+            getToken: _getToken
 
         });
+
+        // Gọi loadSystemMeta SAU init() để _cbGetToken đã được set
+        // → request sẽ đính kèm Authorization: Bearer <token> đúng chuẩn
+        window.ApiEngine.loadSystemMeta();
 
     }
 
