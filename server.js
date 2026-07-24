@@ -95,7 +95,47 @@ app.use((req, res, next) => {
 const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms7.net';
 
 const getN8nUrl = () => {
-    return 'http://127.0.0.1:5678';
+    const configuredUrl = process.env.N8N_INTERNAL_URL
+        || process.env.N8N_BASE
+        || 'http://127.0.0.1:5678';
+    return String(configuredUrl).replace(/\/+$/, '');
+};
+
+const getGatewayTimeoutMs = () => {
+    const configuredTimeout = Number(process.env.GATEWAY_UPSTREAM_TIMEOUT_MS);
+    return Number.isFinite(configuredTimeout) && configuredTimeout >= 1000
+        ? configuredTimeout
+        : 30000;
+};
+
+const fetchWithTimeout = async (url, options = {}) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), getGatewayTimeoutMs());
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
+const classifyUpstreamError = (error) => {
+    const causeCode = String(error && error.cause && error.cause.code || '').toUpperCase();
+    if (error && error.name === 'AbortError') {
+        return {
+            code: 'UPSTREAM_TIMEOUT',
+            message: 'Hệ thống xử lý quá thời gian cho phép. Vui lòng thử lại.'
+        };
+    }
+    if (['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNRESET'].includes(causeCode)) {
+        return {
+            code: 'UPSTREAM_CONNECTION_FAILED',
+            message: 'Không thể kết nối đến hệ thống xử lý. Vui lòng thử lại hoặc liên hệ quản trị viên.'
+        };
+    }
+    return {
+        code: 'UPSTREAM_UNAVAILABLE',
+        message: 'Hệ thống xử lý hiện chưa sẵn sàng. Vui lòng thử lại.'
+    };
 };
 
 // ─── CIPHER HELPER (XOR + Base64) ───
@@ -151,6 +191,8 @@ const upstreamErrorPayload = (requestId, code, message) => ({
 // ─── GLOBAL API GATEWAY (Encrypted Tunnel) ───
 app.post('/api/gateway', async (req, res) => {
     const requestId = requestIdOf(req);
+    let targetUrl = '';
+    const startedAt = Date.now();
     try {
         if (!req.body || !req.body.data) {
             return res.status(400).json({ error: 'Yêu cầu không hợp lệ.' });
@@ -174,7 +216,7 @@ app.post('/api/gateway', async (req, res) => {
         // 2. Định tuyến đến máy chủ đích thật
         const isN8n = endpoint.startsWith('/webhook');
         const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
-        const targetUrl = `${baseUrl}${endpoint}`;
+        targetUrl = `${baseUrl}${endpoint}`;
 
         // Chat/business webhooks are never anonymous. Login and other ERP APIs
         // remain reachable because they do not use the /webhook namespace.
@@ -209,7 +251,21 @@ app.post('/api/gateway', async (req, res) => {
             options.body = JSON.stringify(body);
         }
 
-        const response = await fetch(targetUrl, options);
+        let response;
+        try {
+            response = await fetchWithTimeout(targetUrl, options);
+        } catch (error) {
+            const classified = classifyUpstreamError(error);
+            const causeCode = String(error && error.cause && error.cause.code || '');
+            console.error(
+                `[Proxy Gateway Upstream Error] requestId=${requestId}; target=${targetUrl}; `
+                + `durationMs=${Date.now() - startedAt}; code=${classified.code}; cause=${causeCode || error.name || 'UNKNOWN'}`
+            );
+            const encryptedError = Cipher.encrypt(JSON.stringify(
+                upstreamErrorPayload(requestId, classified.code, classified.message)
+            ));
+            return res.status(502).json({ data: encryptedError });
+        }
         const contentType = response.headers.get('content-type') || '';
         let resDataText = '';
 
@@ -226,7 +282,7 @@ app.post('/api/gateway', async (req, res) => {
             resDataText = text;
         }
 
-        console.log(`[Proxy Gateway] Response status: ${response.status}`);
+        console.log(`[Proxy Gateway] Response metadata: requestId=${requestId}; status=${response.status}; durationMs=${Date.now() - startedAt}`);
         // Login response có thể chứa access/refresh token, vì vậy chỉ log kích thước.
         console.log(`[Proxy Gateway] Response bytes: ${Buffer.byteLength(resDataText, 'utf8')}`);
 
@@ -245,8 +301,15 @@ app.post('/api/gateway', async (req, res) => {
         res.status(response.status).json({ data: encryptedRes });
 
     } catch (error) {
-        console.error('[Proxy Gateway Dynamic Error]:', error);
-        res.status(502).json(upstreamErrorPayload(requestId, 'UPSTREAM_UNAVAILABLE', 'Không thể kết nối đến máy chủ hệ thống.'));
+        const classified = classifyUpstreamError(error);
+        console.error(
+            `[Proxy Gateway Request Error] requestId=${requestId}; durationMs=${Date.now() - startedAt}; `
+            + `code=${classified.code}; cause=${error.name || 'UNKNOWN'}`
+        );
+        const encryptedError = Cipher.encrypt(JSON.stringify(
+            upstreamErrorPayload(requestId, classified.code, classified.message)
+        ));
+        res.status(502).json({ data: encryptedError });
     }
 });
 

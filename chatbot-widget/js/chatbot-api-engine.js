@@ -238,10 +238,15 @@
             body: JSON.stringify({ data: encryptedData })
         }).then(function (res) {
             return res.json().then(function(resJson) {
-                if (!res.ok) throw new Error('Gateway error: ' + res.status);
                 var decryptedText = Cipher.decrypt(resJson.data);
-                if (!decryptedText) return {};
-                return JSON.parse(decryptedText);
+                var payload = decryptedText ? JSON.parse(decryptedText) : {};
+                if (!res.ok) {
+                    var gatewayError = new Error(payload.message || ('Gateway error: ' + res.status));
+                    gatewayError.code = payload.code || 'GATEWAY_ERROR';
+                    gatewayError.response = payload;
+                    throw gatewayError;
+                }
+                return payload;
             });
         });
     }
@@ -4695,7 +4700,11 @@
 
                         });
 
-                        _cbHtml(html, r || '📊 Kết quả tra cứu');
+                        _cbHtml(
+                            html,
+                            r || '📊 Kết quả tra cứu',
+                            res.requestId ?? responseMetadata.requestId ?? null
+                        );
 
                     } else {
 

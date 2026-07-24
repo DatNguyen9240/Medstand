@@ -365,6 +365,23 @@
     var _UI_RENDERERS = {};
 
     var _modalDataCache = {}; // Cache cho data bảng/thẻ
+    var _renderedRequestIds = new Set();
+
+    function _claimResponseRequestId(requestId) {
+        var normalized = requestId === null || requestId === undefined
+            ? ''
+            : String(requestId).trim();
+        if (!normalized) return true;
+        if (_renderedRequestIds.has(normalized)) {
+            console.warn('[DUPLICATE_RESPONSE_SUPPRESSED]', { requestId: normalized });
+            return false;
+        }
+        _renderedRequestIds.add(normalized);
+        if (_renderedRequestIds.size > 100) {
+            _renderedRequestIds.delete(_renderedRequestIds.values().next().value);
+        }
+        return true;
+    }
 
 
 
@@ -803,9 +820,14 @@
 
 
 
-    function _addHtmlMessage(htmlContent, summaryText) {
+    function _addHtmlMessage(htmlContent, summaryText, requestId) {
+
+        if (!_claimResponseRequestId(requestId)) return false;
 
         var msg = { role: 'ai', content: summaryText || '📊 Kết quả', time: Date.now(), isHtml: true, htmlContent: htmlContent };
+        if (requestId !== null && requestId !== undefined && String(requestId).trim()) {
+            msg.requestId = String(requestId).trim();
+        }
 
         chatHistory.push(msg);
 
@@ -816,6 +838,8 @@
         $messages.insertAdjacentHTML('beforeend', _bubbleHTML('ai', msg.content, msg.time, null, htmlContent));
 
         _scrollBottom();
+
+        return true;
 
     }
 
@@ -1801,7 +1825,7 @@
                     cardHtml += ApiChatbot.__internal.renderCatalogFooter(catalogType);
                 }
 
-                _addHtmlMessage(cardHtml, '📊 Kết quả');
+                _addHtmlMessage(cardHtml, '📊 Kết quả', renderMeta.requestId);
 
                 return;
 
@@ -3512,7 +3536,26 @@
     }
 
     function _splitKeysForApi(keys, forceShowAll, apiCode) {
-        if (String(apiCode || '').toLowerCase() !== '@de_xuat_khuyen_mai') {
+        var normalizedApiCode = String(apiCode || '').toLowerCase();
+        if (normalizedApiCode === '@danh_sach_tonkho') {
+            var inventoryPrimaryOrder = [
+                'itemid', 'itemname', 'storehousename', 'lot', 'physicalstock', 'availablestock'
+            ];
+            var inventoryPrimary = [];
+            inventoryPrimaryOrder.forEach(function (wanted) {
+                var matched = keys.find(function (key) {
+                    return String(key || '').toLowerCase().replace(/[_\s]/g, '') === wanted;
+                });
+                if (matched && inventoryPrimary.indexOf(matched) === -1) inventoryPrimary.push(matched);
+            });
+            if (!inventoryPrimary.length && keys.length) inventoryPrimary.push(keys[0]);
+            return {
+                primary: inventoryPrimary,
+                secondary: keys.filter(function (key) { return inventoryPrimary.indexOf(key) === -1; })
+            };
+        }
+
+        if (normalizedApiCode !== '@de_xuat_khuyen_mai') {
             return _splitKeysSmart(keys, forceShowAll);
         }
 
@@ -6373,6 +6416,11 @@
 
     _loadCacheAsync().then(function(loadedHistory) {
         chatHistory = loadedHistory || [];
+        chatHistory.forEach(function (message) {
+            if (message && message.requestId) {
+                _renderedRequestIds.add(String(message.requestId));
+            }
+        });
         _renderHistory();
         _updateChipsVisibility();
         
@@ -6610,7 +6658,7 @@
 
             nextId: function () { return ++_modalIdCounter; },
 
-            addHtmlMessage: function (html, sum) { return _addHtmlMessage(html, sum); },
+            addHtmlMessage: function (html, sum, requestId) { return _addHtmlMessage(html, sum, requestId); },
 
             getToken: function () { return _getToken(); }
 

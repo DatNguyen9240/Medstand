@@ -35,6 +35,8 @@ const RESPONSES = Object.freeze({
   ASK_PRODUCT_FOR_SEARCH: 'Bạn muốn tìm sản phẩm nào?',
   FOLLOW_UP_NEEDS_CONTEXT:
     'Bạn muốn tiếp tục với kết quả nào? Hãy chọn lại khách hàng hoặc chức năng cần xem.',
+  ASK_VALID_DATE_RANGE:
+    'Vui lòng nhập đủ khoảng ngày hợp lệ, ví dụ: từ 09/07/2026 đến 20/07/2026.',
 });
 
 function isErpCode(token) {
@@ -92,6 +94,55 @@ function normalizeNaturalText(input) {
 function extractErpCode(originalText) {
   const tokens = String(originalText || '').match(/[A-Za-z][A-Za-z0-9._-]*\d{2,}[A-Za-z0-9._-]*/g) || [];
   return tokens.find(isErpCode) || null;
+}
+
+function parseExplicitDateToken(token) {
+  const value = String(token || '').trim();
+  let year;
+  let month;
+  let day;
+  let match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) {
+    year = Number(match[1]);
+    month = Number(match[2]);
+    day = Number(match[3]);
+  } else {
+    match = value.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (!match) return null;
+    day = Number(match[1]);
+    month = Number(match[2]);
+    year = Number(match[3]);
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return null;
+
+  return [
+    String(year).padStart(4, '0'),
+    String(month).padStart(2, '0'),
+    String(day).padStart(2, '0'),
+  ].join('-');
+}
+
+function extractExplicitDateRange(input) {
+  const tokens = String(input || '').match(
+    /\b(?:\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[./-]\d{1,2}[./-]\d{4})\b/g,
+  ) || [];
+  if (!tokens.length) return { mentioned: false, valid: true, fromDate: null, toDate: null };
+  if (tokens.length < 2) return { mentioned: true, valid: false, fromDate: null, toDate: null };
+
+  const fromDate = parseExplicitDateToken(tokens[0]);
+  const toDate = parseExplicitDateToken(tokens[1]);
+  return {
+    mentioned: true,
+    valid: Boolean(fromDate && toDate),
+    fromDate,
+    toDate,
+  };
 }
 
 function baseResult(normalized, overrides) {
@@ -267,7 +318,10 @@ function classifyNaturalMessage(input, options = {}) {
 
   const debtQuery = folded.includes('cong no')
     || /\b(chi tiet no|con no|no bao nhieu|no nhieu|khoan nao chua tra|da tra het no|tra het no)\b/.test(folded);
+  const dailyWorkQuery = /\b(hom nay|nay)\s+(?:(?:toi|tui|minh)\s+)?(?:(?:nen|can)\s+)?(?:lam gi|di dau|ghe dau|ghe ai|ghe khach nao)\b/.test(folded)
+    || /\bcong viec hom nay(?: cua (?:toi|tui|minh))?\s+(?:la gi|co gi)\b/.test(folded);
   const business = debtQuery
+    || dailyWorkQuery
     || /\b(doanh so|doanh thu|hoa don|don hang|ton kho|san pham|khach hang|goi y|ban kem|tich luy|tuyen|cham diem|khuyen mai|danh muc|khao sat|thong bao)\b/.test(folded);
   if (business) {
     let internalIntent = null;
@@ -379,7 +433,11 @@ function classifyNaturalMessage(input, options = {}) {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_LOYALTY';
       }
-    } else if (/\b(tuyen ban hang|tuyen hom nay|lich tuyen)\b/.test(folded)) {
+    } else if (
+      dailyWorkQuery
+      || /\b(tuyen ban hang|tuyen hom nay|lich tuyen)\b/.test(folded)
+      || /\b(danh sach khach(?: hang)?.*tuyen|khach(?: hang)?.*(?:thuoc|trong).*tuyen|tuyen.*khach(?: hang)?)\b/.test(folded)
+    ) {
       internalIntent = 'SALES_ROUTE';
       apiCode = '@tuyen_ban_hang';
     } else if (/\b(san pham trong tam|hang trong tam)\b/.test(folded)) {
@@ -394,7 +452,13 @@ function classifyNaturalMessage(input, options = {}) {
       if (/\b(kho hang|kho)\b/.test(folded)) entities.catalogType = 'khohang';
       else if (/\b(khach hang|khach)\b/.test(folded)) entities.catalogType = 'khachhang';
       else if (/\b(san pham|hang hoa)\b/.test(folded)) entities.catalogType = 'sanpham';
-    } else if (!/\btrieu chung\b/.test(folded) && /\b(tim|tra cuu)\b.*\b(san pham|thuoc)\b/.test(folded)) {
+    } else if (
+      !/\btrieu chung\b/.test(folded)
+      && (
+        /\b(tim|tra cuu|thong tin|xem)\b.*\b(san pham|thuoc)\b/.test(folded)
+        || (originalCode && /\b(san pham|thuoc)\b/.test(folded))
+      )
+    ) {
       internalIntent = 'PRODUCT_SEARCH';
       apiCode = '@tra_cuu_san_pham';
       if (originalCode) entities.searchTerm = originalCode;
@@ -418,6 +482,14 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(doanh so|doanh thu)\b/.test(folded)) {
       internalIntent = 'SALES_REVENUE';
       apiCode = '@doanh_so';
+      const explicitDateRange = extractExplicitDateRange(normalized.originalText);
+      if (explicitDateRange.mentioned && explicitDateRange.valid) {
+        entities.fromDate = explicitDateRange.fromDate;
+        entities.toDate = explicitDateRange.toDate;
+      } else if (explicitDateRange.mentioned) {
+        missingFields = ['dateRange'];
+        responseKey = 'ASK_VALID_DATE_RANGE';
+      }
     }
 
     return baseResult(normalized, {
@@ -446,6 +518,8 @@ function getN8nRuntimeSource() {
     foldForMatch.toString(),
     normalizeNaturalText.toString(),
     extractErpCode.toString(),
+    parseExplicitDateToken.toString(),
+    extractExplicitDateRange.toString(),
     baseResult.toString().replace(/SCHEMA_VERSION/g, 'NATURAL_CHAT_SCHEMA_VERSION').replace(/RESPONSES/g, 'NATURAL_CHAT_RESPONSES'),
     classifyNaturalMessage.toString().replace(/RESPONSES/g, 'NATURAL_CHAT_RESPONSES'),
   ].join('\n\n');
@@ -454,6 +528,7 @@ function getN8nRuntimeSource() {
 module.exports = {
   RESPONSES,
   classifyNaturalMessage,
+  extractExplicitDateRange,
   foldForMatch,
   getN8nRuntimeSource,
   normalizeNaturalText,

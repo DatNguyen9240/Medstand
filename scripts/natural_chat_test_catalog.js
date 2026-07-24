@@ -92,6 +92,24 @@ addClassifierCases('sales-revenue', [
   messageType: 'BUSINESS', intent: 'SALES_REVENUE', apiCode: '@doanh_so', action: 'EXECUTE',
 });
 
+addClassifierCases('sales-revenue-explicit-date-range', [
+  'Doanh số từ 09/07/2026 đến 20/07/2026 của tôi là bao nhiêu?',
+], {
+  messageType: 'BUSINESS', intent: 'SALES_REVENUE', apiCode: '@doanh_so', action: 'EXECUTE',
+  entity: ['fromDate', '2026-07-09'], releaseGate: true,
+});
+
+addClassifierCases('daily-work-route', [
+  'Hôm nay tôi nên làm gì?', 'Nay tôi làm gì?',
+  'Công việc hôm nay của tôi là gì?', 'Hôm nay tôi nên ghé khách nào?',
+  'Hôm nay đi đâu?', 'Hôm nay ghé ai?',
+  'Cho tôi danh sách khách thuộc tuyến của tôi', 'Danh sách khách thuộc tuyến',
+  'Khách hàng trong tuyến của tôi',
+], {
+  messageType: 'BUSINESS', intent: 'SALES_ROUTE', apiCode: '@tuyen_ban_hang',
+  action: 'EXECUTE', releaseGate: true,
+});
+
 addClassifierCases('reported-route-regressions', ['xem đơn hàng tháng này'], {
   messageType: 'BUSINESS', intent: 'ORDER_LIST', apiCode: '@don_hang', action: 'EXECUTE',
 });
@@ -103,6 +121,10 @@ addClassifierCases('reported-route-regressions', ['xem danh mục kho hàng'], {
   entity: ['catalogType', 'khohang'],
 });
 addClassifierCases('reported-route-regressions', ['tìm sản phẩm A003'], {
+  messageType: 'BUSINESS', intent: 'PRODUCT_SEARCH', apiCode: '@tra_cuu_san_pham', action: 'EXECUTE',
+  entity: ['searchTerm', 'A003'],
+});
+addClassifierCases('reported-route-regressions', ['thông tin sản phẩm A003', 'sản phẩm A003'], {
   messageType: 'BUSINESS', intent: 'PRODUCT_SEARCH', apiCode: '@tra_cuu_san_pham', action: 'EXECUTE',
   entity: ['searchTerm', 'A003'],
 });

@@ -46,9 +46,12 @@ const cases = [
   ['cn kh NDB001', 'BUSINESS', 'CUSTOMER_DEBT_DETAIL', 'EXECUTE'],
   ['tồn kho A003', 'BUSINESS', 'INVENTORY_LIST', 'EXECUTE'],
   ['sp A003 tồn kho', 'BUSINESS', 'INVENTORY_LIST', 'EXECUTE'],
+  ['thông tin sản phẩm A003', 'BUSINESS', 'PRODUCT_SEARCH', 'EXECUTE'],
+  ['sản phẩm A003', 'BUSINESS', 'PRODUCT_SEARCH', 'EXECUTE'],
   ['gợi ý đơn hàng cho NDB001', 'BUSINESS', 'ORDER_RECOMMENDATION', 'EXECUTE'],
   ['chi tiết hóa đơn HD123', 'BUSINESS', 'INVOICE_DETAIL', 'EXECUTE'],
   ['doanh số tháng này', 'BUSINESS', 'SALES_REVENUE', 'EXECUTE'],
+  ['cho tôi danh sách khách thuộc tuyến của tôi', 'BUSINESS', 'SALES_ROUTE', 'EXECUTE'],
 
   ['xem công nợ', 'BUSINESS', 'CUSTOMER_DEBT_DETAIL', 'ASK_FIELD'],
   ['kiểm tra tồn kho', 'BUSINESS', 'INVENTORY_LIST', 'ASK_FIELD'],
@@ -95,6 +98,42 @@ const debt = classifyNaturalMessage('xem công nợ AG0031');
 assert.strictEqual(debt.entities.customerId, 'AG0031');
 assert.ok(debt.normalizedText.includes('AG0031'), 'ERP code must remain unchanged');
 
+const explicitSalesRange = classifyNaturalMessage(
+  'Doanh số từ 09/07/2026 đến 20/07/2026 của tôi là bao nhiêu?',
+);
+assert.strictEqual(explicitSalesRange.apiCode, '@doanh_so');
+assert.strictEqual(explicitSalesRange.entities.fromDate, '2026-07-09');
+assert.strictEqual(explicitSalesRange.entities.toDate, '2026-07-20');
+assert.strictEqual(explicitSalesRange.requiresClarification, false);
+
+const shortExplicitSalesRange = classifyNaturalMessage('doanh số từ 9/7/2026 đến 20/7/2026');
+assert.strictEqual(shortExplicitSalesRange.entities.fromDate, '2026-07-09');
+assert.strictEqual(shortExplicitSalesRange.entities.toDate, '2026-07-20');
+
+const isoExplicitSalesRange = classifyNaturalMessage('doanh số từ 2026-07-09 đến 2026-07-20');
+assert.strictEqual(isoExplicitSalesRange.entities.fromDate, '2026-07-09');
+assert.strictEqual(isoExplicitSalesRange.entities.toDate, '2026-07-20');
+
+const invalidExplicitSalesRange = classifyNaturalMessage('doanh số từ 31/02/2026 đến 20/07/2026');
+assert.deepStrictEqual(invalidExplicitSalesRange.missingFields, ['dateRange']);
+assert.strictEqual(invalidExplicitSalesRange.responseKey, 'ASK_VALID_DATE_RANGE');
+assert.strictEqual(invalidExplicitSalesRange.requiresClarification, true);
+
+for (const input of [
+  'Hôm nay tôi nên làm gì?',
+  'Nay tôi làm gì?',
+  'Công việc hôm nay của tôi là gì?',
+  'Hôm nay tôi nên ghé khách nào?',
+  'Hôm nay đi đâu?',
+  'Hôm nay ghé ai?',
+]) {
+  const dailyWork = classifyNaturalMessage(input);
+  assert.strictEqual(dailyWork.messageType, 'BUSINESS', input);
+  assert.strictEqual(dailyWork.intent, 'SALES_ROUTE', input);
+  assert.strictEqual(dailyWork.apiCode, '@tuyen_ban_hang', input);
+  assert.strictEqual(dailyWork.requiresClarification, false, input);
+}
+
 const missingDebt = classifyNaturalMessage('xem công nợ');
 assert.deepStrictEqual(missingDebt.missingFields, ['customerId']);
 assert.strictEqual(missingDebt.responseKey, 'ASK_CUSTOMER_FOR_DEBT');
@@ -129,9 +168,10 @@ assert.ok(parserCode.includes("messageType:'UNKNOWN'"));
 assert.ok(mainDecision.includes("['CASUAL','CASUAL_META','FOLLOW_UP','UNSUPPORTED','UNKNOWN','MUTATION_REQUEST']"));
 
 for (const workflow of [parser, main]) {
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   for (const entry of workflow.nodes || []) {
     const code = entry.parameters?.jsCode;
-    if (code) new Function(code);
+    if (code) new AsyncFunction(code);
   }
 }
 
