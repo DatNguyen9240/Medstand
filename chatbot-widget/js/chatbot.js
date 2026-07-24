@@ -345,9 +345,8 @@
 
         });
 
-        // Gọi loadSystemMeta SAU init() để _cbGetToken đã được set
-        // → request sẽ đính kèm Authorization: Bearer <token> đúng chuẩn
-        window.ApiEngine.loadSystemMeta();
+        // System Meta is optional. Do not call the currently unauthorized n8n
+        // workflow during startup; the engine safely uses its built-in field rules.
 
     }
 
