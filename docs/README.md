@@ -2,6 +2,8 @@
 
 > Báo cáo hiện hành: [`BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md`](BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md). Trạng thái ngày 22/07/2026: `N8N_IMPORTED_RUNTIME_RETEST_PENDING`. Báo cáo audit `NO-GO` cũ được giữ làm baseline trước khắc phục.
 
+> **Bản tổng hợp công bố mới nhất:** [`CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md`](CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md). Trạng thái: `SOURCE_AND_BUILD_READY_RUNTIME_RETEST_REQUIRED`.
+
 ## Tài liệu dành cho doanh nghiệp
 
 1. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)  

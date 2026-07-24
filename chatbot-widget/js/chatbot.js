@@ -1045,12 +1045,16 @@
             $btnSend.disabled = false;
 
             $btnSend.classList.add('stop-mode');
+            $btnSend.setAttribute('aria-label', 'Dừng phản hồi');
+            $btnSend.setAttribute('title', 'Dừng phản hồi');
 
         } else {
 
             $btnSend.innerHTML = SEND_ICON;
 
             $btnSend.classList.remove('stop-mode');
+            $btnSend.setAttribute('aria-label', 'Gửi');
+            $btnSend.removeAttribute('title');
 
             _updateSendBtn();
 
