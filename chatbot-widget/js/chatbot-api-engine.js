@@ -168,6 +168,10 @@
 
     var _catalogRowsCache = {};  // cache rows per datasource để filter nhanh theo keystroke
 
+    var _catalogTypeOpenTimer = null;
+
+    var _catalogTypeRequestSeq = 0;
+
     var _prevPlaceholder = '';
 
 
@@ -257,6 +261,71 @@
 
     // ── Data Source Logic ─────────────────────────────────────────────
 
+    function _normalizeDataSourceRows(payload) {
+        if (payload === null || payload === undefined) return [];
+
+        if (typeof payload === 'string') {
+            var text = payload.trim();
+            if (!text) return [];
+            try {
+                return _normalizeDataSourceRows(JSON.parse(text));
+            } catch (e) {
+                return [];
+            }
+        }
+
+        if (Array.isArray(payload)) {
+            var normalized = [];
+            payload.forEach(function (item) {
+                if (Array.isArray(item)) {
+                    normalized = normalized.concat(_normalizeDataSourceRows(item));
+                    return;
+                }
+
+                if (item && typeof item === 'object') {
+                    var nestedKeys = ['json', 'raw', 'data', 'body', 'output'];
+                    for (var nestedIdx = 0; nestedIdx < nestedKeys.length; nestedIdx++) {
+                        var nested = item[nestedKeys[nestedIdx]];
+                        if (nested !== undefined && nested !== item) {
+                            var nestedRows = _normalizeDataSourceRows(nested);
+                            if (nestedRows.length) {
+                                normalized = normalized.concat(nestedRows);
+                                return;
+                            }
+                        }
+                    }
+                    normalized.push(item);
+                }
+            });
+            return normalized;
+        }
+
+        if (typeof payload === 'object') {
+            var wrapperKeys = ['records', 'data', 'result', 'items', 'body', 'output', 'rows'];
+            for (var i = 0; i < wrapperKeys.length; i++) {
+                var wrapped = payload[wrapperKeys[i]];
+                if (wrapped !== undefined && wrapped !== payload) {
+                    var wrappedRows = _normalizeDataSourceRows(wrapped);
+                    if (wrappedRows.length) return wrappedRows;
+                }
+            }
+
+            var dataKeys = Object.keys(payload);
+            var isDataRow = dataKeys.some(function (key) {
+                var normalizedKey = String(key).toLowerCase();
+                return normalizedKey === 'phanloai'
+                    || normalizedKey === 'type'
+                    || normalizedKey === 'name'
+                    || normalizedKey === 'label'
+                    || normalizedKey === 'madanhmuc'
+                    || normalizedKey === 'datasourcevalue';
+            });
+            if (isDataRow) return [payload];
+        }
+
+        return [];
+    }
+
     function _loadDataSource(dsType, dsVal, keyword, cb) {
 
         console.log('[ApiEngine] _loadDataSource type=', dsType, 'val=', dsVal, 'kw=', keyword);
@@ -345,7 +414,8 @@
 
             }
 
-            cb(rows);
+            var normalizedRows = _normalizeDataSourceRows(res);
+            cb(normalizedRows.length ? normalizedRows : rows);
 
         }).catch(function (e) {
 
@@ -902,13 +972,22 @@
 
 
 
-        _bindMenuItems(function (el) {
+        _bindMenuItems(function (el, e) {
+
+            // Không để click chọn nghiệp vụ nổi lên document và đóng menu
+            // tham số mà nghiệp vụ vừa mở (Danh mục -> @Type).
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
 
             var code = el.getAttribute('data-code');
 
-            _onApiSelected(code);
-
+            // Đóng menu chức năng trước, sau đó để API được chọn tự mở
+            // menu tham số cần thiết (đặc biệt là Danh mục -> @Type).
+            // Nếu ẩn sau _onApiSelected thì menu @Type vừa mở sẽ bị đóng ngay.
             _menuHide();
+            _onApiSelected(code);
 
         });
 
@@ -1143,14 +1222,64 @@
 
 
 
+    function _isCatalogTypePrompt() {
+        if (!_inputEl) return false;
+
+        var currentInput = String(_inputEl.value || '');
+        var catalogTag = '#' + String(CFG.CATALOG_ROOT_API || '@danh_muc').replace(/^@/, '');
+
+        return currentInput.toLowerCase().indexOf(catalogTag.toLowerCase()) !== -1
+            && /@type\s*=\s*$/i.test(currentInput);
+    }
+
+
+
+    function _openCatalogTypePicker(delay) {
+        clearTimeout(_catalogTypeOpenTimer);
+
+        _catalogTypeOpenTimer = setTimeout(function () {
+            _catalogTypeOpenTimer = null;
+            if (!_isCatalogTypePrompt()) return;
+
+            var currentInput = String(_inputEl.value || '');
+            var typeAtPos = currentInput.toLowerCase().lastIndexOf('@type=');
+
+            _menuShowCatalog('', typeAtPos >= 0 ? typeAtPos : currentInput.length, {
+                fieldCode: '@Type'
+            });
+        }, Math.max(0, Number(delay) || 0));
+    }
+
+
+
     function _menuShowCatalog(query, atPos, options) {
 
         console.log('[ApiEngine] _menuShowCatalog query=', query, 'atPos=', atPos);
         options = options || {};
+        var requestSeq = ++_catalogTypeRequestSeq;
 
-        _loadDataSource('APICODE', CFG.CATALOG_ROOT_API, query, function (rows) {
+        // Show feedback immediately while the catalog datasource is loading.
+        _menuCreate();
+        _menuEl.innerHTML = '<div class="ae-menu-empty">Đang tải loại danh mục...</div>';
+        _positionMenu();
 
-            if (!rows || !rows.length) { _menuHide(); return; }
+        _loadDataSource('APICODE', CFG.CATALOG_ROOT_API || '@danh_muc', query, function (rows) {
+
+            if (requestSeq !== _catalogTypeRequestSeq) return;
+
+            // Bỏ qua phản hồi cũ nếu người dùng đã rời khỏi trường @Type.
+            // Việc này tránh một request chậm vẽ đè menu của thao tác mới.
+            if (options.fieldCode &&
+                String(options.fieldCode).toLowerCase() === '@type') {
+                if (!_isCatalogTypePrompt()) return;
+            }
+
+            if (!rows || !rows.length) {
+                _menuCreate();
+                _menuEl.innerHTML = '<div class="ae-menu-empty">Không tải được loại danh mục. Vui lòng thử lại.</div>';
+                _positionMenu();
+                return;
+            }
 
             _menuCreate();
 
@@ -1547,23 +1676,18 @@
 
     function _showInlineValues(fieldCode, keyword, forceShowAll) {
 
-        if (!_activeApi || !_activeApi.config) return;
-
-        var cfg = _activeApi.config;
+        if (!_activeApi) return;
 
         var activeApiCode = String(_activeApi.ApiCode || _activeApi.apiCode || '').toLowerCase();
         if (activeApiCode === String(CFG.CATALOG_ROOT_API || '@danh_muc').toLowerCase()
             && String(fieldCode || '').toLowerCase() === '@type') {
-            var typeAtPos = _inputEl && typeof _inputEl.value === 'string'
-                ? _inputEl.value.lastIndexOf('@')
-                : -1;
-            _menuShowCatalog(
-                '',
-                typeAtPos >= 0 ? typeAtPos : (_inputEl ? _inputEl.value.length : 0),
-                { fieldCode: '@Type' }
-            );
+            _openCatalogTypePicker(0);
             return;
         }
+
+        if (!_activeApi.config) return;
+
+        var cfg = _activeApi.config;
 
         var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
 
@@ -2552,6 +2676,28 @@
 
         // Đảm bảo nt "mở lại panel" được khởi tạo sẵn (chỉ cho CART hoặc khi panel mở)
 
+        // Open the catalog type picker immediately. Values are loaded from
+        // the catalog datasource; this intentionally contains no hard-coded
+        // category list.
+        var isCatalogRoot = apiCode.toLowerCase()
+            === String(CFG.CATALOG_ROOT_API || '@danh_muc').toLowerCase();
+        if (isCatalogRoot && _inputEl) {
+            var catalogTag = '#' + apiCode.replace(/^@/, '');
+            var currentCatalogInput = String(_inputEl.value || '');
+            var catalogPrefixPos = currentCatalogInput.toLowerCase().indexOf(catalogTag.toLowerCase());
+
+            if (catalogPrefixPos < 0) {
+                _inputEl.value = catalogTag + ' @Type=';
+            } else if (!/@type\s*=/i.test(currentCatalogInput.slice(catalogPrefixPos))) {
+                _inputEl.value = currentCatalogInput.replace(/\s+$/, '') + ' @Type=';
+            }
+
+            _inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            _inputEl.focus();
+
+            _openCatalogTypePicker(0);
+        }
+
         if (execType !== 'QUERY') _createTriggerButton();
 
 
@@ -2559,6 +2705,9 @@
         _loadConfig(apiCode, function (config) {
 
             _activeApi.config = config;
+
+            // The catalog type picker is opened before config loading.
+            if (isCatalogRoot) return;
 
             if (pendingUpdate && pendingUpdate.catalogRoot) {
                 setTimeout(function () {
@@ -5025,6 +5174,17 @@
 
                         var pVal = query.slice(eqPos + 1).trim();
 
+                        // Danh mục luôn cần chọn loại danh mục ngay sau @Type=.
+                        // Mở trực tiếp datasource động, không phụ thuộc metadata
+                        // của API và không hard-code danh sách loại.
+                        if (String(_activeApi.apiCode || '').toLowerCase()
+                            === String(CFG.CATALOG_ROOT_API || '@danh_muc').toLowerCase()
+                            && String(pCode).toLowerCase() === '@type'
+                            && !pVal) {
+                            _openCatalogTypePicker(0);
+                            return;
+                        }
+
 
 
                         // Cho php người dòng g chuỗi di c dấu cch (v dụ: "băng c nhn"), 
@@ -5090,17 +5250,16 @@
             // If a user pastes/types an API tag directly (for example
             // "#danh_muc @Type="), activate the matching API before trying to
             // resolve its parameter values.
-            if (!_activeApi) {
-                var typedApiMatch = val.match(/(?:^|\s)#([a-z0-9_]+)/i);
-                if (typedApiMatch) {
-                    var typedApiCode = '@' + typedApiMatch[1];
-                    var typedApi = _apiList.find(function (api) {
-                        return String(api.ApiCode || '').toLowerCase() === typedApiCode.toLowerCase();
-                    });
-                    if (typedApi) {
-                        _onApiSelected(typedApi.ApiCode, { preserveInput: true });
-                        return;
-                    }
+            var typedApiMatch = val.match(/(?:^|\s)#([a-z0-9_]+)/i);
+            if (typedApiMatch) {
+                var typedApiCode = '@' + typedApiMatch[1];
+                var typedApi = _apiList.find(function (api) {
+                    return String(api.ApiCode || '').toLowerCase() === typedApiCode.toLowerCase();
+                });
+                var activeApiCode = String(_activeApi && _activeApi.apiCode || '').toLowerCase();
+                if (typedApi && activeApiCode !== typedApiCode.toLowerCase()) {
+                    _onApiSelected(typedApi.ApiCode, { preserveInput: true });
+                    return;
                 }
             }
 
