@@ -1,8 +1,8 @@
 # Thông báo trạng thái Medstand AI — Customer Pilot
 
-**Ngày cập nhật:** 24/07/2026  
-**Môi trường Pilot:** `https://medtest.bms7.net/`  
-**Phạm vi:** Sale, Quản lý và Admin được cấp quyền  
+**Ngày cập nhật:** 24/07/2026
+**Môi trường Pilot:** `https://medtest.bms7.net/`
+**Phạm vi:** Sale, Quản lý và Admin được cấp quyền
 **Trạng thái công bố:** `SOURCE_AND_BUILD_READY_RUNTIME_RETEST_REQUIRED`
 
 ## 1. Tóm tắt
@@ -85,4 +85,3 @@ Trạng thái chỉ được chuyển sang `CUSTOMER_PILOT_RUNTIME_PASS` sau khi
 - kiểm thử thực tế Sale/Quản lý đạt yêu cầu;
 - phạm vi dữ liệu và các luồng lỗi chính đã được ghi nhận;
 - người phụ trách nghiệp vụ ký nghiệm thu.
-
