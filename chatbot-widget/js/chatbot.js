@@ -3608,10 +3608,10 @@
 
         var isTierScoringTable = String(apiCode || '').toLowerCase() === '@cham_diem_kh';
         var tierPage = rows.length ? Number(rows[0].Page || rows[0].page || 1) : 1;
-        var tierPageSize = rows.length ? Number(rows[0].PageSize || rows[0].pagesize || 50) : 50;
+        var tierPageSize = rows.length ? Number(rows[0].PageSize || rows[0].pagesize || 10) : 10;
         var tierTotalRows = rows.length ? Number(rows[0].TotalRows || rows[0].totalRows || rows.length) : 0;
         if (!Number.isFinite(tierPage) || tierPage < 1) tierPage = 1;
-        if (!Number.isFinite(tierPageSize) || tierPageSize < 1) tierPageSize = 50;
+        if (!Number.isFinite(tierPageSize) || tierPageSize < 1) tierPageSize = 10;
         if (!Number.isFinite(tierTotalRows) || tierTotalRows < 0) tierTotalRows = rows.length;
 
         var normalizedStockKeys = keys.map(function (key) {
@@ -4205,7 +4205,7 @@
 
     function _syncTierScoringControls(container, cache) {
         if (!container || !cache) return;
-        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 50)));
+        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 10)));
         container.querySelectorAll('[data-server-tier]').forEach(function (button) {
             button.classList.toggle('active', String(button.getAttribute('data-server-tier') || '') === String(cache.currentTier || ''));
             button.disabled = Boolean(cache.loading);
@@ -4238,7 +4238,7 @@
 
         var targetTier = String(tier || '').toUpperCase();
         var targetPage = Math.max(1, Number(page || 1));
-        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 50)));
+        var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 10)));
         if (targetPage > pageCount && targetTier === String(cache.currentTier || '')) return;
 
         cache.loading = true;
@@ -4247,7 +4247,7 @@
 
         var params = {
             '@Page': targetPage,
-            '@PageSize': Number(cache.pageSize || 50)
+            '@PageSize': Number(cache.pageSize || 10)
         };
         if (targetTier) params['@NhomFilter'] = targetTier;
 
@@ -4261,7 +4261,7 @@
                 ? Number(newRows[0].TotalRows || newRows[0].totalRows || newRows.length)
                 : 0;
             cache.currentTablePage = targetPage;
-            cache.tablePageSize = Number(cache.pageSize || 50);
+            cache.tablePageSize = Number(cache.pageSize || 10);
             var search = container.querySelector('.ai-sales-filter-input');
             if (search) search.value = '';
             tbody.innerHTML = newRows.length
@@ -4636,7 +4636,7 @@
             var tierTbody = tierContainer ? tierContainer.querySelector('tbody') : null;
             var tierCache = tierTbody ? _modalDataCache[tierTbody.id] : null;
             if (!tierCache) return;
-            tierCache.pageSize = Number(tierPageSizeControl.value) || 25;
+            tierCache.pageSize = Number(tierPageSizeControl.value) || 10;
             tierCache.tablePageSize = tierCache.pageSize;
             _loadTierScoringPage(tierPageSizeControl, tierCache.currentTier, 1);
             return;

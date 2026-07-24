@@ -15,7 +15,7 @@ CREATE OR ALTER PROCEDURE API_ChamDiemKH_AI
     @BranchID      VARCHAR(50) = '',
     @RiskLevel     VARCHAR(20) = '',
     @Page          INT = 1,
-    @PageSize      INT = 50,
+    @PageSize      INT = 10,
     -- Giữ 4 tham số để tương thích client cũ. Tier chỉ dùng Frequency + Monetary;
     -- Recency/Consumption không được cộng vào ValueSegment.
     @W_Recency     DECIMAL(18,2) = 0.25,  -- Chỉ dùng cho tương thích; Recency thuộc Risk
@@ -27,7 +27,7 @@ BEGIN
     SET NOCOUNT ON
 
     SET @Page = CASE WHEN ISNULL(@Page, 0) < 1 THEN 1 ELSE @Page END
-    SET @PageSize = CASE WHEN ISNULL(@PageSize, 0) < 1 THEN 50 WHEN @PageSize > 100 THEN 100 ELSE @PageSize END
+    SET @PageSize = CASE WHEN ISNULL(@PageSize, 0) < 1 THEN 10 WHEN @PageSize > 100 THEN 100 ELSE @PageSize END
     SET @EmployeeID = ISNULL(@EmployeeID, '')
     SET @BranchID = ISNULL(@BranchID, '')
     SET @RiskLevel = UPPER(ISNULL(@RiskLevel, ''))
