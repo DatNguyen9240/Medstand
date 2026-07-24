@@ -5344,13 +5344,24 @@
 
 
 
-            // Outside an active API flow, ordinary text and a standalone "@"
-            // remain natural chat input. The complete function menu is opened
-            // only by the four-square button. Inline "@" selection is reserved
-            // for the catalog command generated as: #danh_muc @Type=
+            // Outside an active API flow, a standalone trailing "@" opens
+            // only the dynamic catalog-type picker. The complete function
+            // menu remains exclusive to the four-square button.
             if (_isCatalogTypePrompt()) {
                 _openCatalogTypePicker(0);
                 return;
+            }
+
+            var catalogAtPos = val.lastIndexOf('@');
+            if (catalogAtPos !== -1) {
+                var catalogMentionTail = val.slice(catalogAtPos + 1);
+                var catalogMentionBoundary = catalogAtPos === 0
+                    || /\s/.test(val.charAt(catalogAtPos - 1));
+
+                if (catalogMentionBoundary && catalogMentionTail.trim() === '') {
+                    _menuShowCatalog('', catalogAtPos);
+                    return;
+                }
             }
 
             if (_menuVis) _menuHide();
