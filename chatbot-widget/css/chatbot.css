@@ -2678,13 +2678,6 @@ tr.expanded .ai-row-toggle::before {
   justify-content: center;
 }
 
-.chat-api-symbol {
-  display: block;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-}
-
 .ai-table-btn:hover {
   background: rgba(var(--color-primary-rgb), 0.15);
   transform: translateY(-1px);

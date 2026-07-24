@@ -819,16 +819,6 @@
         return String(api && (api.DisplayName || api.ApiCode) || '');
     }
 
-    function _isCatalogRootApi(apiCode) {
-        var code = String(apiCode || '').trim().toLowerCase();
-        if (code && code.charAt(0) !== '@') code = '@' + code.replace(/^#/, '');
-
-        var configuredRoot = String(CFG.CATALOG_ROOT_API || '@danh_muc').trim().toLowerCase();
-        if (configuredRoot && configuredRoot.charAt(0) !== '@') configuredRoot = '@' + configuredRoot.replace(/^#/, '');
-
-        return code === configuredRoot || code === '@danh_muc';
-    }
-
     function _menuShow(query) {
 
         _menuCreate();
@@ -915,24 +905,6 @@
         _bindMenuItems(function (el) {
 
             var code = el.getAttribute('data-code');
-
-            // Danh mục có màn hình chọn nhóm riêng trong hội thoại. Gọi API gốc
-            // không kèm @Type để renderer trả lại các thẻ Sản phẩm, Khách hàng,
-            // Đơn hàng, Kho hàng và Nhân viên; không để form "#danh_muc @Type=".
-            if (_isCatalogRootApi(code)) {
-                _activeApi = null;
-                _lastCatalogType = null;
-                _pillParams = {};
-                _cartItems = [];
-                if (_inputEl) {
-                    _inputEl.value = '';
-                    try { delete _inputEl.dataset.apiTag; } catch (e) { }
-                }
-
-                _menuHide();
-                window.ApiEngine.execute(code, {});
-                return;
-            }
 
             _onApiSelected(code);
 
