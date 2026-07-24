@@ -182,6 +182,19 @@
         1800,
         0
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json || {};\nreturn [{ json: { status: 'error', message: input.message || 'Truy cập bị từ chối' } }];"
+      },
+      "id": "format-auth-error-rag",
+      "name": "Format Auth Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        200
+      ]
     }
   ],
   "connections": {
@@ -218,7 +231,7 @@
         ],
         [
           {
-            "node": "Format Response",
+            "node": "Format Auth Error",
             "type": "main",
             "index": 0
           }
