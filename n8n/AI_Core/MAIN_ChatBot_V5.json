@@ -316,7 +316,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://127.0.0.1:5678/webhook/chat-v6' }}",
+        "url": "={{ 'http://127.0.0.1:5678/webhook/hook-ai-rag' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -644,7 +644,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "TpdxwsQAMalt6YK3",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       }
@@ -686,28 +686,16 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://medtest.bms7.net/api/API_UserInfo",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "={{ $('Webhook AI Chat').first().json.headers.authorization || 'Bearer empty' }}"
-            }
-          ]
-        },
-        "options": {}
+        "jsCode": "const authHeader = $('Webhook AI Chat').first().json.headers?.authorization || $('Webhook AI Chat').first().json.headers?.Authorization || 'Bearer empty';\ntry {\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://medtest.bms7.net/api/API_UserInfo',\n    headers: {\n      'Authorization': authHeader,\n      'Content-Type': 'application/json'\n    },\n    json: true,\n    timeout: 10000\n  });\n  return [{ json: response || {} }];\n} catch (error) {\n  return [{ json: { error: error.message, status: error.status || 401, authenticated: false } }];\n}"
       },
       "id": "resolve-uuid-v5",
       "name": "Resolve UUID V5",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         -2560,
         304
-      ],
-      "onError": "continueErrorOutput"
+      ]
     },
     {
       "parameters": {
@@ -720,6 +708,19 @@
       "position": [
         -2480,
         304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhook = $('Webhook AI Chat').first().json || {};\nreturn [{\n  json: {\n    ...webhook,\n    userProfile: {\n      authenticated: false,\n      authError: 'AUTH_TOKEN_INVALID',\n      verifiedUserId: '',\n      serverSessionId: '',\n      permissions: []\n    }\n  }\n}];"
+      },
+      "id": "handle-resolve-uuid-error",
+      "name": "Handle Resolve UUID Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2480,
+        450
       ]
     }
   ],
@@ -1111,6 +1112,17 @@
         [
           {
             "node": "Respond Fast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Resolve UUID Error": {
+      "main": [
+        [
+          {
+            "node": "LIB NormalizeInput",
             "type": "main",
             "index": 0
           }

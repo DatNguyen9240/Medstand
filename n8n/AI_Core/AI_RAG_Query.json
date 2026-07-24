@@ -9,8 +9,14 @@
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type, Authorization"
+              }
             ]
           }
         }
@@ -19,7 +25,10 @@
       "name": "Webhook RAG Search",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [0, 0],
+      "position": [
+        0,
+        0
+      ],
       "webhookId": "618d820e-1be1-47a7-870e-e4712271e762"
     },
     {
@@ -30,17 +39,30 @@
       "name": "Check JWT Security",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, 0]
+      "position": [
+        200,
+        0
+      ]
     },
     {
       "parameters": {
-        "conditions": { "boolean": [ { "value1": "={{ $json.passes }}", "value2": true } ] }
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.passes }}",
+              "value2": true
+            }
+          ]
+        }
       },
       "id": "3",
       "name": "If Valid JWT",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
-      "position": [400, 0]
+      "position": [
+        400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -50,7 +72,10 @@
       "name": "Prep Embedding Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 0]
+      "position": [
+        600,
+        0
+      ]
     },
     {
       "parameters": {
@@ -66,8 +91,16 @@
       "name": "OpenAI: Get Vector",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [800, 0],
-      "credentials": { "openAiApi": { "id": "frs6ZRDbNFeYhZf7", "name": "OpenAi account" } }
+      "position": [
+        800,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "frs6ZRDbNFeYhZf7",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -77,7 +110,10 @@
       "name": "Prep Qdrant Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 0]
+      "position": [
+        1000,
+        0
+      ]
     },
     {
       "parameters": {
@@ -91,7 +127,10 @@
       "name": "Qdrant: Find Docs",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1200, 0]
+      "position": [
+        1200,
+        0
+      ]
     },
     {
       "parameters": {
@@ -101,7 +140,10 @@
       "name": "Prep OpenAI Chat Body",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 0]
+      "position": [
+        1400,
+        0
+      ]
     },
     {
       "parameters": {
@@ -117,8 +159,16 @@
       "name": "OpenAI: Chat RAG",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1600, 0],
-      "credentials": { "openAiApi": { "id": "frs6ZRDbNFeYhZf7", "name": "OpenAi account" } }
+      "position": [
+        1600,
+        0
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "frs6ZRDbNFeYhZf7",
+          "name": "OpenAi account"
+        }
+      }
     },
     {
       "parameters": {
@@ -128,18 +178,131 @@
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1800, 0]
+      "position": [
+        1800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json || {};\nreturn [{ json: { status: 'error', message: input.message || 'Truy cập bị từ chối' } }];"
+      },
+      "id": "format-auth-error-rag",
+      "name": "Format Auth Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        200
+      ]
     }
   ],
   "connections": {
-    "Webhook RAG Search": { "main": [ [ { "node": "Check JWT Security", "type": "main", "index": 0 } ] ] },
-    "Check JWT Security": { "main": [ [ { "node": "If Valid JWT", "type": "main", "index": 0 } ] ] },
-    "If Valid JWT": { "main": [ [ { "node": "Prep Embedding Body", "type": "main", "index": 0 } ] ] },
-    "Prep Embedding Body": { "main": [ [ { "node": "OpenAI: Get Vector", "type": "main", "index": 0 } ] ] },
-    "OpenAI: Get Vector": { "main": [ [ { "node": "Prep Qdrant Body", "type": "main", "index": 0 } ] ] },
-    "Prep Qdrant Body": { "main": [ [ { "node": "Qdrant: Find Docs", "type": "main", "index": 0 } ] ] },
-    "Qdrant: Find Docs": { "main": [ [ { "node": "Prep OpenAI Chat Body", "type": "main", "index": 0 } ] ] },
-    "Prep OpenAI Chat Body": { "main": [ [ { "node": "OpenAI: Chat RAG", "type": "main", "index": 0 } ] ] },
-    "OpenAI: Chat RAG": { "main": [ [ { "node": "Format Response", "type": "main", "index": 0 } ] ] }
+    "Webhook RAG Search": {
+      "main": [
+        [
+          {
+            "node": "Check JWT Security",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check JWT Security": {
+      "main": [
+        [
+          {
+            "node": "If Valid JWT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Valid JWT": {
+      "main": [
+        [
+          {
+            "node": "Prep Embedding Body",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Auth Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Embedding Body": {
+      "main": [
+        [
+          {
+            "node": "OpenAI: Get Vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI: Get Vector": {
+      "main": [
+        [
+          {
+            "node": "Prep Qdrant Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Qdrant Body": {
+      "main": [
+        [
+          {
+            "node": "Qdrant: Find Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant: Find Docs": {
+      "main": [
+        [
+          {
+            "node": "Prep OpenAI Chat Body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep OpenAI Chat Body": {
+      "main": [
+        [
+          {
+            "node": "OpenAI: Chat RAG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI: Chat RAG": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
   }
 }

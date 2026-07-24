@@ -1,6 +1,6 @@
 {
   "id": "sGPz8LMQQHVp0IiL",
-  "name": "K0-B Â· Get API Config",
+  "name": "K0-B · Get API Config",
   "nodes": [
     {
       "parameters": {
@@ -138,7 +138,7 @@
       "name": "MS SQL API_GetConfig",
       "credentials": {
         "microsoftSql": {
-          "id": "TpdxwsQAMalt6YK3",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       }
@@ -195,7 +195,7 @@
           "__rl": true,
           "value": "xjb2EueFU0l3wt93",
           "mode": "list",
-          "cachedResultName": "K0-0 Â· Shared Auth Guard",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
           "cachedResultUrl": "/workflow/xjb2EueFU0l3wt93"
         },
         "workflowInputs": {
@@ -425,7 +425,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "TpdxwsQAMalt6YK3",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       },
@@ -460,7 +460,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "TpdxwsQAMalt6YK3",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       },
@@ -495,7 +495,7 @@
       ],
       "credentials": {
         "microsoftSql": {
-          "id": "TpdxwsQAMalt6YK3",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       },

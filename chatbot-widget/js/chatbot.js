@@ -46,13 +46,8 @@
 
 
 
-    // Khởi tạo Engine và tải Metadata hệ thống ngay khi load
-
-    if (typeof ApiEngine !== 'undefined') {
-
-        ApiEngine.loadSystemMeta();
-
-    }
+    // Khởi tạo Engine: loadSystemMeta sẽ được gọi SAU init() để đảm bảo
+    // _cbGetToken đã được set trước khi gửi request (tránh 401 không có token).
 
 
 
@@ -344,9 +339,15 @@
 
             container: $container,
 
-            apiBtn: $btnApi
+            apiBtn: $btnApi,
+
+            getToken: _getToken
 
         });
+
+        // Gọi loadSystemMeta SAU init() để _cbGetToken đã được set
+        // → request sẽ đính kèm Authorization: Bearer <token> đúng chuẩn
+        window.ApiEngine.loadSystemMeta();
 
     }
 
@@ -6484,6 +6485,8 @@
 
     var $inputBar = document.getElementById('chat-input-bar');
 
+    var $chatbotPage = document.querySelector('.chatbot-page');
+
 
 
     function _setMobileKeyboardLayout(isOpen) {
@@ -6491,6 +6494,12 @@
         if (window.innerWidth > 768) return;
 
         document.body.classList.toggle('chatbot-keyboard-open', Boolean(isOpen));
+
+        if ($chatbotPage) {
+
+            $chatbotPage.classList.toggle('chatbot-nav-hidden', Boolean(isOpen));
+
+        }
 
         if ($nav) {
 

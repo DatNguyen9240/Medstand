@@ -12,6 +12,14 @@
   background: var(--color-background);
 }
 
+/* Khi bàn phím mobile mở, thanh điều hướng được ẩn nên chat dùng toàn bộ
+   viewport còn lại thay vì tiếp tục chừa một khoảng bằng nav-height. */
+@media (max-width: 768px) {
+  .chatbot-page.chatbot-nav-hidden {
+    height: 100dvh;
+  }
+}
+
 /* ── Top brand bar ── */
 .chatbot-topbar {
   flex-shrink: 0;
@@ -1908,7 +1916,8 @@ tr.expanded .ai-row-toggle::before {
   /* Khi bàn phím ảo mở, thanh điều hướng dưới được ẩn. Khi đó vùng chat
      phải dùng toàn bộ visual viewport thay vì tiếp tục chừa chỗ cho nav. */
   body.chatbot-keyboard-open .chatbot-page,
-  body.chatbot-keyboard-open .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
+  body.chatbot-keyboard-open .chatbot-page:has(#chat-welcome:not([style*="display: none"])),
+  .chatbot-page.chatbot-nav-hidden:has(#chat-welcome:not([style*="display: none"])) {
     height: 100dvh;
   }
 
