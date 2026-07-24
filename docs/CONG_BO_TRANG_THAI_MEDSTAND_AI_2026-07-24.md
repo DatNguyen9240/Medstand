@@ -85,4 +85,3 @@ Trạng thái chỉ được chuyển sang `CUSTOMER_PILOT_RUNTIME_PASS` sau khi
 - kiểm thử thực tế Sale/Quản lý đạt yêu cầu;
 - phạm vi dữ liệu và các luồng lỗi chính đã được ghi nhận;
 - người phụ trách nghiệp vụ ký nghiệm thu.
-
