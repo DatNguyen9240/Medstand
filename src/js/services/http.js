@@ -171,6 +171,9 @@ const Http = (() => {
   const RETRY_DELAY_MS = 1000; // delay cơ bản, sẽ nhân đôi mỗi lần retry
 
   async function _fetchWithTimeout(url, options, retries = MAX_RETRIES) {
+    const requestMethod = String(options?.method || 'GET').toUpperCase();
+    const safeToRetry = ['GET', 'HEAD', 'OPTIONS'].includes(requestMethod);
+    const maxAttempts = safeToRetry ? Math.max(1, retries) : 1;
     const gatewayUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.GATEWAY_URL) || '/api/gateway';
     const bypassGateway = false; // Chạy qua cổng Gateway mã hóa bảo mật
 
@@ -218,7 +221,7 @@ const Http = (() => {
       };
     }
 
-    for (let attempt = 1; attempt <= retries; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const controller = new AbortController();
         const tid = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -245,13 +248,15 @@ const Http = (() => {
 
         return res;
       } catch (err) {
-        console.warn(`[HTTP] Attempt ${attempt}/${retries} failed:`, err.message);
+        console.warn(`[HTTP] Attempt ${attempt}/${maxAttempts} failed:`, err.message);
         
         const isTimeout = err.name === 'AbortError';
-        if (isTimeout || attempt === retries) {
-          const msg = isTimeout
-            ? 'Kết nối quá thời gian chờ (Timeout). Vui lòng thử lại sau.'
-            : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.';
+        if (isTimeout || attempt === maxAttempts) {
+          const msg = !safeToRetry
+            ? 'Chưa thể xác nhận thao tác đã thành công. Vui lòng kiểm tra dữ liệu trước khi thực hiện lại.'
+            : isTimeout
+              ? 'Kết nối quá thời gian chờ (Timeout). Vui lòng thử lại sau.'
+              : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.';
           _alert('error', msg);
           throw new Error(msg);
         }
