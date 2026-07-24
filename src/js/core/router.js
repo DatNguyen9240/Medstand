@@ -462,7 +462,16 @@ const Router = (() => {
   }
 
   // ── Init ───────────────────────────────────────────────────────────────
-  function init() {
+  async function init() {
+
+    if (_isLoggedIn() && typeof AuthService !== 'undefined' && AuthService.validateSession) {
+      var sessionValid = await AuthService.validateSession();
+      if (!sessionValid) {
+        localStorage.removeItem('auth_user');
+        window.location.replace(window.location.origin + '/pages/login.html?v=' + Date.now());
+        return;
+      }
+    }
 
     // ── Global: ẩn nav + header + total-bar khi input được focus (mobile) ──
     // Chatbot page tự xử lý riêng, nên skip

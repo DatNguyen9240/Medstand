@@ -165,6 +165,29 @@ const AuthService = (() => {
    * Cập nhật Firebase token — gọi API_UsertokenFirebase
    * @param {string} tokenFirebase
    */
+  /** Validate the saved session with the server when the app opens. */
+  async function validateSession() {
+    const hasLocalIdentity = !!localStorage.getItem('auth_user');
+    const token = getCookie('auth_token');
+    if (!token && !hasLocalIdentity) return false;
+
+    try {
+      const result = await Http.post(EP.USER_INFO);
+      if (result && result.code === 0) {
+        if (result.records && result.records.length > 0) {
+          const current = JSON.parse(localStorage.getItem('auth_user') || '{}');
+          localStorage.setItem('auth_user', JSON.stringify(mergeIdentityFields(result.records[0], current)));
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      // Http handles confirmed 401/code 2 responses. A temporary network error
+      // must not destroy a session that may still be valid.
+      console.warn('[Auth] Session validation could not be completed:', error.message);
+      return hasLocalIdentity || !!token;
+    }
+  }
   function updateFirebaseToken(tokenFirebase) {
     const user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     return Http.post(EP.UPDATE_FIREBASE_TOKEN, {
@@ -215,5 +238,5 @@ const AuthService = (() => {
     }
   }
 
-  return { login, logout, updateFirebaseToken, getToken, getCookie, setCookie, deleteCookie, syncUserDisplay };
+  return { login, logout, validateSession, updateFirebaseToken, getToken, getCookie, setCookie, deleteCookie, syncUserDisplay };
 })();

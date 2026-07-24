@@ -45,6 +45,12 @@ if ('serviceWorker' in navigator) {
         .register('/sw.js', { updateViaCache: 'none' })
         .then((reg) => {
           console.log('[PWA] Service Worker registered, scope:', reg.scope);
+          var reloadingForUpdate = false;
+          navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (reloadingForUpdate) return;
+            reloadingForUpdate = true;
+            window.location.reload();
+          });
           reg.update().catch(() => {});
         })
         .catch((err) => {
