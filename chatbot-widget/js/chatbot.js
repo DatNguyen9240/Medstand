@@ -331,27 +331,6 @@
         }
     } catch(e) {}
 
-    // Khởi tạo Chatbot API Engine UI (Nút "Ch n API")
-
-    if (window.ApiEngine) {
-
-        window.ApiEngine.init({
-
-            container: $container,
-
-            apiBtn: $btnApi,
-
-            getToken: _getToken
-
-        });
-
-        // System Meta is optional. Do not call the currently unauthorized n8n
-        // workflow during startup; the engine safely uses its built-in field rules.
-
-    }
-
-
-
     var chatHistory = [];
 
     var selectedFiles = [];
@@ -6524,6 +6503,8 @@
 
             inputEl: $input,
 
+            apiBtn: $btnApi,
+
             addMessage: _addMessage,
 
             addHtmlMessage: _addHtmlMessage,
@@ -6588,7 +6569,7 @@
 
         $input.placeholder = window.innerWidth <= 480
 
-            ? 'Nh\u1eadp tin nh\u1eafn...'
+            ? 'Nh\u1eadp tin nh\u1eafn... (@ tra c\u1ee9u)'
 
             : 'Nh\u1eadp tin nh\u1eafn... (@ tra c\u1ee9u)';
 
