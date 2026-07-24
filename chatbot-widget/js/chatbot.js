@@ -5087,25 +5087,9 @@
 
             .catch(function () {
 
-                // Fallback nếu API lỗi và chưa có data từ cache
-
-                if (Object.keys(MENTION_TRIGGERS).length === 0) {
-
-                    _mentionApplyCategories([
-
-                        { type: 'sanpham', label: 'Sản phẩm', icon: '💊' },
-
-                        { type: 'khachhang', label: 'Khách hàng', icon: '👤' },
-
-                        { type: 'donhang', label: 'ơn hàng', icon: '📋' },
-
-                        { type: 'khohang', label: 'Kho hàng', icon: '' },
-
-                        { type: 'nhanvien', label: 'Nhân viên', icon: '👨💼' }
-
-                    ]);
-
-                }
+                // Không tự định nghĩa loại danh mục ở frontend. Danh sách
+                // phải được trả về từ API_DanhMuc_AI để luôn khớp nghiệp vụ.
+                console.warn('[Chatbot] Không tải được danh sách loại danh mục.');
 
             });
 

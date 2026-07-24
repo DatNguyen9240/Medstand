@@ -1251,6 +1251,84 @@
     }
 
 
+    function _loadCatalogTypeRows(query, cb) {
+        var catalogApi = CFG.CATALOG_ROOT_API || '@danh_muc';
+        // The catalog root procedure accepts an optional @Type.  Always send
+        // the empty value for the root picker so deployments whose API
+        // metadata marks @Type as required do not reject the request before
+        // the procedure can return its dynamic category rows.
+        var rootDataSource = catalogApi + '|@Type=';
+
+        // Primary path: the lightweight datasource endpoint used by inline
+        // selectors. Some deployments can temporarily have this workflow
+        // unpublished while the approved API Execute workflow is available,
+        // so retry through that public API before showing an error.
+        _loadDataSource('APICODE', rootDataSource, query, function (rows) {
+            if (rows && rows.length) {
+                cb(rows);
+                return;
+            }
+
+            // Secondary path: use the existing backend catalog endpoint. This
+            // keeps the picker working when the n8n datasource workflow is not
+            // published, while still reading the categories dynamically from
+            // API_DanhMuc_AI instead of defining them in the frontend.
+            var catalogEndpoint = window.API_CONFIG
+                && window.API_CONFIG.ENDPOINTS
+                && window.API_CONFIG.ENDPOINTS.AI
+                && window.API_CONFIG.ENDPOINTS.AI.CATALOG;
+
+            if (!catalogEndpoint) {
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+                return;
+            }
+
+            var queryPayload = encodeURIComponent(JSON.stringify({
+                Type: '',
+                SearchText: query || ''
+            }));
+            var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
+            var baseUrl = window.API_CONFIG.BASE_URL || '';
+
+            fetch(baseUrl + catalogEndpoint + '?q=' + queryPayload, {
+                method: 'GET',
+                headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+            }).then(function (response) {
+                if (!response.ok) throw new Error('Catalog endpoint returned ' + response.status);
+                return response.json();
+            }).then(function (response) {
+                var backendRows = _normalizeDataSourceRows(response);
+                if (backendRows.length) {
+                    cb(backendRows);
+                    return;
+                }
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+            }).catch(function (error) {
+                console.warn('[ApiEngine] Backend catalog endpoint failed', error);
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+            });
+        });
+    }
+
+    function _loadCatalogTypeRowsFromExecute(catalogApi, query, cb) {
+        // Final path: use the approved API Execute workflow. Do not omit
+        // @Type; an empty root value asks the procedure for its category rows.
+        var params = { '@Type': '' };
+        if (query) params['@timkiem'] = query;
+
+        _post(CFG.EXEC_URL, {
+            ApiCode: catalogApi,
+            params: params,
+            username: _user()
+        }).then(function (response) {
+            cb(_normalizeDataSourceRows(response));
+        }).catch(function (error) {
+            console.error('[ApiEngine] Catalog type execute fallback failed', error);
+            cb([]);
+        });
+    }
+
+
 
     function _menuShowCatalog(query, atPos, options) {
 
@@ -1263,7 +1341,7 @@
         _menuEl.innerHTML = '<div class="ae-menu-empty">Đang tải loại danh mục...</div>';
         _positionMenu();
 
-        _loadDataSource('APICODE', CFG.CATALOG_ROOT_API || '@danh_muc', query, function (rows) {
+        _loadCatalogTypeRows(query, function (rows) {
 
             if (requestSeq !== _catalogTypeRequestSeq) return;
 
@@ -5061,6 +5139,25 @@
             clearTimeout(_dbt); // Xa ngay timeout cũ để trnh menu v cớ nhảy ln sau khi xa chữ nhanh
 
 
+            // Resolve a visible API tag before handling the current API state.
+            // This is important when the user switches from one business flow
+            // to another by typing/pasting a tag such as "#danh_muc @Type=".
+            // Otherwise the previous API can consume the input event and close
+            // the new flow before its datasource menu is opened.
+            var typedApiMatch = val.match(/(?:^|\s)#([a-z0-9_]+)/i);
+            if (typedApiMatch) {
+                var typedApiCode = '@' + typedApiMatch[1];
+                var typedApi = _apiList.find(function (api) {
+                    return String(api.ApiCode || '').toLowerCase() === typedApiCode.toLowerCase();
+                });
+                var activeApiCode = String(_activeApi && _activeApi.apiCode || '').toLowerCase();
+                if (typedApi && activeApiCode !== typedApiCode.toLowerCase()) {
+                    _onApiSelected(typedApi.ApiCode, { preserveInput: true });
+                    return;
+                }
+            }
+
+
 
             if (_activeApi) {
 
@@ -5247,21 +5344,17 @@
 
 
 
-            // If a user pastes/types an API tag directly (for example
-            // "#danh_muc @Type="), activate the matching API before trying to
-            // resolve its parameter values.
-            var typedApiMatch = val.match(/(?:^|\s)#([a-z0-9_]+)/i);
-            if (typedApiMatch) {
-                var typedApiCode = '@' + typedApiMatch[1];
-                var typedApi = _apiList.find(function (api) {
-                    return String(api.ApiCode || '').toLowerCase() === typedApiCode.toLowerCase();
-                });
-                var activeApiCode = String(_activeApi && _activeApi.apiCode || '').toLowerCase();
-                if (typedApi && activeApiCode !== typedApiCode.toLowerCase()) {
-                    _onApiSelected(typedApi.ApiCode, { preserveInput: true });
-                    return;
-                }
+            // Outside an active API flow, ordinary text and a standalone "@"
+            // remain natural chat input. The complete function menu is opened
+            // only by the four-square button. Inline "@" selection is reserved
+            // for the catalog command generated as: #danh_muc @Type=
+            if (_isCatalogTypePrompt()) {
+                _openCatalogTypePicker(0);
+                return;
             }
+
+            if (_menuVis) _menuHide();
+            return;
 
             var pos = val.lastIndexOf('@');
 
