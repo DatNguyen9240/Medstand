@@ -26,13 +26,13 @@ const source = JSON.parse(
 const outputDir = path.join(root, 'docs', 'GOI_UAT_KHACH_HANG');
 
 const colors = {
-  navy: '172554',
-  blue: '3157E6',
-  lightBlue: 'EEF3FF',
-  green: '159447',
-  gray: '64748B',
-  lightGray: 'F6F8FC',
-  border: 'D8E0EC',
+  navy: '000000',
+  blue: '000000',
+  lightBlue: 'F2F2F2',
+  green: '000000',
+  gray: '4D4D4D',
+  lightGray: 'F7F7F7',
+  border: 'BFBFBF',
   white: 'FFFFFF',
 };
 const border = { style: BorderStyle.SINGLE, size: 1, color: colors.border };
@@ -40,7 +40,7 @@ const border = { style: BorderStyle.SINGLE, size: 1, color: colors.border };
 function run(value, options = {}) {
   return new TextRun({
     text: String(value ?? ''),
-    font: 'Aptos',
+    font: 'Arial',
     color: options.color || colors.navy,
     bold: Boolean(options.bold),
     size: options.size || 21,
@@ -209,7 +209,7 @@ function build(definition) {
   return new Document({
     creator: 'Medstand AI',
     title: definition.title,
-    description: 'Bộ tài liệu UAT dành cho khách hàng',
+    description: 'Bộ tài liệu kiểm tra dành cho khách hàng',
     numbering: {
       config: [
         {
@@ -229,7 +229,7 @@ function build(definition) {
     styles: {
       default: {
         document: {
-          run: { font: 'Aptos', size: 21, color: colors.navy },
+          run: { font: 'Arial', size: 21, color: colors.navy },
           paragraph: { spacing: { after: 120, line: 276 } },
         },
       },
@@ -242,7 +242,7 @@ function build(definition) {
         headers: {
           default: new Header({
             children: [
-              para('MEDSTAND AI  |  BỘ TÀI LIỆU UAT', {
+              para('MEDSTAND AI  |  TÀI LIỆU KIỂM TRA DÀNH CHO KHÁCH HÀNG', {
                 size: 17,
                 bold: true,
                 color: colors.gray,
@@ -258,11 +258,11 @@ function build(definition) {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  run('Tài liệu dành cho kiểm thử Pilot · Không chứa mật khẩu  |  Trang ', {
+                  run('Tài liệu kiểm tra Medstand AI - Không ghi mật khẩu  |  Trang ', {
                     size: 16,
                     color: colors.gray,
                   }),
-                  new TextRun({ children: [PageNumber.CURRENT], font: 'Aptos', size: 16, color: colors.gray }),
+                  new TextRun({ children: [PageNumber.CURRENT], font: 'Arial', size: 16, color: colors.gray }),
                 ],
               }),
             ],
@@ -276,18 +276,17 @@ function build(definition) {
 
 async function main() {
   fs.mkdirSync(outputDir, { recursive: true });
+  const requested = new Set(process.argv.slice(2));
+  const definitions = requested.size
+    ? source.documents.filter((definition) => requested.has(definition.fileName))
+    : source.documents;
   const results = [];
-  for (const definition of source.documents) {
+  for (const definition of definitions) {
     const buffer = await Packer.toBuffer(build(definition));
     const file = path.join(outputDir, `${definition.fileName}.docx`);
     fs.writeFileSync(file, buffer);
     results.push({ file, bytes: buffer.length });
   }
-  fs.writeFileSync(
-    path.join(outputDir, 'document-build-report.json'),
-    JSON.stringify({ generatedAt: new Date().toISOString(), results }, null, 2),
-    'utf8',
-  );
   console.log(JSON.stringify(results, null, 2));
 }
 
