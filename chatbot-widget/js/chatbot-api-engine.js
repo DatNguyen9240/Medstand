@@ -171,6 +171,7 @@
     var _catalogTypeOpenTimer = null;
 
     var _catalogTypeRequestSeq = 0;
+    var _catalogTypeRowsCache = null;
 
     var _prevPlaceholder = '';
 
@@ -1253,6 +1254,22 @@
 
     function _loadCatalogTypeRows(query, cb) {
         var catalogApi = CFG.CATALOG_ROOT_API || '@danh_muc';
+        var normalizedQuery = String(query || '').trim();
+
+        // Reuse the last successful dynamic response so the picker opens
+        // immediately. The request below still refreshes it in the
+        // background; no catalog type is hardcoded here.
+        if (!normalizedQuery && _catalogTypeRowsCache && _catalogTypeRowsCache.length) {
+            cb(_catalogTypeRowsCache.slice());
+        }
+
+        function deliver(rows) {
+            if (!normalizedQuery && rows && rows.length) {
+                _catalogTypeRowsCache = rows.slice();
+            }
+            cb(rows || []);
+        }
+
         // The catalog root procedure accepts an optional @Type.  Always send
         // the empty value for the root picker so deployments whose API
         // metadata marks @Type as required do not reject the request before
@@ -1265,7 +1282,7 @@
         // so retry through that public API before showing an error.
         _loadDataSource('APICODE', rootDataSource, query, function (rows) {
             if (rows && rows.length) {
-                cb(rows);
+                deliver(rows);
                 return;
             }
 
@@ -1279,7 +1296,7 @@
                 && window.API_CONFIG.ENDPOINTS.AI.CATALOG;
 
             if (!catalogEndpoint) {
-                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, deliver);
                 return;
             }
 
@@ -1299,13 +1316,13 @@
             }).then(function (response) {
                 var backendRows = _normalizeDataSourceRows(response);
                 if (backendRows.length) {
-                    cb(backendRows);
+                    deliver(backendRows);
                     return;
                 }
-                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, deliver);
             }).catch(function (error) {
                 console.warn('[ApiEngine] Backend catalog endpoint failed', error);
-                _loadCatalogTypeRowsFromExecute(catalogApi, query, cb);
+                _loadCatalogTypeRowsFromExecute(catalogApi, query, deliver);
             });
         });
     }
@@ -5881,6 +5898,13 @@
             _cbSetWaiting = opts.setWaiting || null;
 
             _loadList(function () { console.log('[ApiEngine v3] ' + _apiList.length + ' APIs'); });
+
+            // Warm the dynamic catalog-type cache without blocking chat
+            // startup. The @ picker can therefore open immediately on the
+            // first user interaction after the catalog response arrives.
+            setTimeout(function () {
+                _loadCatalogTypeRows('', function () {});
+            }, 0);
 
             _watchInput(_inputEl);
 
