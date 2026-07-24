@@ -65,27 +65,27 @@ function renderDocument(definition) {
   <title>${escapeHtml(definition.title)}</title>
   <style>
     @page { size: A4; margin: 18mm; }
-    body { font-family: Aptos, Arial, sans-serif; color: #172554; font-size: 10.5pt; line-height: 1.35; }
+    body { font-family: Arial, sans-serif; color: #000; font-size: 10.5pt; line-height: 1.35; }
     .cover { text-align: center; padding: 12mm 0 8mm; }
-    .brand { color: #159447; font-size: 12pt; font-weight: 700; letter-spacing: .08em; margin-bottom: 14mm; }
-    .title { color: #172554; font-size: 24pt; line-height: 1.15; font-weight: 800; margin: 0 0 5mm; }
-    .subtitle { color: #3157e6; font-size: 14pt; margin-bottom: 4mm; }
-    .meta { color: #64748b; font-size: 9.5pt; }
-    h1 { color: #172554; font-size: 16pt; margin: 7mm 0 3mm; page-break-after: avoid; }
-    h2 { color: #3157e6; font-size: 12pt; margin: 5mm 0 2mm; page-break-after: avoid; }
+    .brand { color: #000; font-size: 12pt; font-weight: 700; letter-spacing: .08em; margin-bottom: 14mm; }
+    .title { color: #000; font-size: 24pt; line-height: 1.15; font-weight: 800; margin: 0 0 5mm; }
+    .subtitle { color: #000; font-size: 14pt; margin-bottom: 4mm; }
+    .meta { color: #4d4d4d; font-size: 9.5pt; }
+    h1 { color: #000; font-size: 16pt; margin: 7mm 0 3mm; page-break-after: avoid; }
+    h2 { color: #000; font-size: 12pt; margin: 5mm 0 2mm; page-break-after: avoid; }
     p { margin: 0 0 3mm; }
     li { margin-bottom: 2mm; }
-    .note { background: #eef3ff; border: 1px solid #d8e0ec; padding: 4mm; margin: 4mm 0; }
-    .note strong { color: #3157e6; }
+    .note { background: #f2f2f2; border: 1px solid #bfbfbf; padding: 4mm; margin: 4mm 0; }
+    .note strong { color: #000; }
     table { border-collapse: collapse; width: 100%; margin: 3mm 0 5mm; font-size: 8.8pt; page-break-inside: auto; }
     thead { display: table-header-group; }
     tr { page-break-inside: avoid; }
-    th { background: #3157e6; color: #fff; text-align: left; font-weight: 700; padding: 2.5mm; border: 1px solid #d8e0ec; }
-    td { vertical-align: top; padding: 2.5mm; border: 1px solid #d8e0ec; }
-    tbody tr:nth-child(even) td { background: #f6f8fc; }
+    th { background: #000; color: #fff; text-align: left; font-weight: 700; padding: 2.5mm; border: 1px solid #bfbfbf; }
+    td { vertical-align: top; padding: 2.5mm; border: 1px solid #bfbfbf; }
+    tbody tr:nth-child(even) td { background: #f7f7f7; }
     .page-break { page-break-before: always; }
-    .blank-line { border-bottom: 1px solid #d8e0ec; height: 10mm; }
-    .footer { color: #64748b; font-size: 8pt; text-align: center; margin-top: 8mm; }
+    .blank-line { border-bottom: 1px solid #bfbfbf; height: 10mm; }
+    .footer { color: #4d4d4d; font-size: 8pt; text-align: center; margin-top: 8mm; }
   </style>
 </head>
 <body>
@@ -96,7 +96,7 @@ function renderDocument(definition) {
     <div class="meta">${escapeHtml(definition.meta)}</div>
   </div>
   ${blocks}
-  <div class="footer">Tài liệu dành cho kiểm thử Pilot · Không chứa mật khẩu</div>
+  <div class="footer">Tài liệu kiểm tra Medstand AI · Không ghi mật khẩu</div>
 </body>
 </html>`;
 }
