@@ -49,6 +49,9 @@ const cases = [
   ['thông tin sản phẩm A003', 'BUSINESS', 'PRODUCT_SEARCH', 'EXECUTE'],
   ['sản phẩm A003', 'BUSINESS', 'PRODUCT_SEARCH', 'EXECUTE'],
   ['gợi ý đơn hàng cho NDB001', 'BUSINESS', 'ORDER_RECOMMENDATION', 'EXECUTE'],
+  ['Hôm nay bán gì cho khách NDB001', 'BUSINESS', 'ORDER_RECOMMENDATION', 'EXECUTE'],
+  ['Gợi ý bán kèm cho khách NDB001', 'BUSINESS', 'UPSELL_RECOMMENDATION', 'EXECUTE'],
+  ['Khách nào lâu chưa mua?', 'BUSINESS', 'SALES_ROUTE', 'EXECUTE'],
   ['chi tiết hóa đơn HD123', 'BUSINESS', 'INVOICE_DETAIL', 'EXECUTE'],
   ['doanh số tháng này', 'BUSINESS', 'SALES_REVENUE', 'EXECUTE'],
   ['cho tôi danh sách khách thuộc tuyến của tôi', 'BUSINESS', 'SALES_ROUTE', 'EXECUTE'],
@@ -142,6 +145,91 @@ const followUp = classifyNaturalMessage('tháng trước thì sao', { hasContext
 assert.strictEqual(followUp.messageType, 'FOLLOW_UP');
 assert.strictEqual(expectedAction(followUp, true), 'USE_CONTEXT');
 
+const debtFollowUp = classifyNaturalMessage('chi tiết đi', {
+  hasContext: true,
+  history: 'Khách NDB001 đang nợ bao nhiêu?',
+});
+assert.strictEqual(debtFollowUp.messageType, 'BUSINESS');
+assert.strictEqual(debtFollowUp.intent, 'CUSTOMER_DEBT_DETAIL');
+assert.strictEqual(debtFollowUp.apiCode, '@cong_no_chi_tiet');
+assert.strictEqual(debtFollowUp.entities.customerId, 'NDB001');
+assert.strictEqual(expectedAction(debtFollowUp), 'EXECUTE');
+
+const longAbsent = classifyNaturalMessage('Khách nào lâu chưa mua?');
+assert.strictEqual(longAbsent.apiCode, '@tuyen_ban_hang');
+assert.strictEqual(longAbsent.entities.absentDays, 30);
+
+const todayWork = classifyNaturalMessage('Hôm nay tôi nên làm gì?');
+assert.strictEqual(todayWork.apiCode, '@tuyen_ban_hang');
+assert.strictEqual(todayWork.entities.topN, 8);
+
+const sellToday = classifyNaturalMessage('Hôm nay bán gì cho khách NDB001');
+assert.strictEqual(sellToday.apiCode, '@goi_ydon_hang');
+assert.strictEqual(sellToday.entities.customerId, 'NDB001');
+
+const fixedNow = new Date(2026, 6, 24, 12, 0, 0);
+const previousMonthRevenue = classifyNaturalMessage('tháng trước thì sao', {
+  history: 'User: doanh số tháng này\nAI: Tổng doanh số trong kỳ.',
+  now: fixedNow,
+});
+assert.strictEqual(previousMonthRevenue.messageType, 'BUSINESS');
+assert.strictEqual(previousMonthRevenue.apiCode, '@doanh_so');
+assert.deepStrictEqual(previousMonthRevenue.entities, {
+  fromDate: '2026-06-01',
+  toDate: '2026-06-30',
+});
+
+const previousWeekRevenue = classifyNaturalMessage('tuần trước thì sao', {
+  history: 'User: doanh thu tuần này\nAI: Kết quả doanh thu.',
+  now: fixedNow,
+});
+assert.strictEqual(previousWeekRevenue.apiCode, '@doanh_so');
+assert.deepStrictEqual(previousWeekRevenue.entities, {
+  fromDate: '2026-07-13',
+  toDate: '2026-07-19',
+});
+
+const previousMonthLoyalty = classifyNaturalMessage('tháng trước thì sao', {
+  history: 'User: xem tích lũy của AG0031\nAI: Tiến độ tích lũy của AG0031.',
+  now: fixedNow,
+});
+assert.strictEqual(previousMonthLoyalty.apiCode, '@tich_luy');
+assert.deepStrictEqual(previousMonthLoyalty.entities, {
+  fromDate: '2026-06-01',
+  toDate: '2026-06-30',
+  customerId: 'AG0031',
+});
+
+const changeUpsellCustomer = classifyNaturalMessage('đổi sang khách AG0031', {
+  history: 'User: gợi ý bán kèm cho NDB001\nAI: Danh sách gợi ý bán kèm.',
+});
+assert.strictEqual(changeUpsellCustomer.apiCode, '@upsell_goi_y');
+assert.strictEqual(changeUpsellCustomer.entities.customerId, 'AG0031');
+
+const currentCustomerDebt = classifyNaturalMessage('khách này còn nợ bao nhiêu', {
+  history: 'User: xem công nợ NDB001\nAI: Tổng công nợ của NDB001.',
+});
+assert.strictEqual(currentCustomerDebt.apiCode, '@cong_no_chi_tiet');
+assert.strictEqual(currentCustomerDebt.entities.customerId, 'NDB001');
+
+const currentProductInventory = classifyNaturalMessage('sản phẩm này còn bao nhiêu', {
+  history: 'User: thông tin sản phẩm A003\nAI: Thông tin sản phẩm A003.',
+});
+assert.strictEqual(currentProductInventory.apiCode, '@danh_sach_tonkho');
+assert.strictEqual(currentProductInventory.entities.searchTerm, 'A003');
+
+const productDetailFollowUp = classifyNaturalMessage('chi tiết hơn', {
+  history: 'User: tìm sản phẩm A003\nAI: Tìm thấy sản phẩm A003.',
+});
+assert.strictEqual(productDetailFollowUp.apiCode, '@tra_cuu_san_pham');
+assert.strictEqual(productDetailFollowUp.entities.searchTerm, 'A003');
+
+const noUnsafeCustomerReuse = classifyNaturalMessage('xem công nợ khách này', {
+  history: 'User: tồn kho A003\nAI: Kết quả tồn kho A003.',
+});
+assert.strictEqual(noUnsafeCustomerReuse.apiCode, '@cong_no_chi_tiet');
+assert.deepStrictEqual(noUnsafeCustomerReuse.missingFields, ['customerId']);
+
 const parser = JSON.parse(
   fs.readFileSync(path.join(root, 'n8n', 'AI_Core', 'AI_Intent_Parser.json'), 'utf8'),
 );
@@ -154,6 +242,8 @@ const parserCode = parser.nodes.find((entry) => entry.name === 'Parse & Resolve 
 
 assert.ok(mainNormalize.includes('NATURAL_CHAT_CLASSIFIER_BEGIN'));
 assert.ok(mainNormalize.includes('NATURAL_CHAT_PRE_ROUTER_BEGIN'));
+assert.ok(mainNormalize.includes("body.historyContext || body.history"));
+assert.ok(mainNormalize.includes("absentDays:'@SoNgayVangMat'"));
 assert.ok(mainNormalize.includes("['USER_IDENTITY_QUERY','USER_ROLE_QUERY','USER_SCOPE_QUERY']"));
 assert.ok(mainNormalize.includes('userProfile.authenticated && verifiedUserId'));
 assert.ok(!mainNormalize.includes('const identityPatterns ='));

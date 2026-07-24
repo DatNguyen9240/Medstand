@@ -96,6 +96,105 @@ function extractErpCode(originalText) {
   return tokens.find(isErpCode) || null;
 }
 
+function extractLastErpCode(originalText) {
+  const tokens = String(originalText || '').match(/[A-Za-z][A-Za-z0-9._-]*\d{2,}[A-Za-z0-9._-]*/g) || [];
+  return [...tokens].reverse().find(isErpCode) || null;
+}
+
+function getRecentUserMessages(historyContext) {
+  const lines = String(historyContext || '').split(/\r?\n/);
+  const userMessages = lines
+    .map((line) => line.match(/^\s*(?:user|người dùng)\s*:\s*(.+)$/i))
+    .filter(Boolean)
+    .map((match) => match[1].trim())
+    .filter(Boolean);
+  if (userMessages.length) return userMessages.slice(-6);
+  const fallback = String(historyContext || '').trim();
+  return fallback ? [fallback] : [];
+}
+
+function inferContextRoute(historyContext, lastIntent = '') {
+  const byIntent = {
+    CUSTOMER_DEBT_DETAIL: ['CUSTOMER_DEBT_DETAIL', '@cong_no_chi_tiet', 'customerId'],
+    CUSTOMER_DEBT_SUMMARY: ['CUSTOMER_DEBT_DETAIL', '@cong_no_chi_tiet', 'customerId'],
+    INVENTORY_LIST: ['INVENTORY_LIST', '@danh_sach_tonkho', 'searchTerm'],
+    PRODUCT_SEARCH: ['PRODUCT_SEARCH', '@tra_cuu_san_pham', 'searchTerm'],
+    ORDER_RECOMMENDATION: ['ORDER_RECOMMENDATION', '@goi_ydon_hang', 'customerId'],
+    UPSELL_RECOMMENDATION: ['UPSELL_RECOMMENDATION', '@upsell_goi_y', 'customerId'],
+    LOYALTY_PROGRESS: ['LOYALTY_PROGRESS', '@tich_luy', 'customerId'],
+    SALES_REVENUE: ['SALES_REVENUE', '@doanh_so', null],
+    SALES_ROUTE: ['SALES_ROUTE', '@tuyen_ban_hang', null],
+    INVOICE_LIST: ['INVOICE_LIST', '@hoa_don', null],
+    ORDER_LIST: ['ORDER_LIST', '@don_hang', null],
+    SURVEY_360: ['SURVEY_360', '@khao_sat360', 'customerId'],
+    SURVEY_STATUS: ['SURVEY_STATUS', '@kiem_tra_khao_sat', 'customerId'],
+  };
+  const normalizedIntent = String(lastIntent || '').trim().toUpperCase();
+  if (byIntent[normalizedIntent]) {
+    const [intent, apiCode, entityKey] = byIntent[normalizedIntent];
+    return { intent, apiCode, entityKey, code: extractLastErpCode(historyContext) };
+  }
+
+  const messages = getRecentUserMessages(historyContext).reverse();
+  for (const message of messages) {
+    const text = foldForMatch(message);
+    let route = null;
+    if (/\b(cong no|chi tiet no|con no|no bao nhieu|khoan nao chua tra)\b/.test(text)) {
+      route = byIntent.CUSTOMER_DEBT_DETAIL;
+    } else if (/\b(goi y ban kem|ban kem|upsell)\b/.test(text)) {
+      route = byIntent.UPSELL_RECOMMENDATION;
+    } else if (/\b(goi y don hang|hom nay ban gi|nen ban gi|nen nhap gi|nen lay gi)\b/.test(text)) {
+      route = byIntent.ORDER_RECOMMENDATION;
+    } else if (/\b(tich luy|moc thuong|qua tang)\b/.test(text)) {
+      route = byIntent.LOYALTY_PROGRESS;
+    } else if (/\b(ton kho|con hang|con bao nhieu)\b/.test(text)) {
+      route = byIntent.INVENTORY_LIST;
+    } else if (/\b(thong tin san pham|tra cuu san pham|tim san pham)\b/.test(text)) {
+      route = byIntent.PRODUCT_SEARCH;
+    } else if (/\b(doanh so|doanh thu)\b/.test(text)) {
+      route = byIntent.SALES_REVENUE;
+    } else if (/\b(tuyen ban hang|khach nao lau chua mua|hom nay.*(?:lam gi|ghe))\b/.test(text)) {
+      route = byIntent.SALES_ROUTE;
+    } else if (/\b(hoa don)\b/.test(text)) {
+      route = byIntent.INVOICE_LIST;
+    } else if (/\b(don hang)\b/.test(text)) {
+      route = byIntent.ORDER_LIST;
+    }
+    if (route) {
+      const [intent, apiCode, entityKey] = route;
+      return { intent, apiCode, entityKey, code: extractLastErpCode(message) };
+    }
+  }
+  return null;
+}
+
+function toIsoLocalDate(date) {
+  return [
+    String(date.getFullYear()).padStart(4, '0'),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+function resolveRelativeDateRange(period, nowInput) {
+  const now = nowInput instanceof Date ? new Date(nowInput.getTime()) : new Date(nowInput || Date.now());
+  if (Number.isNaN(now.getTime())) return null;
+  let fromDate;
+  let toDate;
+  if (period === 'LAST_MONTH') {
+    fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    toDate = new Date(now.getFullYear(), now.getMonth(), 0);
+  } else if (period === 'LAST_WEEK') {
+    const day = now.getDay() || 7;
+    const thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+    fromDate = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() - 7);
+    toDate = new Date(thisMonday.getFullYear(), thisMonday.getMonth(), thisMonday.getDate() - 1);
+  } else {
+    return null;
+  }
+  return { fromDate: toIsoLocalDate(fromDate), toDate: toIsoLocalDate(toDate) };
+}
+
 function parseExplicitDateToken(token) {
   const value = String(token || '').trim();
   let year;
@@ -169,7 +268,17 @@ function classifyNaturalMessage(input, options = {}) {
   const normalized = normalizeNaturalText(input);
   const folded = foldForMatch(normalized.normalizedText);
   const originalCode = extractErpCode(normalized.originalText);
-  const hasContext = Boolean(options.hasContext);
+  const historyContext = String(options.history || options.historyContext || '');
+  const contextLastIntent = String(options.lastIntent || '').toLowerCase();
+  const contextRoute = inferContextRoute(historyContext, contextLastIntent);
+  const contextCode = String(
+    options.customerId
+    || options.searchTerm
+    || contextRoute?.code
+    || extractLastErpCode(historyContext)
+    || '',
+  ).trim();
+  const hasContext = Boolean(options.hasContext || historyContext || contextCode || contextLastIntent);
 
   if (!folded) {
     return baseResult(normalized, { confidence: 1 });
@@ -305,7 +414,71 @@ function classifyNaturalMessage(input, options = {}) {
     });
   }
 
-  if (/^(thang truoc thi sao|con cai nay|chi tiet hon|doi sang khach|cung ky truoc|tuan truoc thi sao)$/.test(folded)) {
+  if (/^(chi tiet di|xem chi tiet|coi chi tiet|chi tiet hon)$/.test(folded)
+    && contextRoute
+    && contextCode
+    && ['CUSTOMER_DEBT_DETAIL', 'INVENTORY_LIST', 'PRODUCT_SEARCH'].includes(contextRoute.intent)) {
+    return baseResult(normalized, {
+      messageType: 'BUSINESS',
+      intent: contextRoute.intent,
+      internalIntent: contextRoute.intent,
+      apiCode: contextRoute.apiCode,
+      confidence: 0.98,
+      entities: { [contextRoute.entityKey]: contextCode },
+      requiresClarification: false,
+      supported: true,
+      responseKey: null,
+      responseMessage: '',
+    });
+  }
+
+  const changeCustomerMatch = folded.match(/^(?:doi sang|xem cho|chuyen sang)(?: khach(?: hang)?)?\s+([a-z][a-z0-9._-]*\d{2,}[a-z0-9._-]*)$/);
+  if (changeCustomerMatch && contextRoute && contextRoute.entityKey === 'customerId') {
+    const customerId = originalCode;
+    if (customerId) {
+      return baseResult(normalized, {
+        messageType: 'BUSINESS',
+        intent: contextRoute.intent,
+        internalIntent: contextRoute.intent,
+        apiCode: contextRoute.apiCode,
+        confidence: 0.98,
+        entities: { customerId },
+        requiresClarification: false,
+        supported: true,
+        responseKey: null,
+        responseMessage: '',
+      });
+    }
+  }
+
+  const relativePeriod = folded === 'thang truoc thi sao'
+    ? 'LAST_MONTH'
+    : (folded === 'tuan truoc thi sao' ? 'LAST_WEEK' : null);
+  if (
+    relativePeriod
+    && contextRoute
+    && ['SALES_REVENUE', 'LOYALTY_PROGRESS'].includes(contextRoute.intent)
+  ) {
+    const range = resolveRelativeDateRange(relativePeriod, options.now);
+    const entities = range ? { ...range } : {};
+    if (contextRoute.entityKey === 'customerId' && contextCode) entities.customerId = contextCode;
+    if (contextRoute.entityKey !== 'customerId' || contextCode) {
+      return baseResult(normalized, {
+        messageType: 'BUSINESS',
+        intent: contextRoute.intent,
+        internalIntent: contextRoute.intent,
+        apiCode: contextRoute.apiCode,
+        confidence: 0.98,
+        entities,
+        requiresClarification: false,
+        supported: true,
+        responseKey: null,
+        responseMessage: '',
+      });
+    }
+  }
+
+  if (/^(thang truoc thi sao|con cai nay|chi tiet hon|chi tiet di|xem chi tiet|coi chi tiet|doi sang khach|cung ky truoc|tuan truoc thi sao)$/.test(folded)) {
     return baseResult(normalized, {
       messageType: 'FOLLOW_UP',
       confidence: 0.96,
@@ -317,11 +490,29 @@ function classifyNaturalMessage(input, options = {}) {
   }
 
   const debtQuery = folded.includes('cong no')
-    || /\b(chi tiet no|con no|no bao nhieu|no nhieu|khoan nao chua tra|da tra het no|tra het no)\b/.test(folded);
+    || /\b(chi tiet no|con no|no bao nhieu|no nhieu|no gi|con phai tra bao nhieu|khoan nao chua tra|da tra het no|tra het no)\b/.test(folded);
+  const inventoryQuery = folded.includes('ton kho')
+    || Boolean(originalCode && /\b(con bao nhieu|con hang khong|con hang|het hang chua|kiem tra kho|trong kho con)\b/.test(folded))
+    || Boolean(/\b(san pham nay|mat hang nay)\b.*\b(con bao nhieu|con hang|het hang)\b/.test(folded));
+  const upsellQuery = /\b(goi y ban kem|ban kem|upsell|ban them gi|kem them gi)\b/.test(folded);
+  const orderRecommendationQuery = /\b(goi y don hang|nen ban gi|hom nay ban gi|nen nhap gi|nen lay gi|de xuat hang)\b/.test(folded);
+  const productInfoQuery = !/\btrieu chung\b/.test(folded)
+    && (
+      /\b(tim|tra cuu|thong tin|xem)\b.*\b(san pham|thuoc)\b/.test(folded)
+      || (originalCode && /\b(san pham|thuoc|la gi)\b/.test(folded))
+    );
   const dailyWorkQuery = /\b(hom nay|nay)\s+(?:(?:toi|tui|minh)\s+)?(?:(?:nen|can)\s+)?(?:lam gi|di dau|ghe dau|ghe ai|ghe khach nao)\b/.test(folded)
     || /\bcong viec hom nay(?: cua (?:toi|tui|minh))?\s+(?:la gi|co gi)\b/.test(folded);
+  const longAbsentCustomerQuery = /\b(khach(?: hang)? nao|ai|danh sach khach(?: hang)?)\b.*\b(lau chua mua|chua mua lau|hon mot thang chua mua|khong mua lau|vang mat|bo mua|can goi lai|can cham soc)\b/.test(folded);
+  const sellTodayForCustomerQuery = /\b(hom nay\s+)?(?:nen\s+)?ban gi\s+(?:cho\s+)?khach(?: hang)?\b/.test(folded);
   const business = debtQuery
+    || inventoryQuery
+    || upsellQuery
+    || orderRecommendationQuery
+    || productInfoQuery
     || dailyWorkQuery
+    || longAbsentCustomerQuery
+    || sellTodayForCustomerQuery
     || /\b(doanh so|doanh thu|hoa don|don hang|ton kho|san pham|khach hang|goi y|ban kem|tich luy|tuyen|cham diem|khuyen mai|danh muc|khao sat|thong bao)\b/.test(folded);
   if (business) {
     let internalIntent = null;
@@ -329,11 +520,19 @@ function classifyNaturalMessage(input, options = {}) {
     let entities = {};
     let missingFields = [];
     let responseKey = null;
+    const refersToCurrentCustomer = /\b(khach nay|khach hang nay|nguoi nay)\b/.test(folded);
+    const refersToCurrentProduct = /\b(san pham nay|mat hang nay|thuoc nay)\b/.test(folded);
+    const customerCode = originalCode || (
+      refersToCurrentCustomer && contextRoute?.entityKey === 'customerId' ? contextCode : null
+    );
+    const productCode = originalCode || (
+      refersToCurrentProduct && ['searchTerm', 'itemId'].includes(contextRoute?.entityKey) ? contextCode : null
+    );
 
     if (/\bkhao sat 360\b/.test(folded)) {
       internalIntent = 'SURVEY_360';
       apiCode = '@khao_sat360';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
@@ -341,7 +540,7 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(danh sach )?cau hoi khao sat\b/.test(folded)) {
       internalIntent = 'SURVEY_QUESTIONS';
       apiCode = '@danh_sach_cau_hoi_khao_sat';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
@@ -355,7 +554,7 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(trang thai khao sat|kiem tra khao sat)\b/.test(folded)) {
       internalIntent = 'SURVEY_STATUS';
       apiCode = '@kiem_tra_khao_sat';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_SURVEY';
@@ -366,15 +565,15 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (debtQuery) {
       internalIntent = 'CUSTOMER_DEBT_DETAIL';
       apiCode = '@cong_no_chi_tiet';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_DEBT';
       }
-    } else if (folded.includes('ton kho')) {
+    } else if (inventoryQuery) {
       internalIntent = 'INVENTORY_LIST';
       apiCode = '@danh_sach_tonkho';
-      if (originalCode) entities.searchTerm = originalCode;
+      if (productCode) entities.searchTerm = productCode;
       else {
         const match = normalized.originalText.match(/(?:tồn kho|ton kho)\s+(.+)$/i);
         const term = match ? match[1].trim() : '';
@@ -384,10 +583,10 @@ function classifyNaturalMessage(input, options = {}) {
           responseKey = 'ASK_PRODUCT_FOR_INVENTORY';
         }
       }
-    } else if (/\b(goi y ban kem|ban kem|upsell)\b/.test(folded)) {
+    } else if (upsellQuery) {
       internalIntent = 'UPSELL_RECOMMENDATION';
       apiCode = '@upsell_goi_y';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_UPSELL';
@@ -395,15 +594,15 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(goi y don thuoc|don thuoc)\b/.test(folded)) {
       internalIntent = 'PRESCRIPTION_BUNDLE_RECOMMENDATION';
       apiCode = '@goi_ydon_thuoc';
-      if (originalCode) entities.searchTerm = originalCode;
+      if (productCode) entities.searchTerm = productCode;
       else {
         missingFields = ['searchTerm'];
         responseKey = 'ASK_PRODUCT_FOR_PRESCRIPTION';
       }
-    } else if (/\b(goi y don hang)\b/.test(folded)) {
+    } else if (orderRecommendationQuery || sellTodayForCustomerQuery) {
       internalIntent = 'ORDER_RECOMMENDATION';
       apiCode = '@goi_ydon_hang';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_ORDER_RECOMMENDATION';
@@ -428,18 +627,21 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(tich luy)\b/.test(folded)) {
       internalIntent = 'LOYALTY_PROGRESS';
       apiCode = '@tich_luy';
-      if (originalCode) entities.customerId = originalCode;
+      if (customerCode) entities.customerId = customerCode;
       else {
         missingFields = ['customerId'];
         responseKey = 'ASK_CUSTOMER_FOR_LOYALTY';
       }
     } else if (
       dailyWorkQuery
+      || longAbsentCustomerQuery
       || /\b(tuyen ban hang|tuyen hom nay|lich tuyen)\b/.test(folded)
       || /\b(danh sach khach(?: hang)?.*tuyen|khach(?: hang)?.*(?:thuoc|trong).*tuyen|tuyen.*khach(?: hang)?)\b/.test(folded)
     ) {
       internalIntent = 'SALES_ROUTE';
       apiCode = '@tuyen_ban_hang';
+      if (dailyWorkQuery) entities.topN = 8;
+      if (longAbsentCustomerQuery) entities.absentDays = 30;
     } else if (/\b(san pham trong tam|hang trong tam)\b/.test(folded)) {
       internalIntent = 'FOCUS_PRODUCTS';
       apiCode = '@san_pham_trong_tam';
@@ -452,16 +654,10 @@ function classifyNaturalMessage(input, options = {}) {
       if (/\b(kho hang|kho)\b/.test(folded)) entities.catalogType = 'khohang';
       else if (/\b(khach hang|khach)\b/.test(folded)) entities.catalogType = 'khachhang';
       else if (/\b(san pham|hang hoa)\b/.test(folded)) entities.catalogType = 'sanpham';
-    } else if (
-      !/\btrieu chung\b/.test(folded)
-      && (
-        /\b(tim|tra cuu|thong tin|xem)\b.*\b(san pham|thuoc)\b/.test(folded)
-        || (originalCode && /\b(san pham|thuoc)\b/.test(folded))
-      )
-    ) {
+    } else if (productInfoQuery) {
       internalIntent = 'PRODUCT_SEARCH';
       apiCode = '@tra_cuu_san_pham';
-      if (originalCode) entities.searchTerm = originalCode;
+      if (productCode) entities.searchTerm = productCode;
       else {
         const match = normalized.originalText.match(/(?:sản phẩm|san pham|thuốc|thuoc)\s+(.+)$/i);
         const term = match ? match[1].trim() : '';
@@ -489,6 +685,10 @@ function classifyNaturalMessage(input, options = {}) {
       } else if (explicitDateRange.mentioned) {
         missingFields = ['dateRange'];
         responseKey = 'ASK_VALID_DATE_RANGE';
+      } else if (/\bthang truoc\b/.test(folded)) {
+        entities = { ...entities, ...resolveRelativeDateRange('LAST_MONTH', options.now) };
+      } else if (/\btuan truoc\b/.test(folded)) {
+        entities = { ...entities, ...resolveRelativeDateRange('LAST_WEEK', options.now) };
       }
     }
 
@@ -518,6 +718,11 @@ function getN8nRuntimeSource() {
     foldForMatch.toString(),
     normalizeNaturalText.toString(),
     extractErpCode.toString(),
+    extractLastErpCode.toString(),
+    getRecentUserMessages.toString(),
+    inferContextRoute.toString(),
+    toIsoLocalDate.toString(),
+    resolveRelativeDateRange.toString(),
     parseExplicitDateToken.toString(),
     extractExplicitDateRange.toString(),
     baseResult.toString().replace(/SCHEMA_VERSION/g, 'NATURAL_CHAT_SCHEMA_VERSION').replace(/RESPONSES/g, 'NATURAL_CHAT_RESPONSES'),
@@ -531,5 +736,7 @@ module.exports = {
   extractExplicitDateRange,
   foldForMatch,
   getN8nRuntimeSource,
+  inferContextRoute,
   normalizeNaturalText,
+  resolveRelativeDateRange,
 };

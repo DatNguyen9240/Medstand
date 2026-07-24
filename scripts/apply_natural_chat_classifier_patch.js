@@ -30,9 +30,12 @@ function patchParser() {
 
 const body = $input.first().json.body || $input.first().json || {};
 const originalMessage = String(body.message || body.text || '').replace(/\\s+/g, ' ').trim();
-const historyContext = String(body.historyContext || '');
+const historyContext = String(body.historyContext || body.history || '');
 const conversationId = String(body.conversationId || body.sessionId || '');
-const preclassification = classifyNaturalMessage(originalMessage, { hasContext: Boolean(historyContext) });
+const preclassification = classifyNaturalMessage(originalMessage, {
+  hasContext: Boolean(historyContext),
+  history: historyContext
+});
 const FEWSHOTS = [
   'Input: "doanh số tháng này" -> {"schemaVersion":"1.0.0","messageType":"BUSINESS","intent":"SALES_REVENUE","confidence":0.98,"entities":{"fromDate":"[THIS_MONTH_START]","toDate":"[TODAY]"},"missingFields":[],"requiresClarification":false,"supported":true,"responseKey":null}',
   'Input: "xem công nợ" -> {"schemaVersion":"1.0.0","messageType":"BUSINESS","intent":"CUSTOMER_DEBT_DETAIL","confidence":0.98,"entities":{"customerId":null},"missingFields":["customerId"],"requiresClarification":true,"supported":true,"responseKey":"ASK_CUSTOMER_FOR_DEBT"}',
@@ -62,7 +65,7 @@ Return exactly one JSON object and nothing else. It MUST contain only:
 - messageType: CASUAL, CASUAL_META, BUSINESS, FOLLOW_UP, UNSUPPORTED, UNKNOWN or MUTATION_REQUEST
 - intent: one allowlisted internal intent or null
 - confidence: number from 0 to 1
-- entities: object using only customerId, documentId, employeeId, employeeName, itemId, searchTerm, keyword, fromDate, toDate, targetDate, reportType, catalogType, topN or topic
+- entities: object using only customerId, documentId, employeeId, employeeName, itemId, searchTerm, keyword, fromDate, toDate, targetDate, reportType, catalogType, topN, absentDays or topic
 - missingFields: string array
 - requiresClarification: boolean
 - supported: boolean
@@ -83,7 +86,7 @@ const llmRaw = String($input.first().json.output || $input.first().json.text || 
 const MESSAGE_TYPES = new Set(['CASUAL','CASUAL_META','BUSINESS','FOLLOW_UP','UNSUPPORTED','UNKNOWN','MUTATION_REQUEST']);
 const ALLOWED = new Set(["SALES_REVENUE","INVOICE_LIST","INVOICE_DETAIL","ORDER_LIST","CUSTOMER_SCORING","CUSTOMER_DEBT_SUMMARY","CUSTOMER_DEBT_DETAIL","LOYALTY_PROGRESS","SALES_ROUTE","ORDER_RECOMMENDATION","UPSELL_RECOMMENDATION","PRESCRIPTION_BUNDLE_RECOMMENDATION","INVENTORY_LIST","PRODUCT_SEARCH","FOCUS_PRODUCTS","PROMOTION_REVIEW","CATALOG_LOOKUP","SURVEY_360","SURVEY_QUESTIONS","SURVEY_STATUS","SURVEY_DAILY_STATUS","SURVEY_HISTORY","NOTIFICATIONS","SYMPTOM_PRODUCT_SEARCH"]);
 const ROOT_KEYS = new Set(['schemaVersion','messageType','intent','confidence','entities','missingFields','requiresClarification','supported','responseKey','alternatives']);
-const ENTITY_KEYS = new Set(['customerId','documentId','employeeId','employeeName','itemId','searchTerm','keyword','fromDate','toDate','targetDate','reportType','catalogType','topN','topic']);
+const ENTITY_KEYS = new Set(['customerId','documentId','employeeId','employeeName','itemId','searchTerm','keyword','fromDate','toDate','targetDate','reportType','catalogType','topN','absentDays','topic']);
 const RESPONSE_TEXT = ${JSON.stringify(require('./natural_chat_classifier').RESPONSES)};
 
 const finalize = (parsed, parserError = null) => {
@@ -107,7 +110,8 @@ const finalize = (parsed, parserError = null) => {
     customerId: '@MaKhachHang', documentId: '@DocumentID', employeeId: '@EmployeeID',
     employeeName: '@TenNhanVien', itemId: '@ItemID', searchTerm: '@timkiem',
     keyword: '@Keyword', fromDate: '@TuNgay', toDate: '@DenNgay',
-    targetDate: '@NgayTarget', reportType: '@LoaiBaoCao', catalogType: '@Type', topN: '@TopN'
+    targetDate: '@NgayTarget', reportType: '@LoaiBaoCao', catalogType: '@Type',
+    topN: '@TopN', absentDays: '@SoNgayVangMat'
   };
   const params = {};
   for (const [key, value] of Object.entries(entities)) {
@@ -189,14 +193,23 @@ function patchMain() {
       `// NATURAL_CHAT_CLASSIFIER_BEGIN\n${runtimeSource}\n// NATURAL_CHAT_CLASSIFIER_END`,
     );
   }
-  code = code.replace(
-    'const normalizedMessage = normalize(rawMessage);',
-    `const naturalClassification = classifyNaturalMessage(rawMessage, { hasContext: false });
+  const classificationBlock = `const requestHistoryContext = String(body.historyContext || body.history || '');
+const naturalClassification = classifyNaturalMessage(rawMessage, {
+  hasContext: Boolean(requestHistoryContext),
+  history: requestHistoryContext
+});
 const originalText = naturalClassification.originalText;
 const normalizedText = naturalClassification.normalizedText;
 const messageType = naturalClassification.messageType;
-const normalizedMessage = normalize(normalizedText);`,
-  );
+const normalizedMessage = normalize(normalizedText);`;
+  if (code.includes('const normalizedMessage = normalize(rawMessage);')) {
+    code = code.replace('const normalizedMessage = normalize(rawMessage);', classificationBlock);
+  } else {
+    code = code.replace(
+      /(?:const requestHistoryContext = String\(body\.historyContext \|\| body\.history \|\| ''\);\s*)*const naturalClassification = classifyNaturalMessage\(rawMessage,[\s\S]*?const normalizedMessage = normalize\(normalizedText\);/,
+      classificationBlock,
+    );
+  }
   code = code.replace(
     'const userProfile = $input.first().json.userProfile || body.userProfile || {};',
     'const userProfile = $input.first().json.userProfile || {};',
@@ -260,7 +273,8 @@ if (directMessageTypes.has(naturalClassification.messageType)) {
     customerId:'@MaKhachHang', documentId:'@DocumentID', employeeId:'@EmployeeID',
     employeeName:'@TenNhanVien', itemId:'@ItemID', searchTerm:'@timkiem', keyword:'@timkiem',
     fromDate:'@TuNgay', toDate:'@DenNgay', targetDate:'@NgayTarget',
-    reportType:'@LoaiBaoCao', catalogType:'@Type', topN:'@TopN'
+    reportType:'@LoaiBaoCao', catalogType:'@Type', topN:'@TopN',
+    absentDays:'@SoNgayVangMat'
   };
   const params = {};
   for (const [key, value] of Object.entries(naturalClassification.entities || {})) {

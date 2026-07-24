@@ -253,6 +253,7 @@
 
 /* ── Messages ── */
 .chat-messages {
+  --chat-data-card-max: 1120px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5631,7 +5632,7 @@ tr.expanded .ai-row-toggle::before {
 
 .chat-bubble.chat-message--data {
   width: 100%;
-  max-inline-size: 1120px;
+  max-inline-size: min(100%, var(--chat-data-card-max));
   align-self: center;
 }
 
@@ -6542,25 +6543,18 @@ tr.expanded .ai-row-toggle::before {
 
 /* Sản phẩm trọng tâm V2: bố cục nghiệp vụ, responsive và không phụ thuộc renderer nhóm chung. */
 .ai-focus-products {
-  width: min(1460px, calc(100vw - 96px));
+  width: 100%;
   max-width: 100%;
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(15, 23, 42, .08);
 }
 
-/* Kết quả trọng tâm là một màn dữ liệu, không phải bubble văn bản ngắn. */
+/* Kết quả trọng tâm là thẻ dữ liệu lớn nhưng vẫn đồng bộ bề rộng với các kết quả nghiệp vụ. */
 .chat-bubble.has-table:has(.ai-focus-products) {
   width: 100%;
-  max-width: none;
-  max-inline-size: none;
-  align-self: stretch;
-}
-
-@media (min-width: 1100px) {
-  .chat-container:has(.ai-focus-products) {
-    width: min(100%, 1560px);
-    max-width: 1560px;
-  }
+  max-width: var(--chat-data-card-max);
+  max-inline-size: min(100%, var(--chat-data-card-max));
+  align-self: center;
 }
 
 .ai-focus-header {
@@ -7104,5 +7098,93 @@ tr.expanded .ai-row-toggle::before {
   .ai-focus-customer-prompt {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+/* Danh sách công việc ưu tiên theo tuyến bán hàng */
+.ai-route-detail {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  color: var(--text-primary, #1f2937);
+}
+
+.ai-route-detail-head,
+.ai-route-detail-head > div {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-route-detail-head {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.ai-route-detail-head > div {
+  min-width: 0;
+  flex-direction: column;
+}
+
+.ai-route-detail-head strong {
+  font-size: 16px;
+}
+
+.ai-route-detail-head span,
+.ai-route-address {
+  color: var(--text-secondary, #64748b);
+}
+
+.ai-route-priority {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #be123c !important;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-route-reason,
+.ai-route-next-action {
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #eff6ff;
+}
+
+.ai-route-next-action {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.ai-route-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-route-metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 9px;
+  background: var(--surface-color, #fff);
+}
+
+.ai-route-metrics span {
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  .ai-route-detail-head {
+    gap: 12px;
+  }
+
+  .ai-route-metrics {
+    grid-template-columns: 1fr;
   }
 }

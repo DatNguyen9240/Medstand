@@ -1062,6 +1062,10 @@
 
     function _stopAI() {
 
+        if (window.ApiEngine && typeof window.ApiEngine.cancelPending === 'function') {
+            window.ApiEngine.cancelPending();
+        }
+
         if (abortController) {
 
             abortController.abort();
@@ -1082,9 +1086,9 @@
 
     function _send() {
 
-        if (window.ApiEngine && ApiEngine.handleSend && ApiEngine.handleSend()) return;
-
         if (isWaitingAI) { _stopAI(); return; }
+
+        if (window.ApiEngine && ApiEngine.handleSend && ApiEngine.handleSend()) return;
 
         var text = $input.value.trim();
 
@@ -1120,9 +1124,7 @@
 
 
         _showTyping();
-
         abortController = new AbortController();
-
         _setStopMode(true);
 
 
@@ -1476,6 +1478,8 @@
         var historyStr = pastMsgs.map(function (m) { return (m.role === 'user' ? 'User: ' : 'AI: ') + String(m.content).replace(/\n/g, ' '); }).join('\n');
 
         _showTyping();
+        abortController = new AbortController();
+        _setStopMode(true);
         var conversationId = _getConversationId();
         var payload = {
             action: 'chat', text: text,
@@ -1497,11 +1501,13 @@
         fetch(gatewayUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken() },
-            body: JSON.stringify({ data: encryptedData })
+            body: JSON.stringify({ data: encryptedData }),
+            signal: abortController.signal
         }).then(function (res) {
             return res.json();
         }).then(function (resJson) {
             _hideTyping();
+            _setStopMode(false);
             var decryptedText = Cipher.decrypt(resJson.data);
             var data = JSON.parse(decryptedText);
             if (data && data.message) _addMessage('ai', data.message);
@@ -1509,6 +1515,9 @@
         }).catch(function (err) {
 
             _hideTyping();
+            _setStopMode(false);
+
+            if (err && err.name === 'AbortError') return;
 
             _addMessage('ai', "Lỗi kết nối luồng đàm thoại NLP: " + err.message);
 
@@ -1566,7 +1575,8 @@
         fetch(gatewayUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getToken() },
-            body: JSON.stringify({ data: encryptedData })
+            body: JSON.stringify({ data: encryptedData }),
+            signal: abortController ? abortController.signal : undefined
         }).then(function (res) {
             return res.json();
         }).then(function (resJson) {
@@ -1596,6 +1606,8 @@
             clearTimeout(searchingTimeout);
 
             _hideTyping(); _setStopMode(false);
+
+            if (err && err.name === 'AbortError') return;
 
             _addMessage('ai', " Lỗi kết nối máy chủ tri thức: " + err.message);
 
@@ -3537,6 +3549,24 @@
 
     function _splitKeysForApi(keys, forceShowAll, apiCode) {
         var normalizedApiCode = String(apiCode || '').toLowerCase();
+        if (normalizedApiCode === '@tuyen_ban_hang') {
+            var routePrimaryOrder = [
+                'tencuahang', 'lydoghe', 'songaykhongmua', 'lichghe'
+            ];
+            var routePrimary = [];
+            routePrimaryOrder.forEach(function (wanted) {
+                var matched = keys.find(function (key) {
+                    return String(key || '').toLowerCase().replace(/[_\s]/g, '') === wanted;
+                });
+                if (matched && routePrimary.indexOf(matched) === -1) routePrimary.push(matched);
+            });
+            if (!routePrimary.length && keys.length) routePrimary.push(keys[0]);
+            return {
+                primary: routePrimary,
+                secondary: keys.filter(function (key) { return routePrimary.indexOf(key) === -1; })
+            };
+        }
+
         if (normalizedApiCode === '@danh_sach_tonkho') {
             var inventoryPrimaryOrder = [
                 'itemid', 'itemname', 'storehousename', 'lot', 'physicalstock', 'availablestock'
@@ -3914,6 +3944,39 @@
         return detail;
     }
 
+    function _buildSalesRouteDetail(row) {
+        var customerName = row.TenCuaHang || row.CustomerName || row.ObjectName || 'Khách hàng';
+        var reason = row.LyDoGhe || 'Theo lịch chăm sóc khách hàng';
+        var priority = Number(row.DiemUuTien);
+        var daysWithoutPurchase = Number(row.SoNgayKhongMua);
+        var nextAction = row.LanMuaCuoi === 'N/A' || !row.LanMuaCuoi
+            ? 'Liên hệ làm quen, xác nhận nhu cầu và cập nhật thông tin khách hàng.'
+            : (Number.isFinite(daysWithoutPurchase) && daysWithoutPurchase >= 30
+                ? 'Ưu tiên liên hệ hoặc ghé chăm sóc; kiểm tra nhu cầu trước khi gợi ý sản phẩm.'
+                : 'Thực hiện theo lịch tuyến và ghi nhận kết quả chăm sóc.');
+        var priorityLabel = Number.isFinite(priority) && priority >= 100
+            ? 'Ưu tiên rất cao'
+            : (Number.isFinite(priority) && priority >= 70 ? 'Ưu tiên cao' : 'Theo dõi');
+
+        var html = '<div class="ai-route-detail">';
+        html += '<div class="ai-route-detail-head"><div><strong>' + _esc(customerName) + '</strong>'
+            + '<span>' + _esc(row.Phone || 'Chưa có số điện thoại') + '</span></div>'
+            + '<span class="ai-route-priority">' + _esc(priorityLabel) + '</span></div>';
+        html += '<div class="ai-route-reason"><strong>Lý do cần chăm sóc</strong><span>' + _esc(reason) + '</span></div>';
+        html += '<div class="ai-route-metrics">'
+            + '<div><span>Lần mua gần nhất</span><strong>' + _esc(row.LanMuaCuoi || 'Chưa có đơn hoàn tất') + '</strong></div>'
+            + '<div><span>Số ngày chưa mua</span><strong>' + _esc(Number.isFinite(daysWithoutPurchase) ? daysWithoutPurchase + ' ngày' : 'Khách hàng mới') + '</strong></div>'
+            + '<div><span>Lịch tuyến</span><strong>' + _esc(row.LichGhe || 'Chưa có lịch') + '</strong></div>'
+            + '<div><span>Tuyến phụ trách</span><strong>' + _esc(row.Tuyen || 'Chưa xác định') + '</strong></div>'
+            + '</div>';
+        html += '<div class="ai-route-next-action"><strong>Việc nên làm tiếp theo</strong><span>' + _esc(nextAction) + '</span></div>';
+        if (row.Address) {
+            html += '<div class="ai-route-address"><strong>Địa chỉ:</strong> ' + _esc(row.Address) + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     function _translateRecommendationReasons(value) {
         var labels = {
             'NEW_CUSTOMER': 'Khách hàng mới',
@@ -4026,6 +4089,7 @@
         var isOrderList = String(apiCode || '').toLowerCase() === '@don_hang';
         var isOrderSuggestionTable = String(apiCode || '').toLowerCase() === '@goi_ydon_hang';
         var isPromotionReviewTable = String(apiCode || '').toLowerCase() === '@de_xuat_khuyen_mai';
+        var isSalesRouteTable = String(apiCode || '').toLowerCase() === '@tuyen_ban_hang';
         var colSpan = primaryKeys.length + (hasDetails ? 1 : 0) + (isInvoiceList ? 1 : 0);
 
         for (var i = 0; i < shown; i++) {
@@ -4073,6 +4137,8 @@
                     html += _buildOrderSuggestionDetail(row);
                 } else if (isPromotionReviewTable) {
                     html += _buildPromotionReviewDetail(row);
+                } else if (isSalesRouteTable) {
+                    html += _buildSalesRouteDetail(row);
                 } else if (isOrderList) {
                     html += _buildOrderDetail(row);
                 } else {
@@ -6502,7 +6568,9 @@
 
             hideTyping: _hideTyping,
 
-            getToken: _getToken
+            getToken: _getToken,
+
+            setWaiting: _setStopMode
 
         });
 

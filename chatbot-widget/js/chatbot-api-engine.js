@@ -159,7 +159,8 @@
 
     var _dbt = null, _hideTimer = null, _registerCleanupQueue = [];
 
-    var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide, _cbGetToken;
+    var _cbMsg, _cbHtml, _cbRender, _cbShow, _cbHide, _cbGetToken, _cbSetWaiting;
+    var _activeRequestController = null;
 
     var _suppressMenuUntil = 0, _suppressNextAt = false;
 
@@ -173,7 +174,7 @@
 
     // ── Networking Helpers ────────────────────────────────────────────
 
-    function _post(url, data) {
+    function _post(url, data, signal) {
         var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
         var n8nBase = (typeof API_CONFIG !== 'undefined' && API_CONFIG.N8N_BASE) ? API_CONFIG.N8N_BASE : '';
         var relativeUrl = url;
@@ -196,7 +197,8 @@
                 'Content-Type': 'application/json',
                 'Authorization': token ? 'Bearer ' + token : ''
             },
-            body: JSON.stringify({ data: encryptedData })
+            body: JSON.stringify({ data: encryptedData }),
+            signal: signal
         }).then(function (res) {
             return res.json().then(function(resJson) {
                 var decryptedText = Cipher.decrypt(resJson.data);
@@ -817,6 +819,16 @@
         return String(api && (api.DisplayName || api.ApiCode) || '');
     }
 
+    function _isCatalogRootApi(apiCode) {
+        var code = String(apiCode || '').trim().toLowerCase();
+        if (code && code.charAt(0) !== '@') code = '@' + code.replace(/^#/, '');
+
+        var configuredRoot = String(CFG.CATALOG_ROOT_API || '@danh_muc').trim().toLowerCase();
+        if (configuredRoot && configuredRoot.charAt(0) !== '@') configuredRoot = '@' + configuredRoot.replace(/^#/, '');
+
+        return code === configuredRoot || code === '@danh_muc';
+    }
+
     function _menuShow(query) {
 
         _menuCreate();
@@ -903,6 +915,24 @@
         _bindMenuItems(function (el) {
 
             var code = el.getAttribute('data-code');
+
+            // Danh mục có màn hình chọn nhóm riêng trong hội thoại. Gọi API gốc
+            // không kèm @Type để renderer trả lại các thẻ Sản phẩm, Khách hàng,
+            // Đơn hàng, Kho hàng và Nhân viên; không để form "#danh_muc @Type=".
+            if (_isCatalogRootApi(code)) {
+                _activeApi = null;
+                _lastCatalogType = null;
+                _pillParams = {};
+                _cartItems = [];
+                if (_inputEl) {
+                    _inputEl.value = '';
+                    try { delete _inputEl.dataset.apiTag; } catch (e) { }
+                }
+
+                _menuHide();
+                window.ApiEngine.execute(code, {});
+                return;
+            }
 
             _onApiSelected(code);
 
@@ -4572,7 +4602,14 @@
 
         _cbShow && _cbShow();
 
-        _post(CFG.EXEC_URL, { 
+        if (_activeRequestController) {
+            _activeRequestController.abort();
+        }
+        var requestController = new AbortController();
+        _activeRequestController = requestController;
+        _cbSetWaiting && _cbSetWaiting(true);
+
+        _post(CFG.EXEC_URL, {
 
             ApiCode: apiCode, 
 
@@ -4580,11 +4617,15 @@
 
             params: params,
 
-            username: _user() 
+            username: _user()
 
-        }).then(function (res) {
+        }, requestController.signal).then(function (res) {
 
                 _cbHide && _cbHide();
+                if (_activeRequestController === requestController) {
+                    _activeRequestController = null;
+                    _cbSetWaiting && _cbSetWaiting(false);
+                }
 
                 var r = typeof res === 'string' ? res : (res.message || res.reply || '');
                 var responseStatus = String(res && res.status || '').toUpperCase();
@@ -4773,6 +4814,12 @@
             .catch(function (err) {
 
                 _cbHide && _cbHide();
+                if (_activeRequestController === requestController) {
+                    _activeRequestController = null;
+                    _cbSetWaiting && _cbSetWaiting(false);
+                }
+
+                if (err && err.name === 'AbortError') return;
 
                 var errorText = err && err.code === 'VALIDATION_ERROR'
                     ? (err.message || 'Yêu cầu đang thiếu thông tin bắt buộc.')
@@ -5527,6 +5574,8 @@
 
             _cbGetToken = opts.getToken || null;
 
+            _cbSetWaiting = opts.setWaiting || null;
+
             _loadList(function () { console.log('[ApiEngine v3] ' + _apiList.length + ' APIs'); });
 
             _watchInput(_inputEl);
@@ -5683,6 +5732,19 @@
         // Dng khi người dòng xa hash tag để giải phng API State
 
         clearState: function () { _closeFull(true); },
+
+        cancelPending: function () {
+            if (!_activeRequestController) return false;
+            _activeRequestController.abort();
+            _activeRequestController = null;
+            _cbHide && _cbHide();
+            _cbSetWaiting && _cbSetWaiting(false);
+            return true;
+        },
+
+        isPending: function () {
+            return Boolean(_activeRequestController);
+        },
 
 
 

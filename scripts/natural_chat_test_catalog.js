@@ -42,6 +42,7 @@ addClassifierCases('debt-missing-customer', [
 addClassifierCases('inventory', [
   'tồn kho A003', 'kiểm tra tồn kho A003', 'xem tồn kho A003',
   'sp A003 tồn kho', 'tồn kho sản phẩm A003', 'coi tồn kho A003',
+  'A003 còn bao nhiêu', 'A003 còn hàng không', 'trong kho còn A003 không',
 ], {
   messageType: 'BUSINESS', intent: 'INVENTORY_LIST', apiCode: '@danh_sach_tonkho',
   action: 'EXECUTE', entity: ['searchTerm', 'A003'],
@@ -57,6 +58,7 @@ addClassifierCases('inventory-missing-product', [
 addClassifierCases('order-recommendation', [
   'gợi ý đơn hàng cho NDB001', 'xem gợi ý đơn hàng NDB001',
   'gợi ý đơn hàng khách NDB001', 'coi gợi ý đơn hàng cho NDB001',
+  'NDB001 nên nhập gì', 'NDB001 nên lấy gì', 'đề xuất hàng cho NDB001',
 ], {
   messageType: 'BUSINESS', intent: 'ORDER_RECOMMENDATION', apiCode: '@goi_ydon_hang',
   action: 'EXECUTE', entity: ['customerId', 'NDB001'],
@@ -87,7 +89,8 @@ addClassifierCases('invoice-detail-missing-document', [
 addClassifierCases('sales-revenue', [
   'doanh số hôm nay', 'doanh thu hôm nay', 'doanh số tháng này',
   'xem doanh số', 'coi doanh thu', 'doanh số tuần này', 'doanh thu quý này',
-  'doanh số từ đầu năm', 'tổng doanh số hiện tại',
+  'doanh số từ đầu năm', 'tổng doanh số hiện tại', 'doanh số tháng trước',
+  'doanh thu tuần trước',
 ], {
   messageType: 'BUSINESS', intent: 'SALES_REVENUE', apiCode: '@doanh_so', action: 'EXECUTE',
 });
@@ -131,6 +134,30 @@ addClassifierCases('reported-route-regressions', ['thông tin sản phẩm A003'
 addClassifierCases('reported-route-regressions', ['gợi ý bán kèm cho AG0031'], {
   messageType: 'BUSINESS', intent: 'UPSELL_RECOMMENDATION', apiCode: '@upsell_goi_y', action: 'EXECUTE',
   entity: ['customerId', 'AG0031'],
+});
+addClassifierCases('reported-route-regressions', ['Gợi ý bán kèm cho khách NDB001'], {
+  messageType: 'BUSINESS', intent: 'UPSELL_RECOMMENDATION', apiCode: '@upsell_goi_y', action: 'EXECUTE',
+  entity: ['customerId', 'NDB001'], releaseGate: true,
+});
+addClassifierCases('reported-route-regressions', [
+  'bán thêm gì cho NDB001', 'kèm thêm gì cho NDB001',
+], {
+  messageType: 'BUSINESS', intent: 'UPSELL_RECOMMENDATION', apiCode: '@upsell_goi_y',
+  action: 'EXECUTE', entity: ['customerId', 'NDB001'], releaseGate: true,
+});
+addClassifierCases('reported-route-regressions', ['Hôm nay bán gì cho khách NDB001'], {
+  messageType: 'BUSINESS', intent: 'ORDER_RECOMMENDATION', apiCode: '@goi_ydon_hang', action: 'EXECUTE',
+  entity: ['customerId', 'NDB001'], releaseGate: true,
+});
+addClassifierCases('reported-route-regressions', ['Khách nào lâu chưa mua?'], {
+  messageType: 'BUSINESS', intent: 'SALES_ROUTE', apiCode: '@tuyen_ban_hang', action: 'EXECUTE',
+  entity: ['absentDays', 30], releaseGate: true,
+});
+addClassifierCases('reported-route-regressions', [
+  'Khách nào cần gọi lại?', 'Danh sách khách bỏ mua',
+], {
+  messageType: 'BUSINESS', intent: 'SALES_ROUTE', apiCode: '@tuyen_ban_hang',
+  action: 'EXECUTE', entity: ['absentDays', 30], releaseGate: true,
 });
 addClassifierCases('reported-route-regressions', ['xem tích lũy của AG0031'], {
   messageType: 'BUSINESS', intent: 'LOYALTY_PROGRESS', apiCode: '@tich_luy', action: 'EXECUTE',
@@ -217,6 +244,7 @@ addClassifierCases('debt-natural-target', [
   'cho tui coi chi tiết nợ của AG0031',
   'nhà thuốc AG0031 còn khoản nào chưa trả',
   'khách AG0031 đã trả hết nợ chưa',
+  'AG0031 còn phải trả bao nhiêu', 'AG0031 đang nợ gì',
 ], {
   messageType: 'BUSINESS', intent: 'CUSTOMER_DEBT_DETAIL', apiCode: '@cong_no_chi_tiet',
   action: 'EXECUTE', entity: ['customerId', 'AG0031'], releaseGate: true,
