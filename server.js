@@ -120,7 +120,12 @@ const Cipher = {
 
 const getBearerAuthorization = (req) => {
     const authorization = String(req.headers['authorization'] || '').trim();
-    return /^Bearer\s+\S+$/i.test(authorization) ? authorization : '';
+    if (/^Bearer\s+\S+$/i.test(authorization)) return authorization;
+
+    // Remote login stores the token in an HttpOnly auth_token cookie.
+    const cookieHeader = String(req.headers.cookie || '');
+    const match = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/i);
+    return match && match[1] ? Bearer  : '';
 };
 
 const requestIdOf = (req) => String(req.headers['x-request-id'] || req.headers['x-correlation-id'] || crypto.randomUUID());
