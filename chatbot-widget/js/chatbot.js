@@ -6479,6 +6479,8 @@
 
     var $inputBar = document.getElementById('chat-input-bar');
 
+    var $chatbotPage = document.querySelector('.chatbot-page');
+
 
 
     $input.addEventListener('focus', function () {
@@ -6488,6 +6490,8 @@
             $nav.style.display = 'none';
 
             $inputBar.style.bottom = '0';
+
+            if ($chatbotPage) $chatbotPage.classList.add('chatbot-nav-hidden');
 
         }
 
@@ -6519,6 +6523,8 @@
 
             $inputBar.style.bottom = '';
 
+            if ($chatbotPage) $chatbotPage.classList.remove('chatbot-nav-hidden');
+
         }, 300);
 
     });
@@ -6527,7 +6533,10 @@
 
     _updateSendBtn();
 
-    $input.focus();
+    // Desktop giữ trải nghiệm nhập nhanh; mobile không tự bật bàn phím khi mở trang.
+    if (window.innerWidth > 768) {
+        $input.focus();
+    }
 
 
 

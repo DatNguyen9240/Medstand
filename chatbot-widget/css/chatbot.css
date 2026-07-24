@@ -12,6 +12,14 @@
   background: var(--color-background);
 }
 
+/* Khi bàn phím mobile mở, thanh điều hướng được ẩn nên chat dùng toàn bộ
+   viewport còn lại thay vì tiếp tục chừa một khoảng bằng nav-height. */
+@media (max-width: 768px) {
+  .chatbot-page.chatbot-nav-hidden {
+    height: 100dvh;
+  }
+}
+
 /* ── Top brand bar ── */
 .chatbot-topbar {
   flex-shrink: 0;
@@ -1905,6 +1913,10 @@ tr.expanded .ai-row-toggle::before {
 /* Mobile welcome state: keep the welcome content compact while the composer
    remains anchored above the bottom navigation. */
 @media (max-width: 767px) {
+  .chatbot-page.chatbot-nav-hidden:has(#chat-welcome:not([style*="display: none"])) {
+    height: 100dvh;
+  }
+
   .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
     height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
     min-height: 0;
