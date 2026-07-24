@@ -235,6 +235,23 @@ Trạng thái tổng: `SOURCE_FIX_COMPLETE_RUNTIME_IMPORT_AND_RETEST_PENDING`
 - Kiểm thử source: Các mẫu có/thiếu khách và hồi quy phân loại đều pass trong bộ `145/145`.
 - Trạng thái: `SOURCE_FIXED_N8N_IMPORT_AND_SCOPED_RUNTIME_RETEST_PENDING`.
 
+## UAT-UI-03 — Mất nút Dừng khi API đang xử lý
+
+- Thực tế quan sát: Trong lúc chatbot hiển thị dấu ba chấm chờ kết quả của luồng `@`/Danh mục, nút gửi vẫn là biểu tượng máy bay bị làm mờ; người dùng không thể chủ động dừng truy vấn.
+- Mong đợi: Khi có request đang chạy, nút gửi đổi thành nút vuông màu đỏ có nhãn `Dừng phản hồi`; bấm nút phải hủy request thật và dọn trạng thái chờ.
+- Nguyên nhân source: `ApiEngine.handleSend()` chặn sự kiện trước nhánh kiểm tra trạng thái chờ, đồng thời request của API Engine chưa dùng chung `AbortController` với khung chat.
+- Đã sửa source:
+  - Ưu tiên xử lý thao tác Dừng trước khi chuyển sự kiện cho API Engine.
+  - Bổ sung `AbortController` cho request API, hàm `cancelPending()` và callback đồng bộ trạng thái chờ với nút gửi.
+  - Áp dụng cùng cơ chế hủy cho hội thoại tự nhiên và luồng tri thức.
+  - Khi hủy, chatbot không hiển thị lỗi kết nối giả; nút trở lại trạng thái Gửi.
+- Kiểm thử source:
+  - Kiểm tra cú pháp hai file JavaScript: pass.
+  - Build production: pass.
+  - Ma trận hội thoại tự nhiên: `159/159` pass.
+  - Bundle production có đủ `cancelPending`, `stop-mode`, nhãn `Dừng phản hồi` và xử lý `AbortError`.
+- Trạng thái: `SOURCE_FIXED_FRONTEND_DEPLOY_AND_RUNTIME_RETEST_PENDING`.
+
 ## Kết quả chốt source sau đợt sửa
 
 - Bộ phân loại deterministic: `52/52` tình huống pass trên 24 API được duyệt.
