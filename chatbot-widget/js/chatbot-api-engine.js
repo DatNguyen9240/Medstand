@@ -1143,9 +1143,10 @@
 
 
 
-    function _menuShowCatalog(query, atPos) {
+    function _menuShowCatalog(query, atPos, options) {
 
         console.log('[ApiEngine] _menuShowCatalog query=', query, 'atPos=', atPos);
+        options = options || {};
 
         _loadDataSource('APICODE', CFG.CATALOG_ROOT_API, query, function (rows) {
 
@@ -1255,7 +1256,13 @@
 
                     if (dsFromRow) _catalogDsMap[valType] = dsFromRow;
 
-                    _lastCatalogType = valType;
+                    if (options.fieldCode) {
+                        _lastCatalogType = null;
+                        _pillParams[options.fieldCode] = valType;
+                        _inputEl.value = prefix + options.fieldCode + '=' + valType + ' ';
+                        _suppressMenuUntil = Date.now() + 400;
+                    } else {
+                        _lastCatalogType = valType;
 
                     // Bổ sung lại tiền tố '@' để API Engine c thể parse được token ở cc bước sau
 
@@ -1263,7 +1270,8 @@
 
                     // show entity suggestions immediately for chosen catalog
 
-                    setTimeout(function () { console.log('[ApiEngine] triggering _menuShowCatalogValues from click for', valType); _menuShowCatalogValues(valType, ''); }, 80);
+                        setTimeout(function () { console.log('[ApiEngine] triggering _menuShowCatalogValues from click for', valType); _menuShowCatalogValues(valType, ''); }, 80);
+                    }
 
                 } else {
 
@@ -1543,6 +1551,20 @@
 
         var cfg = _activeApi.config;
 
+        var activeApiCode = String(_activeApi.ApiCode || _activeApi.apiCode || '').toLowerCase();
+        if (activeApiCode === String(CFG.CATALOG_ROOT_API || '@danh_muc').toLowerCase()
+            && String(fieldCode || '').toLowerCase() === '@type') {
+            var typeAtPos = _inputEl && typeof _inputEl.value === 'string'
+                ? _inputEl.value.lastIndexOf('@')
+                : -1;
+            _menuShowCatalog(
+                '',
+                typeAtPos >= 0 ? typeAtPos : (_inputEl ? _inputEl.value.length : 0),
+                { fieldCode: '@Type' }
+            );
+            return;
+        }
+
         var fields = (cfg.filters && cfg.filters.length > 0) ? cfg.filters : (cfg.fields || []);
 
 
@@ -1554,6 +1576,14 @@
             return (f.FieldCode || '').toLowerCase() === fieldCode.toLowerCase();
 
         });
+
+        // Older metadata may omit @Type's datasource. Use the configured
+        // catalog root endpoint without hard-coding catalog values.
+        if (String(fieldCode || '').toLowerCase() === '@type' && CFG.CATALOG_ROOT_API) {
+            field = field || { FieldCode: '@Type', FieldName: 'Loại danh mục' };
+            if (!field.DataSourceType) field.DataSourceType = 'APICODE';
+            if (!field.DataSourceValue) field.DataSourceValue = CFG.CATALOG_ROOT_API + '|@timkiem={q}';
+        }
 
 
 
@@ -2530,6 +2560,20 @@
 
             _activeApi.config = config;
 
+            if (pendingUpdate && pendingUpdate.catalogRoot) {
+                setTimeout(function () {
+                    var current = _inputEl && _inputEl.value || '';
+                    var atPos = current.lastIndexOf('@');
+                    if (atPos >= 0) _inputEl.value = current.slice(0, atPos);
+                    if (_inputEl && _inputEl.value && !_inputEl.value.endsWith(' ')) {
+                        _inputEl.value += ' ';
+                    }
+                    _menuShowCatalog('', _inputEl ? _inputEl.value.length : 0);
+                    if (_inputEl) _inputEl.focus();
+                }, 0);
+                return;
+            }
+
             if (execType === 'QUERY' && _activeApi.pendingUpdate && _activeApi.pendingUpdate.focusCustomer) {
                 delete _activeApi.pendingUpdate;
                 var customerFields = (config && config.filters && config.filters.length > 0)
@@ -2617,7 +2661,18 @@
 
                 // Mở ngay menu tham số
 
-                _menuShowParams('');
+                var currentInput = String(_inputEl && _inputEl.value || '');
+                var currentAt = currentInput.lastIndexOf('@');
+                var currentTail = currentAt >= 0 ? currentInput.slice(currentAt + 1) : '';
+                var currentEq = currentTail.indexOf('=');
+                if (currentEq >= 0) {
+                    _showInlineValues(
+                        '@' + currentTail.slice(0, currentEq).trim(),
+                        currentTail.slice(currentEq + 1).trim()
+                    );
+                } else {
+                    _menuShowParams('');
+                }
 
             }
 
@@ -5032,6 +5087,23 @@
 
 
 
+            // If a user pastes/types an API tag directly (for example
+            // "#danh_muc @Type="), activate the matching API before trying to
+            // resolve its parameter values.
+            if (!_activeApi) {
+                var typedApiMatch = val.match(/(?:^|\s)#([a-z0-9_]+)/i);
+                if (typedApiMatch) {
+                    var typedApiCode = '@' + typedApiMatch[1];
+                    var typedApi = _apiList.find(function (api) {
+                        return String(api.ApiCode || '').toLowerCase() === typedApiCode.toLowerCase();
+                    });
+                    if (typedApi) {
+                        _onApiSelected(typedApi.ApiCode, { preserveInput: true });
+                        return;
+                    }
+                }
+            }
+
             var pos = val.lastIndexOf('@');
 
             var querySearch = val;
@@ -5054,15 +5126,12 @@
 
                     clearTimeout(_dbt);
 
-                    if (pos > 0 && val.slice(0, pos).trim().length > 0) {
-
-                        _dbt = setTimeout(function () { console.log('[ApiEngine] calling _menuShowCatalog from watcher'); _menuShowCatalog('', pos); }, 80);
-
-                    } else {
-
-                        _dbt = setTimeout(function () { console.log('[ApiEngine] calling _menuShow (API list) from watcher'); _menuShow(''); }, 80);
-
-                    }
+                    // A trailing @ in ordinary text uses the same API picker as
+                    // the four-square button. Danh mục then opens its @Type step.
+                    _dbt = setTimeout(function () {
+                        console.log('[ApiEngine] calling _menuShow (API list) from watcher');
+                        _menuShow('');
+                    }, 80);
 
                     return;
 
