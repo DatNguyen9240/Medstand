@@ -18,7 +18,7 @@ Medstand AI hỗ trợ tra cứu nhanh dữ liệu ERP và đưa ra gợi ý cho
 
 ## 2. Đăng nhập và phạm vi dữ liệu
 
-1. Mở địa chỉ Medstand do doanh nghiệp cung cấp.
+1. Mở Medstand Pilot tại `https://medtest.bms7.net/` (chatbot: `https://medtest.bms7.net/#/chatbot`).
 2. Đăng nhập bằng tài khoản được cấp.
 3. Kiểm tra tên và vai trò ở góc dưới màn hình.
 4. Chỉ hỏi dữ liệu thuộc miền, kho, khách hàng và nhân viên được giao.

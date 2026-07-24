@@ -29,6 +29,27 @@ const AuthService = (() => {
     document.cookie = expired + '/;domain=' + window.location.hostname;
   }
 
+  function clearChatHistory() {
+    try {
+      Object.keys(localStorage).forEach(function (key) {
+        if (/^ai_chat_history(?:_v2)?(?:_|$)/.test(key)) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (error) {
+      console.warn('[Auth] Không thể xóa lịch sử chat trong localStorage:', error);
+    }
+
+    // Chatbot mới lưu lịch sử theo từng tài khoản trong IndexedDB. Khi đăng
+    // xuất phải xóa dữ liệu này để tài khoản kế tiếp trên cùng máy không đọc
+    // lại hội thoại cũ.
+    try {
+      if (window.indexedDB) indexedDB.deleteDatabase('MedstandChatDB');
+    } catch (error) {
+      console.warn('[Auth] Không thể xóa lịch sử chat trong IndexedDB:', error);
+    }
+  }
+
   function mergeIdentityFields(userInfo, loginData) {
     var merged = Object.assign({}, userInfo || {});
     var fields = [
@@ -128,6 +149,7 @@ const AuthService = (() => {
       console.warn('[Auth] Server logout failed:', error);
     } finally {
       deleteCookie('auth_token');
+      clearChatHistory();
       localStorage.removeItem('auth_user');
       localStorage.removeItem('survey_doc_id');
       if (typeof Http !== 'undefined' && Http.clearCache) Http.clearCache();

@@ -56,13 +56,17 @@
         KenhBan: '',
         SearchText: searchText,
         SYSManagerID: user.ManagerID || '',
-        SYSEmployeeID: user.EmployeeID || ''
+        SYSEmployeeID: user.EmployeeID || '',
+        page: page,
+        limit: LIMIT
       })
     })
       .then(function (res) {
         var data = res.data || res;
         var customers = data.records || data || [];
-        var totalPages = data.pagetotal || data._pagetotal || 1;
+        var firstCustomer = customers[0] || {};
+        var totalRows = data.total || data.TotalRows || data._recordtotal || firstCustomer.TotalRows || customers.length;
+        var totalPages = data.pagetotal || data.PageTotal || data._pagetotal || firstCustomer.PageTotal || Math.ceil(totalRows / LIMIT) || 1;
         TotalBar.show({ currentPage: page, totalPages: totalPages });
         $('#skeleton').prop('hidden', true);
         var $list = $('#customer-list');

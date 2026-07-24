@@ -17,6 +17,31 @@
   font-size: var(--font-size-sm);
 }
 
+/* Keep wide business tables usable on small screens without letting them
+   expand or clip the whole application layout. */
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-lg);
+}
+
+.table-scroll > .data-table,
+.table-scroll > .detail-table,
+.table-scroll > .product-table {
+  min-width: max-content;
+}
+
+@media (max-width: 767px) {
+  .table-scroll > .data-table,
+  .table-scroll > .detail-table,
+  .table-scroll > .product-table {
+    min-width: 560px;
+  }
+}
+
 .data-table th,
 .data-table td,
 .detail-table th,

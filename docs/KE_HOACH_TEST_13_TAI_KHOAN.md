@@ -144,7 +144,7 @@ PASS / FAIL / BLOCKED:
 
 | Thuộc tính | Giá trị |
 |---|---|
-| Môi trường | `medtest` / frontend local hoặc server Pilot |
+| Môi trường | `https://medtest.bms7.net/` (frontend Pilot chính); localhost chỉ dùng kiểm thử kỹ thuật |
 | Ngày cập nhật tài liệu | 22/07/2026 |
 | Trạng thái workflow | Đã import; chờ xác nhận Published/Active và runtime retest |
 | Ngày dữ liệu chốt | 20/07/2026 |

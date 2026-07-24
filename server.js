@@ -92,7 +92,7 @@ app.use((req, res, next) => {
 });
 
 // Backend URLs ẩn hoàn toàn phía server
-const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms79.com';
+const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms7.net';
 
 const getN8nUrl = () => {
     return 'http://127.0.0.1:5678';
@@ -445,7 +445,12 @@ app.all('/webhook/*all', async (req, res) => {
 // Thiết lập Cache-Control dài hạn (1 năm, immutable) cho các tệp đã đóng gói (.min.js, .min.css)
 app.use((req, res, next) => {
     const url = req.path.toLowerCase();
-    if (url.endsWith('.min.js') || url.endsWith('.min.css')) {
+    if (url === '/sw.js' || url.endsWith('.html')) {
+        // HTML và Service Worker phải luôn được xác thực lại để nhận bản deploy mới.
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    } else if (url.endsWith('.min.js') || url.endsWith('.min.css')) {
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
     next();

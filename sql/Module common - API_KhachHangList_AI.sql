@@ -15,36 +15,38 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- 1. Ưu tiên lấy mã nhân viên từ hệ thống
-    DECLARE @RealEmployeeID VARCHAR(50) = ISNULL(@SYSEmployeeID, '');
-    IF @RealEmployeeID = ''
-        SELECT TOP 1 @RealEmployeeID = ISNULL(EmployeeID, '') FROM dbo.SY_User WHERE UserName = @User;
+    -- Các tham số Manager/Employee được giữ lại để tương thích API cũ,
+    -- nhưng không được dùng làm căn cứ phân quyền vì client có thể thay đổi.
+    IF NOT EXISTS (
+        SELECT 1
+        FROM dbo.SY_User WITH (NOLOCK)
+        WHERE UserName = @User
+          AND ISNULL(Disable, 0) = 0
+    )
+    BEGIN
+        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS [Msg], 1 AS [MsgType];
+        RETURN;
+    END
 
-    -- 2. Kiểm tra quyền thực tế
-    IF EXISTS (SELECT 1 FROM dbo.AR_ObjectGroupEmployeeTbl WHERE EmployeeID = @RealEmployeeID)
-    BEGIN
-        -- Cách chuẩn: Dùng hàm hệ thống
-        EXEC dbo.WA_OrderGetObjectByEmployeeStp
-            @ManagerID = '', @EmployeeID = @RealEmployeeID, @S = @SearchText,
-            @ObjectGroupID = NULL, @LocationID = NULL, @QuanHuyen = NULL;
-    END
-    ELSE
-    BEGIN
-        -- Cách dự phòng (Cho demo): Lấy từ lịch sử đơn hàng
-        SELECT DISTINCT
-            A.ObjectID,
-            A.ObjectName,
-            A.Address,
-            A.Phone,
-            A.LocationID,
-            A.XaPhuong,
-            A.ObjectID + ' - ' + A.ObjectName AS DisplayName
-        FROM dbo.vKhachHangList A
-        WHERE A.ObjectID IN (
-            SELECT P.ObjectID
-            FROM dbo.AR_GetObjectByUserFnc(@User) P
-        )
-          AND (A.ObjectID LIKE '%' + @SearchText + '%' OR A.ObjectName LIKE '%' + @SearchText + '%');
-    END
+    -- AR_GetObjectByUserFnc là phạm vi khách hàng chuẩn của tài khoản ERP.
+    -- Sale chỉ thấy khách được giao; Manager/Admin thấy phạm vi do ERP cấu hình.
+    SELECT DISTINCT
+        A.ObjectID,
+        A.ObjectName,
+        A.Address,
+        A.Phone,
+        A.LocationID,
+        A.XaPhuong,
+        A.ObjectID + ' - ' + A.ObjectName AS DisplayName
+    FROM dbo.vKhachHangList A
+    INNER JOIN dbo.AR_GetObjectByUserFnc(@User) Scope
+        ON Scope.ObjectID = A.ObjectID
+    WHERE (ISNULL(@ObjectID, '') = '' OR A.ObjectID = @ObjectID)
+      AND (
+          ISNULL(@SearchText, '') = ''
+          OR A.ObjectID LIKE '%' + @SearchText + '%'
+          OR A.ObjectName LIKE '%' + @SearchText + '%'
+      )
+    ORDER BY A.ObjectName, A.ObjectID;
 END
 GO

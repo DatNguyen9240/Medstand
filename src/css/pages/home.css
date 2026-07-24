@@ -378,6 +378,7 @@
 
 /* Extends chart.css .chart-section with premium radius + shadow */
 .home-analytics-card {
+  min-width: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card-large);
@@ -615,6 +616,7 @@
    the chart card determines the row height. */
 .birthday-col {
   position: relative;
+  min-width: 0;
   min-height: 300px;
   /* floor so it's usable on small screens */
 }
@@ -1089,7 +1091,8 @@
 }
 
 @media (max-width: 1024px) {
-  .home-analytics-row {
+  .home-analytics-row,
+  #home-page[data-dashboard-role="manager"] .home-analytics-row {
     grid-template-columns: 1fr;
   }
 
@@ -1118,6 +1121,20 @@
   }
   .home-analytics-row {
     padding: 0;
+  }
+
+  /* On phones the birthday widget must participate in normal document flow.
+     Its desktop absolute-fill layout otherwise overlays and squeezes the chart. */
+  .birthday-col {
+    position: static;
+    min-height: 0;
+  }
+
+  .widget-birthdays {
+    position: static;
+    inset: auto;
+    width: 100%;
+    overflow: visible;
   }
 
   /* Hero Banner Redesign */

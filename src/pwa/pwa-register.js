@@ -20,8 +20,13 @@ if (window.location.href.indexOf('clean=true') > -1) {
     });
   }
   
-  // Xóa sạch localStorage liên quan đến cache cũ
-  localStorage.removeItem('ai_chat_history');
+  // Chế độ dọn thủ công: xóa cả các định dạng lịch sử chat cũ và mới.
+  Object.keys(localStorage).forEach(function (key) {
+    if (/^ai_chat_history(?:_v2)?(?:_|$)/.test(key)) {
+      localStorage.removeItem(key);
+    }
+  });
+  if (window.indexedDB) indexedDB.deleteDatabase('MedstandChatDB');
   
   // Trở về URL sạch
   var cleanUrl = window.location.href.replace(/[?&]clean=true/g, '').replace(/clean=true/g, '');
@@ -37,9 +42,10 @@ if ('serviceWorker' in navigator) {
   if (!isLocalhost) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('/sw.js')
+        .register('/sw.js', { updateViaCache: 'none' })
         .then((reg) => {
           console.log('[PWA] Service Worker registered, scope:', reg.scope);
+          reg.update().catch(() => {});
         })
         .catch((err) => {
           console.warn('[PWA] Service Worker registration failed:', err);
