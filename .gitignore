@@ -92,3 +92,6 @@ Phan_Tich_BRD_AI_Sale.md
 
 # External product catalog images (not tracked by Git)
 images/product-catalog/
+
+# n8n workflow/database snapshots (local recovery only)
+n8n-system/snapshots/
