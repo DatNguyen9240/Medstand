@@ -316,7 +316,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{ 'http://127.0.0.1:5678/webhook/chat-v6' }}",
+        "url": "={{ 'http://127.0.0.1:5678/webhook/hook-ai-rag' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
