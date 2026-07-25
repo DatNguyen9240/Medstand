@@ -27,6 +27,7 @@ const Http = (() => {
 
   const CACHE_TTL_MS = 3 * 60 * 1000; // 3 phút
   const CACHE_PREFIX = '_hc_'; // prefix cho sessionStorage keys
+  const _inflightGets = new Map();
   const _inflightMutations = new Map();
 
   // ─── Cache layer (sessionStorage) ─────────────────────────────────────────
@@ -299,34 +300,50 @@ const Http = (() => {
   async function get(endpoint, params = {}) {
     const qs = new URLSearchParams(params).toString();
     const url = _url(endpoint) + (qs ? `?${qs}` : '');
+    const cacheKey = _cacheKey(url);
 
     // Kiểm tra cache trước
-    const cached = _getFromCache(_cacheKey(url));
+    const cached = _getFromCache(cacheKey);
     if (cached) {
       console.log('[HTTP] Cache HIT:', url);
       return cached;
     }
 
-    showGlobalSpinner();
-    try {
-      console.log('[HTTP] Cache MISS:', url);
-      const res = await _fetchWithTimeout(url, {
-        method: 'GET',
-        headers: _headers(),
-      });
-      const data = await _handleResponse(res);
-
-      // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
-      const recs = data?.records || data?.data?.records;
-      const hasData = !Array.isArray(recs) || recs.length > 0;
-      if (data && data.code === 0 && hasData) _setCache(_cacheKey(url), data);
-
-      return data;
-    } finally {
-      hideGlobalSpinner();
+    // Router và page script có thể cùng tải một tài nguyên trong lúc chuyển
+    // trang. Dùng chung request đang chạy để tránh gửi GET trùng lên backend.
+    if (_inflightGets.has(cacheKey)) {
+      console.log('[HTTP] Reusing in-flight GET:', url);
+      return _inflightGets.get(cacheKey);
     }
-  }
 
+    const promise = (async function () {
+      showGlobalSpinner();
+      try {
+        console.log('[HTTP] Cache MISS:', url);
+        const res = await _fetchWithTimeout(url, {
+          method: 'GET',
+          headers: _headers(),
+        });
+        const data = await _handleResponse(res);
+
+        // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
+        const recs = data?.records || data?.data?.records;
+        const hasData = !Array.isArray(recs) || recs.length > 0;
+        if (data && data.code === 0 && hasData) _setCache(cacheKey, data);
+
+        return data;
+      } finally {
+        hideGlobalSpinner();
+      }
+    })();
+
+    _inflightGets.set(cacheKey, promise);
+    promise.finally(function () {
+      if (_inflightGets.get(cacheKey) === promise) _inflightGets.delete(cacheKey);
+    }).catch(function () {});
+
+    return promise;
+  }
   function post(endpoint, body = {}, options = {}) {
     const idempotencyKey = String(options.idempotencyKey || '').trim();
     if (idempotencyKey && _inflightMutations.has(idempotencyKey)) {
