@@ -6551,11 +6551,7 @@
 
     function _updatePlaceholder() {
 
-        $input.placeholder = window.innerWidth <= 480
-
-            ? 'Nh\u1eadp tin nh\u1eafn... (@ tra c\u1ee9u)'
-
-            : 'Nh\u1eadp tin nh\u1eafn... (@ tra c\u1ee9u)';
+        $input.placeholder = 'Nh\u1eadp tin nh\u1eafn...';
 
     }
 

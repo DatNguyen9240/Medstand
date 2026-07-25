@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-11.99'; // Open customer accumulation from the focus program
+const CACHE_VERSION = 'medstand-11.101'; // Keep the mobile chatbot composer on one line
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [

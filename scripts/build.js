@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
 
-const APP_VERSION = '11.99';
+const APP_VERSION = '11.101';
 
 function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5) {
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -530,7 +530,7 @@ var _dec = function(b64) {
             // Thay thế script theme.js bằng bản minified trong dist
             content = content.replace(
                 /src=["'](?:\.\.\/)?src\/js\/utils\/theme\.js["']/gi,
-                'src="../src/js/dist/theme.min.js?v=11.35"'
+                `src="../src/js/dist/theme.min.js?v=${APP_VERSION}"`
             );
             
             fs.writeFileSync(filePath, content, 'utf-8');
