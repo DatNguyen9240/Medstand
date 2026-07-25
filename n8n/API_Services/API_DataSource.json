@@ -123,8 +123,8 @@
       "name": "MS SQL DataSource",
       "credentials": {
         "microsoftSql": {
-          "id": "",
-          "name": "MS SQL account"
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
         }
       },
       "alwaysOutputData": true
