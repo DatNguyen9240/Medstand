@@ -29,7 +29,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json()); // Enable JSON body parsing
+app.use((req, res, next) => {
+    // Encrypted/base64 gateway uploads need more room than normal JSON calls.
+    // Keep the default small limit for every other route.
+    const parser = req.path === '/api/gateway'
+        ? express.json({ limit: '32mb' })
+        : express.json();
+    return parser(req, res, next);
+});
 
 // ─── PRODUCTION OPTIMIZATION & SECURITY HEADERS ───
 app.use(compression());
@@ -189,6 +196,61 @@ const upstreamErrorPayload = (requestId, code, message) => ({
 });
 
 // ─── GLOBAL API GATEWAY (Encrypted Tunnel) ───
+const PUBLIC_GATEWAY_ENDPOINTS = new Set([
+    '/api/login',
+    '/api/changepassword'
+]);
+
+const normalizeGatewayRequest = (requestPayload) => {
+    const method = String(requestPayload && requestPayload.method || 'GET').toUpperCase();
+    const endpoint = String(requestPayload && requestPayload.endpoint || '').trim();
+    const allowedMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
+
+    if (!allowedMethods.has(method)) throw new Error('INVALID_GATEWAY_METHOD');
+    if (!endpoint.startsWith('/api/') && !endpoint.startsWith('/webhook/')) {
+        throw new Error('INVALID_GATEWAY_ENDPOINT');
+    }
+    if (/^(?:\/\/)|[\\\u0000-\u001f\u007f]/.test(endpoint)) {
+        throw new Error('INVALID_GATEWAY_ENDPOINT');
+    }
+
+    let decodedPath = endpoint.split('?')[0];
+    try { decodedPath = decodeURIComponent(decodedPath); } catch (_) {
+        throw new Error('INVALID_GATEWAY_ENDPOINT');
+    }
+    if (decodedPath.split('/').includes('..') || /[\\\u0000-\u001f\u007f]/.test(decodedPath)) {
+        throw new Error('INVALID_GATEWAY_ENDPOINT');
+    }
+
+    return { method, endpoint };
+};
+
+const buildGatewayMultipartBody = (multipart) => {
+    const entries = multipart && Array.isArray(multipart.entries) ? multipart.entries : [];
+    if (!entries.length || entries.length > 30) throw new Error('INVALID_MULTIPART_PAYLOAD');
+
+    const formData = new FormData();
+    let totalFileBytes = 0;
+    entries.forEach((entry) => {
+        const name = String(entry && entry.name || '').trim();
+        if (!name || name.length > 100) throw new Error('INVALID_MULTIPART_PAYLOAD');
+
+        if (entry.kind === 'file') {
+            const encoded = String(entry.data || '');
+            const buffer = Buffer.from(encoded, 'base64');
+            totalFileBytes += buffer.length;
+            if (!encoded || totalFileBytes > 10 * 1024 * 1024) throw new Error('INVALID_MULTIPART_PAYLOAD');
+            const filename = path.basename(String(entry.filename || 'upload.bin')).slice(0, 255);
+            const contentType = String(entry.contentType || 'application/octet-stream').slice(0, 150);
+            formData.append(name, new Blob([buffer], { type: contentType }), filename);
+            return;
+        }
+
+        formData.append(name, String(entry.value == null ? '' : entry.value));
+    });
+    return formData;
+};
+
 app.post('/api/gateway', async (req, res) => {
     const requestId = requestIdOf(req);
     let targetUrl = '';
@@ -201,7 +263,20 @@ app.post('/api/gateway', async (req, res) => {
         // 1. Giải mã yêu cầu từ Client
         const decryptedRaw = Cipher.decrypt(req.body.data);
         const requestPayload = JSON.parse(decryptedRaw);
-        const { method, endpoint, body } = requestPayload;
+        let normalizedRequest;
+        try {
+            normalizedRequest = normalizeGatewayRequest(requestPayload);
+        } catch (validationError) {
+            const encryptedRes = Cipher.encrypt(JSON.stringify({
+                success: false,
+                code: validationError.message,
+                message: 'Invalid gateway endpoint or method.',
+                requestId
+            }));
+            return res.status(400).json({ data: encryptedRes });
+        }
+        const { method, endpoint } = normalizedRequest;
+        const { body, multipart } = requestPayload;
 
         if (!endpoint) {
             return res.status(400).json({ error: 'Thiếu endpoint xử lý.' });
@@ -221,7 +296,8 @@ app.post('/api/gateway', async (req, res) => {
         // Chat/business webhooks are never anonymous. Login and other ERP APIs
         // remain reachable because they do not use the /webhook namespace.
         const authorization = getBearerAuthorization(req);
-        if (isN8n && !authorization) {
+        const endpointPath = endpoint.split('?')[0];
+        if (!PUBLIC_GATEWAY_ENDPOINTS.has(endpointPath) && !authorization) {
             const encryptedRes = Cipher.encrypt(JSON.stringify(authRequiredPayload(requestId)));
             return res.status(401).json({ data: encryptedRes });
         }
@@ -229,11 +305,30 @@ app.post('/api/gateway', async (req, res) => {
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);
         
         const headers = {
-            'Content-Type': 'application/json',
             ...(authorization ? { 'Authorization': authorization } : {}),
             ...(req.headers['idempotency-key'] ? { 'Idempotency-Key': req.headers['idempotency-key'] } : {}),
-            ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {})
+            ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {}),
+            ...(endpointPath === '/webhook/admin-upload'
+                ? { 'x-admin-key': process.env.ADMIN_UPLOAD_KEY || 'Medstand@Admin2026' }
+                : {})
         };
+
+        let upstreamBody = null;
+        if (multipart) {
+            try {
+                upstreamBody = buildGatewayMultipartBody(multipart);
+            } catch (multipartError) {
+                const encryptedRes = Cipher.encrypt(JSON.stringify({
+                    success: false,
+                    code: multipartError.message,
+                    message: 'Invalid upload payload or file exceeds 10 MB.',
+                    requestId
+                }));
+                return res.status(400).json({ data: encryptedRes });
+            }
+        } else {
+            headers['Content-Type'] = 'application/json';
+        }
 
         // Chỉ log metadata, không ghi Authorization, password hoặc payload nghiệp vụ.
         const requestHeaderNames = Object.keys(headers);
@@ -247,8 +342,9 @@ app.post('/api/gateway', async (req, res) => {
             headers: headers
         };
 
-        if (method !== 'GET' && method !== 'HEAD' && body) {
-            options.body = JSON.stringify(body);
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (upstreamBody) options.body = upstreamBody;
+            else if (body !== undefined && body !== null) options.body = JSON.stringify(body);
         }
 
         let response;
@@ -315,6 +411,12 @@ app.post('/api/gateway', async (req, res) => {
 
 // ─── 1. PROXY API CHO CHATBOT (Có đính kèm CHAT_API_KEY bảo mật) ───
 app.post('/api/chat', async (req, res) => {
+    return res.status(404).json({
+        success: false,
+        code: 'GATEWAY_REQUIRED',
+        message: 'Chat is only available through /api/gateway.'
+    });
+    /* c8 ignore start -- retained temporarily for rollback reference
     const requestId = requestIdOf(req);
     try {
         const authorization = getBearerAuthorization(req);
@@ -367,6 +469,7 @@ app.post('/api/chat', async (req, res) => {
         console.error('[Proxy Gateway Error]:', error);
         res.status(502).json(upstreamErrorPayload(requestId, 'UPSTREAM_UNAVAILABLE', 'Không thể kết nối đến Trợ lý AI.'));
     }
+    c8 ignore stop */
 });
 
 // ─── NEW: API CUNG CẤP DỮ LIỆU DẠNG FLAT ARRAY CHO GOOGLE SHEETS ───
@@ -432,6 +535,12 @@ app.get('/api/sheet-data', async (req, res) => {
 
 // ─── 2. PROXY CHO TOÀN BỘ CÁC API ENDPOINT KHÁC SANG BACKEND THẬT ───
 app.all('/api/*all', async (req, res) => {
+    return res.status(404).json({
+        success: false,
+        code: 'GATEWAY_REQUIRED',
+        message: 'Business APIs are only available through /api/gateway.'
+    });
+    /* c8 ignore start -- retained temporarily for rollback reference
     try {
         console.log(`[Proxy Gateway] Forwarding ${req.method} request to Backend: ${req.url}`);
         const targetUrl = `${API_INTERNAL_URL}${req.originalUrl || req.url}`;
@@ -465,10 +574,17 @@ app.all('/api/*all', async (req, res) => {
         console.error('[Proxy Gateway API Error]:', error);
         res.status(500).json({ error: 'Không thể kết nối đến Máy chủ Backend.' });
     }
+    c8 ignore stop */
 });
 
 // ─── 3. PROXY CHO CÁC ENDPOINT N8N BẮT ĐẦU BẰNG /WEBHOOK/ (Có đính kèm CHAT_API_KEY bảo mật) ───
 app.all('/webhook/*all', async (req, res) => {
+    return res.status(404).json({
+        success: false,
+        code: 'GATEWAY_REQUIRED',
+        message: 'Business webhooks are only available through /api/gateway.'
+    });
+    /* c8 ignore start -- retained temporarily for rollback reference
     try {
         console.log(`[Proxy Gateway] Forwarding ${req.method} request to N8N: ${req.url}`);
         const targetUrl = `${getN8nUrl()}${req.originalUrl || req.url}`;
@@ -508,6 +624,7 @@ app.all('/webhook/*all', async (req, res) => {
         console.error('[Proxy Gateway Error]:', error);
         res.status(500).json({ error: 'Không thể kết nối đến Trợ lý AI.' });
     }
+    c8 ignore stop */
 });
 
 // Thiết lập Cache-Control dài hạn (1 năm, immutable) cho các tệp đã đóng gói (.min.js, .min.css)

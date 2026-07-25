@@ -5,6 +5,12 @@ import { logger } from '../utils/logger.js';
 // Khởi tạo Base Params từ Window/Env 
 const MAX_RETRIES = 3;
 const TIMEOUT_MS = 30000;
+const encodeBase64 = (value) => typeof btoa === 'function'
+    ? btoa(value)
+    : Buffer.from(value, 'binary').toString('base64');
+const decodeBase64 = (value) => typeof atob === 'function'
+    ? atob(value)
+    : Buffer.from(value, 'base64').toString('binary');
 
 // ---------- CIRCUIT BREAKER ----------
 const CIRCUIT_BREAKER = {
@@ -51,6 +57,21 @@ export const getHeaders = () => {
     };
 };
 
+const cipher = {
+    encrypt(value, key = 107) {
+        const b64 = encodeBase64(unescape(encodeURIComponent(value)));
+        let xor = '';
+        for (let index = 0; index < b64.length; index++) xor += String.fromCharCode(b64.charCodeAt(index) ^ key);
+        return encodeBase64(xor);
+    },
+    decrypt(value, key = 107) {
+        const xor = decodeBase64(value);
+        let b64 = '';
+        for (let index = 0; index < xor.length; index++) b64 += String.fromCharCode(xor.charCodeAt(index) ^ key);
+        return decodeURIComponent(escape(decodeBase64(b64)));
+    }
+};
+
 /**
  * Hàm gọi API nền tảng với Exponential Backoff & Timeout
  */
@@ -76,7 +97,10 @@ const fetchWithRetry = async (url, options, retryCount = 0) => {
         if (!text) throw new Error("Empty Response");
         
         try {
-            const data = JSON.parse(text);
+            const envelope = JSON.parse(text);
+            const data = envelope && typeof envelope.data === 'string'
+                ? JSON.parse(cipher.decrypt(envelope.data))
+                : envelope;
             return data;
         } catch (e) {
             throw new Error("Invalid JSON formatting from Server");
@@ -124,8 +148,13 @@ export const NetworkService = {
 
         // Chuẩn bị Fetch
         const config = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
-        const chatApiUrl = (config.N8N_BASE || '') + (config.CHAT_WEBHOOK || '/webhook/hook-ai-dainao');
-        const targetUrl = payload.overrideUrl || chatApiUrl;
+        let endpoint = payload.overrideUrl || config.CHAT_WEBHOOK || '/webhook/hook-ai-dainao';
+        const n8nBase = config.N8N_BASE || '';
+        const apiBase = config.BASE_URL || '';
+        if (n8nBase && endpoint.indexOf(n8nBase) === 0) endpoint = endpoint.substring(n8nBase.length);
+        if (apiBase && endpoint.indexOf(apiBase) === 0) endpoint = endpoint.substring(apiBase.length);
+        const targetUrl = config.GATEWAY_URL || '/api/gateway';
+        const gatewayBody = cipher.encrypt(JSON.stringify({ method: 'POST', endpoint, body: payload }));
         this.abortController = new AbortController(); // lưu lại ngộ nhỡ user ấn DỪNG
 
         emit(EVENTS.NETWORK_REQUEST, payload);
@@ -135,7 +164,7 @@ export const NetworkService = {
             const data = await fetchWithRetry(targetUrl, {
                 method: 'POST',
                 headers: getHeaders(),
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ data: gatewayBody }),
                 signal: this.abortController.signal
             });
             

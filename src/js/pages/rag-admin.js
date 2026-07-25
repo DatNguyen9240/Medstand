@@ -132,19 +132,9 @@ $(function() {
           formData.append('role', user.Role || 'user');
         }
 
-        const webhookUrl = API_CONFIG.N8N_BASE + API_CONFIG.ENDPOINTS.AI.ADMIN_UPLOAD;
+        const result = await Http.postForm(API_CONFIG.ENDPOINTS.AI.ADMIN_UPLOAD, formData);
         
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: {
-            'x-admin-key': 'Medstand@Admin2026'
-          },
-          body: formData
-        });
-
-        const result = await response.json();
-        
-        if (response.ok && result && result.status !== "error") {
+        if (result && result.status !== "error") {
           Alert.success('Đã cập nhật hệ tri thức AI thành công!');
           setTimeout(() => {
             $btnRemove.click();

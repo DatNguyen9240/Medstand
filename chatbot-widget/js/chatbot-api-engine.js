@@ -1304,16 +1304,7 @@
                 Type: '',
                 SearchText: query || ''
             }));
-            var token = typeof _cbGetToken === 'function' ? _cbGetToken() : '';
-            var baseUrl = window.API_CONFIG.BASE_URL || '';
-
-            fetch(baseUrl + catalogEndpoint + '?q=' + queryPayload, {
-                method: 'GET',
-                headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-            }).then(function (response) {
-                if (!response.ok) throw new Error('Catalog endpoint returned ' + response.status);
-                return response.json();
-            }).then(function (response) {
+            _get(catalogEndpoint + '?q=' + queryPayload).then(function (response) {
                 var backendRows = _normalizeDataSourceRows(response);
                 if (backendRows.length) {
                     deliver(backendRows);
@@ -1802,6 +1793,15 @@
             field = field || { FieldCode: '@Type', FieldName: 'Loại danh mục' };
             if (!field.DataSourceType) field.DataSourceType = 'APICODE';
             if (!field.DataSourceValue) field.DataSourceValue = CFG.CATALOG_ROOT_API + '|@timkiem={q}';
+        }
+
+        // Some older metadata omitted the customer datasource. Reuse the
+        // centrally configured catalog contract so customer pickers still load.
+        var normalizedFieldCode = String(fieldCode || '').toLowerCase();
+        if ((normalizedFieldCode === '@makhachhang' || normalizedFieldCode === '@objectid') && CFG.CART_CUSTOMER_DS) {
+            field = field || { FieldCode: fieldCode, FieldName: 'KhÃ¡ch hÃ ng' };
+            if (!field.DataSourceType) field.DataSourceType = 'APICODE';
+            if (!field.DataSourceValue) field.DataSourceValue = CFG.CART_CUSTOMER_DS;
         }
 
 

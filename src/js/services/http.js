@@ -186,7 +186,7 @@ const Http = (() => {
     let targetUrl = url;
     let targetOptions = { ...options };
 
-    if (!isGatewayCall && !isExternalMap && !isLocalHtml && !isMultipart && !bypassGateway) {
+    if (!isGatewayCall && !isExternalMap && !isLocalHtml && !bypassGateway) {
       // 2. Chuyển đổi endpoint tương đối
       let relativeEndpoint = url;
       const baseUrl = (typeof API_CONFIG !== 'undefined' && API_CONFIG.BASE_URL) || '';
@@ -200,10 +200,39 @@ const Http = (() => {
         try { reqBody = JSON.parse(options.body); } catch(e) { reqBody = options.body; }
       }
 
+      let multipart = null;
+      if (isMultipart) {
+        const entries = [];
+        const jobs = [];
+        options.body.forEach((value, name) => {
+          if (value instanceof Blob) {
+            jobs.push(value.arrayBuffer().then(buffer => {
+              const bytes = new Uint8Array(buffer);
+              let binary = '';
+              const chunkSize = 0x8000;
+              for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + chunkSize));
+              }
+              entries.push({
+                kind: 'file', name,
+                filename: value.name || 'upload.bin',
+                contentType: value.type || 'application/octet-stream',
+                data: btoa(binary)
+              });
+            }));
+          } else {
+            entries.push({ kind: 'field', name, value: String(value) });
+          }
+        });
+        await Promise.all(jobs);
+        multipart = { entries };
+      }
+
       const payload = {
         method: options.method || 'GET',
         endpoint: relativeEndpoint,
-        body: reqBody
+        body: reqBody,
+        ...(multipart ? { multipart } : {})
       };
 
       const encryptedData = Cipher.encrypt(JSON.stringify(payload));
@@ -232,7 +261,7 @@ const Http = (() => {
         }
         
         // 3. Giải mã kết quả trả về từ Gateway
-        if (!isGatewayCall && !isExternalMap && !isLocalHtml && !isMultipart && !bypassGateway) {
+        if (!isGatewayCall && !isExternalMap && !isLocalHtml && !bypassGateway) {
           const resJson = await res.json();
           if (!resJson || !resJson.data) {
              throw new Error('Cổng Gateway phản hồi dữ liệu không hợp lệ.');

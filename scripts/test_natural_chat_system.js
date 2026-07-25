@@ -170,14 +170,18 @@ async function withMockServer(handler, callback) {
 async function runResilience() {
   const results = [];
 
+  const gatewayResponse = (payload) => JSON.stringify({
+    data: cipherEncrypt(JSON.stringify(payload)),
+  });
+
   let attempts = 0;
   await withMockServer((req, res) => {
     attempts += 1;
     if (attempts < 3) { res.writeHead(503); res.end('temporary'); return; }
-    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ status: 'SUCCESS' }));
+    res.setHeader('content-type', 'application/json'); res.end(gatewayResponse({ status: 'SUCCESS' }));
   }, async (url) => {
     const { NetworkService } = await importNetworkModuleForTest(500, 2);
-    global.API_CONFIG = { N8N_BASE: url, CHAT_WEBHOOK: '/', CHAT_API_KEY: '' };
+    global.API_CONFIG = { GATEWAY_URL: url, CHAT_WEBHOOK: '/webhook/test', CHAT_API_KEY: '' };
     const data = await NetworkService.sendChat({ action: 'chat', text: 'retry', session_id: 'retry-1' }, true);
     results.push({ test: 'retry-5xx-then-success', pass: data.status === 'SUCCESS' && attempts === 3, attempts });
   });
@@ -185,7 +189,7 @@ async function runResilience() {
   attempts = 0;
   await withMockServer((req, res) => { attempts += 1; res.writeHead(400); res.end('bad request'); }, async (url) => {
     const { NetworkService } = await importNetworkModuleForTest(500, 2);
-    global.API_CONFIG = { N8N_BASE: url, CHAT_WEBHOOK: '/', CHAT_API_KEY: '' };
+    global.API_CONFIG = { GATEWAY_URL: url, CHAT_WEBHOOK: '/webhook/test', CHAT_API_KEY: '' };
     let message = '';
     try { await NetworkService.sendChat({ action: 'chat', text: 'client-error', session_id: 'client-1' }, true); }
     catch (error) { message = error.message; }
@@ -194,7 +198,7 @@ async function runResilience() {
 
   await withMockServer((req, res) => { setTimeout(() => { res.end('{}'); }, 300); }, async (url) => {
     const { NetworkService } = await importNetworkModuleForTest(80, 0);
-    global.API_CONFIG = { N8N_BASE: url, CHAT_WEBHOOK: '/', CHAT_API_KEY: '' };
+    global.API_CONFIG = { GATEWAY_URL: url, CHAT_WEBHOOK: '/webhook/test', CHAT_API_KEY: '' };
     let message = '';
     try { await NetworkService.sendChat({ action: 'chat', text: 'timeout', session_id: 'timeout-1' }, true); }
     catch (error) { message = error.message; }
@@ -203,16 +207,16 @@ async function runResilience() {
 
   await withMockServer((req, res) => { res.end('not-json'); }, async (url) => {
     const { NetworkService } = await importNetworkModuleForTest(500, 0);
-    global.API_CONFIG = { N8N_BASE: url, CHAT_WEBHOOK: '/', CHAT_API_KEY: '' };
+    global.API_CONFIG = { GATEWAY_URL: url, CHAT_WEBHOOK: '/webhook/test', CHAT_API_KEY: '' };
     let message = '';
     try { await NetworkService.sendChat({ action: 'chat', text: 'json', session_id: 'json-1' }, true); }
     catch (error) { message = error.message; }
     results.push({ test: 'reject-invalid-json', pass: /Invalid JSON/.test(message), message });
   });
 
-  await withMockServer((req, res) => { setTimeout(() => { res.end('{"status":"SUCCESS"}'); }, 80); }, async (url) => {
+  await withMockServer((req, res) => { setTimeout(() => { res.end(gatewayResponse({ status: 'SUCCESS' })); }, 80); }, async (url) => {
     const { NetworkService } = await importNetworkModuleForTest(500, 0);
-    global.API_CONFIG = { N8N_BASE: url, CHAT_WEBHOOK: '/', CHAT_API_KEY: '' };
+    global.API_CONFIG = { GATEWAY_URL: url, CHAT_WEBHOOK: '/webhook/test', CHAT_API_KEY: '' };
     const payload = { action: 'chat', text: 'same', session_id: 'dedupe-1' };
     const settled = await Promise.allSettled([
       NetworkService.sendChat(payload, true), NetworkService.sendChat(payload, true),
@@ -498,7 +502,7 @@ async function runHealth(args) {
 }
 
 async function runAuthGate(args) {
-  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'proxy';
+  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'gateway';
   const endpoint = args.endpoint || process.env.MEDSTAND_CHAT_ENDPOINT
     || (transport === 'gateway' ? 'http://localhost:3000/api/gateway' : 'http://localhost:3000/api/chat');
   const response = await postChat(endpoint, 'doanh số hôm nay', {

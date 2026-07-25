@@ -85,6 +85,73 @@
 
     }
 
+    function _gatewayRequest(method, endpoint, body, signal, multipart) {
+        var n8nBase = _cfg.N8N_BASE || '';
+        var apiBase = _cfg.BASE_URL || '';
+        var relativeEndpoint = String(endpoint || '');
+        if (n8nBase && relativeEndpoint.indexOf(n8nBase) === 0) relativeEndpoint = relativeEndpoint.substring(n8nBase.length);
+        if (apiBase && relativeEndpoint.indexOf(apiBase) === 0) relativeEndpoint = relativeEndpoint.substring(apiBase.length);
+
+        var requestPayload = {
+            method: method || 'GET',
+            endpoint: relativeEndpoint,
+            body: body == null ? null : body
+        };
+        if (multipart) requestPayload.multipart = multipart;
+
+        var token = _getToken();
+        return fetch(_cfg.GATEWAY_URL || '/api/gateway', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
+            body: JSON.stringify({ data: Cipher.encrypt(JSON.stringify(requestPayload)) }),
+            signal: signal
+        }).then(function (response) {
+            return response.json().then(function (gatewayResponse) {
+                if (!gatewayResponse || !gatewayResponse.data) throw new Error('Cá»•ng Gateway pháº£n há»“i khÃ´ng há»£p lá»‡.');
+                var decryptedText = Cipher.decrypt(gatewayResponse.data);
+                var payload;
+                try { payload = decryptedText ? JSON.parse(decryptedText) : {}; }
+                catch (_) { payload = decryptedText; }
+                if (!response.ok) {
+                    throw new Error((payload && payload.message) || ('Gateway error: ' + response.status));
+                }
+                return payload;
+            });
+        });
+    }
+
+    function _gatewayUpload(endpoint, formData, signal) {
+        var entries = [];
+        var jobs = [];
+        formData.forEach(function (value, name) {
+            if (value instanceof Blob) {
+                jobs.push(value.arrayBuffer().then(function (buffer) {
+                    var bytes = new Uint8Array(buffer);
+                    var binary = '';
+                    var chunkSize = 0x8000;
+                    for (var offset = 0; offset < bytes.length; offset += chunkSize) {
+                        binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + chunkSize));
+                    }
+                    entries.push({
+                        kind: 'file',
+                        name: name,
+                        filename: value.name || 'upload.bin',
+                        contentType: value.type || 'application/octet-stream',
+                        data: btoa(binary)
+                    });
+                }));
+            } else {
+                entries.push({ kind: 'field', name: name, value: String(value) });
+            }
+        });
+        return Promise.all(jobs).then(function () {
+            return _gatewayRequest('POST', endpoint, null, signal, { entries: entries });
+        });
+    }
+
 
 
     // Get or create session ID for chat
@@ -1266,21 +1333,11 @@
 
 
 
-                    var webhookUrl = (_cfg.N8N_BASE || '') + (_cfg.ENDPOINTS && _cfg.ENDPOINTS.AI && _cfg.ENDPOINTS.AI.ADMIN_UPLOAD ? _cfg.ENDPOINTS.AI.ADMIN_UPLOAD : '/webhook/admin-upload');
+                    var webhookUrl = (_cfg.ENDPOINTS && _cfg.ENDPOINTS.AI && _cfg.ENDPOINTS.AI.ADMIN_UPLOAD ? _cfg.ENDPOINTS.AI.ADMIN_UPLOAD : '/webhook/admin-upload');
 
 
 
-                    fetch(webhookUrl, {
-
-                        method: 'POST',
-
-                        body: formData,
-
-                        signal: abortController.signal
-
-                    })
-
-                        .then(function (res) { return res.json(); })
+                    _gatewayUpload(webhookUrl, formData, abortController.signal)
 
                         .then(function (result) {
 
@@ -4777,39 +4834,13 @@
 
         console.log('Fetching config for:', apiCode);
 
-        var url = API_CONFIG.N8N_BASE + '/webhook/api-get-config';
+        var url = '/webhook/api-get-config';
 
         var body = { ApiCode: '@' + apiCode };
 
-        fetch(url, {
+        _gatewayRequest('POST', url, body)
 
-            method: 'POST',
-
-            headers: {
-
-                'Content-Type': 'application/json',
-
-                'Authorization': 'Bearer ' + _getToken()
-
-            },
-
-            body: JSON.stringify(body)
-
-        })
-
-            .then(function (r) {
-
-                console.log('Config API Raw Response Status:', r.status);
-
-                return r.text();
-
-            })
-
-            .then(function (textRes) {
-
-                var res = null;
-
-                try { res = JSON.parse(textRes); } catch (e) { res = textRes; }
+            .then(function (res) {
 
 
 
@@ -5035,21 +5066,9 @@
 
         var qs = encodeURIComponent(JSON.stringify({ Type: 'categories', SearchText: '' }));
 
-        var url = API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
+        var url = API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
 
-        var token = _getToken();
-
-
-
-        fetch(url, {
-
-            method: 'GET',
-
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-
-        })
-
-            .then(function (r) { return r.json(); })
+        _gatewayRequest('GET', url, null)
 
             .then(function (res) {
 
@@ -5467,21 +5486,9 @@
 
         var qs = encodeURIComponent(JSON.stringify({ Type: type, SearchText: searchText }));
 
-        var url = API_CONFIG.BASE_URL + API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
+        var url = API_CONFIG.ENDPOINTS.AI.CATALOG + '?q=' + qs;
 
-        var token = _getToken();
-
-
-
-        fetch(url, {
-
-            method: 'GET',
-
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
-
-        })
-
-            .then(function (r) { return r.json(); })
+        _gatewayRequest('GET', url, null)
 
             .then(function (res) {
 
