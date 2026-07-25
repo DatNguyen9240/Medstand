@@ -46,7 +46,15 @@ const getPayloadHash = (payloadObj) => {
 export const getHeaders = () => {
     // Lấy cookie token
     const tokenMatch = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
-    const token = tokenMatch ? tokenMatch[1] : '';
+    let token = '';
+    if (tokenMatch && tokenMatch[1]) {
+        try {
+            token = decodeURIComponent(tokenMatch[1]);
+        } catch (error) {
+            logger.error('NETWORK', 'Invalid encoded auth cookie; using raw value.');
+            token = tokenMatch[1];
+        }
+    }
     const config = (typeof API_CONFIG !== 'undefined') ? API_CONFIG : {};
     const apiKey = config.CHAT_API_KEY || '';
     
