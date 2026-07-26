@@ -86,6 +86,13 @@ app.use((req, res, next) => {
     ];
     
     const isSensitiveFolder = sensitiveFolders.some(folder => url.startsWith(folder.toLowerCase()) || url.includes(folder.toLowerCase()));
+
+    // Source thô ở tầng gốc /chatbot-widget/js/ (chatbot.js, chatbot-api-engine.js...)
+    // vẫn bị express.static phơi ra: gần 500 KB code chưa nén kèm toàn bộ comment.
+    // Production chỉ nạp bản .min.js nên chặn phần còn lại không ảnh hưởng gì.
+    const isRawWidgetSource = url.startsWith('/chatbot-widget/js/')
+        && url.endsWith('.js')
+        && !url.endsWith('.min.js');
     
     // Ngăn chặn các file backend/config của hệ thống
     const isSensitiveFile = [
@@ -97,7 +104,7 @@ app.use((req, res, next) => {
         '/env.js'
     ].includes(url);
     
-    if (isSensitiveFolder || isSensitiveFile) {
+    if (isSensitiveFolder || isSensitiveFile || isRawWidgetSource) {
         console.warn(`[Security Alert] Chặn truy cập trực tiếp vào file nhạy cảm: ${req.url}`);
         return res.status(403).send('Forbidden: Access denied.');
     }
