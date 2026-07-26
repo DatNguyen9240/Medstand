@@ -75,7 +75,14 @@ app.use((req, res, next) => {
         '/chatbot-widget/js/core/',
         '/chatbot-widget/js/utils/',
         '/scripts/',
-        '/n8n-system/'
+        '/n8n-system/',
+        // Thư mục hạ tầng/tài liệu bị express.static(__dirname) phơi ra internet
+        '/sql/',
+        '/n8n/',
+        '/reports/',
+        '/config/',
+        '/docs/',
+        '/.runtime-backups/'
     ];
     
     const isSensitiveFolder = sensitiveFolders.some(folder => url.startsWith(folder.toLowerCase()) || url.includes(folder.toLowerCase()));
@@ -195,6 +202,18 @@ const upstreamErrorPayload = (requestId, code, message) => ({
     requestId
 });
 
+// Mọi nhánh lỗi của /api/gateway đều phải trả envelope { data: <chuỗi đã mã hóa> },
+// vì client luôn gọi Cipher.decrypt(resJson.data) trước khi đọc nội dung phản hồi.
+const sendGatewayError = (res, statusCode, requestId, code, message) => {
+    const encryptedRes = Cipher.encrypt(JSON.stringify({
+        success: false,
+        code,
+        message,
+        requestId
+    }));
+    return res.status(statusCode).json({ data: encryptedRes });
+};
+
 // ─── GLOBAL API GATEWAY (Encrypted Tunnel) ───
 const PUBLIC_GATEWAY_ENDPOINTS = new Set([
     '/api/login',
@@ -257,7 +276,7 @@ app.post('/api/gateway', async (req, res) => {
     const startedAt = Date.now();
     try {
         if (!req.body || !req.body.data) {
-            return res.status(400).json({ error: 'Yêu cầu không hợp lệ.' });
+            return sendGatewayError(res, 400, requestId, 'INVALID_GATEWAY_REQUEST', 'Yêu cầu không hợp lệ.');
         }
 
         // 1. Giải mã yêu cầu từ Client
@@ -267,25 +286,28 @@ app.post('/api/gateway', async (req, res) => {
         try {
             normalizedRequest = normalizeGatewayRequest(requestPayload);
         } catch (validationError) {
-            const encryptedRes = Cipher.encrypt(JSON.stringify({
-                success: false,
-                code: validationError.message,
-                message: 'Invalid gateway endpoint or method.',
-                requestId
-            }));
-            return res.status(400).json({ data: encryptedRes });
+            return sendGatewayError(res, 400, requestId, validationError.message, 'Invalid gateway endpoint or method.');
         }
         const { method, endpoint } = normalizedRequest;
         const { body, multipart } = requestPayload;
 
+        // Lưu ý: nhánh này hiện không thể chạy tới — normalizeGatewayRequest() đã ném
+        // INVALID_GATEWAY_ENDPOINT cho endpoint rỗng (không bắt đầu bằng /api/ hoặc /webhook/).
+        // Giữ lại làm lớp phòng vệ nếu điều kiện kiểm tra ở trên thay đổi.
         if (!endpoint) {
-            return res.status(400).json({ error: 'Thiếu endpoint xử lý.' });
+            return sendGatewayError(res, 400, requestId, 'MISSING_GATEWAY_ENDPOINT', 'Thiếu endpoint xử lý.');
         }
 
         // Khóa chức năng tự đăng ký tài khoản tự do theo đặc tả phân quyền hệ thống
         if (endpoint === '/api/API_UserRegister') {
             console.warn('[Security Warning] Chặn yêu cầu đăng ký tài khoản mới tự do qua endpoint /api/API_UserRegister');
-            return res.status(403).json({ error: 'Tính năng đăng ký tài khoản tự do bị vô hiệu hóa theo tài liệu đặc tả phân quyền.' });
+            return sendGatewayError(
+                res,
+                403,
+                requestId,
+                'REGISTRATION_DISABLED',
+                'Tính năng đăng ký tài khoản tự do bị vô hiệu hóa theo tài liệu đặc tả phân quyền.'
+            );
         }
 
         // 2. Định tuyến đến máy chủ đích thật
@@ -318,13 +340,7 @@ app.post('/api/gateway', async (req, res) => {
             try {
                 upstreamBody = buildGatewayMultipartBody(multipart);
             } catch (multipartError) {
-                const encryptedRes = Cipher.encrypt(JSON.stringify({
-                    success: false,
-                    code: multipartError.message,
-                    message: 'Invalid upload payload or file exceeds 10 MB.',
-                    requestId
-                }));
-                return res.status(400).json({ data: encryptedRes });
+                return sendGatewayError(res, 400, requestId, multipartError.message, 'Invalid upload payload or file exceeds 10 MB.');
             }
         } else {
             headers['Content-Type'] = 'application/json';
@@ -473,10 +489,19 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // ─── NEW: API CUNG CẤP DỮ LIỆU DẠNG FLAT ARRAY CHO GOOGLE SHEETS ───
+// Đã vô hiệu hóa: route không theo mô hình fail-closed — xác thực bằng apiKey trên
+// query string (bị ghi nguyên vào log qua req.url), mặc định username='admin' và
+// gọi n8n không có timeout. Mọi truy vấn dữ liệu phải đi qua /api/gateway.
 app.get('/api/sheet-data', async (req, res) => {
+    return res.status(404).json({
+        success: false,
+        code: 'GATEWAY_REQUIRED',
+        message: 'Sheet data is only available through /api/gateway.'
+    });
+    /* c8 ignore start -- retained temporarily for rollback reference
     try {
         console.log('[Sheet Gateway] Received request from Google Sheets:', req.url);
-        
+
         // 1. Kiểm tra API Key bảo mật để tránh người ngoài truy cập trái phép
         const apiKey = req.query.apiKey || req.headers['x-api-key'];
         const validKey = process.env.CHAT_API_KEY || 'test123456';
@@ -531,6 +556,7 @@ app.get('/api/sheet-data', async (req, res) => {
         console.error('[Sheet Gateway Error]:', error);
         res.status(500).json({ error: 'Không thể kết nối đến máy chủ dữ liệu.' });
     }
+    c8 ignore stop */
 });
 
 // ─── 2. PROXY CHO TOÀN BỘ CÁC API ENDPOINT KHÁC SANG BACKEND THẬT ───
@@ -676,6 +702,51 @@ app.get('*all', (req, res) => {
     } else {
         res.sendFile(path.join(__dirname, 'index.html'));
     }
+});
+
+// ─── ERROR MIDDLEWARE (bắt lỗi body-parser: JSON hỏng, payload vượt giới hạn) ───
+// Phải khai báo SAU toàn bộ route và đủ 4 tham số thì Express mới nhận là error handler.
+// Không có lớp này, Express trả trang HTML mặc định kèm stack trace ra ngoài internet.
+app.use((err, req, res, next) => {
+    if (res.headersSent) return next(err);
+
+    const requestId = requestIdOf(req);
+    const errorType = String(err && err.type || '');
+    const isPayloadTooLarge = errorType === 'entity.too.large';
+    const isMalformedBody = errorType === 'entity.parse.failed' || errorType === 'entity.verify.failed';
+
+    let statusCode = Number(err && (err.status || err.statusCode));
+    if (!Number.isFinite(statusCode) || statusCode < 400 || statusCode > 599) statusCode = 500;
+
+    const code = isPayloadTooLarge
+        ? 'PAYLOAD_TOO_LARGE'
+        : isMalformedBody
+            ? 'INVALID_REQUEST_BODY'
+            : 'INTERNAL_SERVER_ERROR';
+    const message = isPayloadTooLarge
+        ? 'Dữ liệu gửi lên vượt quá dung lượng cho phép.'
+        : isMalformedBody
+            ? 'Yêu cầu không hợp lệ.'
+            : 'Hệ thống gặp sự cố khi xử lý yêu cầu. Vui lòng thử lại.';
+
+    // Chỉ log metadata an toàn: không ghi body, header, query string hay stack trace.
+    console.error(
+        `[Server Error] requestId=${requestId}; method=${req.method}; path=${req.path}; `
+        + `status=${statusCode}; code=${code}; cause=${errorType || (err && err.name) || 'UNKNOWN'}`
+    );
+
+    // Client của /api/gateway luôn giải mã resJson.data nên phải giữ đúng envelope mã hóa.
+    if (req.path === '/api/gateway') {
+        return sendGatewayError(res, statusCode, requestId, code, message);
+    }
+
+    return res.status(statusCode).json({
+        success: false,
+        code,
+        errorCode: code,
+        message,
+        requestId
+    });
 });
 
 app.listen(PORT, () => {
