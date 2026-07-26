@@ -81,7 +81,13 @@
 
         var match = document.cookie.match(/(?:^|; )auth_token=([^;]*)/);
 
-        return match ? match[1] : '';
+        if (!match || !match[1]) return '';
+        try {
+            return decodeURIComponent(match[1]);
+        } catch (error) {
+            console.warn('[Chatbot] Invalid encoded auth cookie; using raw value.');
+            return match[1];
+        }
 
     }
 
