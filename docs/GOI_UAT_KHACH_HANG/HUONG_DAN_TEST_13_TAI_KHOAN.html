@@ -1,0 +1,803 @@
+<title>Hướng dẫn kiểm thử Medstand AI — Bộ 13 tài khoản</title>
+
+<style>
+  /* ── Tokens: kế thừa Design System v2 của Medstand ───────────────── */
+  :root {
+    --brand:        #0b8a43;
+    --brand-strong: #066533;
+    --brand-tint:   #ecfdf5;
+    --accent:       #4f46e5;
+    --accent-tint:  #eef2ff;
+
+    --pass:    #10b981;
+    --pass-bg: #d1fae5;
+    --hold:    #f59e0b;
+    --hold-bg: #fef3c7;
+    --fail:    #ef4444;
+    --fail-bg: #fee2e2;
+
+    --ground:  #f4f6fa;
+    --surface: #ffffff;
+    --raised:  #ffffff;
+
+    --ink:      #1b2a24;
+    --ink-soft: #4a5a54;
+    --ink-mute: #6b7280;
+
+    --rule:        #e7f2eb;
+    --rule-strong: #cbd5e1;
+
+    --shadow: 0 1px 2px rgba(27, 42, 36, .05), 0 8px 24px -12px rgba(27, 42, 36, .12);
+
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
+
+    --step: clamp(1rem, .55rem + 1.4vw, 1.3rem);
+    --measure: 68ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --brand: #34d399; --brand-strong: #6ee7b7; --brand-tint: #0d2c1f;
+      --accent: #a5b4fc; --accent-tint: #1e1b4b;
+      --pass: #34d399; --pass-bg: #0d2c1f;
+      --hold: #fbbf24; --hold-bg: #35270a;
+      --fail: #f87171; --fail-bg: #3a1516;
+      --ground: #0e1512; --surface: #16201c; --raised: #1c2723;
+      --ink: #e8f0ec; --ink-soft: #a9bcb3; --ink-mute: #7d918a;
+      --rule: #26332d; --rule-strong: #3a4b43;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --brand: #34d399; --brand-strong: #6ee7b7; --brand-tint: #0d2c1f;
+    --accent: #a5b4fc; --accent-tint: #1e1b4b;
+    --pass: #34d399; --pass-bg: #0d2c1f;
+    --hold: #fbbf24; --hold-bg: #35270a;
+    --fail: #f87171; --fail-bg: #3a1516;
+    --ground: #0e1512; --surface: #16201c; --raised: #1c2723;
+    --ink: #e8f0ec; --ink-soft: #a9bcb3; --ink-mute: #7d918a;
+    --rule: #26332d; --rule-strong: #3a4b43;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+  :root[data-theme="light"] {
+    --brand: #0b8a43; --brand-strong: #066533; --brand-tint: #ecfdf5;
+    --accent: #4f46e5; --accent-tint: #eef2ff;
+    --pass: #10b981; --pass-bg: #d1fae5;
+    --hold: #f59e0b; --hold-bg: #fef3c7;
+    --fail: #ef4444; --fail-bg: #fee2e2;
+    --ground: #f4f6fa; --surface: #ffffff; --raised: #ffffff;
+    --ink: #1b2a24; --ink-soft: #4a5a54; --ink-mute: #6b7280;
+    --rule: #e7f2eb; --rule-strong: #cbd5e1;
+    --shadow: 0 1px 2px rgba(27,42,36,.05), 0 8px 24px -12px rgba(27,42,36,.12);
+  }
+
+  /* ── Nền ─────────────────────────────────────────────────────────── */
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 4vw, 2rem) 5rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  /* ── Chữ ─────────────────────────────────────────────────────────── */
+  h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.2; letter-spacing: -.015em; }
+  h1 { font-size: clamp(1.75rem, 1.1rem + 2.6vw, 2.7rem); font-weight: 700; }
+  h2 { font-size: clamp(1.25rem, 1rem + 1vw, 1.6rem); font-weight: 650; }
+  h3 { font-size: 1.05rem; font-weight: 650; }
+  p  { margin: 0; max-width: var(--measure); }
+  a  { color: var(--accent); text-underline-offset: .2em; }
+  code, kbd, .mono { font-family: var(--mono); font-size: .92em; }
+
+  .eyebrow {
+    font-size: .72rem; font-weight: 650; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--brand);
+  }
+  .lede { font-size: 1.08rem; color: var(--ink-soft); max-width: var(--measure); }
+  .muted { color: var(--ink-mute); }
+
+  /* ── Đầu trang ───────────────────────────────────────────────────── */
+  .masthead { display: flex; flex-direction: column; gap: 1rem; }
+  .masthead .rule-line {
+    height: 3px; width: 4.5rem; border-radius: 2px;
+    background: linear-gradient(90deg, var(--brand), var(--accent));
+  }
+  .meta-strip {
+    display: flex; flex-wrap: wrap; gap: .5rem 1.5rem;
+    padding-top: 1rem; border-top: 1px solid var(--rule);
+    font-size: .85rem; color: var(--ink-mute);
+  }
+  .meta-strip b { color: var(--ink-soft); font-weight: 600; }
+
+  /* ── Khối chung ──────────────────────────────────────────────────── */
+  section { display: flex; flex-direction: column; gap: 1.25rem; scroll-margin-top: 1.5rem; }
+  .sec-head { display: flex; flex-direction: column; gap: .4rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 1.25rem 1.4rem;
+    box-shadow: var(--shadow);
+  }
+
+  .note {
+    border-left: 3px solid var(--hold);
+    background: var(--hold-bg);
+    color: var(--ink);
+    padding: .9rem 1.1rem;
+    border-radius: 0 8px 8px 0;
+    font-size: .95rem;
+  }
+  .note.stop { border-left-color: var(--fail); background: var(--fail-bg); }
+  .note.go   { border-left-color: var(--pass); background: var(--pass-bg); }
+  .note b { font-weight: 650; }
+
+  /* ── Mục lục ─────────────────────────────────────────────────────── */
+  .toc { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .5rem; }
+  .toc a {
+    display: flex; align-items: baseline; gap: .6rem;
+    padding: .6rem .8rem; border-radius: 8px;
+    background: var(--surface); border: 1px solid var(--rule);
+    text-decoration: none; color: var(--ink); font-size: .9rem;
+  }
+  .toc a:hover, .toc a:focus-visible { border-color: var(--brand); background: var(--brand-tint); }
+  .toc .n { font-family: var(--mono); font-size: .78rem; color: var(--brand); font-weight: 600; }
+
+  /* ── Checklist lưu tiến độ ───────────────────────────────────────── */
+  .checks { display: flex; flex-direction: column; gap: .1rem; }
+  .check {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .7rem .9rem; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .check:hover { background: var(--brand-tint); }
+  .check input { margin-top: .35rem; width: 1.05rem; height: 1.05rem; accent-color: var(--brand); flex: none; }
+  .check span { font-size: .95rem; }
+  .check input:checked + span { color: var(--ink-mute); text-decoration: line-through; }
+
+  /* ── Thẻ câu hỏi có nút chép ─────────────────────────────────────── */
+  .qlist { display: flex; flex-direction: column; gap: .85rem; }
+  .q {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 12px; overflow: hidden;
+  }
+  .q-top { display: flex; align-items: flex-start; gap: .9rem; padding: .95rem 1.1rem; }
+  .q-num {
+    font-family: var(--mono); font-size: .78rem; font-weight: 650;
+    color: var(--surface); background: var(--brand);
+    min-width: 1.6rem; height: 1.6rem; border-radius: 6px;
+    display: grid; place-items: center; flex: none; margin-top: .1rem;
+  }
+  .q-text { flex: 1; font-size: 1rem; font-weight: 550; }
+  .q-copy {
+    flex: none; font: inherit; font-size: .82rem; font-weight: 600;
+    padding: .38rem .75rem; border-radius: 7px; cursor: pointer;
+    border: 1px solid var(--rule-strong); background: transparent; color: var(--ink-soft);
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .q-copy:hover, .q-copy:focus-visible { border-color: var(--accent); color: var(--accent); background: var(--accent-tint); }
+  .q-copy[data-done="1"] { border-color: var(--pass); color: var(--pass); background: var(--pass-bg); }
+  .q-expect {
+    padding: .7rem 1.1rem .9rem 3.6rem;
+    border-top: 1px dashed var(--rule);
+    font-size: .88rem; color: var(--ink-soft);
+    background: color-mix(in srgb, var(--brand-tint) 45%, transparent);
+  }
+  .q-expect b { color: var(--brand); font-weight: 650; }
+
+  /* ── Bảng ────────────────────────────────────────────────────────── */
+  .tbl-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 30rem; }
+  th, td { padding: .7rem .9rem; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-mute); font-weight: 650; background: color-mix(in srgb, var(--ground) 60%, transparent); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; font-family: var(--mono); }
+
+  .pill {
+    display: inline-block; font-size: .72rem; font-weight: 650;
+    padding: .18rem .5rem; border-radius: 999px; letter-spacing: .02em;
+  }
+  .pill.pass { background: var(--pass-bg); color: var(--pass); }
+  .pill.hold { background: var(--hold-bg); color: var(--hold); }
+  .pill.fail { background: var(--fail-bg); color: var(--fail); }
+
+  /* ── Sơ đồ ───────────────────────────────────────────────────────── */
+  figure { margin: 0; display: flex; flex-direction: column; gap: .6rem; }
+  .fig-frame {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-radius: 12px; padding: 1.2rem; overflow-x: auto;
+  }
+  .fig-frame svg { display: block; width: 100%; height: auto; min-width: 30rem; }
+  figcaption { font-size: .82rem; color: var(--ink-mute); }
+
+  .svg-card { fill: var(--surface); stroke: var(--rule-strong); }
+  .svg-card-go { fill: var(--brand-tint); stroke: var(--brand); }
+  .svg-t  { fill: var(--ink); font-family: var(--sans); font-weight: 650; }
+  .svg-s  { fill: var(--ink-soft); font-family: var(--sans); }
+  .svg-n  { fill: var(--brand); font-family: var(--mono); font-weight: 700; }
+  .svg-ar { stroke: var(--rule-strong); fill: none; }
+
+  /* ── Chỗ chờ ảnh chụp thật ───────────────────────────────────────── */
+  .shot {
+    border: 2px dashed var(--rule-strong); border-radius: 12px;
+    padding: 1.5rem 1.2rem; text-align: center;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    display: flex; flex-direction: column; gap: .4rem; align-items: center;
+  }
+  .shot .tag {
+    font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-tint);
+    padding: .2rem .6rem; border-radius: 999px;
+  }
+  .shot .what { font-weight: 600; font-size: .95rem; }
+  .shot .how { font-size: .85rem; color: var(--ink-mute); max-width: 42ch; }
+
+  /* ── Danh sách ───────────────────────────────────────────────────── */
+  ul, ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .45rem; max-width: var(--measure); }
+  li::marker { color: var(--brand); }
+
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: .5rem 1.2rem; font-size: .92rem; align-items: baseline; }
+  .kv dt { color: var(--ink-mute); }
+  .kv dd { margin: 0; font-weight: 550; }
+
+  .fill { border-bottom: 1.5px dotted var(--rule-strong); min-width: 8rem; display: inline-block; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; }
+
+  .role-card { display: flex; flex-direction: column; gap: .7rem; }
+  .role-card .role-name { display: flex; align-items: center; gap: .55rem; font-weight: 650; }
+  .role-card .dot { width: .6rem; height: .6rem; border-radius: 50%; flex: none; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+  @media print {
+    body { background: #fff; }
+    .q-copy, .toc { display: none; }
+    .card, .q, .fig-frame, .tbl-scroll { box-shadow: none; break-inside: avoid; }
+    section { break-inside: avoid-page; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- ══ ĐẦU TRANG ══ -->
+  <header class="masthead">
+    <div class="eyebrow">Medstand AI · Kiểm thử Pilot</div>
+    <h1>Hướng dẫn kiểm thử<br>bộ 13 tài khoản</h1>
+    <p class="lede">Tài liệu này hướng dẫn bạn chạy thử trợ lý AI bằng tài khoản được cấp, ghi lại kết quả và báo lỗi đúng cách. Mỗi tài khoản mất khoảng <b>20–25 phút</b>.</p>
+    <div class="rule-line"></div>
+    <div class="meta-strip">
+      <span><b>Môi trường</b> medtest.bms7.net</span>
+      <span><b>Chế độ</b> Chỉ đọc — không ghi dữ liệu thật</span>
+      <span><b>Dành cho</b> Sale · Quản lý</span>
+    </div>
+  </header>
+
+  <!-- ══ MỤC LỤC ══ -->
+  <nav class="toc" aria-label="Mục lục">
+    <a href="#chuan-bi"><span class="n">01</span> Trước khi bắt đầu</a>
+    <a href="#quy-trinh"><span class="n">02</span> Quy trình một câu hỏi</a>
+    <a href="#bo-cau-hoi"><span class="n">03</span> Bộ câu hỏi bắt buộc</a>
+    <a href="#theo-vai"><span class="n">04</span> Câu hỏi theo vai trò</a>
+    <a href="#doc-ket-qua"><span class="n">05</span> Cách đọc kết quả</a>
+    <a href="#gap-loi"><span class="n">06</span> Khi gặp lỗi</a>
+    <a href="#khong-lam"><span class="n">07</span> Việc không được làm</a>
+    <a href="#phieu"><span class="n">08</span> Phiếu ghi kết quả</a>
+  </nav>
+
+  <!-- ══ 01 CHUẨN BỊ ══ -->
+  <section id="chuan-bi">
+    <div class="sec-head">
+      <div class="eyebrow">01</div>
+      <h2>Trước khi bắt đầu</h2>
+      <p class="muted">Làm đủ bốn việc dưới đây rồi mới chạy câu hỏi đầu tiên. Bỏ qua bước nào cũng dễ dẫn tới kết quả sai mà không phải lỗi hệ thống.</p>
+    </div>
+
+    <div class="card">
+      <div class="checks">
+        <label class="check"><input type="checkbox" data-k="p1"><span><b>Mở bằng cửa sổ ẩn danh mới.</b> Mỗi tài khoản một cửa sổ riêng. Không dùng lại cửa sổ của tài khoản trước — dữ liệu cũ còn trong bộ nhớ đệm có thể hiển thị nhầm.</span></label>
+        <label class="check"><input type="checkbox" data-k="p2"><span><b>Đăng nhập bằng đúng tài khoản được giao.</b> Điều phối viên sẽ cấp tài khoản và mã khách hàng đại diện cho bạn.</span></label>
+        <label class="check"><input type="checkbox" data-k="p3"><span><b>Kiểm tra tên và vai trò hiển thị ở góc màn hình.</b> Sai tên nghĩa là đăng nhập nhầm — đăng xuất và làm lại.</span></label>
+        <label class="check"><input type="checkbox" data-k="p4"><span><b>Chuẩn bị chỗ ghi kết quả.</b> Dùng phiếu ở mục 08, hoặc bản in của tài liệu này.</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:.7rem">Thông tin buổi test</div>
+      <dl class="kv">
+        <dt>Tài khoản</dt><dd><span class="fill"></span></dd>
+        <dt>Vai trò</dt><dd><span class="fill"></span></dd>
+        <dt>Mã khách đại diện</dt><dd><span class="fill"></span> <span class="muted">— thay vào chỗ ghi <code>MÃ KHÁCH</code> trong các câu hỏi</span></dd>
+        <dt>Ngày giờ test</dt><dd><span class="fill"></span></dd>
+        <dt>Người thực hiện</dt><dd><span class="fill"></span></dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ══ 02 QUY TRÌNH ══ -->
+  <section id="quy-trinh">
+    <div class="sec-head">
+      <div class="eyebrow">02</div>
+      <h2>Quy trình một câu hỏi</h2>
+      <p class="muted">Chạy đúng thứ tự này cho mọi câu hỏi, để kết quả giữa 13 tài khoản đối chiếu được với nhau.</p>
+    </div>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 900 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Năm bước: Chép câu hỏi, Gửi, Chờ kết quả, Đối chiếu, Ghi kết quả">
+          <defs>
+            <marker id="ah" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="currentColor" style="color:var(--rule-strong)"/>
+            </marker>
+          </defs>
+          <g>
+            <rect class="svg-card" x="4"   y="30" width="158" height="130" rx="12"/>
+            <text class="svg-n" x="24" y="60" font-size="15">01</text>
+            <text class="svg-t" x="24" y="88" font-size="15">Chép câu hỏi</text>
+            <text class="svg-s" x="24" y="112" font-size="12.5">Bấm nút Chép,</text>
+            <text class="svg-s" x="24" y="130" font-size="12.5">dán vào khung chat</text>
+          </g>
+          <line class="svg-ar" x1="168" y1="95" x2="188" y2="95" marker-end="url(#ah)"/>
+          <g>
+            <rect class="svg-card" x="194" y="30" width="158" height="130" rx="12"/>
+            <text class="svg-n" x="214" y="60" font-size="15">02</text>
+            <text class="svg-t" x="214" y="88" font-size="15">Gửi</text>
+            <text class="svg-s" x="214" y="112" font-size="12.5">Thay MÃ KHÁCH</text>
+            <text class="svg-s" x="214" y="130" font-size="12.5">bằng mã được giao</text>
+          </g>
+          <line class="svg-ar" x1="358" y1="95" x2="378" y2="95" marker-end="url(#ah)"/>
+          <g>
+            <rect class="svg-card" x="384" y="30" width="158" height="130" rx="12"/>
+            <text class="svg-n" x="404" y="60" font-size="15">03</text>
+            <text class="svg-t" x="404" y="88" font-size="15">Chờ kết quả</text>
+            <text class="svg-s" x="404" y="112" font-size="12.5">Quá lâu thì bấm</text>
+            <text class="svg-s" x="404" y="130" font-size="12.5">Dừng phản hồi</text>
+          </g>
+          <line class="svg-ar" x1="548" y1="95" x2="568" y2="95" marker-end="url(#ah)"/>
+          <g>
+            <rect class="svg-card" x="574" y="30" width="158" height="130" rx="12"/>
+            <text class="svg-n" x="594" y="60" font-size="15">04</text>
+            <text class="svg-t" x="594" y="88" font-size="15">Đối chiếu</text>
+            <text class="svg-s" x="594" y="112" font-size="12.5">So với phần</text>
+            <text class="svg-s" x="594" y="130" font-size="12.5">Kết quả mong đợi</text>
+          </g>
+          <line class="svg-ar" x1="738" y1="95" x2="758" y2="95" marker-end="url(#ah)"/>
+          <g>
+            <rect class="svg-card-go" x="764" y="30" width="132" height="130" rx="12"/>
+            <text class="svg-n" x="784" y="60" font-size="15">05</text>
+            <text class="svg-t" x="784" y="88" font-size="15">Ghi kết quả</text>
+            <text class="svg-s" x="784" y="112" font-size="12.5">Đạt / Chưa đạt</text>
+            <text class="svg-s" x="784" y="130" font-size="12.5">/ Chưa chạy được</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Năm bước áp dụng cho mọi câu hỏi trong tài liệu.</figcaption>
+    </figure>
+
+    <div class="shot">
+      <span class="tag">Chờ ảnh minh họa</span>
+      <span class="what">Màn hình Trợ lý AI sau khi đăng nhập</span>
+      <span class="how">Cần thấy rõ: khung nhập câu hỏi ở dưới, nút gửi, và tên tài khoản ở góc. Che mã khách hàng thật trước khi gửi ảnh.</span>
+    </div>
+  </section>
+
+  <!-- ══ 03 BỘ CÂU HỎI ══ -->
+  <section id="bo-cau-hoi">
+    <div class="sec-head">
+      <div class="eyebrow">03</div>
+      <h2>Bộ câu hỏi bắt buộc</h2>
+      <p class="muted">Chạy đủ cả 11 câu, theo thứ tự. Chép nguyên văn — chỉ thay <code>MÃ KHÁCH</code> bằng mã được giao.</p>
+    </div>
+
+    <div class="note">
+      <b>Gõ đúng nguyên văn.</b> Trợ lý hiểu theo cách diễn đạt, nên đổi chữ có thể ra kết quả khác. Nếu muốn thử cách nói khác, cứ thử — nhưng ghi vào phần Ghi chú, đừng thay câu chuẩn.
+    </div>
+
+    <div class="qlist">
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">01</span>
+          <span class="q-text">Hôm nay tôi nên làm gì?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Danh sách khách cần quan tâm hôm nay, kèm lý do dễ hiểu như lâu chưa mua hoặc tới lịch ghé.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">02</span>
+          <span class="q-text">Hôm nay tôi nên ghé khách nào?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Chỉ khách thuộc tuyến của bạn. Thấy khách miền khác là lỗi nghiêm trọng, báo ngay.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">03</span>
+          <span class="q-text">Cho tôi danh sách khách thuộc tuyến của tôi</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Danh sách khách được giao. Đếm sơ xem có khách nào lạ không.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">04</span>
+          <span class="q-text">Khách nào lâu chưa mua?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Tên khách, lần mua cuối và số ngày chưa mua. Không được hiện điểm số hay mã kỹ thuật.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">05</span>
+          <span class="q-text">Hôm nay doanh số của tôi là bao nhiêu?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Có số tiền của ngày hôm nay. Đối chiếu với bảng số liệu điều phối viên cung cấp.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">06</span>
+          <span class="q-text">Doanh số từ 09/07/2026 đến 20/07/2026 của tôi là bao nhiêu?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Đúng khoảng ngày đã hỏi, đủ 12 ngày. Nếu trả về khoảng ngày khác là lỗi, ghi lại khoảng ngày nó hiện.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">07</span>
+          <span class="q-text">Khách MÃ KHÁCH đang nợ bao nhiêu?</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Tổng còn nợ và tình trạng thanh toán. Khách không nợ thì phải nói rõ là không nợ, không để trống.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">08</span>
+          <span class="q-text">Chi tiết đi</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Gõ ngay sau câu 07. Trợ lý phải nhớ đang nói về khách đó và mở chi tiết công nợ, không hỏi lại từ đầu.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">09</span>
+          <span class="q-text">Gợi ý đơn hàng cho MÃ KHÁCH</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Danh sách sản phẩm gợi ý kèm lý do. Khách mới chưa đủ lịch sử thì phải nói rõ, không được đoán bừa.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">10</span>
+          <span class="q-text">Gợi ý bán kèm cho khách MÃ KHÁCH</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Sản phẩm bán kèm gắn với đúng khách vừa hỏi, không phải danh sách chung chung.</div>
+      </div>
+
+      <div class="q">
+        <div class="q-top">
+          <span class="q-num">11</span>
+          <span class="q-text">Tồn kho sản phẩm A003</span>
+          <button class="q-copy" type="button">Chép</button>
+        </div>
+        <div class="q-expect"><b>Mong đợi</b> — Số tồn kèm tên kho và số lô. Nếu ghi tồn khả dụng là <i>tham khảo</i> hoặc <i>chưa xác minh</i>, đó là đúng thiết kế — phải kiểm kho trước khi hứa với khách.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 04 THEO VAI TRÒ ══ -->
+  <section id="theo-vai">
+    <div class="sec-head">
+      <div class="eyebrow">04</div>
+      <h2>Câu hỏi theo vai trò</h2>
+      <p class="muted">Chạy thêm phần ứng với vai trò của tài khoản bạn đang dùng.</p>
+    </div>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 900 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="So sánh phạm vi dữ liệu giữa Sale và Quản lý">
+          <g>
+            <rect class="svg-card" x="4" y="20" width="430" height="200" rx="12"/>
+            <circle cx="34" cy="52" r="6" style="fill:var(--brand)"/>
+            <text class="svg-t" x="50" y="57" font-size="16">Sale</text>
+            <text class="svg-s" x="24" y="88"  font-size="13">Chỉ thấy khách và tuyến được giao</text>
+            <line class="svg-ar" x1="24" y1="104" x2="414" y2="104"/>
+            <text class="svg-s" x="24" y="130" font-size="13">· Doanh số cá nhân</text>
+            <text class="svg-s" x="24" y="154" font-size="13">· Công nợ khách trong tuyến</text>
+            <text class="svg-s" x="24" y="178" font-size="13">· Gợi ý đơn hàng, bán kèm</text>
+            <text class="svg-s" x="24" y="202" font-size="13">· Không duyệt được khuyến mãi</text>
+          </g>
+          <g>
+            <rect class="svg-card" x="466" y="20" width="430" height="200" rx="12"/>
+            <circle cx="496" cy="52" r="6" style="fill:var(--accent)"/>
+            <text class="svg-t" x="512" y="57" font-size="16">Quản lý</text>
+            <text class="svg-s" x="486" y="88"  font-size="13">Thấy toàn đội và miền được giao</text>
+            <line class="svg-ar" x1="486" y1="104" x2="876" y2="104"/>
+            <text class="svg-s" x="486" y="130" font-size="13">· Doanh số theo nhân viên</text>
+            <text class="svg-s" x="486" y="154" font-size="13">· Phân nhóm khách A / B / C</text>
+            <text class="svg-s" x="486" y="178" font-size="13">· Danh sách cần xem xét khuyến mãi</text>
+            <text class="svg-s" x="486" y="202" font-size="13">· Vẫn không thấy miền khác</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>Cùng một câu hỏi, hai vai trò phải ra phạm vi dữ liệu khác nhau. Đây là điểm cần kiểm kỹ.</figcaption>
+    </figure>
+
+    <div class="grid-2">
+      <div class="card role-card">
+        <div class="role-name"><span class="dot" style="background:var(--brand)"></span>Nếu bạn là Sale</div>
+        <div class="qlist">
+          <div class="q"><div class="q-top"><span class="q-text">Chấm điểm khách hàng của tôi</span><button class="q-copy" type="button">Chép</button></div></div>
+          <div class="q"><div class="q-top"><span class="q-text">Hôm nay bán gì cho khách MÃ KHÁCH?</span><button class="q-copy" type="button">Chép</button></div></div>
+        </div>
+        <p class="muted" style="font-size:.88rem">Kiểm kỹ: không câu nào được trả về khách ngoài tuyến của bạn.</p>
+      </div>
+
+      <div class="card role-card">
+        <div class="role-name"><span class="dot" style="background:var(--accent)"></span>Nếu bạn là Quản lý</div>
+        <div class="qlist">
+          <div class="q"><div class="q-top"><span class="q-text">Chấm điểm khách hàng của tôi</span><button class="q-copy" type="button">Chép</button></div></div>
+          <div class="q"><div class="q-top"><span class="q-text">Sản phẩm nào cần xem xét khuyến mãi?</span><button class="q-copy" type="button">Chép</button></div></div>
+        </div>
+        <p class="muted" style="font-size:.88rem">Danh sách khuyến mãi chỉ là đề xuất để xem xét, chưa phải chương trình đã duyệt.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 05 ĐỌC KẾT QUẢ ══ -->
+  <section id="doc-ket-qua">
+    <div class="sec-head">
+      <div class="eyebrow">05</div>
+      <h2>Cách đọc kết quả</h2>
+      <p class="muted">Bốn điều cần kiểm ở mỗi câu trả lời, trước khi kết luận đạt hay chưa đạt.</p>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th style="width:11rem">Kiểm gì</th><th>Đạt khi</th><th>Báo lỗi khi</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Đúng phạm vi</b></td>
+            <td>Chỉ có khách, nhân viên, kho thuộc quyền của tài khoản đang dùng.</td>
+            <td>Xuất hiện bất kỳ đối tượng nào ở miền khác — đây là lỗi nghiêm trọng nhất, dừng test và báo ngay.</td>
+          </tr>
+          <tr>
+            <td><b>Đúng câu hỏi</b></td>
+            <td>Trả lời đúng thứ đã hỏi, đúng khoảng thời gian đã nêu.</td>
+            <td>Hỏi tháng này ra tháng khác, hỏi khách A ra khách B.</td>
+          </tr>
+          <tr>
+            <td><b>Đọc hiểu được</b></td>
+            <td>Tiếng Việt rõ ràng, ngày dạng <code>dd/MM/yyyy</code>, tiền có đơn vị.</td>
+            <td>Hiện tên cột tiếng Anh, mã kỹ thuật, chữ bị lỗi font.</td>
+          </tr>
+          <tr>
+            <td><b>Trung thực</b></td>
+            <td>Không có dữ liệu thì nói rõ là chưa có.</td>
+            <td>Biến <i>chưa có dữ liệu</i> thành <i>0</i> hoặc <i>hết hàng</i>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note go">
+      <b>Không có dữ liệu không phải là lỗi.</b> Khách chưa phát sinh giao dịch thì trợ lý báo không có là đúng. Chỉ ghi lỗi khi bạn <i>chắc chắn</i> dữ liệu đó có thật trong phạm vi của mình.
+    </div>
+
+    <div class="shot">
+      <span class="tag">Chờ ảnh minh họa</span>
+      <span class="what">Một thẻ kết quả đúng — ví dụ thẻ công nợ</span>
+      <span class="how">Dùng làm mẫu để người test biết kết quả đạt trông ra sao. Che tên và mã khách hàng thật.</span>
+    </div>
+  </section>
+
+  <!-- ══ 06 GẶP LỖI ══ -->
+  <section id="gap-loi">
+    <div class="sec-head">
+      <div class="eyebrow">06</div>
+      <h2>Khi gặp lỗi</h2>
+      <p class="muted">Thử theo thứ tự này trước khi báo. Phần lớn trường hợp tự xử lý được ở hai bước đầu.</p>
+    </div>
+
+    <figure>
+      <div class="fig-frame">
+        <svg viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cây quyết định khi gặp lỗi">
+          <defs>
+            <marker id="ah2" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="currentColor" style="color:var(--rule-strong)"/>
+            </marker>
+          </defs>
+
+          <rect class="svg-card" x="300" y="8" width="300" height="52" rx="10"/>
+          <text class="svg-t" x="450" y="40" font-size="15" text-anchor="middle">Câu trả lời không như mong đợi</text>
+          <line class="svg-ar" x1="450" y1="62" x2="450" y2="86" marker-end="url(#ah2)"/>
+
+          <rect class="svg-card" x="250" y="88" width="400" height="62" rx="10"/>
+          <text class="svg-t" x="450" y="115" font-size="14" text-anchor="middle">Có phải bạn gõ thiếu mã khách</text>
+          <text class="svg-s" x="450" y="136" font-size="13" text-anchor="middle">hoặc thiếu khoảng ngày không?</text>
+
+          <line class="svg-ar" x1="250" y1="119" x2="176" y2="119" marker-end="url(#ah2)"/>
+          <rect class="svg-card-go" x="8" y="92" width="168" height="56" rx="10"/>
+          <text class="svg-t" x="92" y="115" font-size="13.5" text-anchor="middle">Bổ sung rồi</text>
+          <text class="svg-t" x="92" y="134" font-size="13.5" text-anchor="middle">hỏi lại</text>
+
+          <line class="svg-ar" x1="450" y1="152" x2="450" y2="176" marker-end="url(#ah2)"/>
+          <rect class="svg-card" x="250" y="178" width="400" height="62" rx="10"/>
+          <text class="svg-t" x="450" y="205" font-size="14" text-anchor="middle">Đăng xuất, đăng nhập lại,</text>
+          <text class="svg-s" x="450" y="226" font-size="13" text-anchor="middle">hỏi lại đúng câu đó một lần nữa</text>
+
+          <line class="svg-ar" x1="450" y1="242" x2="450" y2="266" marker-end="url(#ah2)"/>
+          <rect class="svg-card" x="250" y="268" width="400" height="56" rx="10"/>
+          <text class="svg-t" x="450" y="292" font-size="14" text-anchor="middle">Vẫn sai — ghi phiếu và báo lỗi</text>
+          <text class="svg-s" x="450" y="313" font-size="12.5" text-anchor="middle">kèm ảnh chụp toàn màn hình</text>
+
+          <line class="svg-ar" x1="650" y1="296" x2="724" y2="296" marker-end="url(#ah2)"/>
+          <rect class="svg-card" x="732" y="268" width="164" height="56" rx="10"/>
+          <text class="svg-s" x="814" y="292" font-size="12.5" text-anchor="middle">Có Mã tra cứu thì</text>
+          <text class="svg-s" x="814" y="310" font-size="12.5" text-anchor="middle">chép cả mã đó</text>
+        </svg>
+      </div>
+      <figcaption>Nếu màn hình hiện <b>Mã tra cứu</b>, hãy chép lại — đội kỹ thuật dùng nó để tìm đúng lần chạy bị lỗi.</figcaption>
+    </figure>
+
+    <div class="card">
+      <h3 style="margin-bottom:.8rem">Một báo lỗi đủ dùng cần có</h3>
+      <ol>
+        <li>Tài khoản và vai trò — <b>không ghi mật khẩu</b></li>
+        <li>Thời điểm xảy ra, ghi cả giờ phút</li>
+        <li>Câu hỏi nguyên văn bạn đã gõ</li>
+        <li>Mã khách hoặc mã sản phẩm liên quan</li>
+        <li>Ảnh chụp toàn màn hình, thấy được cả thông báo lỗi</li>
+        <li>Theo bạn thì kết quả đúng phải như thế nào</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══ 07 KHÔNG LÀM ══ -->
+  <section id="khong-lam">
+    <div class="sec-head">
+      <div class="eyebrow">07</div>
+      <h2>Việc không được làm</h2>
+    </div>
+
+    <div class="note stop">
+      <b>Đây là bản chạy thử.</b> Số liệu dùng để kiểm tra hệ thống, không phải số liệu kinh doanh chính thức. Đừng dùng kết quả ở đây để chốt đơn hay báo cáo.
+    </div>
+
+    <div class="card">
+      <ul>
+        <li>Không tạo đơn thật, không thêm khách thật, không áp giá hay khuyến mãi.</li>
+        <li>Không dùng tài khoản Admin để chạy thay — làm vậy sẽ che mất lỗi phân quyền, đúng thứ buổi test này cần tìm.</li>
+        <li>Không dùng chung một cửa sổ trình duyệt cho hai tài khoản.</li>
+        <li>Không tự sửa dữ liệu để màn hình có kết quả đẹp.</li>
+        <li>Không coi nội dung về thuốc và sản phẩm do AI trả về là tư vấn chuyên môn. Luôn kiểm lại với người có thẩm quyền.</li>
+        <li>Không gửi mật khẩu hay ảnh có chứa thông tin nhạy cảm của khách vào nhóm chung.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ══ 08 PHIẾU ══ -->
+  <section id="phieu">
+    <div class="sec-head">
+      <div class="eyebrow">08</div>
+      <h2>Phiếu ghi kết quả</h2>
+      <p class="muted">Điền cho từng câu hỏi. Bản in dùng được trực tiếp.</p>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; flex-wrap:wrap; gap:1.5rem; font-size:.9rem">
+        <span><span class="pill pass">Đạt</span> &nbsp;Kết quả đúng như mong đợi</span>
+        <span><span class="pill fail">Chưa đạt</span> &nbsp;Chạy được nhưng kết quả sai</span>
+        <span><span class="pill hold">Chưa chạy được</span> &nbsp;Báo lỗi hệ thống, không ra kết quả</span>
+      </div>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:3rem">Câu</th>
+            <th>Nội dung</th>
+            <th style="width:9rem">Kết quả</th>
+            <th style="width:12rem">Ghi chú / Mã tra cứu</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">01</td><td>Hôm nay tôi nên làm gì?</td><td></td><td></td></tr>
+          <tr><td class="num">02</td><td>Hôm nay tôi nên ghé khách nào?</td><td></td><td></td></tr>
+          <tr><td class="num">03</td><td>Danh sách khách thuộc tuyến</td><td></td><td></td></tr>
+          <tr><td class="num">04</td><td>Khách nào lâu chưa mua?</td><td></td><td></td></tr>
+          <tr><td class="num">05</td><td>Doanh số hôm nay</td><td></td><td></td></tr>
+          <tr><td class="num">06</td><td>Doanh số 09/07 – 20/07</td><td></td><td></td></tr>
+          <tr><td class="num">07</td><td>Công nợ khách đại diện</td><td></td><td></td></tr>
+          <tr><td class="num">08</td><td>Chi tiết đi <span class="muted">(câu tiếp nối)</span></td><td></td><td></td></tr>
+          <tr><td class="num">09</td><td>Gợi ý đơn hàng</td><td></td><td></td></tr>
+          <tr><td class="num">10</td><td>Gợi ý bán kèm</td><td></td><td></td></tr>
+          <tr><td class="num">11</td><td>Tồn kho A003</td><td></td><td></td></tr>
+          <tr><td class="num">12</td><td><span class="muted">Câu riêng theo vai trò</span></td><td></td><td></td></tr>
+          <tr><td class="num">13</td><td><span class="muted">Câu riêng theo vai trò</span></td><td></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="eyebrow" style="margin-bottom:.7rem">Xác nhận hoàn thành</div>
+      <dl class="kv">
+        <dt>Tổng số câu Đạt</dt><dd><span class="fill"></span> / 13</dd>
+        <dt>Lỗi nghiêm trọng phát hiện</dt><dd><span class="fill"></span></dd>
+        <dt>Người thực hiện</dt><dd><span class="fill"></span></dd>
+        <dt>Chữ ký · Ngày</dt><dd><span class="fill"></span></dd>
+      </dl>
+    </div>
+
+    <p class="muted" style="font-size:.85rem">Nộp phiếu cho điều phối viên ngay sau khi chạy xong, kèm ảnh chụp các trường hợp Chưa đạt và Chưa chạy được.</p>
+  </section>
+
+</div>
+
+<script>
+  // Nút chép câu hỏi
+  document.querySelectorAll('.q-copy').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var card = btn.closest('.q-top');
+      var text = card.querySelector('.q-text').textContent.trim();
+      var reset = function () {
+        setTimeout(function () { btn.textContent = 'Chép'; btn.removeAttribute('data-done'); }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+          btn.textContent = 'Đã chép'; btn.setAttribute('data-done', '1'); reset();
+        }).catch(function () {
+          btn.textContent = 'Chép tay'; reset();
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); btn.textContent = 'Đã chép'; btn.setAttribute('data-done', '1'); }
+        catch (e) { btn.textContent = 'Chép tay'; }
+        document.body.removeChild(ta); reset();
+      }
+    });
+  });
+
+  // Ghi nhớ tiến độ chuẩn bị
+  var KEY = 'medstand_uat_checklist';
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
+
+  document.querySelectorAll('.check input[data-k]').forEach(function (box) {
+    var k = box.getAttribute('data-k');
+    if (saved[k]) box.checked = true;
+    box.addEventListener('change', function () {
+      saved[k] = box.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+    });
+  });
+</script>
