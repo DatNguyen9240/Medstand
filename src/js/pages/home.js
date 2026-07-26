@@ -202,7 +202,7 @@ function initDashboard() {
     Promise.all([
       loadStats(fromDate, toDate),
       loadChartAndRevenue(fromDate, toDate),
-      loadBirthdays(fromDate, toDate),
+      loadBirthdays(),
       loadNotificationCount(),
       loadTodayRoutes(),
       loadSalesPlan(fromDate, toDate)
@@ -840,8 +840,8 @@ function initDashboard() {
       });
   }
 
-  function loadBirthdays(fromDate, toDate) {
-    return DashboardService.getBirthdays(fromDate, toDate)
+  function loadBirthdays() {
+    return DashboardService.getBirthdays()
       .then(function (res) {
         var data = res.data || res;
         var items = data.records || (Array.isArray(data) ? data : []);
@@ -922,13 +922,44 @@ function initDashboard() {
       + String(today.getMonth() + 1).padStart(2, '0') + '-'
       + String(today.getDate()).padStart(2, '0');
 
-    return Http.get(API_CONFIG.ENDPOINTS.ROUTES.YOUR_ROUTES, {
+    var routeRequest = Http.get(API_CONFIG.ENDPOINTS.ROUTES.YOUR_ROUTES, {
       User: userName,
       DocumentDate: docDate
-    }).then(function (res) {
-      var data = res.data || res;
-      var routeRecords = data.records || (Array.isArray(data) ? data : []);
-      var careRecords = Array.isArray(data.careItems) ? data.careItems : [];
+    });
+    var careRequest = Http.get(API_CONFIG.ENDPOINTS.ROUTES.CARE_RECOMMENDATIONS, {
+      q: JSON.stringify({
+        Username: userName,
+        NgayTarget: docDate,
+        TopN: 8,
+        SoNgayVangMat: 45,
+        NgayBaoDong: 5
+      })
+    });
+
+    // Keep the two widgets independent: a failure in recommendations must not
+    // hide a valid route schedule (and vice versa).
+    var safeRouteRequest = routeRequest.catch(function () { return { records: [] }; });
+    var safeCareRequest = careRequest.catch(function () { return { records: [] }; });
+    return Promise.all([
+      safeRouteRequest,
+      safeCareRequest
+    ]).then(function (responses) {
+      var routeData = responses[0].data || responses[0];
+      var careData = responses[1].data || responses[1];
+      var routeRecords = routeData.records || (Array.isArray(routeData) ? routeData : []);
+      var careRecords = careData.records || (Array.isArray(careData) ? careData : []);
+      // API_TuyenBanHang_AI uses business names (TenCuaHang/LyDoGhe),
+      // while the dashboard renderer uses the common customer fields.
+      careRecords = careRecords.map(function (item) {
+        return {
+          ObjectID: item.ObjectID || '',
+          ObjectName: item.ObjectName || item.TenCuaHang || item.ObjectID || '',
+          Address: item.Address || item.ADDRESS || '',
+          Phone: item.Phone || '',
+          reasonText: item.LyDoGhe || item.TrangThaiAI || '',
+          SoNgayKhongMua: item.SoNgayKhongMua
+        };
+      });
       var seenRoutes = {};
       routeRecords = routeRecords.filter(function (item) {
         var visitId = item.VisitID || item.RouteVisitID || item.ScheduleID || '';
@@ -940,7 +971,7 @@ function initDashboard() {
         return true;
       });
       var routeTotal = routeRecords.length;
-      var careTotal = Number.isFinite(Number(data.careTotalCount)) ? Number(data.careTotalCount) : careRecords.length;
+      var careTotal = careRecords.length;
       renderTasks(routeRecords.slice(0, 8), routeTotal);
       renderCareTasks(careRecords.slice(0, 8), careTotal);
     }).catch(function () {

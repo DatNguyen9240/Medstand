@@ -25,7 +25,7 @@ const DashboardService = (() => {
     return Http.get(API_CONFIG.ENDPOINTS.ORDERS.LIST, { q: JSON.stringify({ FromDate: fromDate, ToDate: toDate }) });
   }
 
-  function getBirthdays(fromDate, toDate) {
+  function getBirthdays() {
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     return Http.get(EP.BIRTHDAYS, {
       q: JSON.stringify({
@@ -33,8 +33,7 @@ const DashboardService = (() => {
         BranchID: user.BranchID || '',
         CeoID: user.CeoID || '',
         ManagerID: user.ManagerID || '',
-        EmployeeID: user.EmployeeID || '',
-        ToDate: toDate
+        EmployeeID: user.EmployeeID || ''
       })
     });
   }

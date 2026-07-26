@@ -2601,7 +2601,7 @@
         if (!isManager) {
             html += '<div class="ai-sales-dashboard-card ai-sales-next"><div class="ai-sales-card-title"><strong>Gợi ý tiếp theo</strong></div><div class="ai-sales-next-grid">';
             html += '<button type="button" onclick="document.getElementById(\'chat-input\').value=\'@don_hang \';document.getElementById(\'chat-input\').focus()">Xem đơn hàng</button>';
-            html += '<button type="button" onclick="document.getElementById(\'chat-input\').value=\'@danh_sach_tonkho \';document.getElementById(\'chat-input\').focus()">Kiểm tra tồn kho</button>';
+            html += '<button type="button" class="ai-stock-check-btn">Kiểm tra tồn kho</button>';
             html += '</div></div>';
         }
         html += '</section>';
@@ -2940,7 +2940,12 @@
             if (match) {
                 headerMsg = 'Kết quả tìm kiếm (' + match[1] + ')';
             }
-            html += '<div class="ai-result-header">' + _esc(headerMsg) + '</div>';
+            var resultKeyword = meta && meta.queryParams
+                ? (meta.queryParams['@Keyword'] || meta.queryParams['@keyword'] || meta.queryParams['@timkiem'] || meta.queryParams['@TimKiem'])
+                : '';
+            html += '<div class="ai-result-header"><span>' + _esc(headerMsg) + '</span>'
+                + (resultKeyword ? '<span class="ai-result-keyword">Từ khóa: <b>' + _esc(String(resultKeyword)) + '</b></span>' : '')
+                + '</div>';
         }
 
         if (activeGroups.length > 1) {
@@ -3847,14 +3852,14 @@
         if (hasDetails) {
             html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
         }
-        if (apiCode === '@hoa_don') {
-            html += '<th style="width: 112px; text-align: center;">Thao tác</th>';
-        }
         primaryKeys.forEach(function (k) {
             var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
             var friendlyHeader = String(apiCode || '').toLowerCase() === '@doanh_so' && String(k).toLowerCase() === 'amount' ? 'Doanh số' : _getFriendlyHeader(k, apiCode);
             html += '<th' + thClass + '>' + _esc(friendlyHeader) + '</th>';
         });
+        if (apiCode === '@hoa_don') {
+            html += '<th style="width: 112px; text-align: center;">Thao tác</th>';
+        }
 
         html += '</tr></thead>';
 
@@ -4430,9 +4435,16 @@
         if (stockCheckBtn) {
             e.preventDefault();
             e.stopPropagation();
-            $input.value = '@danh_sach_tonkho ';
-            $input.dispatchEvent(new Event('input', { bubbles: true }));
-            $input.focus();
+            // Open the API flow directly. Merely writing @danh_sach_tonkho
+            // into the input made the free-text router treat it as an
+            // incomplete natural-language request.
+            if (window.ApiEngine && typeof window.ApiEngine.open === 'function') {
+                window.ApiEngine.open('@danh_sach_tonkho');
+            } else {
+                $input.value = '@danh_sach_tonkho ';
+                $input.dispatchEvent(new Event('input', { bubbles: true }));
+                $input.focus();
+            }
             return;
         }
 

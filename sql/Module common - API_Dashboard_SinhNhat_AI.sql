@@ -30,7 +30,14 @@ CREATE OR ALTER PROCEDURE [dbo].[API_Dashboard_SinhNhat_AI]
 AS
 BEGIN
     SET NOCOUNT ON;
-    IF @ToDate IS NULL SET @ToDate = GETDATE();
+
+    -- The server owns the meaning of "today". Keep @ToDate only for backward
+    -- compatibility with existing API metadata/clients; never trust it for
+    -- the "Sinh nhat hom nay" widget.
+    DECLARE @Today DATE = CONVERT(
+        DATE,
+        SYSDATETIMEOFFSET() AT TIME ZONE 'SE Asia Standard Time'
+    );
     
     DECLARE @ObjectID VARCHAR(50), @BanLanhDao BIT;
     
@@ -61,8 +68,8 @@ BEGIN
       AND Birthday <> '1900-01-01'
       AND ISNULL(isCustomer, 0) = 1
       AND ISNULL(isDisable, 0) = 0
-      AND DAY(Birthday) = DAY(@ToDate)
-      AND MONTH(Birthday) = MONTH(@ToDate)
+      AND DAY(Birthday) = DAY(@Today)
+      AND MONTH(Birthday) = MONTH(@Today)
       AND (
           @User = '' 
           OR @BanLanhDao = 1 
