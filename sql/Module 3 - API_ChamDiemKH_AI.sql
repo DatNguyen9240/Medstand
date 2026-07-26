@@ -26,6 +26,13 @@ AS
 BEGIN
     SET NOCOUNT ON
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#AllowedObjects') IS NOT NULL DROP TABLE #AllowedObjects;
+    IF OBJECT_ID('tempdb..#Raw') IS NOT NULL DROP TABLE #Raw;
+    IF OBJECT_ID('tempdb..#Scored') IS NOT NULL DROP TABLE #Scored;
+    IF OBJECT_ID('tempdb..#Final') IS NOT NULL DROP TABLE #Final;
+    IF OBJECT_ID('tempdb..#Segmented') IS NOT NULL DROP TABLE #Segmented;
+
     SET @Page = CASE WHEN ISNULL(@Page, 0) < 1 THEN 1 ELSE @Page END
     SET @PageSize = CASE WHEN ISNULL(@PageSize, 0) < 1 THEN 10 WHEN @PageSize > 100 THEN 100 ELSE @PageSize END
     SET @EmployeeID = ISNULL(@EmployeeID, '')

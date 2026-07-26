@@ -75,13 +75,18 @@ BEGIN
    SET @DenNgay = DATEADD(SECOND, -1, DATEADD(DAY, 1, DATEADD(DAY, DATEDIFF(DAY, 0, @DenNgay), 0)))
    
    -- CLEAN AI EXTRACTED BRACKETS
-   IF @EmployeeID LIKE '%\[%\]%' ESCAPE '\'
+   -- Lấy ']' đầu tiên NẰM SAU '[' để không sinh độ dài âm cho SUBSTRING (Msg 536)
+   DECLARE @BracketOpen  INT = CHARINDEX('[', @EmployeeID)
+   DECLARE @BracketClose INT = CHARINDEX(']', @EmployeeID, @BracketOpen + 1)
+   IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
    BEGIN
-       SET @EmployeeID = SUBSTRING(@EmployeeID, CHARINDEX('[', @EmployeeID) + 1, CHARINDEX(']', @EmployeeID) - CHARINDEX('[', @EmployeeID) - 1)
+       SET @EmployeeID = SUBSTRING(@EmployeeID, @BracketOpen + 1, @BracketClose - @BracketOpen - 1)
    END
-   IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+   SET @BracketOpen  = CHARINDEX('[', @MaKhachHang)
+   SET @BracketClose = CHARINDEX(']', @MaKhachHang, @BracketOpen + 1)
+   IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
    BEGIN
-       SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1)
+       SET @MaKhachHang = SUBSTRING(@MaKhachHang, @BracketOpen + 1, @BracketClose - @BracketOpen - 1)
    END
 
    -- ANTI-HALLUCINATION: Clear hallucinated IDs (e.g. LLM compressed a name like 'TRẦNVĂNHƯỞNG')

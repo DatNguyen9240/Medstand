@@ -13,7 +13,10 @@ CREATE PROCEDURE [dbo].[API_HoaDon_AI]
 AS
 BEGIN
     SET NOCOUNT ON
-    
+
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#BC') IS NOT NULL DROP TABLE #BC;
+
     -- 1. Validate User
     IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN

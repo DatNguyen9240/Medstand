@@ -6,6 +6,11 @@ AS
 BEGIN
     SET NOCOUNT ON
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#TempAllKH') IS NOT NULL DROP TABLE #TempAllKH;
+    IF OBJECT_ID('tempdb..#TempKH') IS NOT NULL DROP TABLE #TempKH;
+    IF OBJECT_ID('tempdb..#TempSP') IS NOT NULL DROP TABLE #TempSP;
+
     SET @timkiem = ISNULL(@timkiem, '')
     SET @timkiem = REPLACE(REPLACE(@timkiem, '"', ''), '''', '')
     DECLARE @CleanTimKiem NVARCHAR(255) = ''

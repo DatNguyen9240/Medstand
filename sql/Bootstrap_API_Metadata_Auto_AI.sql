@@ -382,6 +382,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- GUARD: don temp table con sot lai tu lan chay loi truoc tren cung connection
+    IF OBJECT_ID('tempdb..#AI_META') IS NOT NULL DROP TABLE #AI_META;
+
     IF @Apply = 1
     BEGIN
         -- =========================================================================

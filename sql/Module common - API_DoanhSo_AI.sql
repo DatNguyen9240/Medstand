@@ -171,11 +171,16 @@ BEGIN
 
     -- SMART AI ID ROUTING
     DECLARE @ExtractedID VARCHAR(50) = ''
+    -- Lấy ']' đầu tiên NẰM SAU '[' để không sinh độ dài âm cho SUBSTRING (Msg 536)
+    DECLARE @BracketOpen  INT = 0
+    DECLARE @BracketClose INT = 0
 
 
-    IF @TenNhanVien LIKE '%\[%\]%' ESCAPE '\'
+    SET @BracketOpen  = CHARINDEX('[', @TenNhanVien)
+    SET @BracketClose = CHARINDEX(']', @TenNhanVien, @BracketOpen + 1)
+    IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
     BEGIN
-        SET @ExtractedID = SUBSTRING(@TenNhanVien, CHARINDEX('[', @TenNhanVien) + 1, CHARINDEX(']', @TenNhanVien) - CHARINDEX('[', @TenNhanVien) - 1)
+        SET @ExtractedID = SUBSTRING(@TenNhanVien, @BracketOpen + 1, @BracketClose - @BracketOpen - 1)
         IF EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @ExtractedID)
         BEGIN
             SET @EmployeeID = @ExtractedID
@@ -184,9 +189,11 @@ BEGIN
     END
 
     -- Trích xuất ManagerID dạng ngoặc vuông [QLBH024] nếu có
-    IF @ManagerID LIKE '%\[%\]%' ESCAPE '\'
+    SET @BracketOpen  = CHARINDEX('[', @ManagerID)
+    SET @BracketClose = CHARINDEX(']', @ManagerID, @BracketOpen + 1)
+    IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
     BEGIN
-        SET @ExtractedID = SUBSTRING(@ManagerID, CHARINDEX('[', @ManagerID) + 1, CHARINDEX(']', @ManagerID) - CHARINDEX('[', @ManagerID) - 1)
+        SET @ExtractedID = SUBSTRING(@ManagerID, @BracketOpen + 1, @BracketClose - @BracketOpen - 1)
         IF EXISTS (SELECT 1 FROM SY_User WHERE EmployeeID = @ExtractedID)
         BEGIN
             SET @ManagerID = @ExtractedID

@@ -8,7 +8,14 @@ CREATE OR ALTER PROCEDURE API_TichLuy_AI
 AS
 BEGIN
    SET NOCOUNT ON
-    
+
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#TrongTam') IS NOT NULL DROP TABLE #TrongTam;
+    IF OBJECT_ID('tempdb..#HoaDon') IS NOT NULL DROP TABLE #HoaDon;
+    IF OBJECT_ID('tempdb..#TraHang') IS NOT NULL DROP TABLE #TraHang;
+    IF OBJECT_ID('tempdb..#TichLuy') IS NOT NULL DROP TABLE #TichLuy;
+    IF OBJECT_ID('tempdb..#ItemsBought') IS NOT NULL DROP TABLE #ItemsBought;
+
     DECLARE @SYSBranchID VARCHAR(50) = ''
     DECLARE @SYSUserGroupID VARCHAR(50) = ''
     SELECT @SYSBranchID = COALESCE(BranchID, ''),

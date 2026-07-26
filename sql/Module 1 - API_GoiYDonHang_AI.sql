@@ -38,6 +38,18 @@ AS
 BEGIN
     SET NOCOUNT ON
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#AllowedObjects') IS NOT NULL DROP TABLE #AllowedObjects;
+    IF OBJECT_ID('tempdb..#AllowedStores') IS NOT NULL DROP TABLE #AllowedStores;
+    IF OBJECT_ID('tempdb..#StockByItem') IS NOT NULL DROP TABLE #StockByItem;
+    IF OBJECT_ID('tempdb..#TopChiNhanh') IS NOT NULL DROP TABLE #TopChiNhanh;
+    IF OBJECT_ID('tempdb..#LichSu') IS NOT NULL DROP TABLE #LichSu;
+    IF OBJECT_ID('tempdb..#ChuKy') IS NOT NULL DROP TABLE #ChuKy;
+    IF OBJECT_ID('tempdb..#MuaVu') IS NOT NULL DROP TABLE #MuaVu;
+    IF OBJECT_ID('tempdb..#KhuyenMai') IS NOT NULL DROP TABLE #KhuyenMai;
+    IF OBJECT_ID('tempdb..#TrongTam') IS NOT NULL DROP TABLE #TrongTam;
+    IF OBJECT_ID('tempdb..#DaMuaHomNay') IS NOT NULL DROP TABLE #DaMuaHomNay;
+
     -- ═══ 0. Mapping Dashboard/Frontend Alias ═══
     IF NULLIF(@User, '') IS NOT NULL AND EXISTS (SELECT 1 FROM SY_User WITH (NOLOCK) WHERE UserName = @User AND COALESCE(Disable, 0) = 0)
     BEGIN
@@ -96,9 +108,12 @@ BEGIN
         DECLARE @ResolvedID VARCHAR(50) = '';
         DECLARE @OriginalInput NVARCHAR(100) = @MaKhachHang;
         
-        IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+        -- Lấy ']' đầu tiên NẰM SAU '[' để không sinh độ dài âm cho SUBSTRING (Msg 536)
+        DECLARE @BracketOpen  INT = CHARINDEX('[', @MaKhachHang);
+        DECLARE @BracketClose INT = CHARINDEX(']', @MaKhachHang, @BracketOpen + 1);
+        IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
         BEGIN
-            SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1);
+            SET @MaKhachHang = SUBSTRING(@MaKhachHang, @BracketOpen + 1, @BracketClose - @BracketOpen - 1);
         END
 
         IF EXISTS (SELECT 1 FROM CF_ObjectTbl WITH (NOLOCK) WHERE ObjectID = @MaKhachHang)

@@ -12,6 +12,8 @@ CREATE OR ALTER PROCEDURE [dbo].[API_DonHangChiTiet_Insert_AI]
 AS
 SET NOCOUNT ON
 SET XACT_ABORT ON
+-- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+IF OBJECT_ID('tempdb..#Items') IS NOT NULL DROP TABLE #Items;
 -- ═══ 1. VALIDATION ═══
 IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
 BEGIN

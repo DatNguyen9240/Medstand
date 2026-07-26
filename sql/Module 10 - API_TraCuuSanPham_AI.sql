@@ -6,6 +6,12 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#MatchedItems') IS NOT NULL DROP TABLE #MatchedItems;
+    IF OBJECT_ID('tempdb..#Items') IS NOT NULL DROP TABLE #Items;
+    IF OBJECT_ID('tempdb..#LatestPriceHeader') IS NOT NULL DROP TABLE #LatestPriceHeader;
+    IF OBJECT_ID('tempdb..#FinalPrices') IS NOT NULL DROP TABLE #FinalPrices;
+
     SET @timkiem = LTRIM(RTRIM(ISNULL(@timkiem, '')));
     IF @timkiem = ''
     BEGIN

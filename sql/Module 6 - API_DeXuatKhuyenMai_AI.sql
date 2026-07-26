@@ -4,6 +4,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#StockByLot') IS NOT NULL DROP TABLE #StockByLot;
+    IF OBJECT_ID('tempdb..#PhysicalStock') IS NOT NULL DROP TABLE #PhysicalStock;
+    IF OBJECT_ID('tempdb..#SalesVelocity') IS NOT NULL DROP TABLE #SalesVelocity;
+
     DECLARE @SYSBranchID VARCHAR(50) = '';
     DECLARE @SYSUserGroupID VARCHAR(50) = '';
     DECLARE @EmployeeID VARCHAR(50) = '';

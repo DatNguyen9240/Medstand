@@ -16,6 +16,13 @@ CREATE OR ALTER PROCEDURE [dbo].[API_TuyenBanHang_AI]
 AS
 BEGIN
     SET NOCOUNT ON
+
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#AllowedObjects') IS NOT NULL DROP TABLE #AllowedObjects;
+    IF OBJECT_ID('tempdb..#LanMuaCuoi') IS NOT NULL DROP TABLE #LanMuaCuoi;
+    IF OBJECT_ID('tempdb..#ChuKy') IS NOT NULL DROP TABLE #ChuKy;
+    IF OBJECT_ID('tempdb..#Logic') IS NOT NULL DROP TABLE #Logic;
+
     -- Defend against NULL or non-positive bounds passed by web server binders
     IF @TopN IS NULL OR @TopN <= 0 SET @TopN = 8;
 
@@ -67,9 +74,12 @@ BEGIN
     BEGIN
         DECLARE @ResolvedID VARCHAR(50) = '';
         
-        IF @MaKhachHang LIKE '%\[%\]%' ESCAPE '\'
+        -- Lấy ']' đầu tiên NẰM SAU '[' để không sinh độ dài âm cho SUBSTRING (Msg 536)
+        DECLARE @BracketOpen  INT = CHARINDEX('[', @MaKhachHang);
+        DECLARE @BracketClose INT = CHARINDEX(']', @MaKhachHang, @BracketOpen + 1);
+        IF @BracketOpen > 0 AND @BracketClose > @BracketOpen
         BEGIN
-            SET @MaKhachHang = SUBSTRING(@MaKhachHang, CHARINDEX('[', @MaKhachHang) + 1, CHARINDEX(']', @MaKhachHang) - CHARINDEX('[', @MaKhachHang) - 1);
+            SET @MaKhachHang = SUBSTRING(@MaKhachHang, @BracketOpen + 1, @BracketClose - @BracketOpen - 1);
         END
 
         IF EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @MaKhachHang)

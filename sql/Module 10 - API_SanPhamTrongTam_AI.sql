@@ -6,6 +6,9 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
+    IF OBJECT_ID('tempdb..#FocusItems') IS NOT NULL DROP TABLE #FocusItems;
+
     IF NOT EXISTS (
         SELECT 1
         FROM dbo.SY_User WITH (NOLOCK)
