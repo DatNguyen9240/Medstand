@@ -28,7 +28,7 @@
     border: 1px solid var(--ae-border);
     border-radius: 12px;
     box-shadow: var(--ae-shadow);
-    max-height: 310px;
+    max-height: min(520px, calc(100dvh - 150px));
     overflow-y: auto;
     padding: 6px 0;
     font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -73,7 +73,11 @@ body.ae-panel-open::before {
 }
 
 .ae-menu-group {
-    padding: 10px 16px 4px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px 14px 6px;
+    background: var(--ae-bg);
     font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.5px;
@@ -85,12 +89,84 @@ body.ae-panel-open::before {
 .ae-menu-item {
     display: flex;
     align-items: center;
-    justify-content: flex-start; /* Sửa lại để chủ động căn chỉnh */
-    padding: 10px 16px;
-    gap: 12px;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 11px 14px;
+    gap: 10px;
     cursor: pointer;
     color: var(--ae-text);
-    transition: background 0.1s;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    font: inherit;
+    transition: background 0.1s, color 0.1s;
+}
+
+.ae-menu-item:hover,
+.ae-menu-item.active,
+.ae-menu-item:focus-visible {
+    background: var(--ae-accent-soft);
+    outline: none;
+}
+
+.ae-menu-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    border-radius: 10px;
+    background: var(--ae-bg-alt);
+    font-size: 18px;
+}
+
+.ae-menu-copy {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ae-menu-copy strong {
+    color: var(--ae-text);
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.ae-menu-copy small {
+    color: var(--ae-text-muted);
+    font-size: 12px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.ae-menu-arrow {
+    flex: 0 0 auto;
+    color: var(--ae-text-muted);
+    font-size: 22px;
+}
+
+.ae-menu-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 22px 16px;
+    text-align: center;
+    color: var(--ae-text);
+}
+
+.ae-menu-empty span {
+    color: var(--ae-text-muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+    .ae-menu {
+        max-height: min(65dvh, 500px);
+    }
 }
 
 .ae-val-name {

@@ -59,9 +59,9 @@
           <span class="chat-chip-icon">📦</span>
           <span class="chat-chip-label">Kiểm tra tồn kho</span>
         </button>
-        <button class="chat-chip" type="button" onclick="document.getElementById('chat-input').value='@san_pham_trong_tam '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus();">
+        <button class="chat-chip" type="button" onclick="if(window.ApiEngine) { window.ApiEngine.open('@san_pham_trong_tam'); } else { document.getElementById('chat-input').value='@san_pham_trong_tam '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus(); }">
           <span class="chat-chip-icon">🔥</span>
-          <span class="chat-chip-label">Hàng trọng tâm</span>
+          <span class="chat-chip-label">Sản phẩm trọng tâm</span>
         </button>
         <button class="chat-chip" type="button" onclick="if(window.ApiEngine) { window.ApiEngine.selectApi('@lap_don_hang'); } else { document.getElementById('chat-input').value='@lap_don_hang '; document.getElementById('chat-input').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('chat-input').focus(); }">
           <span class="chat-chip-icon">🛒</span>

@@ -882,12 +882,51 @@
         var code = String(api && api.ApiCode || '').toLowerCase();
         if (code === '@hoa_don_chi_tiet') return 'Chi tiết hóa đơn';
         if (code === '@hoa_don') return 'Hóa đơn';
+        if (code === '@san_pham_trong_tam') return 'Sản phẩm trọng tâm';
         if (code === '@de_xuat_khuyen_mai') {
             return _getCurrentUserScope().isManager
                 ? 'Sản phẩm cần xem xét khuyến mãi'
                 : 'Khuyến mãi công ty';
         }
         return String(api && (api.DisplayName || api.ApiCode) || '');
+    }
+
+    function _getApiMenuMeta(api) {
+        var code = String(api && api.ApiCode || '').toLowerCase();
+        var scope = _getCurrentUserScope();
+        var meta = { icon: '⚙️', description: 'Mở chức năng ' + _getApiMenuLabel(api), group: 'other', order: 900 };
+        var known = {
+            '@doanh_so': ['📊', 'Xem doanh số theo thời gian và phạm vi được phân quyền', 'daily', 10],
+            '@hoa_don': ['🧾', 'Tra cứu danh sách hóa đơn', 'daily', 20],
+            '@hoa_don_chi_tiet': ['🔎', 'Xem các sản phẩm trong một hóa đơn', 'daily', 21],
+            '@don_hang': ['📋', 'Tra cứu đơn hàng và trạng thái xử lý', 'daily', 30],
+            '@danh_sach_tonkho': ['📦', 'Kiểm tra số lượng tồn kho', 'daily', 40],
+            '@tra_cuu_san_pham': ['💊', 'Tìm sản phẩm và thông tin liên quan', 'daily', 50],
+            '@cong_no_khach_hang': ['💰', 'Xem tổng hợp công nợ khách hàng', 'customer', 10],
+            '@cong_no_chi_tiet': ['💳', 'Xem chi tiết công nợ của một khách hàng', 'customer', 20],
+            '@tuyen_ban_hang': ['🗺️', 'Xem khách hàng và công việc cần ưu tiên', 'customer', 30],
+            '@cham_diem_kh': ['⭐', 'Xem đánh giá và phân nhóm khách hàng', 'customer', 40],
+            '@tich_luy': ['🎁', 'Xem tiến độ tích lũy và mốc thưởng', 'customer', 50],
+            '@goi_ydon_hang': ['🛒', 'Gợi ý sản phẩm phù hợp để lên đơn', 'recommendation', 10],
+            '@upsell_goi_y': ['➕', 'Gợi ý sản phẩm bán kèm', 'recommendation', 20],
+            '@goi_ydon_thuoc': ['💊', 'Tham khảo nhóm sản phẩm theo nhu cầu', 'recommendation', 30],
+            '@san_pham_trong_tam': ['🔥', 'Xem sản phẩm thuộc chương trình trọng tâm đang áp dụng', 'recommendation', 40],
+            '@de_xuat_khuyen_mai': ['🏷️', scope.isManager ? 'Xem sản phẩm cần Manager/Admin xem xét khuyến mãi' : 'Xem chương trình khuyến mãi đã được công ty phê duyệt', 'recommendation', 50],
+            '@danh_muc': ['🗂️', 'Tra cứu nhanh danh mục hệ thống', 'other', 10],
+            '@thong_bao': ['🔔', 'Xem thông báo của tài khoản', 'other', 20],
+            '@tim_san_pham_theo_trieu_chung': ['🩺', 'Tìm sản phẩm tham khảo theo triệu chứng', 'other', 30]
+        };
+        if (known[code]) {
+            meta.icon = known[code][0];
+            meta.description = known[code][1];
+            meta.group = known[code][2];
+            meta.order = known[code][3];
+        } else if (code.indexOf('khao_sat') !== -1 || code.indexOf('khaosat') !== -1) {
+            meta.icon = '📝';
+            meta.description = 'Xem và thực hiện nghiệp vụ khảo sát';
+            meta.group = 'survey';
+        }
+        return meta;
     }
 
     function _menuShow(query) {
@@ -908,58 +947,60 @@
 
             var name = _strip(_getApiMenuLabel(a));
 
-            return code.indexOf(q) !== -1 || name.indexOf(q) !== -1;
+            var description = _strip(_getApiMenuMeta(a).description);
+
+            return code.indexOf(q) !== -1 || name.indexOf(q) !== -1 || description.indexOf(q) !== -1;
 
         });
 
 
 
-        if (!filtered.length) { _menuHide(); return; }
-
-
-
         var groups = {
-            '🔹 Nghiệp vụ cơ bản': [],
-            '🚀 Nghiệp vụ nâng cao': [],
-            '📋 Khảo sát': []
+            daily: { label: 'Dùng thường xuyên', items: [] },
+            customer: { label: 'Khách hàng & công nợ', items: [] },
+            recommendation: { label: 'Gợi ý & chương trình', items: [] },
+            survey: { label: 'Khảo sát', items: [] },
+            other: { label: 'Tra cứu khác', items: [] }
         };
 
-        var advKeys = ['goi_ydon_hang', 'tuyen_ban_hang', 'cham_diem', 'tich_luy', 'upsell', 'khuyen_mai', 'goi_ydon_thuoc', 'trong_tam', 'tra_cuu_san_pham'];
-        var surveyKeys = ['khao_sat', 'khaosat', 'khao sat'];
-
         filtered.forEach(function (a) {
-            var rawStr = ((a.ApiCode || '') + ' ' + (a.DisplayName || '')).toLowerCase();
-            var compareStr = rawStr.replace(/_/g, '');
-
-            var isSurvey = surveyKeys.some(function(k) { return rawStr.indexOf(k) > -1 || compareStr.indexOf(k.replace(/_/g, '')) > -1; });
-            var isAdv = advKeys.some(function(k) { return rawStr.indexOf(k) > -1 || compareStr.indexOf(k.replace(/_/g, '')) > -1; });
-
-            if (isSurvey) {
-                groups['📋 Khảo sát'].push(a);
-            } else if (isAdv) {
-                groups['🚀 Nghiệp vụ nâng cao'].push(a);
-            } else {
-                groups['🔹 Nghiệp vụ cơ bản'].push(a);
-            }
+            var meta = _getApiMenuMeta(a);
+            (groups[meta.group] || groups.other).items.push(a);
         });
 
 
 
         var html = '';
 
-        Object.keys(groups).forEach(function(gName) {
+        if (!filtered.length) {
+            html = '<div class="ae-menu-empty"><strong>Không tìm thấy chức năng phù hợp</strong><span>Thử nhập tên nghiệp vụ khác, ví dụ: tồn kho, công nợ hoặc khuyến mãi.</span></div>';
+        }
 
-            if (groups[gName].length > 0) {
+        Object.keys(groups).forEach(function(groupKey) {
 
-                html += '<div class="ae-menu-group">' + gName + '</div>';
+            var group = groups[groupKey];
 
-                groups[gName].forEach(function (a) {
+            group.items.sort(function (a, b) {
+                return _getApiMenuMeta(a).order - _getApiMenuMeta(b).order || _getApiMenuLabel(a).localeCompare(_getApiMenuLabel(b), 'vi');
+            });
 
-                    html += '<div class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
+            if (group.items.length > 0) {
 
-                        + '<span class="ae-val-name">' + _esc(_getApiMenuLabel(a)) + '</span>'
+                html += '<div class="ae-menu-group">' + _esc(group.label) + '</div>';
 
-                        + '</div>';
+                group.items.forEach(function (a) {
+
+                    var meta = _getApiMenuMeta(a);
+
+                    html += '<button type="button" class="ae-menu-item" data-code="' + _esc(a.ApiCode) + '">'
+
+                        + '<span class="ae-menu-icon" aria-hidden="true">' + _esc(meta.icon) + '</span>'
+
+                        + '<span class="ae-menu-copy"><strong>' + _esc(_getApiMenuLabel(a)) + '</strong><small>' + _esc(meta.description) + '</small></span>'
+
+                        + '<span class="ae-menu-arrow" aria-hidden="true">›</span>'
+
+                        + '</button>';
 
                 });
 
@@ -1003,7 +1044,10 @@
             var role = String(user.role || user.Role || user.roleName || user.RoleName || user.roleCode || user.RoleCode || '').toLowerCase();
             var group = String(user.UserGroupID || user.userGroupID || user.UserGroup || '').toLowerCase();
             var isAdmin = role.indexOf('admin') !== -1 || group.indexOf('admin') !== -1;
-            var isManager = isAdmin || role.indexOf('manager') !== -1 || role.indexOf('quản lý') !== -1 || Number(user.Manager || user.manager) === 1;
+            var isManager = isAdmin || role.indexOf('manager') !== -1 || role.indexOf('quản lý') !== -1 || role.indexOf('quan ly') !== -1 ||
+                group === 'ql' || group.indexOf('manager') !== -1 || group.indexOf('quản lý') !== -1 || group.indexOf('quan ly') !== -1 ||
+                Number(user.Manager || user.manager) === 1 || user.IsManager === true || Number(user.IsManager || user.isManager) === 1 ||
+                (user.EmployeeID && user.ManagerID && String(user.EmployeeID).toLowerCase() === String(user.ManagerID).toLowerCase());
             return { isAdmin: isAdmin, isManager: isManager };
         } catch (e) {
             return { isAdmin: false, isManager: false };
