@@ -214,6 +214,12 @@ const normalizedMessage = normalize(normalizedText);`;
     'const userProfile = $input.first().json.userProfile || body.userProfile || {};',
     'const userProfile = $input.first().json.userProfile || {};',
   );
+  if (!code.includes('const historyContext = [\n  requestHistoryContext,')) {
+    code = code.replace(
+      'const historyContext = [',
+      'const historyContext = [\n  requestHistoryContext,',
+    );
+  }
 
   const quickMarker = 'let quickIntent = null;';
   const quickBlock = `${quickMarker}
