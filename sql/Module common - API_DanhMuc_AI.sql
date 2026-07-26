@@ -94,7 +94,9 @@ BEGIN
     -- =========================================
     IF ISNULL(@Type, '') = ''
     BEGIN
-        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'' AS icon, '@tra_cuu_san_pham|@TopN=50' AS DataSourceValue
+        -- Chọn nhóm Sản phẩm chỉ mở danh mục sản phẩm. API tra cứu riêng
+        -- yêu cầu @timkiem nên không được gọi khi người dùng chưa nhập từ khóa.
+        SELECT 'sanpham' AS type, N'Sản phẩm' AS label, N'' AS icon, '@danh_muc|@Type=sanpham' AS DataSourceValue
         UNION ALL SELECT 'khachhang', N'Khách hàng', N'', '@danh_muc|@Type=khachhang'
         UNION ALL SELECT 'donhang', N'Đơn hàng', N'', '@danh_muc|@Type=donhang'
         UNION ALL SELECT 'khohang', N'Kho hàng', N'', '@danh_muc|@Type=khohang'

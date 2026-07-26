@@ -2623,7 +2623,15 @@
 
                 setTimeout(function () {
                     _suppressMenuUntil = 0;
-                    _showInlineValues(nextCode, '');
+                    // Product lookup requires a keyword. Do not query the
+                    // datasource with an empty value (that caused a
+                    // validation toast followed by an unfiltered 20-row list).
+                    var selectedType = String(_pillParams['@Type'] || '').toLowerCase();
+                    if (!(selectedType === 'sanpham' && String(nextCode).toLowerCase() === '@timkiem')) {
+                        _showInlineValues(nextCode, '');
+                    } else {
+                        _menuHide();
+                    }
                 }, 80);
             }
         }
@@ -4503,8 +4511,6 @@
                 if (customerMatch) params[customerKey] = customerMatch[1].trim();
             });
 
-
-
             // Kiểm tra tham số bắt buộc từ config
 
             if (_activeApi.config) {
@@ -5095,7 +5101,7 @@
                 var errorText = err && err.code === 'VALIDATION_ERROR'
                     ? (err.message || 'Yêu cầu đang thiếu thông tin bắt buộc.')
                     : (err.message || err);
-                _cbMsg && _cbMsg('ai', '❌ Lỗi: ' + errorText);
+                _cbMsg && _cbMsg('ai', _friendlyApiMessage(errorText, 'Không thể thực hiện yêu cầu. Vui lòng thử lại.'));
 
             });
 
@@ -5957,6 +5963,16 @@
 
             if (params === null) return true; // Validation fail, khng gửi
 
+            // Product lookup is search-only: an empty keyword must not fall
+            // through to the catalog procedure and return an unfiltered list.
+            if (String(_activeApi.apiCode || '').toLowerCase() === '@danh_muc'
+                && String(params['@Type'] || params['@type'] || '').toLowerCase() === 'sanpham'
+                && !String(params['@timkiem'] || params['@TimKiem'] || '').trim()) {
+                if (_cbMsg) _cbMsg('ai', 'Vui lòng nhập tên hoặc mã sản phẩm cần tìm trước khi tra cứu.');
+                if (_inputEl) _inputEl.focus();
+                return true;
+            }
+
             var api = _activeApi;
 
 
@@ -5967,7 +5983,10 @@
 
             // → Redirect execute sang API đ thay v API hiện tại (trnh lỗi too many args)
 
-            if (!api.lockSelectedApi && _catalogDsMap && _pillParams) {
+            var catalogTypeOnlyLookup = String(api.apiCode || '').toLowerCase() === '@danh_muc'
+                && String(params['@Type'] || params['@type'] || '').trim() !== ''
+                && String(params['@timkiem'] || params['@TimKiem'] || '').trim() === '';
+            if (!api.lockSelectedApi && !catalogTypeOnlyLookup && _catalogDsMap && _pillParams) {
 
                 var sysUserK = (CFG.SYS_PARAMS && CFG.SYS_PARAMS.USERNAME) || '@Username';
 
@@ -6087,6 +6106,13 @@
 
         execute: function (code, params) {
             var apiCode = code && code.charAt(0) === '@' ? code : '@' + code;
+            // A catalog type selection without a keyword is a picker request,
+            // not a product search. Avoid calling APIs that require @timkiem.
+            if (apiCode.toLowerCase() === '@danh_muc' && params &&
+                String(params['@Type'] || '').toLowerCase() === 'sanpham' &&
+                !String(params['@timkiem'] || '').trim()) {
+                params = { '@Type': 'sanpham' };
+            }
             var meta = (_apiList || []).find(function (item) { return item.ApiCode === apiCode; }) || {};
             _loadConfig(apiCode, function (cfg) {
                 _executeApi(apiCode, params || {}, meta.DisplayName || apiCode, meta.ExecutionType || 'QUERY', cfg);

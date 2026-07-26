@@ -283,6 +283,10 @@
         var text = String(value).trim();
         var vn = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
         if (vn) return String(vn[1]).padStart(2, '0') + '/' + String(vn[2]).padStart(2, '0') + '/' + vn[3];
+        // Business dates must keep the calendar date returned by the API.
+        // Parsing an end-of-day timestamp as UTC can otherwise shift it to tomorrow.
+        var iso = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s]|$)/);
+        if (iso) return iso[3] + '/' + iso[2] + '/' + iso[1];
         var parsed = new Date(text);
         return isNaN(parsed.getTime()) ? text : parsed.toLocaleDateString('vi-VN');
     }
@@ -659,7 +663,6 @@
             coins: '<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>',
             document: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 12h6M9 16h6"/></svg>',
             list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
-            close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>',
             info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg>'
         };
         var html = '<section class="ai-sales-debt-card ai-sales-debt-detail" id="' + h.esc(cardId) + '" data-debt-detail-customer="' + h.esc(String(customerId ?? '')) + '" tabindex="-1">';
@@ -667,7 +670,7 @@
             + '<div class="ai-sales-debt-identity"><span class="ai-sales-debt-customer-icon">' + icons.building + '</span><div><div class="ai-sales-debt-title">' + h.esc(String(customerName ?? 'Khách hàng chưa xác định')) + '</div>'
             + '<div class="ai-sales-debt-subtitle">Mã khách hàng: <b>' + h.esc(String(customerId ?? 'Chưa xác định')) + '</b>'
             + (phone && h.isValidPhone(String(phone)) ? ' <i></i> SĐT: ' + h.esc(String(phone)) : '') + '</div></div></div>'
-            + '</div><button type="button" class="ai-sales-debt-close" aria-label="Đóng chi tiết công nợ">' + icons.close + '<span>Đóng</span></button></div>';
+            + '</div></div>';
         if (drifts.length) html += '<div class="ai-sales-debt-drift" role="status">Một số khoản thiếu trạng thái hạn từ API.</div>';
         html += '<div class="ai-sales-debt-meta-strip"><span>' + icons.calendar + '<span>Dữ liệu tính đến: <b>' + h.esc(_debtDate(asOfDate)) + '</b></span></span><span class="ai-sales-debt-meta-separator"></span><span>' + icons.clock + '<span>Truy vấn lúc: <b>' + h.esc(queryTimestamp()) + '</b></span></span></div>';
         html += '<div class="ai-sales-debt-metrics">'
@@ -684,8 +687,6 @@
         setTimeout(function () {
             var root = document.getElementById(cardId);
             if (!root) return;
-            var closeButton = root.querySelector('.ai-sales-debt-close');
-
             var refreshParams = Object.assign({}, meta && meta.queryParams ? meta.queryParams : {});
             refreshParams['@MaKhachHang'] = customerId;
             if (!refreshParams['@DenNgay'] && _debtDateKey(asOfDate)) refreshParams['@DenNgay'] = _debtDateKey(asOfDate);
@@ -706,7 +707,6 @@
                 var sourceButton = document.querySelector('[data-debt-customer="' + String(customerId ?? '').replace(/"/g, '\\"') + '"]');
                 if (sourceButton) sourceButton.focus();
             }
-            if (closeButton) closeButton.addEventListener('click', closeDetail);
             root.addEventListener('keydown', function (event) {
                 if (event.key === 'Escape') { event.preventDefault(); closeDetail(); }
             });

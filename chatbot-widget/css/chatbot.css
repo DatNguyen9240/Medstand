@@ -2349,6 +2349,20 @@ tr.expanded .ai-row-toggle::before {
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 12px;
   letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ai-result-keyword {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.ai-result-keyword b {
+  color: var(--color-primary);
 }
 
 /* Card list container */

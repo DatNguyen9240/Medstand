@@ -207,21 +207,21 @@ BEGIN
             ISNULL(A.DebitAmount - A.CreditAmount, 0)
         )
     ) X (CleanDocumentID, RemainingAmount)
-    -- Fast path: a debt row that already has a document ID only needs one indexed lookup.
+    -- Fast path: a debt row that already has a document ID only needs one
+    -- indexed invoice lookup. The previous implementation searched the
+    -- vCongNoBanHang UNION view here, forcing a scan of the full accounting
+    -- ledger even when the debt row already had its document ID.
     OUTER APPLY
     (
         SELECT TOP 1
-            V.DocumentID,
-            V.DocumentDate
-        FROM dbo.vCongNoBanHang V
-        WHERE V.ObjectID = A.ObjectID
-          AND V.AccountID = A.AccountID
-          AND V.DocumentDate <= @DenNgay
+            I2.DocumentID,
+            I2.DocumentDate
+        FROM dbo.AR_InvoiceTbl I2 WITH (NOLOCK)
+        WHERE I2.ObjectID = A.ObjectID
           AND X.CleanDocumentID IS NOT NULL
-          AND V.DocumentID = X.CleanDocumentID
-          AND ISNULL(V.Amount, 0) > X.RemainingAmount - 0.01
-          AND ISNULL(V.Amount, 0) < X.RemainingAmount + 0.01
-        ORDER BY V.DocumentDate DESC
+          AND I2.DocumentID = X.CleanDocumentID
+          AND I2.DocumentDate <= @DenNgay
+        ORDER BY I2.DocumentDate DESC
     ) E
     -- Slow fallback is only evaluated for legacy debt rows without a document ID.
     OUTER APPLY
@@ -235,6 +235,16 @@ BEGIN
           AND V.AccountID = A.AccountID
           AND V.DocumentDate <= @DenNgay
           AND X.CleanDocumentID IS NULL
+          -- Only invoice-tracked accounts can resolve a legacy debt row to an
+          -- invoice. Opening/other-receivable rows otherwise trigger an
+          -- unnecessary scan of vCongNoBanHang for every row.
+          AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.CF_ChartAccTbl C WITH (NOLOCK)
+              WHERE C.AccountID = A.AccountID
+                AND ISNULL(C.IsInvoice, 0) = 1
+          )
           AND ISNULL(V.Amount, 0) > X.RemainingAmount - 0.01
           AND ISNULL(V.Amount, 0) < X.RemainingAmount + 0.01
     ) U

@@ -46,6 +46,7 @@ window.API_CONFIG = {
         },
         ROUTES: {
             YOUR_ROUTES: '/api/API_TuyenCuaBan',
+            CARE_RECOMMENDATIONS: '/api/API_TuyenBanHang_AI',
             ROUTE_STATUSES: '/api/API_TrangThaiTuyen',
         },
         ORDERS: {
