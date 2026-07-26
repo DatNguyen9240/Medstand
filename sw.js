@@ -24,6 +24,7 @@ const PRECACHE_URLS = [
   '/chatbot-widget/template/chatbot.html',
   '/chatbot-widget/template/ai-bot-button.html',
   '/chatbot-widget/js/chatbot.bundle.min.js',
+  '/chatbot-widget/js/chatbot-core.bundle.min.js',
   '/chatbot-widget/css/chatbot.css',
   '/chatbot-widget/css/chatbot-api-engine.css',
   '/chatbot-widget/css/ai-bot-button.css',
@@ -31,6 +32,7 @@ const PRECACHE_URLS = [
   // Bundled Production Assets (Tải cực nhanh)
   '/src/css/dist/app.bundle.min.css',
   '/src/js/dist/app.bundle.min.js',
+  '/src/js/dist/theme.min.js',
 
   // Assets
   '/images/logo/medstand-logo.png',
@@ -88,10 +90,22 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   if (request.url.includes(':5678')) return;
 
-  if (request.url.includes('/api/') ||
-    request.url.includes('/chatbot-widget/') ||
+  // ── Dữ liệu nghiệp vụ: KHÔNG BAO GIỜ cache ───────────────────────────────
+  // Cache của Service Worker dùng chung cho mọi tài khoản trên cùng trình duyệt.
+  // Nếu cache response /api/ rồi trả lại khi mạng lỗi, tài khoản đăng nhập sau
+  // có thể nhìn thấy dữ liệu của tài khoản trước — vi phạm phân quyền.
+  // Luôn đi thẳng ra mạng và để lỗi nổi lên cho tầng ứng dụng xử lý.
+  if (request.url.includes('/api/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // `accept` có thể vắng mặt; `headers.get()` trả null và `.includes` sẽ ném.
+  const acceptHeader = request.headers.get('accept') || '';
+
+  if (request.url.includes('/chatbot-widget/') ||
     request.mode === 'navigate' ||
-    request.headers.get('accept').includes('text/html')) {
+    acceptHeader.includes('text/html')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -116,7 +130,7 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        if (request.mode === 'navigate' || request.headers.get('accept').includes('text/html')) {
+        if (request.mode === 'navigate' || acceptHeader.includes('text/html')) {
           return caches.match('/pages/offline.html');
         }
       });

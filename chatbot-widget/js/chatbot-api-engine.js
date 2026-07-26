@@ -97,7 +97,7 @@
 
     if (typeof API_CONFIG === 'undefined' || !API_CONFIG.N8N_BASE) {
 
-        console.error('[ApiEngine] API_CONFIG.N8N_BASE chưa được cấu hnh. Widget sẽ khng hoạt động.');
+        console.error('[ApiEngine] API_CONFIG.N8N_BASE chưa được cấu hình. Widget sẽ không hoạt động.');
 
     }
 
@@ -375,7 +375,7 @@
 
             SearchKey: keyword || '',
 
-            username: _user()   // Bắt buộc để SQL SP khng bo "User khng tồn tại"
+            username: _user()   // Bắt buộc để SQL SP không báo "User không tồn tại"
 
         }).then(function (res) {
 
@@ -1843,7 +1843,7 @@
         // centrally configured catalog contract so customer pickers still load.
         var normalizedFieldCode = String(fieldCode || '').toLowerCase();
         if ((normalizedFieldCode === '@makhachhang' || normalizedFieldCode === '@objectid') && CFG.CART_CUSTOMER_DS) {
-            field = field || { FieldCode: fieldCode, FieldName: 'KhÃ¡ch hÃ ng' };
+            field = field || { FieldCode: fieldCode, FieldName: 'Khách hàng' };
             if (!field.DataSourceType) field.DataSourceType = 'APICODE';
             if (!field.DataSourceValue) field.DataSourceValue = CFG.CART_CUSTOMER_DS;
         }

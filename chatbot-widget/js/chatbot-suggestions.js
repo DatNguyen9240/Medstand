@@ -1,8 +1,14 @@
 /**
  * Chatbot Quick Suggestions (Tabbed Version)
+ *
+ * QUY TẮC: mọi `text` ở đây phải được bộ phân loại câu tự nhiên định tuyến thành công.
+ * Nút gửi một câu mà classifier trả `supported=false` sẽ hiện "Tôi chưa hiểu rõ yêu cầu"
+ * ngay khi người dùng bấm — lỗi này khách nhìn thấy đầu tiên.
+ * Trước khi thêm nút mới, chạy thử câu đó qua `classifyNaturalMessage()`
+ * trong `scripts/natural_chat_classifier.js`.
  */
 window.CHAT_SUGGESTIONS = [
-    { category: 'Công việc', label: 'Việc hôm nay', text: 'Hôm nay em nên làm gì?', icon: '✅' },
+    { category: 'Công việc', label: 'Việc hôm nay', text: 'Hôm nay tôi nên làm gì?', icon: '✅' },
     // ══════════════════════════════════════
     //  📊 PHÂN TÍCH
     // ══════════════════════════════════════
@@ -17,8 +23,6 @@ window.CHAT_SUGGESTIONS = [
     { category: 'Phân tích', label: 'Từ đầu năm', text: 'Doanh số từ ngày 01/01 đến hôm nay', icon: '📈' },
     { category: 'Phân tích', label: 'Tổng tất cả NV', text: 'Tổng doanh số tất cả nhân viên', icon: '🌐' },
     { category: 'Phân tích', label: 'So sánh tháng', text: 'So sánh doanh số tháng này và tháng trước', icon: '⚖️' },
-    { category: 'Phân tích', label: 'Top nhân viên', text: 'Top nhân viên bán nhiều nhất tháng này', icon: '🏆' },
-    { category: 'Phân tích', label: 'Top khách hàng', text: 'Top khách hàng mua nhiều nhất tháng này', icon: '⭐' },
 
     // ══════════════════════════════════════
     //  💰 CÔNG NỢ
@@ -36,16 +40,11 @@ window.CHAT_SUGGESTIONS = [
     // ══════════════════════════════════════
     { category: 'Kho hàng', label: 'Hiện tại', text: 'Tồn kho hiện tại', icon: '📦' },
     { category: 'Kho hàng', label: 'Kiểm tra SP', text: 'Kiểm tra tồn kho sản phẩm', icon: '🔍' },
-    { category: 'Kho hàng', label: 'Hết hàng', text: 'Sản phẩm hết hàng', icon: '🚫' },
-    { category: 'Kho hàng', label: 'Sắp hết', text: 'Sản phẩm sắp hết hàng', icon: '⚠️' },
     { category: 'Kho hàng', label: 'Theo kho', text: 'Tồn kho theo kho hàng', icon: '🏭' },
-    { category: 'Kho hàng', label: 'Sắp hết hạn', text: 'Sản phẩm sắp hết hạn', icon: '⏰' },
-    { category: 'Kho hàng', label: 'XNT hôm nay', text: 'Xuất nhập tồn hôm nay', icon: '🔄' },
 
     // ══════════════════════════════════════
     //  🛒 ĐƠN HÀNG
     // ══════════════════════════════════════
-    { category: 'Đơn hàng', label: 'Tạo đơn mới', text: 'Tạo đơn hàng mới', icon: '🛒' },
     { category: 'Đơn hàng', label: 'Hôm nay', text: 'Đơn hàng hôm nay', icon: '📋' },
     { category: 'Đơn hàng', label: 'Tháng này', text: 'Đơn hàng tháng này', icon: '📅' },
     { category: 'Đơn hàng', label: 'Chờ duyệt', text: 'Đơn hàng chờ duyệt', icon: '⏳' },
@@ -61,16 +60,13 @@ window.CHAT_SUGGESTIONS = [
     //  🔍 TRA CỨU
     // ══════════════════════════════════════
     { category: 'Tra cứu', label: 'Sản phẩm', text: 'Tìm sản phẩm', icon: '💊' },
-    { category: 'Tra cứu', label: 'Khách hàng', text: 'Tìm khách hàng', icon: '👤' },
+    { category: 'Tra cứu', label: 'Chấm điểm KH', text: 'Chấm điểm khách hàng của tôi', icon: '👤' },
     { category: 'Tra cứu', label: 'Đơn hàng', text: 'Tra cứu đơn hàng', icon: '📋' },
-    { category: 'Tra cứu', label: 'Kho hàng', text: 'Tra cứu kho hàng', icon: '🏭' },
-    { category: 'Tra cứu', label: 'Nhân viên', text: 'Tìm nhân viên', icon: '👨‍💼' },
-    { category: 'Tra cứu', label: 'Giá SP', text: 'Giá sản phẩm', icon: '💲' },
+    { category: 'Tra cứu', label: 'Kho hàng', text: 'Danh mục kho hàng', icon: '🏭' },
+    { category: 'Tra cứu', label: 'Nhân viên', text: 'Danh mục nhân viên', icon: '👨‍💼' },
 
     // ══════════════════════════════════════
     //  ❓ HƯỚNG DẪN
     // ══════════════════════════════════════
-    { category: 'Hướng dẫn', label: 'Tạo đơn hàng', text: 'Hướng dẫn tạo đơn hàng', icon: '❓' },
-    { category: 'Hướng dẫn', label: 'Tra cứu nhanh', text: 'Hướng dẫn tra cứu bằng @mention', icon: '💡' },
-    { category: 'Hướng dẫn', label: 'Xem tính năng', text: 'Bạn có thể làm gì?', icon: '🤖' },
+    { category: 'Hướng dẫn', label: 'Xem tính năng', text: 'Bạn giúp được gì?', icon: '🤖' },
 ];

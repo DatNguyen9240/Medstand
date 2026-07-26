@@ -116,7 +116,7 @@
             signal: signal
         }).then(function (response) {
             return response.json().then(function (gatewayResponse) {
-                if (!gatewayResponse || !gatewayResponse.data) throw new Error('Cá»•ng Gateway pháº£n há»“i khÃ´ng há»£p lá»‡.');
+                if (!gatewayResponse || !gatewayResponse.data) throw new Error('Cổng Gateway phản hồi không hợp lệ.');
                 var decryptedText = Cipher.decrypt(gatewayResponse.data);
                 var payload;
                 try { payload = decryptedText ? JSON.parse(decryptedText) : {}; }
@@ -423,7 +423,13 @@
         var normalized = requestId === null || requestId === undefined
             ? ''
             : String(requestId).trim();
-        if (!normalized) return true;
+        // Không có requestId thì không thể khử trùng. Vẫn phải cho render, vì trả false
+        // sẽ nuốt luôn những phản hồi hợp lệ. Muốn đóng hẳn lỗ này thì gateway phải
+        // gắn requestId cho cả response thành công, không chỉ response lỗi.
+        if (!normalized) {
+            console.debug('[Chatbot] Phản hồi không có requestId — bỏ qua bước chống render trùng.');
+            return true;
+        }
         if (_renderedRequestIds.has(normalized)) {
             console.warn('[DUPLICATE_RESPONSE_SUPPRESSED]', { requestId: normalized });
             return false;
@@ -1231,7 +1237,7 @@
 
 
 
-                _addMessage('ai', '   ang bới móc kho dữ liệu tài liệu RAG...');
+                _addMessage('ai', '⏳ Đang bới móc kho dữ liệu tài liệu RAG...');
 
                 _doRAGSearch(queryText);
 
@@ -1433,7 +1439,7 @@
 
                                 _hideTyping(); _setStopMode(false);
 
-                                _addMessage('ai', ' Lỗi đc Excel: ịnh dạng cổ bị hng hoặc file có bc mật khẩu.');
+                                _addMessage('ai', '❌ Lỗi đọc Excel: Định dạng cũ bị hỏng hoặc file có bọc mật khẩu.');
 
                             }
 
@@ -1501,11 +1507,29 @@
             })
                 .then(function (res) {
                     return res.json().then(function (resJson) {
-                        if (!res.ok) throw new Error("Lỗi Server Gateway (" + res.status + ")");
+                        // Giải mã TRƯỚC khi ném lỗi. Nếu ném ngay theo res.ok thì
+                        // code/message/requestId trong envelope lỗi bị mất, và người dùng
+                        // chỉ nhận được thông báo chung không truy vết được.
                         var decryptedText = Cipher.decrypt(resJson.data);
+                        var parsed = null;
+                        if (decryptedText) {
+                            try { parsed = JSON.parse(decryptedText); } catch (e) { parsed = null; }
+                        }
+
+                        if (!res.ok) {
+                            var gatewayError = new Error(
+                                (parsed && parsed.message) || "Lỗi Server Gateway (" + res.status + ")"
+                            );
+                            gatewayError.code = (parsed && parsed.code) || 'GATEWAY_ERROR';
+                            gatewayError.requestId = (parsed && parsed.requestId) || (resJson && resJson.requestId) || '';
+                            gatewayError.status = res.status;
+                            gatewayError.response = parsed;
+                            throw gatewayError;
+                        }
+
                         if (!decryptedText) throw new Error("Trả về dữ liệu trống.");
-                        try { return JSON.parse(decryptedText); }
-                        catch (e) { throw new Error("Dữ liệu không phải JSON: " + decryptedText.substring(0, 50)); }
+                        if (parsed === null) throw new Error("Dữ liệu không phải JSON: " + decryptedText.substring(0, 50));
+                        return parsed;
                     });
                 })
                 .then(function (data) { _handleReply(data); })
@@ -3533,6 +3557,40 @@
             };
             if (orderSuggestionDict[lower]) return orderSuggestionDict[lower];
         }
+        // Các cột procedure trả về nhưng chưa có trong từ điển chung. Thiếu ở đây thì
+        // fallback `dict[lower] || key` sẽ hiện nguyên tên cột DB cho người dùng cuối.
+        // Riêng nhóm R/F/M/C của chấm điểm khách hàng: kế hoạch UAT (MGR-05) yêu cầu
+        // không phơi mã kỹ thuật, nên đặt tên nghiệp vụ dễ hiểu thay vì tên thuật toán.
+        var fallbackDict = {
+            'trangthai': 'Trạng thái',
+            // Chấm điểm khách hàng
+            'r_score': 'Điểm gần đây',
+            'f_score': 'Điểm tần suất',
+            'm_score': 'Điểm giá trị',
+            'c_score': 'Điểm gắn bó',
+            'totalscore': 'Tổng điểm',
+            'recency_days': 'Số ngày chưa mua',
+            'frequency_6m': 'Số lần mua 6 tháng',
+            'monetary_12m': 'Giá trị mua 12 tháng',
+            'riskpriority': 'Mức ưu tiên chăm sóc',
+            // Gợi ý bán kèm
+            'remainingphysical': 'Tồn kho còn lại',
+            'quantityinstock': 'Số lượng trong kho',
+            'priorityscore': 'Mức ưu tiên',
+            // Đề xuất khuyến mãi
+            'approvalstatus': 'Trạng thái phê duyệt',
+            'dailysalesvelocity': 'Tốc độ bán mỗi ngày',
+            'proposalreasoncode': 'Lý do đề xuất',
+            'nearestexpiredate': 'Hạn dùng gần nhất',
+            // Sản phẩm trọng tâm
+            'accumulationbasis': 'Cơ sở tích lũy',
+            'nonexpiredphysicalstock': 'Tồn còn hạn',
+            'stockstatuslabel': 'Tình trạng tồn kho',
+            'recordtype': 'Loại bản ghi',
+            // Tra cứu sản phẩm
+            'matchscore': 'Độ khớp'
+        };
+        if (fallbackDict[lower]) return fallbackDict[lower];
         return dict[lower] || key;
     }
 
@@ -4842,7 +4900,29 @@
 
         _setStopMode(false);
 
-        _addMessage('ai', 'Xin lỗi, tôi không thể phản hồi lúc này. Vui lòng thử lại sau.');
+        // Giữ câu thông báo thân thiện nhưng kèm mã tra cứu.
+        // Không có requestId thì mọi lần báo lỗi đều không đối chiếu được với
+        // log gateway và execution n8n — đây là lý do các lỗi UAT trước đây
+        // không tìm được nguyên nhân.
+        var errCode = (err && (err.code || (err.response && err.response.code))) || '';
+        var errRequestId = (err && (err.requestId || (err.response && err.response.requestId))) || '';
+
+        var text = 'Xin lỗi, tôi không thể phản hồi lúc này. Vui lòng thử lại sau.';
+
+        if (errCode || errRequestId) {
+            var parts = [];
+            if (errCode) parts.push('Mã lỗi: ' + errCode);
+            if (errRequestId) parts.push('Mã tra cứu: ' + errRequestId);
+            text += '\n\n_' + parts.join(' · ') + '_';
+        }
+
+        _addMessage('ai', text);
+
+        console.error('[Chatbot] Lỗi phản hồi', {
+            code: errCode || 'UNKNOWN',
+            requestId: errRequestId || null,
+            message: err && err.message
+        });
 
     }
 
