@@ -101,7 +101,10 @@ app.use((req, res, next) => {
         '/package-lock.json',
         '/.env',
         '/start_everything.bat',
-        '/env.js'
+        '/env.js',
+        // Block root-level unminified sources; production only uses the minified bundle.
+        '/chatbot-widget/js/chatbot.js',
+        '/chatbot-widget/js/chatbot-api-engine.js'
     ].includes(url);
     
     if (isSensitiveFolder || isSensitiveFile || isRawWidgetSource) {
