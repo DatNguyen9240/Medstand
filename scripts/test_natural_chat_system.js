@@ -323,7 +323,8 @@ function evaluateLiveResult(test, response) {
 }
 
 async function runLive(args, profile = 'functional') {
-  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'proxy';
+  // /api/chat da bi vo hieu hoa (server.js tra 404 GATEWAY_REQUIRED); moi luu luong di qua /api/gateway.
+  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'gateway';
   const endpoint = args.endpoint || process.env.MEDSTAND_CHAT_ENDPOINT
     || (transport === 'gateway' ? 'http://localhost:3000/api/gateway' : 'http://localhost:3000/api/chat');
   const token = args.token || process.env.MEDSTAND_AUTH_TOKEN || '';
@@ -360,7 +361,8 @@ async function runLive(args, profile = 'functional') {
 }
 
 async function runLoad(args) {
-  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'proxy';
+  // /api/chat da bi vo hieu hoa (server.js tra 404 GATEWAY_REQUIRED); moi luu luong di qua /api/gateway.
+  const transport = args.transport || process.env.MEDSTAND_CHAT_TRANSPORT || 'gateway';
   const endpoint = args.endpoint || process.env.MEDSTAND_CHAT_ENDPOINT
     || (transport === 'gateway' ? 'http://localhost:3000/api/gateway' : 'http://localhost:3000/api/chat');
   const remote = !isLocalEndpoint(endpoint);

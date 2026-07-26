@@ -527,9 +527,11 @@ var _dec = function(b64) {
         if (fs.existsSync(filePath)) {
             let content = fs.readFileSync(filePath, 'utf-8');
             
-            // Thay thế script theme.js bằng bản minified trong dist
+            // Thay thế script theme.js bằng bản minified trong dist.
+            // Khớp cả đường dẫn gốc lẫn đường dẫn đã build ở lần chạy trước, nếu không
+            // thì sau lần build đầu tiên regex sẽ không còn khớp và ?v= bị đóng băng vĩnh viễn.
             content = content.replace(
-                /src=["'](?:\.\.\/)?src\/js\/utils\/theme\.js["']/gi,
+                /src=["'](?:\.\.\/)?src\/js\/(?:utils\/theme\.js|dist\/theme\.min\.js)(?:\?v=[\d.]+)?["']/gi,
                 `src="../src/js/dist/theme.min.js?v=${APP_VERSION}"`
             );
             

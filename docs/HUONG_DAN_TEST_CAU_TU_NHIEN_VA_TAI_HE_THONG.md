@@ -38,8 +38,12 @@ $env:MEDSTAND_AUTH_TOKEN = '<token của tài khoản test>'
 $env:MEDSTAND_TEST_CUSTOMER = 'AG0031'
 $env:MEDSTAND_TEST_PRODUCT = 'A003'
 $env:MEDSTAND_TEST_DOCUMENT = 'U13S1_MB13_4'
-$env:MEDSTAND_CHAT_ENDPOINT = 'http://localhost:3000/api/chat'
+$env:MEDSTAND_CHAT_ENDPOINT = 'https://medtest.bms7.net/api/gateway'
 ```
+
+> **Quan trọng:** `/api/chat` đã bị vô hiệu hóa và trả `404 GATEWAY_REQUIRED`. Mọi lưu lượng nghiệp vụ đi qua `/api/gateway`. Nếu tài liệu hoặc script cũ còn trỏ `/api/chat` thì toàn bộ ca kiểm thử sẽ báo 404, không phải lỗi hệ thống.
+
+> **Kiểm tra đúng môi trường trước khi chạy.** Khi không đặt `MEDSTAND_CHAT_ENDPOINT`, bộ test mặc định về `http://localhost:3000/api/gateway`. Muốn kiểm thử Pilot thì phải trỏ tường minh sang `medtest`, nếu không bạn đang nghiệm thu nhầm máy local.
 
 Đóng cửa sổ PowerShell sau khi test để xóa các biến tạm.
 
@@ -70,6 +74,12 @@ Có thể đổi trực tiếp bằng tham số:
 
 ```powershell
 node scripts/test_natural_chat_system.js live --customer HPA011 --product A015
+```
+
+Chạy thẳng lên môi trường Pilot mà không cần đặt biến môi trường:
+
+```powershell
+node scripts/test_natural_chat_system.js live --transport gateway --endpoint https://medtest.bms7.net/api/gateway
 ```
 
 ## 6. Load test an toàn

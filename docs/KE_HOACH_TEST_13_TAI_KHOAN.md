@@ -195,23 +195,55 @@ Người điều phối phải ghi commit/source version, URL frontend, URL n8n 
 
 Các số dưới đây là dữ liệu UAT dùng để phát hiện sai scope; không phải doanh số thật.
 
-| Tài khoản | Số ngày | Doanh số 20/07 | Tổng 09–20/07 |
-|---|---:|---:|---:|
-| `QLBH013.MED` | 12 | 83.000.000 ₫ | 1.116.000.000 ₫ |
-| `NAMDINHB.MED` | 12 | 83.000.000 ₫ | 1.116.000.000 ₫ |
-| `QLBH016.MED` | 12 | 86.000.000 ₫ | 1.152.000.000 ₫ |
-| `BACNINHA.MED` | 12 | 86.000.000 ₫ | 1.152.000.000 ₫ |
-| `QLBH005.MED` | 12 | 89.000.000 ₫ | 1.188.000.000 ₫ |
-| `HUEB.MED` | 12 | 89.000.000 ₫ | 1.188.000.000 ₫ |
-| `QLBH010.MED` | 12 | 92.000.000 ₫ | 1.224.000.000 ₫ |
-| `DANANGA.MED` | 12 | 92.000.000 ₫ | 1.224.000.000 ₫ |
-| `QLMN2` | 12 | 95.000.000 ₫ | 1.260.000.000 ₫ |
-| `CanThoA` | 12 | 95.000.000 ₫ | 1.260.000.000 ₫ |
-| `QLMD1` | 12 | 98.000.000 ₫ | 1.296.000.000 ₫ |
-| `BinhPhuocA` | 12 | 98.000.000 ₫ | 1.296.000.000 ₫ |
-| `QLBH024.MED` | 12 | 101.000.000 ₫ | 1.332.000.000 ₫ |
+> ⚠️ **Không dùng số cứng.** Fixture [`Add_UAT_Data_Completion_AI.sql`](../sql/Add_UAT_Data_Completion_AI.sql) sinh dữ liệu theo **ngày tương đối** — từ ngày 09 của tháng hiện tại tới **ngày chạy script**. Mỗi lần chạy lại, con số kỳ vọng đổi theo. Hãy tính bằng công thức bên dưới.
 
-Nếu kết quả lệch, không sửa fixture ngay. Kiểm tra trước: ngày, cache, tài khoản, filter nhân viên, scope Manager và nguồn `AR_OrderAndReturnView`.
+### Công thức
+
+Nguồn: [`Add_UAT_Data_Completion_AI.sql:265`](../sql/Add_UAT_Data_Completion_AI.sql)
+
+```
+Doanh số 1 ngày = 80.000.000 + ScenarioNo × 3.000.000 + (DAY(ngày) % 5) × 5.000.000
+```
+
+| ScenarioNo | Mã | Khách | Tài khoản |
+|---:|---|---|---|
+| 1 | MB13 | `NDB001` | `QLBH013.MED`, `NAMDINHB.MED` |
+| 2 | MB16 | `BNA051` | `QLBH016.MED`, `BACNINHA.MED` |
+| 3 | MT05 | `HUEA043` | `QLBH005.MED`, `HUEB.MED` |
+| 4 | MT10 | `QANA002` | `QLBH010.MED`, `DANANGA.MED` |
+| 5 | MN02 | `DL012` | `QLMN2`, `CanThoA` |
+| 6 | MNMD | `SGNB0001` | `QLMD1`, `BinhPhuocA` |
+| 7 | MN24 | `AG0020` | `QLBH024.MED` |
+
+### Hệ số theo ngày
+
+| `DAY % 5` | Cộng thêm | Ví dụ ngày trong tháng |
+|---:|---:|---|
+| 0 | +0 ₫ | 05, 10, 15, 20, 25, 30 |
+| 1 | +5.000.000 ₫ | 06, 11, 16, 21, 26, 31 |
+| 2 | +10.000.000 ₫ | 07, 12, 17, 22, 27 |
+| 3 | +15.000.000 ₫ | 08, 13, 18, 23, 28 |
+| 4 | +20.000.000 ₫ | 09, 14, 19, 24, 29 |
+
+### Ví dụ — ngày 20/07 (`20 % 5 = 0`)
+
+`QLBH013.MED` = 80.000.000 + 1×3.000.000 + 0 = **83.000.000 ₫**
+
+### Ví dụ — ngày 27/07 (`27 % 5 = 2` → +10.000.000)
+
+| Tài khoản | Doanh số ngày 27/07 |
+|---|---:|
+| `QLBH013.MED`, `NAMDINHB.MED` | 93.000.000 ₫ |
+| `QLBH016.MED`, `BACNINHA.MED` | 96.000.000 ₫ |
+| `QLBH005.MED`, `HUEB.MED` | 99.000.000 ₫ |
+| `QLBH010.MED`, `DANANGA.MED` | 102.000.000 ₫ |
+| `QLMN2`, `CanThoA` | 105.000.000 ₫ |
+| `QLMD1`, `BinhPhuocA` | 108.000.000 ₫ |
+| `QLBH024.MED` | 111.000.000 ₫ |
+
+Tổng của một khoảng ngày = cộng công thức trên cho từng ngày trong khoảng.
+
+Nếu kết quả lệch, không sửa fixture ngay. Kiểm tra trước: **ngày chạy fixture gần nhất**, cache, tài khoản, filter nhân viên, scope Manager và nguồn `AR_OrderAndReturnView`.
 
 ## 12. Bộ test chung bắt buộc — chạy 13/13 tài khoản
 

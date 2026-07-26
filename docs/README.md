@@ -1,8 +1,28 @@
 # Bộ tài liệu Pilot Medstand AI
 
-> Báo cáo hiện hành: [`BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md`](BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md). Trạng thái ngày 22/07/2026: `N8N_IMPORTED_RUNTIME_RETEST_PENDING`. Báo cáo audit `NO-GO` cũ được giữ làm baseline trước khắc phục.
+## Trạng thái hiện hành
 
-> **Bản tổng hợp công bố mới nhất:** [`CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md`](CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md). Trạng thái: `SOURCE_AND_BUILD_READY_RUNTIME_RETEST_REQUIRED`.
+**Cập nhật 26/07/2026.** Đọc theo thứ tự dưới đây; các báo cáo cũ chỉ giữ làm lịch sử, không dùng làm căn cứ.
+
+| Lớp | Trạng thái | Nguồn |
+|---|---|---|
+| Source | `PASS` — 159/159 hội thoại, build khớp commit | [Danh sách lỗi 26/07](../reports/DANH_SACH_LOI_TONG_HOP_2026-07-26.md) |
+| Frontend runtime | `PASS` — `11.105` = `origin/develop@04d1056` | như trên |
+| n8n runtime | `DRIFTED` — chưa import bản mới, còn 2 parser trùng | như trên |
+| Bảo mật | `P0 MỞ` — lộ file tĩnh ra internet | như trên |
+| Business | `SIGN_OFF_PENDING` — toàn bộ rule ở `DRAFT` | như trên |
+
+- **Danh sách lỗi đầy đủ:** [`../reports/DANH_SACH_LOI_TONG_HOP_2026-07-26.md`](../reports/DANH_SACH_LOI_TONG_HOP_2026-07-26.md)
+- **Kế hoạch khắc phục:** [`../reports/KE_HOACH_KHAC_PHUC_2026-07-26.md`](../reports/KE_HOACH_KHAC_PHUC_2026-07-26.md)
+
+<details>
+<summary>Lịch sử trạng thái trước đó</summary>
+
+- 24/07/2026 — [`CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md`](CONG_BO_TRANG_THAI_MEDSTAND_AI_2026-07-24.md): `SOURCE_AND_BUILD_READY_RUNTIME_RETEST_REQUIRED`
+- 22/07/2026 — [`BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md`](BAO_CAO_SAU_KHAC_PHUC_CUSTOMER_PILOT_2026-07-21.md): `N8N_IMPORTED_RUNTIME_RETEST_PENDING`
+- 21/07/2026 — [`BAO_CAO_AUDIT_CUSTOMER_PILOT_TEST_READY_2026-07-21.md`](BAO_CAO_AUDIT_CUSTOMER_PILOT_TEST_READY_2026-07-21.md): `NO-GO`, giữ làm baseline trước khắc phục
+
+</details>
 
 ## Tài liệu dành cho doanh nghiệp
 
@@ -12,8 +32,15 @@
 2. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)  
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
 
-3. [`GOI_UAT_KHACH_HANG/README.md`](GOI_UAT_KHACH_HANG/README.md)
-   Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn nhanh, phiếu ghi kết quả, mẫu báo lỗi và kịch bản 13 tài khoản dạng copy-paste.
+3. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
+   Gói gửi trực tiếp cho người dùng Pilot, gồm 4 file Word:
+
+   | File | Nội dung |
+   |---|---|
+   | `01_HUONG_DAN_TEST_MEDSTAND_AI.docx` | Hướng dẫn nhanh cho người dùng |
+   | `02_PHIEU_KIEM_THU_SALE_MANAGER.docx` | Phiếu ghi kết quả theo vai trò |
+   | `03_MAU_PHAN_HOI_UAT.docx` | Mẫu báo lỗi |
+   | `04_KICH_BAN_TEST_13_TAI_KHOAN_COPY_PASTE.docx` | Kịch bản 13 tài khoản dạng copy-paste |
 
 ## Tài liệu kỹ thuật liên quan
 
