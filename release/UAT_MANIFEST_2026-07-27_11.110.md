@@ -135,7 +135,7 @@ Những file dưới đây phải có trong manifest để đối chiếu hệ t
 | `n8n/AI_Core/AI_Upload_Reader.json` | `HQa6xx7flcNcC1oU` | `admin-upload`, `approve-catalog` | Kiểm tra runtime | `adbab7f61fc5e735cb6f9f03d524a151ed877e613cc068357091424419ff2ca1` |
 | `n8n/API_Services/API_DataSource.json` | `qMD8DESZ8pXRqrMR` | `api-datasource` | `true` | `964e68580cfd076a2928c7cfa4a65bafb3d55ab9030120c28296920f58727909` |
 | `n8n/API_Services/API_Execute.json` | `fCJwiyAT9r6eh1ys` | `api-execute` | `true` | `893b8878c40de1880b7beecf2c361e5d03435e0ff06690d803654e38f09f9961` |
-| `n8n/API_Services/API_GetConfig.json` | `sGPz8LMQQHVp0IiL` | `api-get-config` | `true` | `aa79efc4cc56b31d0239d19c754aabd9e3e008209ab099d495242ab7e0f81e7` |
+| `n8n/API_Services/API_GetConfig.json` | `sGPz8LMQQHVp0IiL` | `api-get-config` | `true` | `aa79efc4cc56b31d0239d19c754aaabd9e3e008209ab099d495242ab7e0f81e7` |
 | `n8n/API_Services/API_ListActive.json` | `FRbuGdI9jz0ZZIvU` | `api-list-active` | `true` | `157682e41c8fc2d893a4eb212b2cfda83adcacfe08d17463e1149120288ba5ad` |
 | `n8n/API_Services/API_SystemMeta.json` | `YAiRyFqcyVmMU5c3` | `api-get-system-meta` | `true` | `e2ef67a544b3163f49ad47cbe0658b05ec4d0dfcadc0bd14fcf37b864adcb20b` |
 | `n8n/Shared/Shared_Auth_Guard.json` | `9UxECqxRaPGMF8EM` | Sub-workflow | Có thể `false` nhưng phải callable | `e4fb942391c8021bc3c703c93dc114c504a18abc94101c0b91f41bd51ef5bb3f` |
@@ -198,9 +198,10 @@ Phần này để người triển khai điền sau deploy. Không đánh dấu 
 
 | Lớp | Kết quả | Thời gian | Người kiểm tra | Bằng chứng |
 |---|---|---|---|---|
-| Frontend `11.111` | `PENDING` | — | — | Chờ deploy RC3 |
-| Service Worker `medstand-11.111` | `PENDING` | — | — | Chờ deploy RC3 |
-| Trình duyệt cũ không còn dùng bundle `11.110` | `PENDING` | — | — | Chờ deploy RC3; đây là tiêu chí đã fail ở lần kiểm tra `11.110` |
+| Frontend `11.111` | `PASS` | 27/07/2026 | Claude (HTTP GET, không token) | 6/6 artifact khớp manifest RC3; `?v=11.111`, `appVersion=11.111` |
+| Service Worker `medstand-11.111` | `PASS` | 27/07/2026 | Claude (HTTP GET, không token) | `sw.js` trên medtest khớp artifact RC3, chứa `medstand-11.111` |
+| Trình duyệt cũ không còn dùng bundle `11.110` | `PASS` | 27/07/2026 | Claude (HTTP GET, không token) | Cache key đổi sang `?v=11.111`; URL kèm `?v=11.111` với `Accept-Encoding` giống trình duyệt trả đúng bundle RC3. Còn cần xác nhận thủ công trên máy đã dùng bản cũ |
+| Không có marker conflict Git trong artifact | `PASS` | 27/07/2026 | Claude (HTTP GET, không token) | Đã soát lại sau sự cố deploy bản dính marker |
 | SQL 16/16 đúng definition | `PENDING` | — | — | — |
 | Intent Parser đúng ID/hash | `PENDING` | — | — | — |
 | Main Chatbot đúng ID/hash/webhook/Active | `PENDING` | — | — | — |

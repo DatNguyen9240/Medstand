@@ -3,7 +3,9 @@
 **Ngày kiểm tra:** 27/07/2026
 **Task liên quan:** `UAT-002 — Deploy frontend UAT đồng bộ` (phụ thuộc `UAT-001`)
 **Runtime mode:** `LIVE` — đã gọi trực tiếp `https://medtest.bms7.net` (chỉ GET asset tĩnh công khai: `index.html`, các file `.bundle.min.js/css`, `sw.js`; không cần đăng nhập, không dùng token)
-**Kết luận:** `NOT_DONE` — vừa bị chặn bởi `UAT-001` (chưa có manifest để đối chiếu) vừa có bằng chứng runtime cho thấy **bundle chatbot đang chạy trên medtest thật sự khác byte** so với cả commit đã chốt lẫn source local, dù số version hiển thị giống hệt nhau.
+**Kết luận cuối:** ✅ `DONE` — medtest chạy đúng `MEDSTAND-UAT-20260727-11.111-RC3`, 6/6 artifact khớp manifest. Xem mục 8.
+
+*(Kết luận ban đầu khi lập báo cáo: `NOT_DONE` — vừa bị chặn bởi `UAT-001` (chưa có manifest để đối chiếu) vừa có bằng chứng runtime cho thấy bundle chatbot đang chạy trên medtest thật sự khác byte so với cả commit đã chốt lẫn source local, dù số version hiển thị giống hệt nhau. Toàn bộ diễn biến giữ nguyên bên dưới để tra cứu.)*
 
 ---
 
@@ -191,7 +193,25 @@ Task chỉ được chuyển sang `DONE` khi:
 
 ## 8. Trạng thái hiện tại
 
-`UAT-002 = TODO` (đang `NOT_DONE`)
+`UAT-002 = DONE` ✅
+
+Kiểm tra cuối 27/07/2026 bằng HTTP GET trực tiếp tới `https://medtest.bms7.net` (không dùng token), đối chiếu với hash đã khóa trong manifest RC3:
+
+| Kiểm tra | Kết quả | Cách xác minh |
+|---|---|---|
+| `index.html` | ✅ KHỚP | khớp artifact RC3 trong git (chỉ lệch CRLF) |
+| `src/js/dist/app.bundle.min.js` | ✅ KHỚP | hash thô khớp manifest |
+| `chatbot-widget/js/chatbot.bundle.min.js` | ✅ KHỚP | hash thô khớp manifest (`8c81569d…`) |
+| `pages/login.html` | ✅ KHỚP | khớp artifact RC3 trong git (chỉ lệch CRLF) |
+| `pages/forgot-password.html` | ✅ KHỚP | khớp artifact RC3 trong git (chỉ lệch CRLF) |
+| `sw.js` | ✅ KHỚP | khớp artifact RC3 trong git (chỉ lệch CRLF) |
+| Version hiển thị | ✅ KHỚP | `?v=11.111` \| `appVersion=11.111` |
+| Đường đi thật của trình duyệt | ✅ KHỚP | `chatbot.bundle.min.js?v=11.111` với `Accept-Encoding` đầy đủ trả đúng bundle RC3 |
+| Marker conflict Git | ✅ SẠCH | không còn |
+
+Cả hai tiêu chí nghiệm thu đều đạt: **file runtime và version khớp manifest**, và **trình duyệt không còn tải bundle cũ** (cache key đã đổi từ `?v=11.110` sang `?v=11.111`).
+
+### 8.1 Ba vấn đề đã xử lý trên đường tới DONE
 
 ### 8.1 Đã xử lý xong
 
@@ -223,18 +243,29 @@ OK   chatbot.bundle.min.js?v=11.111    (đường đi thật của trình duyệ
 
 Vì cache key đã đổi từ `?v=11.110` sang `?v=11.111`, các máy đang giữ bundle cũ trong HTTP cache `immutable` sẽ buộc phải tải mới. Tiêu chí *"trình duyệt không còn tải bundle cũ"* coi như đạt về mặt kỹ thuật, nhưng **vẫn cần xác nhận thủ công** trên một trình duyệt đã từng dùng bản `11.110` (mục 8.4).
 
-### 8.4 Còn lại: smoke test trên trình duyệt thật
+### 8.3 Ngoài phạm vi UAT-002: smoke test chức năng
 
-Phần tự động đã xanh hết. Chưa thể tự kiểm tra được (cần thao tác người dùng có đăng nhập):
+Không chặn `UAT-002` (task này chỉ nghiệm thu việc deploy đúng bản), nhưng cần làm trước khi giao khách test. Chưa thể tự kiểm tra vì cần thao tác người dùng có đăng nhập:
 
 - Mở medtest bằng trình duyệt đã từng dùng bản `11.110`, **không xóa cache**, xác nhận DevTools → Network hiển thị `?v=11.111`.
-- Menu thao tác nhanh → **Lập đơn hàng**: panel giỏ hàng mở ngay trong khung chat, không nhảy sang `/create-order` trống.
 - Gõ `Tạo khách hàng mới` → mở form tạo khách.
-- Gõ `Lên đơn cho khách NDB001` → mở panel lập đơn điền sẵn khách.
 - Đăng nhập một Sale và một Manager, xác nhận không lỗi 500 ở doanh số / gợi ý đơn / tuyến / tồn kho.
 
-### 8.3 Vấn đề hệ thống chưa xử lý (không chặn UAT-002 nhưng sẽ lặp lại)
+### 8.4 Repo đã vượt qua RC3 — cần khóa RC4
 
-- `scripts/build.js` **không tự tăng** `APP_VERSION` — phụ thuộc hoàn toàn vào việc người build nhớ bump. Trong chính ngày 27/07 đã có 3 lần build mà không bump. Nên cân nhắc tự sinh cache key từ hash nội dung thay vì số version tay.
+`HEAD` (`e20a1da`) đã chứa **panel lập đơn nhanh trong khung chat**, chưa deploy:
+
+| Nguồn | `chatbot.bundle.min.js` | Trạng thái |
+|---|---|---|
+| Manifest RC3 / medtest | `8c81569d…` | đang chạy |
+| `HEAD` (`e20a1da`) | `21ac0cd4…` | chưa deploy |
+
+Trước khi deploy phần này **bắt buộc nâng `APP_VERSION` lên `11.112`**. Nếu giữ `11.111`, các trình duyệt đã cache bundle RC3 dưới `?v=11.111` với `Cache-Control: immutable` sẽ không bao giờ nhận được panel mới — đúng lỗi đã gặp ở mục 3.5.
+
+Ngoài `chatbot.bundle.min.js`, RC4 còn đổi `chatbot-widget/css/dist/chatbot-api-engine.css` (style của panel).
+
+### 8.5 Vấn đề hệ thống chưa xử lý (không chặn UAT-002 nhưng sẽ lặp lại)
+
+- `scripts/build.js` **không tự tăng** `APP_VERSION` — phụ thuộc hoàn toàn vào việc người build nhớ bump. Trong chính ngày 27/07 đã có 3 lần build mà không bump. Nên cân nhắc tự sinh cache key từ hash nội dung thay vì số version tay. Đây là rủi ro còn nguyên và sẽ lặp lại ngay ở RC4.
 - `chatbot.bundle.min.js` là file build ra nhưng **vẫn được commit vào Git**, nên mỗi lần merge giữa nhánh đều conflict toàn file — đây chính là nguồn gốc sự cố marker conflict ở mục 3.4. Nên cân nhắc đưa artifact build ra khỏi Git và sinh lúc deploy, hoặc quy định luôn `--ours`/rebuild khi conflict ở file này.
-- Chưa có script tự kiểm tra drift (hash + marker conflict) sau deploy — hiện phải làm thủ công như báo cáo này.
+- ✅ Đã có script tự kiểm tra drift: `scripts/verify_frontend_deploy.js` (hash + marker conflict + version + đường đi thật của trình duyệt).

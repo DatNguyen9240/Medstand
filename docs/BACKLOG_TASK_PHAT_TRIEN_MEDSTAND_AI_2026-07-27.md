@@ -59,10 +59,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Phạm vi `DONE`: hoàn tất manifest source candidate. Bằng chứng môi trường UAT chạy đúng manifest vẫn thuộc `UAT-002`, `UAT-003` và `UAT-004`.
   - Báo cáo nguyên nhân ban đầu: xem `UAT-001_MANIFEST_GAP_2026-07-27.md`.
 
-- [ ] **UAT-002 — Deploy frontend UAT đồng bộ** · `P0` · `TODO`
+- [x] **UAT-002 — Deploy frontend UAT đồng bộ** · `P0` · `DONE`
   - Deploy bundle frontend theo manifest; kiểm tra cache/version và service worker.
   - Phụ thuộc: `UAT-001`.
   - Nghiệm thu: file runtime và version hiển thị khớp manifest; trình duyệt không còn tải bundle cũ.
+  - Kết quả xử lý 27/07/2026: medtest chạy đúng `MEDSTAND-UAT-20260727-11.111-RC3`. Kiểm tra trực tiếp qua HTTP (không dùng token): 6/6 artifact khớp manifest RC3, `?v=11.111` và `appVersion=11.111` đồng bộ, `sw.js` mang `medstand-11.111`, không còn marker conflict Git, và URL kèm `?v=11.111` với header nén giống trình duyệt trả đúng bundle RC3.
+  - Đường đi tới `DONE` gồm ba lần sửa: (1) bundle chatbot lệch byte so với source — đã deploy lại; (2) một lượt deploy đẩy nhầm file dính marker conflict Git mà server vẫn trả HTTP 200 — đã thay; (3) `APP_VERSION` không đổi khiến cache `immutable` giữ bundle cũ — đã nâng `11.110` → `11.111` để đổi cache key.
+  - Công cụ để lại: `scripts/verify_frontend_deploy.js` — chạy một lệnh là đối chiếu hash, marker conflict và version. Lưu ý phải gửi `Accept-Encoding: identity` khi so hash vì server có cache bản nén riêng có thể cũ hơn file thật.
+  - Phạm vi `DONE`: chỉ xác nhận RC3 đã deploy đúng. Smoke test chức năng trên trình duyệt có đăng nhập vẫn là việc riêng.
+  - ⚠️ Repo đã vượt qua RC3: `HEAD` chứa panel lập đơn nhanh trong khung chat (`chatbot.bundle.min.js` = `21ac0cd4…`) chưa deploy. Phần này cần khóa RC4 và **phải nâng `APP_VERSION` lên `11.112`** trước khi build/deploy, nếu không trình duyệt đã cache `11.111` sẽ không nhận được.
+  - Báo cáo chi tiết: `UAT-002_RUNTIME_DRIFT_2026-07-27.md`.
 
 - [x] **UAT-003 — Import bộ SQL bắt buộc** · `P0` · `DONE`
   - Import đúng các stored procedure và metadata API thuộc bản UAT.
@@ -76,16 +82,26 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Đã xác minh hai file vừa import và toàn bộ bộ kiểm tra SQL; không còn thiếu procedure/metadata bắt buộc theo bằng chứng nghiệm thu.
   - Hướng dẫn, lỗi ảnh hưởng và điều kiện nghiệm thu: xem `UAT-003_SQL_DEPLOYMENT_2026-07-27.md`.
 
-- [ ] **UAT-004 — Import và publish workflow n8n** · `P0` · `TODO`
+- [ ] **UAT-004 — Import và publish workflow n8n** · `P0` · `BLOCKED`
   - Import đúng workflow auth, intent parser, main chatbot và API service.
   - Xóa hoặc disable workflow/parser trùng sau khi xác định đúng bản active.
   - Phụ thuộc: `UAT-001`.
   - Nghiệm thu: mỗi webhook chỉ có một workflow active đúng; workflow runtime khớp file nguồn.
+  - Kết quả kiểm tra 27/07/2026 — **phía source ĐẠT**: 18 file, 11 webhook path, không trùng path, không trùng ID, mọi file có webhook đều đã có `id` nên import sẽ ghi đè đúng bản thay vì tạo mới. Hash 12/12 khớp manifest.
+  - **Vi phạm xác định**: webhook `intent-parser` có **hai workflow cùng ACTIVE** (`ZQPz4sbzz9pqSO8W` và `Gn7nDjDgGUFOWni5`, trùng cả tên). n8n không đảm bảo định tuyến vào bản nào ⇒ cùng một câu hỏi có thể ra hai kết quả khác nhau. Đây nhiều khả năng chính là triệu chứng mà `UAT-021` sẽ bắt được.
+  - Ngoài ra webhook `api-execute` còn hai bản inactive (`0xIfgxxondYICsqZ`, `Z7raaV1oe9JkjUXQ` — tên bị mojibake, dấu vết import hỏng) nên dọn để tránh bật nhầm.
+  - Lỗi manifest đã sửa: hash `API_GetConfig.json` bị chép thiếu 1 ký tự (63/64), sẽ luôn báo lệch giả khi đối chiếu. Nội dung file không sai.
+  - `BLOCKED` vì sao: n8n không lộ ra Internet (`/webhook/*` bị `server.js` chặn bằng `GATEWAY_REQUIRED`; `/n8n/` chỉ trả SPA), nên vế "runtime khớp file nguồn" phải nghiệm thu tại nơi truy cập được n8n. Ảnh chụp runtime duy nhất còn lưu là 21/07, đã quá cũ để kết luận.
+  - Việc cần làm: (1) tắt `ZQPz4sbzz9pqSO8W`, giữ `Gn7nDjDgGUFOWni5`; (2) import lại theo manifest phần 4, sau đó chọn lại node `Execute Shared Auth Guard` → `9UxECqxRaPGMF8EM`; (3) tạo export mới rồi chạy `node scripts/verify_n8n_runtime.js <export>` — thoát mã 0 là đạt.
+  - ⚠️ File export chứa `staticData` kèm token thật — không commit; cần lưu thì lọc bằng `scripts/sanitize_n8n_export.js`.
+  - Báo cáo chi tiết: `UAT-004_N8N_WORKFLOW_VERIFICATION_2026-07-27.md`.
 
-- [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `TODO`
+- [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `REVIEW_REQUIRED`
   - Xác minh app, n8n và SQL đều trỏ đúng môi trường `medtest`.
   - Thay credential viết cứng trong workflow upload bằng cơ chế secret/xác thực chuẩn.
   - Nghiệm thu: không có credential UAT/production được viết trực tiếp trong file public hoặc source workflow xuất bản.
+  - Kết quả xử lý 27/07/2026: kiến trúc chuẩn là UI `medtest.bms7.net` → API nội bộ `medtest.bms79.com` → DB `medtest`; đã sửa `API_BASE` local về API nội bộ. Giữ fallback admin key theo xác nhận của chủ dự án vì workflow upload hiện kiểm tra cùng giá trị; chuyển sang secret runtime trước production. Còn cần xác nhận environment trên server và smoke test runtime.
+  - Báo cáo chi tiết: `docs/UAT-005_ENDPOINT_SECRET_VERIFICATION_2026-07-27.md`; script kiểm tra: `scripts/verify_uat5_config.js`.
 
 ### Nhóm B — Phân quyền và dữ liệu
 
