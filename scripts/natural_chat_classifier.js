@@ -45,6 +45,7 @@ function isErpCode(token) {
 
 function foldForMatch(value) {
   return String(value || '')
+    .replace(/^\s*\d+[.)-]\s*/, '')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

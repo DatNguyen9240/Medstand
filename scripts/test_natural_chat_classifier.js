@@ -155,6 +155,13 @@ assert.strictEqual(debtFollowUp.apiCode, '@cong_no_chi_tiet');
 assert.strictEqual(debtFollowUp.entities.customerId, 'NDB001');
 assert.strictEqual(expectedAction(debtFollowUp), 'EXECUTE');
 
+const numberedDebtFollowUp = classifyNaturalMessage('3. chi tiet di', {
+  hasContext: true,
+  history: 'Khach NDB001 dang no bao nhieu?',
+});
+assert.strictEqual(numberedDebtFollowUp.intent, 'CUSTOMER_DEBT_DETAIL');
+assert.strictEqual(numberedDebtFollowUp.entities.customerId, 'NDB001');
+
 const longAbsent = classifyNaturalMessage('Khách nào lâu chưa mua?');
 assert.strictEqual(longAbsent.apiCode, '@tuyen_ban_hang');
 assert.strictEqual(longAbsent.entities.absentDays, 30);

@@ -4,6 +4,16 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const workflowPath = path.join(root, 'n8n', 'AI_Core', 'MAIN_ChatBot_V5.json');
 const workflow = JSON.parse(fs.readFileSync(workflowPath, 'utf8'));
+const resolveUserNode = workflow.nodes.find((entry) => entry.name === 'Resolve UUID V5');
+
+if (!resolveUserNode?.parameters?.jsCode) {
+  throw new Error('Resolve UUID V5 was not found.');
+}
+
+resolveUserNode.parameters.jsCode = resolveUserNode.parameters.jsCode.replace(
+  'https://medtest.bms7.net/api/API_UserInfo',
+  'https://medtest.bms79.com/api/API_UserInfo',
+);
 const node = workflow.nodes.find((entry) => entry.name === 'LIB ConfidenceDecision');
 
 if (!node?.parameters?.jsCode) {
