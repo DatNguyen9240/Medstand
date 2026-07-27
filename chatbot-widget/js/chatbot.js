@@ -4394,6 +4394,26 @@
 
     }
 
+    function _applyInlineTableFilter(container) {
+        if (!container) return;
+        var tbody = container.querySelector('tbody');
+        var cached = tbody ? _modalDataCache[tbody.id] : null;
+        if (!tbody || !cached || !cached.rows || !cached.keys) return;
+
+        var searchInput = container.querySelector('.ai-sales-filter-input');
+        var activeChip = container.querySelector('.ai-sales-filter-chip.active:not([data-server-tier])');
+        var filterKey = activeChip ? (activeChip.getAttribute('data-filter') || 'all') : 'all';
+        var badgeKey = activeChip ? (activeChip.getAttribute('data-badge-key') || cached.badgeKey) : cached.badgeKey;
+        var filtered = _applyModalFilter(cached.rows, cached.keys, searchInput ? searchInput.value : '', filterKey, badgeKey);
+
+        cached.visibleRows = filtered;
+        cached.currentTablePage = 1;
+        tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode, 1, cached.tablePageSize);
+
+        var count = container.querySelector('.ai-sales-filter-count');
+        if (count && !cached.isTierScoring) count.textContent = filtered.length + ' dòng';
+    }
+
 
 
     // ── Click delegation cho accordion + modal + action bar ────────
@@ -4495,6 +4515,19 @@
     }
 
     $messages.addEventListener('click', function (e) {
+        var inlineFilterChip = e.target.closest('.ai-sales-filter-chip:not([data-server-tier])');
+        if (inlineFilterChip) {
+            e.preventDefault();
+            e.stopPropagation();
+            var inlineTable = inlineFilterChip.closest('.ai-view-table');
+            if (!inlineTable) return;
+            inlineTable.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (chip) {
+                chip.classList.toggle('active', chip === inlineFilterChip);
+            });
+            _applyInlineTableFilter(inlineTable);
+            return;
+        }
+
         var stockCheckBtn = e.target.closest('.ai-stock-check-btn');
         if (stockCheckBtn) {
             e.preventDefault();
@@ -4881,7 +4914,11 @@
     $messages.addEventListener('input', function (e) {
         if (!e.target.classList.contains('ai-sales-filter-input')) return;
         var managementDetail = e.target.closest('.ai-sales-management-detail');
-        if (managementDetail) _applySalesManagementFilter(managementDetail);
+        if (managementDetail) {
+            _applySalesManagementFilter(managementDetail);
+            return;
+        }
+        _applyInlineTableFilter(e.target.closest('.ai-view-table'));
     });
 
 
