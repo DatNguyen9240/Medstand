@@ -6224,6 +6224,24 @@
 
 
 
+            // Danh mục nghiệp vụ là một picker chiếm gần hết màn hình. Nếu để
+
+            // bàn phím ở lại thì trên mobile nó chỉ còn ~280px và bị cắt cụt ở
+
+            // mép trên. App native luôn thu bàn phím khi mở picker → làm y vậy.
+
+            // Chọn xong một mục thì luồng _onApiSelected() focus lại ô nhập nên
+
+            // bàn phím tự quay lên, không mất nhịp thao tác.
+
+            if (_inputEl && window.innerWidth <= 767 && document.activeElement === _inputEl) {
+
+                _inputEl.blur();
+
+            }
+
+
+
             if (_activeApi) {
 
                 if (_panelEl) {
