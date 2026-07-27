@@ -600,7 +600,7 @@
 
             if (Date.now() - data.ts < CFG.CACHE_TTL) {
 
-                _apiList = data.list;
+                _apiList = _withLocalWriteActions(data.list);
 
                 if (cb) cb(_apiList);
 
@@ -616,7 +616,7 @@
 
             // P1-04 wraps catalog rows with requestId for end-to-end tracing.
             // Keep backward compatibility with the former array/data shapes.
-            _apiList = Array.isArray(res) ? res : (res.records || res.data || []);
+            _apiList = _withLocalWriteActions(Array.isArray(res) ? res : (res.records || res.data || []));
 
             sessionStorage.setItem(CFG.CACHE_KEY, JSON.stringify({
 
@@ -630,6 +630,39 @@
 
         }).catch(function (e) { console.error('Load list failed', e); if (cb) cb([]); });
 
+    }
+
+    // These two actions use the authenticated application endpoints that power
+    // the existing Customer and Create Order screens. They remain available in
+    // the assistant menu even when the read-only AI catalog omits mutations.
+    function _withLocalWriteActions(list) {
+        var result = Array.isArray(list) ? list.slice() : [];
+        var actions = [
+            {
+                ApiCode: '@khach_hang_insert',
+                DisplayName: 'Tạo khách hàng',
+                Category: 'Thao tác nhanh',
+                UiTemplate: 'FORM',
+                ExecutionType: 'INSERT',
+                LocalAction: true
+            },
+            {
+                ApiCode: '@lap_don_hang',
+                DisplayName: 'Lập đơn hàng',
+                Category: 'Thao tác nhanh',
+                UiTemplate: 'CART',
+                ExecutionType: 'CART',
+                LocalAction: true
+            }
+        ];
+
+        actions.forEach(function (action) {
+            var exists = result.some(function (item) {
+                return String(item && item.ApiCode || '').toLowerCase() === action.ApiCode;
+            });
+            if (!exists) result.push(action);
+        });
+        return result;
     }
 
 
@@ -896,6 +929,8 @@
         var scope = _getCurrentUserScope();
         var meta = { icon: '⚙️', description: 'Mở chức năng ' + _getApiMenuLabel(api), group: 'other', order: 900 };
         var known = {
+            '@khach_hang_insert': ['👤', 'Tạo khách hàng mới và lưu trực tiếp vào hệ thống', 'action', 10],
+            '@lap_don_hang': ['🛒', 'Mở màn hình lập đơn và lưu đơn hàng thật', 'action', 20],
             '@doanh_so': ['📊', 'Xem doanh số theo thời gian và phạm vi được phân quyền', 'daily', 10],
             '@hoa_don': ['🧾', 'Tra cứu danh sách hóa đơn', 'daily', 20],
             '@hoa_don_chi_tiet': ['🔎', 'Xem các sản phẩm trong một hóa đơn', 'daily', 21],
@@ -956,6 +991,7 @@
 
 
         var groups = {
+            action: { label: 'Thao tác nhanh', items: [] },
             daily: { label: 'Dùng thường xuyên', items: [] },
             customer: { label: 'Khách hàng & công nợ', items: [] },
             recommendation: { label: 'Gợi ý & chương trình', items: [] },
@@ -2809,6 +2845,27 @@
             // APIs, but it must not replace the intended action after picking.
             lockSelectedApi: !!(pendingUpdate && pendingUpdate.focusCustomer)
         };
+
+        // Order creation is a real application workflow: the Create Order page
+        // performs validation, confirmation and authenticated persistence.
+        if (apiCode.toLowerCase() === '@lap_don_hang') {
+            _closeFull(true);
+            window.parent.location.hash = '/create-order';
+            return;
+        }
+
+        // Customer creation already has a dedicated authenticated form in this
+        // widget, so it does not need mutation metadata from the AI catalog.
+        if (apiCode.toLowerCase() === '@khach_hang_insert') {
+            _replaceAtTag(apiCode);
+            _activeApi.config = {
+                info: { StoredProcedure: 'API_KhachHang_Insert_AI' },
+                fields: [],
+                filters: []
+            };
+            _openPanel(_activeApi.config, 'INSERT', dispName);
+            return;
+        }
 
         // Keep API tag state but do not leave visible '#' text: store on input dataset
 
@@ -5997,6 +6054,20 @@
                         _onApiSelected(knownApi.ApiCode, { preserveInput: true, autoSubmit: true });
                         return true;
                     }
+                }
+            }
+
+            // "Tạo khách hàng (mới)" gõ tự nhiên: mở thẳng form tạo khách hàng có
+            // sẵn (giống bấm mục "Tạo khách hàng" trong menu). Đây là hành động
+            // client-side thuần túy -- panel chỉ hiện form trống, không gọi AI
+            // backend, nên không có rủi ro tự ghi dữ liệu từ một câu chat.
+            if (!_activeApi && _inputEl) {
+                var createCustomerText = _inputEl.value.trim()
+                    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
+                    .replace(/\s+/g, ' ').trim();
+                if (/^(tao|them)\s+(1\s+)?khach\s*hang(\s+moi)?(\s+(nhe|nha|giup|giup toi))?[.!]?$/.test(createCustomerText)) {
+                    _onApiSelected('@khach_hang_insert');
+                    return true;
                 }
             }
 

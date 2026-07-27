@@ -26,13 +26,16 @@
 
 ## Tài liệu dành cho doanh nghiệp
 
-1. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)  
+1. [`LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`](LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md)
+   Lộ trình hiện hành sau bàn giao bản sơ bộ ngày 27/07/2026. Bản HTML để gửi khách nằm tại `GOI_UAT_KHACH_HANG/05_LO_TRINH_PHAT_TRIEN_MEDSTAND_AI.html`.
+
+2. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)
    Tài liệu nguồn rút gọn. Bản Word và HTML có hình để gửi người dùng nằm trong `GOI_UAT_KHACH_HANG`.
 
-2. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)  
+3. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
 
-3. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
+4. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
    Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn sử dụng có hình và bộ kiểm thử riêng:
 
    | File | Nội dung |
@@ -44,6 +47,7 @@
    | `02_PHIEU_KIEM_THU_SALE_MANAGER.docx` | Phiếu ghi kết quả theo vai trò |
    | `03_MAU_PHAN_HOI_UAT.docx` | Mẫu báo lỗi |
    | `04_KICH_BAN_TEST_13_TAI_KHOAN_COPY_PASTE.docx` | Kịch bản 13 tài khoản dạng copy-paste |
+   | `05_LO_TRINH_PHAT_TRIEN_MEDSTAND_AI.html` | Lộ trình phát triển và phạm vi bản Pilot ngày 27/07/2026 |
 
 ## Tài liệu kỹ thuật liên quan
 
