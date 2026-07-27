@@ -66,6 +66,15 @@ const cases = [
   ['xóa khách hàng AG0031', 'MUTATION_REQUEST', null, 'NO_API'],
   ['sửa hóa đơn HD123', 'MUTATION_REQUEST', null, 'NO_API'],
 
+  // "Lên đơn" / "lập đơn" opens the Create Order page (still requires user
+  // confirmation before anything is saved) instead of the generic preview-only
+  // rejection above. "tạo đơn hàng" only takes this path when a concrete ERP
+  // customer code is present; otherwise it still falls back to MUTATION_REQUEST.
+  ['Lên đơn cho khách NDB001', 'BUSINESS', 'ORDER_CREATE_PREVIEW', 'EXECUTE'],
+  ['lên đơn', 'BUSINESS', 'ORDER_CREATE_PREVIEW', 'ASK_FIELD'],
+  ['lập đơn hàng cho NDB001', 'BUSINESS', 'ORDER_CREATE_PREVIEW', 'EXECUTE'],
+  ['tạo đơn hàng cho NDB001', 'BUSINESS', 'ORDER_CREATE_PREVIEW', 'EXECUTE'],
+
   ['tháng trước thì sao', 'FOLLOW_UP', null, 'NO_API'],
   ['chi tiết hơn', 'FOLLOW_UP', null, 'NO_API'],
   ['tuần trước thì sao', 'FOLLOW_UP', null, 'NO_API'],

@@ -25,7 +25,8 @@
     "SURVEY_DAILY_STATUS": { "apiCode": "@kiem_tra_khao_sat_ngay", "risk": "OPERATIONAL", "requiredEntities": [] },
     "SURVEY_HISTORY": { "apiCode": "@lich_su_khao_sat", "risk": "OPERATIONAL", "requiredEntities": [] },
     "NOTIFICATIONS": { "apiCode": "@thong_bao", "risk": "OPERATIONAL", "requiredEntities": [] },
-    "SYMPTOM_PRODUCT_SEARCH": { "apiCode": "@tim_san_pham_theo_trieu_chung", "risk": "MEDICAL", "requiredEntities": ["keyword"] }
+    "SYMPTOM_PRODUCT_SEARCH": { "apiCode": "@tim_san_pham_theo_trieu_chung", "risk": "MEDICAL", "requiredEntities": ["keyword"] },
+    "ORDER_CREATE_PREVIEW": { "apiCode": "@lap_don_hang", "risk": "OPERATIONAL", "requiredEntities": ["customerId"] }
   },
   "confidenceThresholds": {
     "CATALOG": 0.85,

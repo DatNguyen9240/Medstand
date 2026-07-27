@@ -27,6 +27,7 @@ const RESPONSES = Object.freeze({
   ASK_CUSTOMER_FOR_DEBT: 'Bạn muốn xem công nợ của khách hàng nào?',
   ASK_PRODUCT_FOR_INVENTORY: 'Bạn muốn kiểm tra tồn kho của sản phẩm nào?',
   ASK_CUSTOMER_FOR_ORDER_RECOMMENDATION: 'Bạn muốn xem gợi ý đơn hàng cho khách hàng nào?',
+  ASK_CUSTOMER_FOR_ORDER_CREATE: 'Bạn muốn lập đơn hàng cho khách hàng nào? Vui lòng cho mình mã khách hàng nhé.',
   ASK_DOCUMENT_FOR_INVOICE_DETAIL: 'Bạn muốn xem chi tiết hóa đơn nào?',
   ASK_CUSTOMER_FOR_SURVEY: 'Bạn muốn xem thông tin khảo sát của khách hàng nào?',
   ASK_CUSTOMER_FOR_UPSELL: 'Bạn muốn xem gợi ý bán kèm cho khách hàng nào?',
@@ -401,6 +402,34 @@ function classifyNaturalMessage(input, options = {}) {
       responseKey: 'UNSUPPORTED_OUTSIDE_MEDSTAND_SCOPE',
       responseMessage: RESPONSES.UNSUPPORTED_OUTSIDE_MEDSTAND_SCOPE,
     });
+  }
+
+  // "Lên đơn" / "lập đơn" is the app's own wording for opening the order-creation
+  // screen (matches the "🛒 Lên đơn" button and the @lap_don_hang preview-cart API).
+  // It never executes a real insert here — it only opens the Create Order page,
+  // which still requires the user to review and confirm before anything is saved.
+  // "tạo đơn hàng" alone is ambiguous with a generic mutation request, so it is only
+  // treated as an order-creation shortcut when a concrete ERP customer code is given;
+  // otherwise it keeps falling through to the MUTATION_REQUEST guard below.
+  const orderCreateMatch = folded.match(/^(len|lap|tao)\s+don(?:\s+hang)?(?:\s+moi)?(?:\s+cho\s+.+)?$/);
+  if (orderCreateMatch) {
+    const orderCreateVerb = orderCreateMatch[1];
+    const orderCreateCustomerId = originalCode || null;
+    if (orderCreateVerb !== 'tao' || orderCreateCustomerId) {
+      return baseResult(normalized, {
+        messageType: 'BUSINESS',
+        intent: 'ORDER_CREATE_PREVIEW',
+        internalIntent: 'ORDER_CREATE_PREVIEW',
+        apiCode: '@lap_don_hang',
+        confidence: 0.97,
+        entities: orderCreateCustomerId ? { customerId: orderCreateCustomerId } : {},
+        missingFields: orderCreateCustomerId ? [] : ['customerId'],
+        requiresClarification: !orderCreateCustomerId,
+        supported: true,
+        responseKey: orderCreateCustomerId ? null : 'ASK_CUSTOMER_FOR_ORDER_CREATE',
+        responseMessage: orderCreateCustomerId ? '' : RESPONSES.ASK_CUSTOMER_FOR_ORDER_CREATE,
+      });
+    }
   }
 
   const mutation = /\b(tao|them|sua|xoa|duyet|huy|ghi)\b.*\b(don hang|hoa don|khuyen mai|khach hang|du lieu)\b/.test(folded);
