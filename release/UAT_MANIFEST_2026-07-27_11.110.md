@@ -1,12 +1,20 @@
-# UAT release manifest — Medstand 11.110
+# UAT release manifest — Medstand 11.111
 
-**Release ID:** `MEDSTAND-UAT-20260727-11.110-RC1`  
+**Release ID:** `MEDSTAND-UAT-20260727-11.111-RC3`
 **Môi trường đích:** `medtest` — `https://medtest.bms7.net/#/chatbot`  
 **Ngày khóa source candidate:** 27/07/2026  
 **Trạng thái manifest:** `SOURCE_LOCKED_RUNTIME_PENDING`  
-**Mục đích:** Nguồn đối chiếu duy nhất cho deploy, import, kiểm tra runtime và rollback bản UAT `11.110`.
+**Mục đích:** Nguồn đối chiếu duy nhất cho deploy, import, kiểm tra runtime và rollback bản UAT `11.111`.
+
+> **Tên file giữ nguyên `..._11.110.md`** dù nội dung đã lên `11.111`. Lý do: `docs/README.md`, `docs/UAT-001_*`, `docs/UAT-003_*` và `docs/BACKLOG_*` đang trỏ tới đúng tên này; đổi tên sẽ làm hỏng các liên kết đó. Nhận diện release lấy theo **Release ID** và **Frontend version** trong bảng dưới, không lấy theo tên file.
 
 > Manifest này khóa source candidate. Nó không phải bằng chứng rằng frontend, SQL hoặc n8n trên UAT đã được deploy/import thành công. Bằng chứng runtime phải được cập nhật tại phần 8 sau khi thực hiện `UAT-002`, `UAT-003` và `UAT-004`.
+
+### Vì sao có RC3 (thay cho RC2 `11.110`)
+
+RC2 khóa ở version `11.110`. Trong ngày 27/07/2026, nội dung `chatbot-widget/js/chatbot.bundle.min.js` trên medtest đã thay đổi **ba lần** nhưng vẫn nằm dưới cùng URL `?v=11.110`, trong khi header phục vụ file này là `Cache-Control: public, max-age=31536000, immutable`. Với `immutable`, trình duyệt không revalidate kể cả khi người dùng bấm F5, nên các máy đã mở trang chatbot trong ngày sẽ giữ bản cũ (một trong ba bản đó là bản hỏng do marker conflict Git) suốt thời gian cache.
+
+Vì `APP_VERSION` là thứ duy nhất sinh ra cache key, RC3 bắt buộc tăng version lên `11.111` để đổi URL thành `?v=11.111`. Chi tiết bằng chứng: `docs/UAT-002_RUNTIME_DRIFT_2026-07-27.md`.
 
 ## 1. Source identity
 
@@ -14,48 +22,60 @@
 |---|---|
 | Repository | `https://github.com/DatNguyen9240/Medstand.git` |
 | Branch | `hoangdang` |
-| Commit đầy đủ | `bfbaf7e092a10d4839f434427527e4c862b61796` |
-| Commit rút gọn | `bfbaf7e092a1` |
-| Remote candidate | `origin/hoangdang` tại cùng commit khi lập manifest |
-| Frontend version | `11.110` |
-| Service Worker cache | `medstand-11.110` |
+| Base commit | `f46bb0101e244dce5b5d0737d905cab72534f0f5` |
+| Quan hệ với `develop` | `origin/develop` đã là ancestor của HEAD; nhánh `hoangdang` không còn thiếu commit nào của `develop` |
+| RC3 source delta | `scripts/build.js` (`APP_VERSION` → `11.111`) và toàn bộ artifact build lại kèm theo; hai file SQL `API_DonHang_AI.sql`, `API_HoaDon_AI.sql`; tài liệu/script release. Đang ở worktree, chờ commit để tạo full commit SHA mới |
+| Remote candidate | `origin/hoangdang` đã chứa base commit `f46bb01`; delta RC3 chưa push |
+| Frontend version | `11.111` |
+| Service Worker cache | `medstand-11.111` |
 | SQL baseline thay đổi gần nhất | `0e963adf5a6d6fc5d3a5bc2ef056ee377b82a238` |
 | SQL baseline so sánh | `04d10563e935740145c08695c6d522aeea57726c` |
 
 ### Quy tắc khóa
 
-- Chỉ artifact ở đúng commit nêu trên và có SHA-256 khớp manifest mới thuộc RC1.
+- Chỉ artifact có SHA-256 khớp manifest mới thuộc RC2. Trước khi deploy phải commit RC2 và điền full commit SHA mới vào manifest.
 - Không deploy từ worktree có thay đổi source chưa commit.
-- Thay đổi tài liệu sau khi lập manifest không làm thay đổi artifact RC1; thay đổi source/runtime phải tạo RC mới và cập nhật hash.
+- Thay đổi tài liệu sau khi lập manifest không làm thay đổi artifact RC2; thay đổi source/runtime phải tạo RC mới và cập nhật hash.
 - Không dùng cụm từ “bản mới nhất” để thay cho release ID hoặc commit.
 
 ## 2. Frontend deployment artifacts
 
 Deploy các artifact dưới đây cùng một lần. Sau deploy phải kiểm tra HTTP content/hash và cache trên trình duyệt.
 
+Hash dưới đây tính trên file trong worktree Windows (giữ nguyên CRLF). Khi đối chiếu với file server phục vụ qua HTTP, nếu hash thô lệch thì phải so lại sau khi chuẩn hóa line-ending (`tr -d '\r'`) trước khi kết luận là lệch nội dung — xem mục "Quy tắc so hash" bên dưới.
+
 | Thứ tự | File | SHA-256 |
 |---:|---|---|
-| 1 | `index.prod.html` | `3862dcd2a5d483348c55a9112f0ec01320dcbefac6e0af2f09ed971eed17ecdc` |
-| 2 | `index.html` | `3862dcd2a5d483348c55a9112f0ec01320dcbefac6e0af2f09ed971eed17ecdc` |
-| 3 | `src/js/dist/app.bundle.min.js` | `1f498f060ca113c1f8ffa981a193db92ee3f0fd57ff26d14708364617ba6efb8` |
-| 4 | `chatbot-widget/js/chatbot.bundle.min.js` | `cb132a5e90f50aedcc66e37d0eda7a71464372e75b55e04d2d301b84a0db1344` |
-| 5 | `pages/login.html` | `7435514c4200906387e38bde7cbfb8b3ba72be80560cf7612e851d91eaa21f5a` |
-| 6 | `pages/forgot-password.html` | `2c193126f9ac911ad8245c2d761984929dda194031ce1233198d704d06ccef12` |
-| 7 | `sw.js` | `00a9282ad4dd7a1ebfd117407435207fa8f64a3b61dda8bf7ab1ed17ec1a7265` |
+| 1 | `index.prod.html` | `5aee139522b099db85c6174e7b722a457a2fce3775a1b2ce5ff3e1f121f3c564` |
+| 2 | `index.html` | `5aee139522b099db85c6174e7b722a457a2fce3775a1b2ce5ff3e1f121f3c564` |
+| 3 | `src/js/dist/app.bundle.min.js` | `1bd66cb4bb39abdcf3767f4a8b6ba06efa36f0c2dfa6fa4e086df93147d3de2e` |
+| 4 | `chatbot-widget/js/chatbot.bundle.min.js` | `8c81569df3faa4f1d9d6ac5e8b3452a0837c28bc2eed1cd48b35d8283ddfd79e` |
+| 5 | `pages/login.html` | `9b074aff0aaa240180f33ea5aaf1527b8eb4737a52cef5313378facee8baf3da` |
+| 6 | `pages/forgot-password.html` | `bfd77b791627d3f566801c9848b9974208d183dc73c09570e4e466a72be8bd5e` |
+| 7 | `sw.js` | `1b865f838d88303788d70bcfecc74a758133c9e42468179ec044770a11510f3a` |
+
+> Ghi chú: `chatbot.bundle.min.js` giữ nguyên hash `8c81569d…` so với bản đang chạy trên medtest, vì nội dung nguồn của bundle này không đổi ở RC3 — chỉ URL nạp nó đổi từ `?v=11.110` sang `?v=11.111`. Đây là điều mong đợi, không phải dấu hiệu build thiếu.
+
+### Quy tắc so hash
+
+- Text asset (`.html`, `.js`, `.css`) có thể khác line-ending giữa worktree Windows (CRLF) và file server phục vụ (LF). Luôn so hash thô trước; nếu lệch thì so lại sau khi `tr -d '\r'`. Chỉ kết luận `MISMATCH` khi bản chuẩn hóa vẫn lệch.
+- Kiểm tra bắt buộc trước khi coi deploy thành công: file phục vụ không được chứa marker conflict Git (`<<<<<<<`, `=======`, `>>>>>>>`). Sự cố ngày 27/07 cho thấy một bundle dính marker vẫn được server trả về HTTP 200 bình thường.
 
 ### Frontend source/build references
 
 | File | Vai trò | SHA-256 |
 |---|---|---|
-| `scripts/build.js` | Khai báo `APP_VERSION=11.110` và tạo bundle | `83290ca64c9f442244919e0938e11719e016551075b35209eb551aba56788d00` |
-| `chatbot-widget/js/chatbot-api-engine.js` | Source menu/action chatbot | `9b139d231100a458777717fc8c7a9d8f211cd97f64705157668e15eb9f181d08` |
+| `scripts/build.js` | Khai báo `APP_VERSION=11.111` và tạo bundle | `ee7ed852568dae49c0648cf6ce86bf32001021c020ad87d42033eca689981753` |
+| `chatbot-widget/js/chatbot-api-engine.js` | Source menu/action chatbot | `f439d422e5c85951e826a12daef5609137e8e08a545c4751fd6dbe96801cd432` |
 | `config/natural-language/intent-map.v1.json` | Intent/API registry phía source | `00b26be7897eefefb76c3a11f2ca19fbbeee003324fa0f7599f99b62d2b371bc` |
 | `scripts/natural_chat_classifier.js` | Source classifier | `da5cc024fc6bdf74a85898b7a86288df557241fe31f87c06d5092ad5030556a9` |
 | `scripts/test_natural_chat_classifier.js` | Test classifier | `8091cdd2bc6c1c08aae6d405113a67a040aeb20e11c7535c9e83fb00025d3e22` |
 
 ## 3. SQL deployment set
 
-Phạm vi SQL của RC1 là các file thay đổi kể từ baseline `04d1056`, tương ứng commit SQL `0e963ad`. Đây là các bản sửa guard temp table và SUBSTRING trên 16 procedure/bootstrap.
+Phạm vi SQL của RC2 gồm các file thay đổi kể từ baseline `04d1056`, tương ứng commit SQL `0e963ad`, cộng bản sửa an toàn `CREATE OR ALTER` cho `API_DonHang_AI` và `API_HoaDon_AI` đang chờ commit. Đây là các bản sửa guard temp table, SUBSTRING và an toàn khi thay procedure.
+
+Script triển khai có kiểm soát: `scripts/deploy_uat_sql.ps1`. Hướng dẫn và báo cáo lỗi: `docs/UAT-003_SQL_DEPLOYMENT_2026-07-27.md`.
 
 ### Thứ tự import
 
@@ -76,8 +96,8 @@ Chạy từng file và dừng ngay khi có lỗi. Không import hàng loạt to�
 | 11 | `sql/Module common - API_DanhMuc_AI.sql` | `308578daba4c41589a3f69c4b871688d152836756434bc7d370facacc3a35901` |
 | 12 | `sql/Module common - API_DoanhSo_AI.sql` | `2ea9566c64b007255507d566b5dfd8c5f8eb2c92690c4f5619fd11d542ef49b8` |
 | 13 | `sql/Module common - API_DonHangChiTiet_Insert_AI.sql` | `3513ad8c33f3be5f3e18686591ba7b3e3220721097d2e28aef9ba1f0ae8ffc05` |
-| 14 | `sql/Module common - API_DonHang_AI.sql` | `36bf0e4f289b146f29cf5dba06676c9e896976dd01d043bb85ffc4cd204c3102` |
-| 15 | `sql/Module common - API_HoaDon_AI.sql` | `44d20bf3f0e1e4c79416d1d4126f26b98c1f6ce44d1a24f99e0cfc57b41b014b` |
+| 14 | `sql/Module common - API_DonHang_AI.sql` | `de59d3c39003d06c88769cce8d8ea2f8e0d1138a2649539aec8ec9cbeb54741b` |
+| 15 | `sql/Module common - API_HoaDon_AI.sql` | `df497486cccb3c0d193e7840890dd5491992816344f1ff732f253d11e697cee3` |
 | 16 | `sql/Bootstrap_API_Metadata_Auto_AI.sql` | `4ff9cc5d9bebf80ff779f77852db3d457ae596095f16452c507ff7f939ad9194` |
 
 ### SQL pre/post checks
@@ -86,11 +106,17 @@ Chạy từng file và dừng ngay khi có lỗi. Không import hàng loạt to�
 - Sau import: chạy `sql/diagnostics/Business_Rule_V1_PostDeploy_Verification.sql` và smoke test API liên quan.
 - `Bootstrap_API_Metadata_Auto_AI.sql` chạy cuối để đồng bộ metadata với các procedure đã import.
 - Không chạy `Cleanup_*`, fixture/mock hoặc `Add_UAT_*` trong release deploy mặc định.
-- Không chạy gói mutation trong `sql/README.md` lần nữa nếu DB đã có đúng definition; xác minh trước để tránh thay đổi ngoài phạm vi RC1.
+- Không chạy gói mutation trong `sql/README.md` lần nữa nếu DB đã có đúng definition; xác minh trước để tránh thay đổi ngoài phạm vi RC2.
+
+### Thay đổi RC2
+
+- `API_DonHang_AI.sql` và `API_HoaDon_AI.sql` đã đổi từ `DROP + CREATE` sang `CREATE OR ALTER PROCEDURE`.
+- Mục tiêu: nếu batch compile thất bại, SQL Server giữ nguyên procedure hiện hành thay vì đã drop object trước đó.
+- Việc khóa `USE medtest` được giữ nguyên theo xác nhận của chủ dự án vì release này chỉ dành cho DB UAT `medtest`.
 
 ## 4. n8n workflow set
 
-### Bắt buộc import cho thay đổi chức năng 11.110
+### Bắt buộc import cho thay đổi chức năng 11.111
 
 | Thứ tự | File | Workflow ID đích | Webhook | Active mong đợi | SHA-256 |
 |---:|---|---|---|---|---|
@@ -133,14 +159,17 @@ Những file dưới đây phải có trong manifest để đối chiếu hệ t
 7. Import `AI_Intent_Parser.json` đúng ID.
 8. Import `MAIN_ChatBot_V5.json` đúng ID, xác nhận webhook và Active.
 9. Đối chiếu workflow nền; chỉ import file lệch sau khi xử lý reference/credential.
-10. Deploy frontend artifact `11.110` và `sw.js` cùng release.
+10. Deploy frontend artifact `11.111` và `sw.js` cùng release.
 11. Xóa/refresh cache theo version và chạy smoke test trên trình duyệt mới cùng trình duyệt đã từng dùng bản cũ.
 12. Ghi bằng chứng runtime vào phần 8.
 
 ## 6. Smoke test tối thiểu
 
 - Trang login tải đúng và đăng nhập được một Sale, một Manager.
-- DevTools/network cho thấy asset có `v=11.110`; `sw.js` chứa `medstand-11.110`.
+- DevTools/network cho thấy asset có `v=11.111`; `sw.js` chứa `medstand-11.111`.
+- Mở lại bằng **trình duyệt đã từng dùng bản `11.110`** (không xóa cache thủ công) và xác nhận nó tải `chatbot.bundle.min.js?v=11.111` — đây là bài test trực tiếp cho tiêu chí "trình duyệt không còn tải bundle cũ".
+- Vào `#/chatbot`, bấm mục **Lập đơn hàng** trong menu thao tác nhanh: panel giỏ hàng phải mở ngay trong khung chat (chọn khách + thêm dòng sản phẩm), không được nhảy thẳng sang trang `/create-order` trống.
+- Gõ tự nhiên `Tạo khách hàng mới` → mở form tạo khách; gõ `Lên đơn cho khách NDB001` → mở panel lập đơn đã điền sẵn khách.
 - Chatbot gọi đúng `hook-ai-dainao`.
 - Một câu doanh số, một câu gợi ý đơn, một câu tuyến và một câu tồn kho không lỗi 500.
 - Menu thao tác nhanh có Tạo khách hàng và Lập đơn hàng.
@@ -151,7 +180,7 @@ Những file dưới đây phải có trong manifest để đối chiếu hệ t
 
 Trước deploy phải lưu vào vị trí vận hành được bảo vệ:
 
-- Bản sao toàn bộ web root/runtime artifact đang chạy trước `11.110`.
+- Bản sao toàn bộ web root/runtime artifact đang chạy trước `11.111` (tức bản `11.110` hiện hành trên medtest).
 - Export definition của 16 SQL object trước khi import.
 - Export workflow n8n runtime trước khi ghi đè, kèm workflow ID và trạng thái Active.
 - Kết quả pre-deploy verification.
@@ -169,14 +198,27 @@ Phần này để người triển khai điền sau deploy. Không đánh dấu 
 
 | Lớp | Kết quả | Thời gian | Người kiểm tra | Bằng chứng |
 |---|---|---|---|---|
-| Frontend `11.110` | `PENDING` | — | — | — |
-| Service Worker `medstand-11.110` | `PENDING` | — | — | — |
+| Frontend `11.111` | `PENDING` | — | — | Chờ deploy RC3 |
+| Service Worker `medstand-11.111` | `PENDING` | — | — | Chờ deploy RC3 |
+| Trình duyệt cũ không còn dùng bundle `11.110` | `PENDING` | — | — | Chờ deploy RC3; đây là tiêu chí đã fail ở lần kiểm tra `11.110` |
 | SQL 16/16 đúng definition | `PENDING` | — | — | — |
 | Intent Parser đúng ID/hash | `PENDING` | — | — | — |
 | Main Chatbot đúng ID/hash/webhook/Active | `PENDING` | — | — | — |
 | Shared Auth Guard reference | `PENDING` | — | — | — |
 | Smoke test Sale | `PENDING` | — | — | — |
 | Smoke test Manager | `PENDING` | — | — | — |
+
+### Bằng chứng runtime đã thu được ở bản `11.110` (giữ lại để tham chiếu)
+
+Kiểm tra lúc 27/07/2026 ~15:30 (giờ VN) bằng HTTP GET trực tiếp tới `https://medtest.bms7.net`, không dùng token:
+
+| Nội dung kiểm tra | Kết quả |
+|---|---|
+| `index.html`, `app.bundle.min.js`, `pages/login.html`, `pages/forgot-password.html`, `sw.js` trên medtest | `MATCH` với manifest RC2 sau khi chuẩn hóa CRLF |
+| `chatbot.bundle.min.js` trên medtest | `8c81569d…` — khớp `origin/develop` và HEAD, nhưng lệch hash RC2 (`cb132a5e…`) vì RC2 khóa trước khi merge `develop` |
+| Marker conflict Git trong bundle | Đã xuất hiện lúc 08:24:57 GMT (517.101 byte), đã được thay bằng bản đúng lúc 08:27:20 GMT |
+| Bản vá panel Lập đơn hàng | Đã có trên medtest — bundle chỉ còn `create-order?data=`, không còn redirect trần |
+| Cache key `?v=11.110` | Đã phục vụ 3 nội dung khác nhau trong cùng ngày dưới `Cache-Control: immutable` → lý do bắt buộc lên RC3 |
 
 ## 9. Manifest sign-off
 
@@ -186,4 +228,3 @@ Phần này để người triển khai điền sau deploy. Không đánh dấu 
 | Người deploy UAT | — | `PENDING` | — |
 | Người kiểm thử kỹ thuật | — | `PENDING` | — |
 | Business owner | — | `PENDING` | — |
-

@@ -1,10 +1,7 @@
 USE medtest;
 GO
 
-IF OBJECT_ID('API_HoaDon_AI', 'P') IS NOT NULL DROP PROCEDURE API_HoaDon_AI;
-GO
-
-CREATE PROCEDURE [dbo].[API_HoaDon_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_HoaDon_AI]
     @Username   VARCHAR(50)   = '',
     @TuNgay   DATETIME      = NULL,
     @DenNgay     DATETIME      = NULL,

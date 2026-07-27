@@ -1,7 +1,4 @@
-IF OBJECT_ID('API_DonHang_AI', 'P') IS NOT NULL DROP PROCEDURE API_DonHang_AI;
-GO
-
-CREATE PROCEDURE [dbo].[API_DonHang_AI]
+CREATE OR ALTER PROCEDURE [dbo].[API_DonHang_AI]
    @Username     VARCHAR(50)   = '',
    @User         VARCHAR(50)   = '',         -- Dashboard/Frontend alias
    @TuNgay       DATETIME      = NULL,

@@ -64,10 +64,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Phụ thuộc: `UAT-001`.
   - Nghiệm thu: file runtime và version hiển thị khớp manifest; trình duyệt không còn tải bundle cũ.
 
-- [ ] **UAT-003 — Import bộ SQL bắt buộc** · `P0` · `TODO`
+- [ ] **UAT-003 — Import bộ SQL bắt buộc** · `P0` · `READY_FOR_APPLY`
   - Import đúng các stored procedure và metadata API thuộc bản UAT.
   - Phụ thuộc: `UAT-001`.
   - Nghiệm thu: script kiểm tra definition/hash hoặc ngày sửa xác nhận DB dùng đúng bản; không thiếu API bắt buộc.
+  - Kết quả chuẩn bị 27/07/2026: đã tạo `scripts/deploy_uat_sql.ps1`, khóa 16 file theo manifest, bổ sung target guard, pre/post verification, backup definition, API metadata check và evidence output.
+  - Cập nhật từ người triển khai: đã import thủ công `API_DonHang_AI.sql` và `API_HoaDon_AI.sql` bản RC2. Chưa có output xác minh nên ghi nhận là `USER_REPORTED`, chưa tính `RUNTIME_PASS`.
+  - Kiểm tra hai file vừa import bằng `sql/diagnostics/UAT_RC2_DonHang_HoaDon_Verification.sql`.
+  - Kiểm tra toàn bộ 16 file bằng một lệnh read-only: `sql/diagnostics/UAT_RC2_All_16_SQL_Verification.sql`.
+  - Chưa `DONE`: còn phải xác minh hai file trên DB và xác nhận 14 file còn lại của manifest đã được import đúng hoặc đã có definition tương đương.
+  - Hướng dẫn, lỗi ảnh hưởng và điều kiện nghiệm thu: xem `UAT-003_SQL_DEPLOYMENT_2026-07-27.md`.
 
 - [ ] **UAT-004 — Import và publish workflow n8n** · `P0` · `TODO`
   - Import đúng workflow auth, intent parser, main chatbot và API service.
