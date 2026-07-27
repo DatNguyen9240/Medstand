@@ -7,6 +7,21 @@
  * marker conflict Git mà server vẫn trả HTTP 200 bình thường. Nhìn số version
  * hoặc Content-Length đều không phát hiện được. Chỉ so hash mới thấy.
  *
+ * QUAN TRỌNG — hai loại kiểm tra khác nhau:
+ *
+ *   1. Kiểm tra FILE trên đĩa server: phải gửi `Accept-Encoding: identity`.
+ *      Server đứng trước (IIS/ARR) có cache bản đã nén riêng cho từng URL.
+ *      Cache nén này có thể cũ hơn file thật: ngày 27/07 URL không kèm query
+ *      của app.bundle.min.js trả bản Brotli CŨ, trong khi file trên đĩa đã mới.
+ *      Nếu để Node tự gửi `Accept-Encoding: gzip, deflate, br` thì sẽ nhận bản
+ *      nén cũ đó và báo lệch oan.
+ *
+ *   2. Kiểm tra thứ TRÌNH DUYỆT THẬT nhận: phải gọi đúng URL kèm `?v=<version>`
+ *      và header nén giống trình duyệt. Đây mới là thứ quyết định người dùng
+ *      chạy bản nào.
+ *
+ * Script chạy cả hai. Chỉ khi cả hai đều đạt mới coi là deploy thành công.
+ *
  * Dùng:
  *   node scripts/verify_frontend_deploy.js
  *   node scripts/verify_frontend_deploy.js https://medtest.bms7.net
@@ -65,7 +80,11 @@ async function main() {
 
         let live;
         try {
-            const res = await fetch(BASE + urlPath, { redirect: 'follow' });
+            // `identity` để lấy đúng file trên đĩa, không dính cache bản nén cũ.
+            const res = await fetch(BASE + urlPath, {
+                redirect: 'follow',
+                headers: { 'Accept-Encoding': 'identity' },
+            });
             if (!res.ok) {
                 rows.push([rel, `HTTP ${res.status}`, 'không tải được']);
                 failed += 1;
@@ -107,7 +126,7 @@ async function main() {
     // giữ bundle cũ do Cache-Control: immutable.
     console.log('');
     try {
-        const html = await (await fetch(BASE + '/')).text();
+        const html = await (await fetch(BASE + '/', { headers: { 'Accept-Encoding': 'identity' } })).text();
         const versions = [...new Set(html.match(/\?v=[\d.]+/g) || [])];
         const inline = (html.match(/appVersion = '([\d.]+)'/) || [])[1];
         const okV = versions.length === 1 && versions[0] === `?v=${version}` && inline === version;
@@ -118,12 +137,35 @@ async function main() {
         failed += 1;
     }
 
+    // Kiểm tra đường đi thật của trình duyệt: URL kèm ?v= và header nén đầy đủ.
+    // Đây là thứ quyết định người dùng cuối chạy bản nào.
+    console.log('');
+    console.log('Đường đi thật của trình duyệt (kèm ?v= và Accept-Encoding đầy đủ):');
+    const BROWSER_ENC = 'gzip, deflate, br, zstd';
+    for (const rel of ['src/js/dist/app.bundle.min.js', 'chatbot-widget/js/chatbot.bundle.min.js']) {
+        const localPath = path.join(ROOT, rel);
+        if (!fs.existsSync(localPath)) continue;
+        try {
+            const res = await fetch(`${BASE}/${rel}?v=${version}`, {
+                headers: { 'Accept-Encoding': BROWSER_ENC },
+            });
+            const body = Buffer.from(await res.arrayBuffer());
+            const same = sha(normalise(body)) === sha(normalise(fs.readFileSync(localPath)));
+            console.log(`${same ? 'OK  ' : 'FAIL'} ${rel}?v=${version}`);
+            if (!same) failed += 1;
+        } catch (error) {
+            console.log(`FAIL ${rel}?v=${version}: ${error.message}`);
+            failed += 1;
+        }
+    }
+
     console.log('');
     if (failed) {
         console.error(`❌ ${failed} mục sai lệch — KHÔNG báo khách test cho tới khi deploy lại.`);
         process.exit(1);
     }
-    console.log('✅ Toàn bộ khớp. Frontend trên server đúng bản build local.');
+    console.log('✅ Toàn bộ khớp. Frontend trên server đúng bản build local,');
+    console.log('   và trình duyệt thật cũng nhận đúng bản đó.');
 }
 
 main();

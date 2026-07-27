@@ -2846,11 +2846,15 @@
             lockSelectedApi: !!(pendingUpdate && pendingUpdate.focusCustomer)
         };
 
-        // @lap_don_hang falls through to the generic CART panel below (config
-        // loaded from the backend, execType already set to 'CART' above): it
-        // opens a quick customer + item-list form right in chat so a sale can
-        // be closed fast, then _collectParams() forwards that data to
-        // /create-order?data=... on Send for the real review/confirm/persist.
+        // Lập đơn nhanh có panel riêng trong khung chat, không dùng metadata
+        // config từ catalog AI. Chặn sớm để khỏi gọi thừa một vòng _loadConfig.
+        if (apiCode.toLowerCase() === '@lap_don_hang') {
+            _replaceAtTag(apiCode);
+            _activeApi.config = { info: {}, fields: [], filters: [] };
+            _createTriggerButton();
+            _openPanel(_activeApi.config, 'CART', dispName);
+            return;
+        }
 
         // Customer creation already has a dedicated authenticated form in this
         // widget, so it does not need mutation metadata from the AI catalog.
@@ -3129,10 +3133,333 @@
         setTimeout(function () { panel.querySelector('#ae-customer-name').focus(); }, 50);
     }
 
+    function _isOrderCreateApi() {
+        if (!_activeApi) return false;
+        return String(_activeApi.apiCode || '').toLowerCase() === '@lap_don_hang';
+    }
+
+    // Cache dùng chung cho panel lập đơn. Danh sách khách/sản phẩm đổi rất chậm
+    // nên tải một lần cho cả phiên, tránh gọi lại mỗi lần mở panel.
+    var _orderCustomers = null;
+    var _orderProducts = null;
+
+    function _orderRows(res) {
+        var data = (res && (res.data || res)) || [];
+        return data.records || data || [];
+    }
+
+    /**
+     * Panel lập đơn nhanh ngay trong khung chat.
+     *
+     * Sale chỉ nhập bốn thứ: khách hàng, sản phẩm, số lượng, chiết khấu (và diễn
+     * giải nếu cần). Số điện thoại, địa chỉ, phường/xã được map tự động từ khách
+     * hàng đã chọn; chi nhánh lấy từ tài khoản đang đăng nhập; tuyến thứ do trang
+     * đơn hàng tự suy ra từ ngày chứng từ.
+     *
+     * Panel này KHÔNG ghi đơn. Nhấn xác nhận sẽ chuyển sang trang /create-order
+     * với dữ liệu điền sẵn để người dùng soát lại rồi mới lưu thật.
+     */
+    function _openOrderCreatePanel(dispName, pendingUpdate) {
+        var user = {};
+        try { user = JSON.parse(localStorage.getItem('auth_user') || '{}'); } catch (e) { }
+
+        _panelEl = document.createElement('div');
+        _panelEl.id = 'ae-panel';
+        _panelEl.className = 'ae-panel ae-order-create-panel';
+        _panelEl.innerHTML = [
+            '<div class="ae-panel-header"><span class="ae-panel-title">' + _esc(dispName || 'Lập đơn hàng nhanh') + '</span>',
+            '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-min">−</button><button class="ae-panel-btn" id="ae-panel-close">✕</button></div></div>',
+            '<div class="ae-order-form">',
+            '<label class="ae-order-field ae-order-full"><span>Khách hàng *</span>',
+            '<span class="ae-order-combo"><input id="ae-order-customer" autocomplete="off" placeholder="Gõ tên hoặc mã khách hàng...">',
+            '<span class="ae-order-drop" id="ae-order-customer-drop" hidden></span></span></label>',
+            '<div class="ae-order-mapped ae-order-full" id="ae-order-mapped" hidden></div>',
+            '<div class="ae-order-full ae-order-items-head"><span>Sản phẩm *</span>',
+            '<button type="button" class="ae-order-add" id="ae-order-add">+ Thêm dòng</button></div>',
+            '<div class="ae-order-items ae-order-full" id="ae-order-items"></div>',
+            '<label class="ae-order-field ae-order-full"><span>Diễn giải</span>',
+            '<input id="ae-order-memo" maxlength="500" placeholder="Ghi chú cho đơn (nếu có)"></label>',
+            '<div class="ae-order-total ae-order-full" id="ae-order-total">Tạm tính: 0 đ</div>',
+            '<div class="ae-customer-error ae-order-full" id="ae-order-error" role="alert"></div></div>',
+            '<div class="ae-panel-footer"><button class="ae-panel-send-btn" id="ae-panel-send-btn">Xem lại &amp; tạo đơn</button></div>'
+        ].join('');
+
+        var panel = _panelEl;
+        document.body.appendChild(panel);
+        document.body.classList.add('ae-panel-open');
+        requestAnimationFrame(function () { panel.classList.add('active'); });
+
+        var errorEl = panel.querySelector('#ae-order-error');
+        var mappedEl = panel.querySelector('#ae-order-mapped');
+        var itemsEl = panel.querySelector('#ae-order-items');
+        var totalEl = panel.querySelector('#ae-order-total');
+        var custInput = panel.querySelector('#ae-order-customer');
+        var custDrop = panel.querySelector('#ae-order-customer-drop');
+        var selectedCustomer = null;
+
+        panel.querySelector('#ae-panel-min').onclick = function () {
+            panel.classList.remove('active');
+            document.body.classList.remove('ae-panel-open');
+            setTimeout(function () { panel.style.display = 'none'; }, 200);
+            var trigger = document.getElementById('ae-panel-trigger');
+            if (trigger) trigger.style.display = 'flex';
+        };
+        panel.querySelector('#ae-panel-close').onclick = function () { _closeFull(); };
+
+        function money(n) {
+            var v = Number(n) || 0;
+            return v.toLocaleString('vi-VN') + ' đ';
+        }
+
+        // ── Nạp danh mục ────────────────────────────────────────────────
+        function loadCustomers() {
+            if (_orderCustomers) return Promise.resolve(_orderCustomers);
+            return Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
+                q: JSON.stringify({
+                    User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '',
+                    LoaiKhachHang: '', KenhBan: '', SearchText: '',
+                    SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || ''
+                })
+            }).then(function (res) { _orderCustomers = _orderRows(res); return _orderCustomers; })
+                .catch(function () { errorEl.textContent = 'Không tải được danh sách khách hàng.'; return []; });
+        }
+
+        function loadProducts() {
+            if (_orderProducts) return Promise.resolve(_orderProducts);
+            return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+                q: JSON.stringify({ User: user.UserName || '', ItemID: '', SearchText: '' })
+            }).then(function (res) { _orderProducts = _orderRows(res); return _orderProducts; })
+                .catch(function () { errorEl.textContent = 'Không tải được danh sách sản phẩm.'; return []; });
+        }
+
+        function fold(s) {
+            return String(s || '').toLowerCase().normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+        }
+
+        /** Gắn dropdown tìm-khi-gõ cho một ô input. */
+        function attachCombo(input, drop, getRows, toLabel, onPick) {
+            var open = false;
+            function close() { drop.hidden = true; open = false; }
+            function render(list) {
+                if (!list.length) {
+                    drop.innerHTML = '<span class="ae-order-drop-empty">Không tìm thấy</span>';
+                } else {
+                    drop.innerHTML = list.map(function (r, i) {
+                        return '<span class="ae-order-drop-item" data-i="' + i + '">' + _esc(toLabel(r)) + '</span>';
+                    }).join('');
+                }
+                drop.hidden = false;
+                open = true;
+                drop._list = list;
+            }
+            function filter() {
+                var q = fold(input.value.trim());
+                Promise.resolve(getRows()).then(function (rows) {
+                    var hit = !q ? rows.slice(0, 30) : rows.filter(function (r) {
+                        return fold(toLabel(r)).indexOf(q) > -1;
+                    }).slice(0, 30);
+                    render(hit);
+                });
+            }
+            input.addEventListener('focus', filter);
+            input.addEventListener('input', function () { onPick(null); filter(); });
+            drop.addEventListener('mousedown', function (e) {
+                var item = e.target.closest('.ae-order-drop-item');
+                if (!item) return;
+                e.preventDefault();
+                var row = (drop._list || [])[Number(item.getAttribute('data-i'))];
+                if (!row) return;
+                input.value = toLabel(row);
+                onPick(row);
+                close();
+            });
+            input.addEventListener('blur', function () { setTimeout(close, 150); });
+            return { close: close, filter: filter };
+        }
+
+        // ── Khách hàng ──────────────────────────────────────────────────
+        function customerLabel(c) {
+            var name = c.DisplayName || c.ObjectName || c.ObjectID || '';
+            return c.ObjectID && String(name).indexOf(c.ObjectID) === -1
+                ? name + ' (' + c.ObjectID + ')'
+                : name;
+        }
+
+        function renderMapped(c) {
+            selectedCustomer = c;
+            if (!c) { mappedEl.hidden = true; mappedEl.innerHTML = ''; return; }
+            var branch = user.BranchID || '';
+            mappedEl.innerHTML = [
+                '<span class="ae-order-mapped-title">Tự động lấy từ khách hàng</span>',
+                '<span><b>SĐT:</b> ' + _esc(c.Phone || '—') + '</span>',
+                '<span><b>Địa chỉ:</b> ' + _esc(c.Address || '—') + '</span>',
+                '<span><b>Phường/Xã:</b> ' + _esc(c.XaPhuong || '—') + '</span>',
+                '<span><b>Chi nhánh:</b> ' + _esc(branch || '—') + '</span>',
+                '<span class="ae-order-mapped-note">Tuyến thứ sẽ được trang đơn hàng suy ra từ ngày chứng từ.</span>'
+            ].join('');
+            mappedEl.hidden = false;
+        }
+
+        attachCombo(custInput, custDrop, loadCustomers, customerLabel, renderMapped);
+
+        // ── Dòng sản phẩm ───────────────────────────────────────────────
+        function productLabel(p) {
+            var name = p.ItemName || p.ItemID || '';
+            return p.ItemID && String(name).indexOf(p.ItemID) === -1
+                ? name + ' (' + p.ItemID + ')'
+                : name;
+        }
+        function productPrice(p) {
+            return Number(p && (p.UnitPrice !== undefined ? p.UnitPrice : p.Price)) || 0;
+        }
+
+        function recalc() {
+            var sum = 0;
+            itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
+                var p = row._product;
+                if (!p) return;
+                var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
+                var ck = Number(row.querySelector('.ae-order-ck').value) || 0;
+                sum += productPrice(p) * qty * (1 - Math.min(Math.max(ck, 0), 100) / 100);
+            });
+            totalEl.textContent = 'Tạm tính: ' + money(sum);
+        }
+
+        function addRow(prefill) {
+            var row = document.createElement('div');
+            row.className = 'ae-order-row';
+            row.innerHTML = [
+                '<span class="ae-order-combo ae-order-prodwrap"><input class="ae-order-prod" autocomplete="off" placeholder="Tên hoặc mã sản phẩm">',
+                '<span class="ae-order-drop" hidden></span></span>',
+                '<input class="ae-order-qty" type="number" min="1" step="1" value="1" title="Số lượng">',
+                '<input class="ae-order-ck" type="number" min="0" max="100" step="0.1" value="0" title="Chiết khấu %">',
+                '<button type="button" class="ae-order-del" title="Xóa dòng">✕</button>'
+            ].join('');
+            itemsEl.appendChild(row);
+
+            var pin = row.querySelector('.ae-order-prod');
+            var pdrop = row.querySelector('.ae-order-drop');
+            attachCombo(pin, pdrop, loadProducts, productLabel, function (p) {
+                row._product = p;
+                row.classList.toggle('has-product', !!p);
+                recalc();
+            });
+            row.querySelector('.ae-order-qty').addEventListener('input', recalc);
+            row.querySelector('.ae-order-ck').addEventListener('input', recalc);
+            row.querySelector('.ae-order-del').onclick = function () {
+                row.remove();
+                if (!itemsEl.querySelector('.ae-order-row')) addRow();
+                recalc();
+            };
+
+            if (prefill) {
+                if (prefill.label) pin.value = prefill.label;
+                if (prefill.product) { row._product = prefill.product; row.classList.add('has-product'); }
+                if (prefill.qty) row.querySelector('.ae-order-qty').value = prefill.qty;
+                if (prefill.discount) row.querySelector('.ae-order-ck').value = prefill.discount;
+            }
+            recalc();
+            return row;
+        }
+
+        panel.querySelector('#ae-order-add').onclick = function () { addRow(); };
+        addRow();
+
+        // ── Điền sẵn từ hội thoại ("Lên đơn cho khách NDB001") ──────────
+        var pre = pendingUpdate || {};
+        var preParams = pre.params || {};
+        var preCustomer = preParams['@MaKhachHang'] || preParams['@ObjectID'] || '';
+        if (pre.message || preCustomer) errorEl.textContent = '';
+        if (preCustomer) {
+            custInput.value = preCustomer;
+            loadCustomers().then(function (rows) {
+                var key = fold(preCustomer);
+                var c = rows.find(function (x) { return fold(x.ObjectID) === key; })
+                    || rows.find(function (x) { return fold(customerLabel(x)).indexOf(key) > -1; });
+                if (c) { custInput.value = customerLabel(c); renderMapped(c); }
+                else errorEl.textContent = 'Không tìm thấy khách hàng "' + preCustomer + '". Vui lòng chọn lại.';
+            });
+        }
+        if (Array.isArray(pre.items) && pre.items.length) {
+            itemsEl.innerHTML = '';
+            loadProducts().then(function (prods) {
+                pre.items.forEach(function (it) {
+                    var key = fold(it.keyword || it.ItemID || it.ItemName || '');
+                    var p = prods.find(function (x) { return fold(x.ItemID) === key; })
+                        || prods.find(function (x) { return fold(productLabel(x)).indexOf(key) > -1; });
+                    addRow({
+                        label: p ? productLabel(p) : (it.keyword || ''),
+                        product: p || null,
+                        qty: it.qty || it.Quantity || 1,
+                        discount: it.discount || it.DiscountPercent || 0
+                    });
+                });
+                if (!itemsEl.querySelector('.ae-order-row')) addRow();
+            });
+        }
+
+        // ── Chuyển sang trang đơn hàng để xác nhận ──────────────────────
+        panel.querySelector('#ae-panel-send-btn').onclick = function () {
+            errorEl.textContent = '';
+            if (!selectedCustomer) {
+                errorEl.textContent = 'Vui lòng chọn khách hàng từ danh sách gợi ý.';
+                custInput.focus();
+                return;
+            }
+            var items = [];
+            var missing = false;
+            itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
+                var p = row._product;
+                var typed = row.querySelector('.ae-order-prod').value.trim();
+                if (!p) { if (typed) missing = true; return; }
+                var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
+                if (qty < 1) { missing = true; return; }
+                items.push({
+                    ItemID: p.ItemID,
+                    ItemName: p.ItemName || p.ItemID,
+                    Quantity: qty,
+                    Price: productPrice(p),
+                    DiscountPercent: Number(row.querySelector('.ae-order-ck').value) || 0
+                });
+            });
+            if (missing) {
+                errorEl.textContent = 'Có dòng sản phẩm chưa chọn từ danh sách gợi ý hoặc số lượng không hợp lệ.';
+                return;
+            }
+            if (!items.length) {
+                errorEl.textContent = 'Vui lòng chọn ít nhất một sản phẩm.';
+                return;
+            }
+
+            // Trang /create-order nhận đúng ba khóa này (xem src/js/pages/create-order.js).
+            var payload = {
+                '@ObjectID': selectedCustomer.ObjectID,
+                '@Description': panel.querySelector('#ae-order-memo').value.trim(),
+                '@ItemList': JSON.stringify(items)
+            };
+            _closeFull(true);
+            if (_cbMsg) {
+                _cbMsg('ai', 'Đã dựng đơn cho ' + (selectedCustomer.ObjectName || selectedCustomer.ObjectID)
+                    + ' với ' + items.length + ' sản phẩm. Đang mở trang đơn hàng để anh/chị soát lại và xác nhận.');
+            }
+            window.parent.location.hash = '/create-order?data=' + encodeURIComponent(JSON.stringify(payload));
+        };
+
+        setTimeout(function () { custInput.focus(); }, 50);
+    }
+
     function _openPanel(config, execType, dispName) {
         if (_isCustomerCreateApi()) {
             _closePanel(true);
             _openCustomerCreatePanel(dispName);
+            return;
+        }
+        if (_isOrderCreateApi()) {
+            _closePanel(true);
+            var orderPending = _activeApi && _activeApi.pendingUpdate;
+            if (_activeApi) delete _activeApi.pendingUpdate;
+            _openOrderCreatePanel(dispName, orderPending);
             return;
         }
 
@@ -6061,7 +6388,7 @@
             // backend, nên không có rủi ro tự ghi dữ liệu từ một câu chat.
             if (!_activeApi && _inputEl) {
                 var createCustomerText = _inputEl.value.trim()
-                    .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
+                    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
                     .replace(/\s+/g, ' ').trim();
                 if (/^(tao|them)\s+(1\s+)?khach\s*hang(\s+moi)?(\s+(nhe|nha|giup|giup toi))?[.!]?$/.test(createCustomerText)) {
                     _onApiSelected('@khach_hang_insert');
@@ -6070,6 +6397,15 @@
             }
 
             if (!_activeApi) return false;
+
+            // Panel lập đơn có form và nút xác nhận riêng. Nếu người dùng bấm
+            // Enter ở ô chat khi panel đang mở, phải chuyển vào đúng nút đó --
+            // để rơi xuống _collectParams() sẽ đọc nhầm các field không tồn tại
+            // rồi chuyển sang /create-order với payload rỗng, mất hết dữ liệu.
+            if (_isOrderCreateApi() && _panelEl) {
+                var orderSubmit = _panelEl.querySelector('#ae-panel-send-btn');
+                if (orderSubmit) { orderSubmit.click(); return true; }
+            }
 
             var params = _collectParams();
 

@@ -109,6 +109,29 @@ Hệ quả: mọi máy đã mở `#/chatbot` trên medtest kể từ 08:04 GMT �
 
 **Cách sửa duy nhất hiệu quả** là đổi cache key: tăng `APP_VERSION` để URL thành `?v=11.111`. Đã thực hiện ở local (xem mục 6), **chờ deploy**.
 
+### 3.6 Bẫy khi kiểm tra: cache bản nén (Brotli) cũ hơn file thật
+
+Sau khi deploy `11.111`, script kiểm tra báo `app.bundle.min.js` lệch, trong khi file đã được copy đúng. Truy nguyên bằng cách gọi cùng URL với các `Accept-Encoding` khác nhau:
+
+| URL | `Accept-Encoding` | Kết quả |
+|---|---|---|
+| `/src/js/dist/app.bundle.min.js` | `identity` | ✅ bản mới |
+| `/src/js/dist/app.bundle.min.js` | `gzip` | ✅ bản mới |
+| `/src/js/dist/app.bundle.min.js` | `br` | ❌ **bản cũ `11.110`** |
+| `/src/js/dist/app.bundle.min.js?v=11.111` | `gzip, deflate, br, zstd` | ✅ bản mới |
+| `/src/js/dist/app.bundle.min.js?v=11.110` | `gzip, deflate, br, zstd` | ✅ bản mới |
+
+Server đứng trước (IIS/ARR — theo header `X-Powered-By: ARR/3.0, ASP.NET`) giữ **cache bản đã nén riêng cho từng URL**. Sau deploy, cache Brotli của **URL không kèm query** chưa được làm mới, nên vẫn trả nội dung `11.110`. Các biến thể có query string thì tạo entry mới nên đã lấy bản đúng.
+
+**Ảnh hưởng thực tế: không có.** Trình duyệt luôn gọi kèm `?v=11.111` (do `index.html` và router sinh ra), và các URL đó trả bản đúng. Đây là lỗi của script kiểm tra, không phải lỗi deploy.
+
+**Hai bài học đưa vào quy trình:**
+
+1. Khi so hash file với server, **phải gửi `Accept-Encoding: identity`** — nếu không sẽ lấy phải bản nén cache cũ và báo lệch oan. `curl` mặc định không khai báo nén nên "may mắn" đúng; Node `fetch` mặc định gửi `gzip, deflate, br` nên dính bẫy.
+2. Chỉ kiểm tra file trên đĩa là **chưa đủ**. Phải kiểm tra thêm đúng URL mà trình duyệt gọi (kèm `?v=`) với header nén đầy đủ, vì đó mới là thứ người dùng cuối thật sự nhận.
+
+Cả hai đã được cài vào `scripts/verify_frontend_deploy.js`.
+
 ## 4. File bị ảnh hưởng
 
 | File | Vai trò | Rủi ro |
@@ -182,9 +205,33 @@ Task chỉ được chuyển sang `DONE` khi:
 
 Đối chiếu 6/6 artifact frontend giữa manifest RC2 / HEAD / medtest live (sau chuẩn hóa CRLF): 5 file `MATCH` tuyệt đối; riêng `chatbot.bundle.min.js` live khớp HEAD nhưng lệch manifest RC2 — nguyên nhân là manifest khóa trước khi merge `develop`, đã sửa ở RC3.
 
-### 8.2 Còn lại đúng một việc
+### 8.2 Deploy `11.111` — ĐÃ HOÀN TẤT
 
-**Deploy bản `11.111`.** Local đã sẵn sàng (đã bump version, rebuild, test 56/56 + 159/159, manifest RC3 đã khóa hash). Chưa deploy nên tiêu chí *"trình duyệt không còn tải bundle cũ"* vẫn chưa đạt: các máy đã mở `#/chatbot` từ 08:04 GMT vẫn giữ bundle `?v=11.110` trong HTTP cache `immutable`.
+Chủ dự án đã deploy `11.111` lúc ~08:47 GMT (≈15:47 giờ VN). Kiểm tra lại bằng `scripts/verify_frontend_deploy.js`:
+
+```
+OK   index.html / app.bundle.min.js / app.bundle.min.css
+OK   chatbot.bundle.min.js / chatbot-core.bundle.min.js
+OK   pages/login.html / pages/forgot-password.html / sw.js
+OK   version trên server: ?v=11.111 | appVersion=11.111
+OK   app.bundle.min.js?v=11.111        (đường đi thật của trình duyệt)
+OK   chatbot.bundle.min.js?v=11.111    (đường đi thật của trình duyệt)
+✅ Toàn bộ khớp.
+```
+
+8/8 artifact khớp bản build local; version đồng bộ; và quan trọng nhất — URL kèm `?v=11.111` với header nén giống trình duyệt cũng trả đúng bản mới, nghĩa là người dùng cuối thật sự nhận bản `11.111`.
+
+Vì cache key đã đổi từ `?v=11.110` sang `?v=11.111`, các máy đang giữ bundle cũ trong HTTP cache `immutable` sẽ buộc phải tải mới. Tiêu chí *"trình duyệt không còn tải bundle cũ"* coi như đạt về mặt kỹ thuật, nhưng **vẫn cần xác nhận thủ công** trên một trình duyệt đã từng dùng bản `11.110` (mục 8.4).
+
+### 8.4 Còn lại: smoke test trên trình duyệt thật
+
+Phần tự động đã xanh hết. Chưa thể tự kiểm tra được (cần thao tác người dùng có đăng nhập):
+
+- Mở medtest bằng trình duyệt đã từng dùng bản `11.110`, **không xóa cache**, xác nhận DevTools → Network hiển thị `?v=11.111`.
+- Menu thao tác nhanh → **Lập đơn hàng**: panel giỏ hàng mở ngay trong khung chat, không nhảy sang `/create-order` trống.
+- Gõ `Tạo khách hàng mới` → mở form tạo khách.
+- Gõ `Lên đơn cho khách NDB001` → mở panel lập đơn điền sẵn khách.
+- Đăng nhập một Sale và một Manager, xác nhận không lỗi 500 ở doanh số / gợi ý đơn / tuyến / tồn kho.
 
 ### 8.3 Vấn đề hệ thống chưa xử lý (không chặn UAT-002 nhưng sẽ lặp lại)
 

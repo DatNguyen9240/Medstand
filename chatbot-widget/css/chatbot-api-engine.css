@@ -749,3 +749,44 @@ body.ae-panel-open::before {
 .ae-customer-review { display:flex; flex-direction:column; gap:4px; padding:12px; border:1px solid var(--ae-accent); border-radius:10px; background:var(--ae-accent-soft); color:var(--ae-text); }
 .ae-customer-back-btn { flex:0 0 auto; min-height:42px; padding:0 18px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; }
 @media (max-width:640px) { .ae-customer-create-panel { width:100%; max-height:92vh; } .ae-customer-form { grid-template-columns:1fr; padding:14px; } .ae-customer-full { grid-column:auto; } }
+
+/* ── Panel lập đơn nhanh trong khung chat ─────────────────────────────── */
+.ae-order-create-panel { width:min(720px,calc(100vw - 32px)); max-height:min(86vh,820px); }
+.ae-order-form { display:grid; grid-template-columns:1fr; gap:14px; padding:18px 20px; overflow-y:auto; }
+.ae-order-full { grid-column:1/-1; }
+.ae-order-field { display:flex; flex-direction:column; gap:6px; min-width:0; color:var(--ae-text); font-size:13px; font-weight:600; }
+.ae-order-field input { width:100%; box-sizing:border-box; min-height:42px; padding:9px 11px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-weight:400; outline:none; }
+.ae-order-field input:focus { border-color:var(--ae-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ae-accent) 16%,transparent); }
+
+/* Combobox tìm-khi-gõ. Dropdown phải nằm trên các dòng kế tiếp nên cần z-index. */
+.ae-order-combo { position:relative; display:block; }
+.ae-order-drop { position:absolute; z-index:30; top:calc(100% + 4px); left:0; right:0; max-height:230px; overflow-y:auto; display:flex; flex-direction:column; border:1px solid var(--ae-border); border-radius:10px; background:var(--ae-bg); box-shadow:0 12px 28px rgba(0,0,0,.16); }
+.ae-order-drop-item { padding:9px 11px; font-size:13px; font-weight:400; color:var(--ae-text); cursor:pointer; }
+.ae-order-drop-item:hover { background:var(--ae-accent-soft); }
+.ae-order-drop-empty { padding:9px 11px; font-size:13px; font-weight:400; opacity:.7; }
+
+.ae-order-mapped { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 14px; padding:12px; border:1px solid var(--ae-accent); border-radius:10px; background:var(--ae-accent-soft); color:var(--ae-text); font-size:13px; font-weight:400; }
+.ae-order-mapped-title { grid-column:1/-1; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.03em; opacity:.75; }
+.ae-order-mapped-note { grid-column:1/-1; font-size:12px; opacity:.7; }
+
+.ae-order-items-head { display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:600; color:var(--ae-text); }
+.ae-order-add { min-height:34px; padding:0 12px; border:1px solid var(--ae-border); border-radius:8px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-size:13px; cursor:pointer; }
+.ae-order-add:hover { border-color:var(--ae-accent); color:var(--ae-accent); }
+.ae-order-items { display:flex; flex-direction:column; gap:8px; }
+/* Sản phẩm co giãn; SL/CK cố định hẹp để dòng vẫn gọn trên màn nhỏ. */
+.ae-order-row { display:grid; grid-template-columns:minmax(0,1fr) 72px 72px 36px; gap:8px; align-items:center; }
+.ae-order-row input { width:100%; box-sizing:border-box; min-height:42px; padding:9px 11px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-weight:400; outline:none; }
+.ae-order-row input:focus { border-color:var(--ae-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ae-accent) 16%,transparent); }
+.ae-order-row.has-product .ae-order-prod { border-color:var(--ae-accent); }
+.ae-order-del { min-height:42px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; opacity:.7; }
+.ae-order-del:hover { border-color:#dc2626; color:#dc2626; opacity:1; }
+.ae-order-total { text-align:right; font-size:14px; font-weight:700; color:var(--ae-text); }
+
+@media (max-width:640px) {
+    .ae-order-create-panel { width:100%; max-height:92vh; }
+    .ae-order-form { padding:14px; }
+    .ae-order-mapped { grid-template-columns:1fr; }
+    /* Sản phẩm chiếm trọn dòng trên, SL/CK/xóa xuống dòng dưới. */
+    .ae-order-row { grid-template-columns:minmax(0,1fr) 72px 36px; }
+    .ae-order-prodwrap { grid-column:1/-1; }
+}

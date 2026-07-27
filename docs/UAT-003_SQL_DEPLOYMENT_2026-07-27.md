@@ -2,10 +2,12 @@
 
 **Ngày chuẩn bị:** 27/07/2026  
 **Release:** `MEDSTAND-UAT-20260727-11.110-RC2`  
-**Trạng thái:** `READY_FOR_APPLY`  
+**Trạng thái:** `DONE`  
 **Môi trường đích bắt buộc:** database `medtest`
 
-**Cập nhật thủ công:** người triển khai xác nhận đã import `API_DonHang_AI.sql` và `API_HoaDon_AI.sql` bản RC2. Trạng thái hiện là `USER_REPORTED_VERIFICATION_PENDING`; chưa có output DB để nâng thành `RUNTIME_PASS`.
+**Cập nhật nghiệm thu:** người triển khai xác nhận đã import bộ SQL UAT. Ảnh kết quả kiểm tra read-only ngày 27/07/2026 cho thấy target database `medtest` đạt `PASS`, các procedure và mapping API metadata hiển thị `PASS`; các mục còn lại trong bộ kiểm tra cũng đã đạt `PASS`. Hai smoke test trên app — “Xem đơn hàng tháng này” và “Xem hóa đơn tháng này” — chạy thành công, không phát sinh HTTP 500.
+
+**Bằng chứng nghiệm thu:** ảnh kết quả chạy `sql/diagnostics/UAT_RC2_All_16_SQL_Verification.sql` do người triển khai cung cấp (09:03:21 ngày 27/07/2026), kết hợp xác nhận smoke test runtime trên app.
 
 ## 1. Kết quả chuẩn bị
 
