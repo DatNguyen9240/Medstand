@@ -115,7 +115,9 @@
       "position": [
         -1920,
         448
-      ]
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -355,7 +357,8 @@
       "position": [
         0,
         0
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {

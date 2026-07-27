@@ -95,3 +95,13 @@ images/product-catalog/
 
 # n8n workflow/database snapshots (local recovery only)
 n8n-system/snapshots/
+
+# Bản export workflow lấy thẳng từ n8n runtime.
+# n8n nhét cả staticData vào export, mà staticData chứa context phiên chạy thật —
+# bao gồm token xác thực của người dùng đang đăng nhập. Đã từng lọt 6 token lên
+# remote qua reports/runtime-workflows.export.json.
+# Cần commit một bản export? Chạy qua bộ lọc trước:
+#   node scripts/sanitize_n8n_export.js <file> -o <file.safe.json>
+*.export.json
+reports/*.export.json
+reports/**/*.export.json
