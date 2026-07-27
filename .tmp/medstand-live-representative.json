@@ -1,0 +1,26 @@
+﻿[
+    {
+        "Account":  "QLBH013.MED",
+        "Role":  "manager",
+        "Total":  "31",
+        "Passed":  "27",
+        "Failed":  "4",
+        "P50Ms":  "1887",
+        "P95Ms":  "5015",
+        "MaxMs":  "10688",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"QLBH013.MED\",\"role\":\"manager\",\"fixtureCustomer\":\"NDB001\",\"fixtureRegion\":\"MB\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-functional\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 31,\n  \"passed\": 27,\n  \"failed\": 4,\n  \"p50Ms\": 1887,\n  \"p95Ms\": 5015,\n  \"maxMs\": 10688,\n  \"failures\": [\n    {\n      \"id\": \"invoice-detail\",\n      \"text\": \"xem chi tiết hóa đơn HD123\",\n      \"expectedApi\": \"@hoa_don_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3801,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"upsell\",\n      \"text\": \"gợi ý bán kèm cho NDB001\",\n      \"expectedApi\": \"@upsell_goi_y\",\n      \"httpStatus\": 502,\n      \"latencyMs\": 1887,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_502\"\n    },\n    {\n      \"id\": \"product-search\",\n      \"text\": \"tìm sản phẩm A003\",\n      \"expectedApi\": \"@tra_cuu_san_pham\",\n      \"httpStatus\": 502,\n      \"latencyMs\": 1451,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_502\"\n    },\n    {\n      \"id\": \"catalog\",\n      \"text\": \"xem danh mục kho hàng\",\n      \"expectedApi\": \"@danh_muc\",\n      \"httpStatus\": 422,\n      \"latencyMs\": 375,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_422\"\n    }\n  ]\n}"
+    },
+    {
+        "Account":  "NAMDINHB.MED",
+        "Role":  "sale",
+        "Total":  "31",
+        "Passed":  "27",
+        "Failed":  "4",
+        "P50Ms":  "1661",
+        "P95Ms":  "4950",
+        "MaxMs":  "6773",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"NAMDINHB.MED\",\"role\":\"sale\",\"fixtureCustomer\":\"NDB001\",\"fixtureRegion\":\"MB\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-functional\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 31,\n  \"passed\": 27,\n  \"failed\": 4,\n  \"p50Ms\": 1661,\n  \"p95Ms\": 4950,\n  \"maxMs\": 6773,\n  \"failures\": [\n    {\n      \"id\": \"invoice-detail\",\n      \"text\": \"xem chi tiết hóa đơn HD123\",\n      \"expectedApi\": \"@hoa_don_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3733,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"upsell\",\n      \"text\": \"gợi ý bán kèm cho NDB001\",\n      \"expectedApi\": \"@upsell_goi_y\",\n      \"httpStatus\": 502,\n      \"latencyMs\": 1657,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_502\"\n    },\n    {\n      \"id\": \"product-search\",\n      \"text\": \"tìm sản phẩm A003\",\n      \"expectedApi\": \"@tra_cuu_san_pham\",\n      \"httpStatus\": 502,\n      \"latencyMs\": 1904,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_502\"\n    },\n    {\n      \"id\": \"catalog\",\n      \"text\": \"xem danh mục kho hàng\",\n      \"expectedApi\": \"@danh_muc\",\n      \"httpStatus\": 422,\n      \"latencyMs\": 316,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_422\"\n    }\n  ]\n}"
+    }
+]
