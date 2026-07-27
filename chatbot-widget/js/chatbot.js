@@ -414,6 +414,8 @@
 
     var _modalIdCounter = 0;
 
+    var _tableIdCounter = 0;
+
     var _UI_RENDERERS = {};
 
     var _modalDataCache = {}; // Cache cho data bảng/thẻ
@@ -3784,7 +3786,11 @@
         });
         keys = filteredKeys;
 
-        var tbodyId = 'ai-inline-tbody-v' + _modalIdCounter;
+        // A single response can build more than one table before the DOM is
+        // inserted. Using the modal counter here caused those tables to share
+        // one cache key, so the filter chip changed visually while the rows
+        // were read from another table's cache.
+        var tbodyId = 'ai-inline-tbody-v' + Date.now() + '-' + (++_tableIdCounter);
 
         var html = '';
 
