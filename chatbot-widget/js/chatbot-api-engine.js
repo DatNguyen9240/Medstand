@@ -1807,7 +1807,6 @@
     function _showInlineValues(fieldCode, keyword, forceShowAll) {
 
         if (!_activeApi) return;
-
         var activeApiCode = String(_activeApi.ApiCode || _activeApi.apiCode || '').toLowerCase();
         if (activeApiCode === String(CFG.CATALOG_ROOT_API || '@danh_muc').toLowerCase()
             && String(fieldCode || '').toLowerCase() === '@type') {
@@ -4719,17 +4718,17 @@
         var uKey = CFG.SYS_PARAMS.USERNAME;
         if (!params[uKey]) params[uKey] = _user();
 
-        if (_activeApi.execType === 'CART' && (_activeApi.apiCode === '@lap_don_hang')) {
+        if (_activeApi && _activeApi.execType === 'CART' && (_activeApi.apiCode === '@lap_don_hang')) {
             var payloadStr = encodeURIComponent(JSON.stringify(params));
             window.parent.location.hash = '/create-order?data=' + payloadStr;
             return null;
         }
 
-        // Cứu cnh: Đảm bảo tham số Ngy lun được gn tự động nếu người dòng chỉ nhập keyword hoặc thiếu config
-        var cfgContext = _activeApi.config || (_activeApi.apiConfig ? _activeApi.apiConfig : null);
+        // Cứu cánh: Đảm bảo tham số Ngày luôn được gán tự động nếu người dùng chỉ nhập keyword hoặc thiếu config
+        var cfgContext = (_activeApi && _activeApi.config) || (_activeApi && _activeApi.apiConfig ? _activeApi.apiConfig : null);
 
         if (!cfgContext && window.ApiEngine && window.ApiEngine.CatalogConfig) {
-            var tKey = (_activeApi.ApiCode || _activeApi.apiCode || _chatApiCode || '').replace(/^@/, '');
+            var tKey = (_activeApi ? (_activeApi.ApiCode || _activeApi.apiCode || '') : (_chatApiCode || '')).replace(/^@/, '');
 
             var matchingConf = window.ApiEngine.CatalogConfig.filter(function(x) { return x.ApiCode.replace(/^@/, '') === tKey; })[0];
 
