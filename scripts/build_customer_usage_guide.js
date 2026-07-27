@@ -169,6 +169,7 @@ function callout(title, body, kind = 'info') {
     layout: TableLayoutType.FIXED,
     columnWidths: [CONTENT_WIDTH],
     rows: [new TableRow({
+      tableHeader: true,
       cantSplit: true,
       children: [new TableCell({
         width: { size: CONTENT_WIDTH, type: WidthType.DXA },
@@ -196,6 +197,7 @@ function copyBox(label, value) {
     layout: TableLayoutType.FIXED,
     columnWidths: [1900, 7460],
     rows: [new TableRow({
+      tableHeader: true,
       cantSplit: true,
       children: [
         cell(label, 1900, { fill: colors.greenLight, bold: true, color: colors.green, size: 18 }),
@@ -213,6 +215,7 @@ function figure(filePath, width, height, caption, altText) {
       spacing: { before: 120, after: 80 },
       children: [new ImageRun({
         data: fs.readFileSync(filePath),
+        type: 'png',
         transformation: { width, height },
         altText: { title: caption, description: altText || caption, name: path.basename(filePath) },
       })],
