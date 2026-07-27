@@ -720,6 +720,13 @@ body.ae-panel-open::before {
 .ae-dg-col label { font-size: 10px; color: var(--ae-text-muted); margin-bottom: 2px; text-transform: uppercase; }
 .ae-dg-col input { padding: 4px 8px; border: 1px solid var(--ae-border); background: var(--ae-bg); color: var(--ae-text); border-radius: 4px; font-size: 12px; width: 100%; }
 .ae-dg-col input[readonly] { background: var(--ae-bg-alt); color: var(--ae-text-muted); cursor: not-allowed; }
+
+/* Trên mobile các ô này bị nâng lên 16px (xem global.css — chặn iOS tự phóng
+   to). Cột vốn hẹp nên thu padding ngang lại để con số vẫn đọc được. */
+@media (max-width: 767px) {
+  .ae-dg-col input { padding: 4px 6px; }
+  .ae-dg-col label { font-size: 11px; }
+}
 .ae-dg-del-btn { background: none; border: none; color: var(--ae-danger); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center; margin-top: 14px; }
 .ae-dg-del-btn:hover { background: var(--ae-danger-soft); border-radius: 4px; }
 .ae-dg-footer { display: flex; justify-content: space-between; align-items: center; background: var(--ae-bg-alt); padding: 8px 12px; border-radius: 6px; margin-top: 10px; border: 1px solid var(--ae-border); }

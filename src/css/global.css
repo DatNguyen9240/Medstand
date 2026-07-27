@@ -49,6 +49,29 @@ img {
   height: auto;
 }
 
+/* ── iOS: chặn trình duyệt tự phóng to khi chạm vào ô nhập ──────────────
+   Safari iOS phóng to CẢ TRANG khi người dùng focus vào input/textarea/select
+   có font-size < 16px, và không tự thu lại. Tệ hơn: Safari nhớ mức zoom đó
+   theo tên miền, nên những lần mở app sau trang vẫn hiện to dù chưa chạm gì.
+
+   Để >= 16px là cách duy nhất. text-size-adjust không có tác dụng với việc này,
+   còn nhét maximum-scale=1 vào thẻ viewport thì Safari bỏ qua từ iOS 10 và cũng
+   tước luôn quyền phóng to của người dùng.
+
+   Dùng !important vì global.css nằm gần đầu bundle CSS, các file component nạp
+   sau sẽ thắng về thứ tự nạp. Chỉ nhắm vào control thật sự focus và gõ được —
+   các thẻ div giả dạng ô nhập (.filter-select-value, .fs-trigger, .filter-value-text)
+   không kích hoạt hành vi này nên giữ nguyên cỡ chữ cũ. Nút bấm, checkbox,
+   radio cũng được loại trừ vì đổi cỡ chữ chỉ làm vỡ giao diện mà không ích gì. */
+@media (max-width: 767px) {
+
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='button']):not([type='submit']):not([type='reset']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* ---------- Layout ---------- */
 .app-main {
   min-height: 100vh;
