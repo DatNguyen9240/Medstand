@@ -761,6 +761,7 @@ body.ae-panel-open::before {
 /* Combobox tìm-khi-gõ. Dropdown phải nằm trên các dòng kế tiếp nên cần z-index. */
 .ae-order-combo { position:relative; display:block; }
 .ae-order-drop { position:absolute; z-index:30; top:calc(100% + 4px); left:0; right:0; max-height:230px; overflow-y:auto; display:flex; flex-direction:column; border:1px solid var(--ae-border); border-radius:10px; background:var(--ae-bg); box-shadow:0 12px 28px rgba(0,0,0,.16); }
+.ae-order-drop[hidden] { display:none; }
 .ae-order-drop-item { display:block; padding:10px 12px; border-bottom:0; font-size:13px; line-height:1.45; font-weight:400; color:var(--ae-text); cursor:pointer; overflow-wrap:anywhere; }
 .ae-order-drop-item:hover { background:var(--ae-accent-soft); }
 .ae-order-drop-empty { padding:9px 11px; font-size:13px; font-weight:400; opacity:.7; }

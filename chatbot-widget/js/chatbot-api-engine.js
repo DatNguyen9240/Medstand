@@ -3257,10 +3257,18 @@
             }
             input.addEventListener('focus', filter);
             input.addEventListener('input', function () { onPick(null); filter(); });
-            drop.addEventListener('mousedown', function (e) {
+            drop.addEventListener('pointerdown', function (e) {
+                if (!e.target.closest('.ae-order-drop-item')) return;
+                // Giữ focus ở ô nhập và không cho handler "bấm ngoài panel"
+                // nhận nhầm thao tác chọn trong dropdown.
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            drop.addEventListener('click', function (e) {
                 var item = e.target.closest('.ae-order-drop-item');
                 if (!item) return;
                 e.preventDefault();
+                e.stopPropagation();
                 var row = (drop._list || [])[Number(item.getAttribute('data-i'))];
                 if (!row) return;
                 input.value = toLabel(row);
