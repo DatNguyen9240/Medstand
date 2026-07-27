@@ -28,8 +28,15 @@
     border: 1px solid var(--ae-border);
     border-radius: 12px;
     box-shadow: var(--ae-shadow);
-    max-height: min(520px, calc(100dvh - 150px));
+    /* --chatbot-vvh = chiều cao vùng thật sự nhìn thấy (JS đo qua
+       visualViewport). KHÔNG dùng dvh ở đây: iOS không thu dvh lại khi bàn
+       phím mở, menu sẽ cao hơn chỗ trống rồi bị .chatbot-page (overflow:hidden)
+       cắt cụt ở mép trên — dòng đầu mất đầu, header bị nuốt. */
+    max-height: min(520px, calc(var(--chatbot-vvh, 100dvh) - 150px));
     overflow-y: auto;
+    /* Bàn phím thu xuống làm --chatbot-vvh tăng → menu nở ra. Cho nó nở mượt
+       thay vì giật một phát. */
+    transition: max-height 0.2s ease;
     padding: 6px 0;
     font-family: 'Inter', 'Segoe UI', sans-serif;
     font-size: 14px;
@@ -165,7 +172,9 @@ body.ae-panel-open::before {
 
 @media (max-width: 640px) {
     .ae-menu {
-        max-height: min(65dvh, 500px);
+        /* 160px = composer + dòng khuyến cáo + khoảng hở 8px + chiều cao
+           header, để menu luôn dừng dưới header chứ không đè lên. */
+        max-height: min(500px, calc(var(--chatbot-vvh, 100dvh) - 160px));
     }
 }
 
