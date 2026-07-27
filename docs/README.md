@@ -27,17 +27,20 @@
 ## Tài liệu dành cho doanh nghiệp
 
 1. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)  
-   Hướng dẫn đầy đủ cho Sale, Quản lý và Admin: đăng nhập, 24 chức năng hội thoại, cách đọc kết quả, xử lý lỗi và quy tắc an toàn.
+   Tài liệu nguồn rút gọn. Bản Word và HTML có hình để gửi người dùng nằm trong `GOI_UAT_KHACH_HANG`.
 
 2. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)  
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
 
 3. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
-   Gói gửi trực tiếp cho người dùng Pilot, gồm 4 file Word:
+   Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn sử dụng có hình và bộ kiểm thử riêng:
 
    | File | Nội dung |
    |---|---|
-   | `01_HUONG_DAN_TEST_MEDSTAND_AI.docx` | Hướng dẫn nhanh cho người dùng |
+   | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` | Hướng dẫn sử dụng chi tiết có hình |
+   | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.html` | Bản mở nhanh trên trình duyệt |
+   | `01_HUONG_DAN_TEST_13_TAI_KHOAN.docx` | Hướng dẫn kiểm thử 13 tài khoản — giữ riêng |
+   | `HUONG_DAN_TEST_13_TAI_KHOAN.html` | Bản HTML kiểm thử 13 tài khoản — giữ riêng |
    | `02_PHIEU_KIEM_THU_SALE_MANAGER.docx` | Phiếu ghi kết quả theo vai trò |
    | `03_MAU_PHAN_HOI_UAT.docx` | Mẫu báo lỗi |
    | `04_KICH_BAN_TEST_13_TAI_KHOAN_COPY_PASTE.docx` | Kịch bản 13 tài khoản dạng copy-paste |
