@@ -2846,13 +2846,11 @@
             lockSelectedApi: !!(pendingUpdate && pendingUpdate.focusCustomer)
         };
 
-        // Order creation is a real application workflow: the Create Order page
-        // performs validation, confirmation and authenticated persistence.
-        if (apiCode.toLowerCase() === '@lap_don_hang') {
-            _closeFull(true);
-            window.parent.location.hash = '/create-order';
-            return;
-        }
+        // @lap_don_hang falls through to the generic CART panel below (config
+        // loaded from the backend, execType already set to 'CART' above): it
+        // opens a quick customer + item-list form right in chat so a sale can
+        // be closed fast, then _collectParams() forwards that data to
+        // /create-order?data=... on Send for the real review/confirm/persist.
 
         // Customer creation already has a dedicated authenticated form in this
         // widget, so it does not need mutation metadata from the AI catalog.

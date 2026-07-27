@@ -29,13 +29,18 @@
 1. [`LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`](LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md)
    Lộ trình hiện hành sau bàn giao bản sơ bộ ngày 27/07/2026. Bản HTML để gửi khách nằm tại `GOI_UAT_KHACH_HANG/05_LO_TRINH_PHAT_TRIEN_MEDSTAND_AI.html`.
 
-2. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)
+2. [`BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`](BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md)
+   Danh sách task nội bộ được tách từ roadmap, có mã task, mức ưu tiên, phụ thuộc và điều kiện nghiệm thu.
+
+   Manifest release candidate hiện hành: [`../release/UAT_MANIFEST_2026-07-27_11.110.md`](../release/UAT_MANIFEST_2026-07-27_11.110.md).
+
+3. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)
    Tài liệu nguồn rút gọn. Bản Word và HTML có hình để gửi người dùng nằm trong `GOI_UAT_KHACH_HANG`.
 
-3. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)
+4. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
 
-4. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
+5. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
    Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn sử dụng có hình và bộ kiểm thử riêng:
 
    | File | Nội dung |
