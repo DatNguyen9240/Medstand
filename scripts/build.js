@@ -19,12 +19,35 @@ function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5)
 
 // Bộ nén CSS bằng regex siêu nhẹ, không phụ thuộc package ngoài
 function minifyCSS(cssContent) {
-    return cssContent
-        .replace(/\/\*[\s\S]*?\*\//g, '')    // Xóa comment
+    // Rút comment và chuỗi ra TRONG CÙNG MỘT LƯỢT QUÉT, trước khi bóp khoảng trắng.
+    //
+    // Vì sao phải giữ nguyên chuỗi: các regex bên dưới không phân biệt được đâu là cú
+    // pháp CSS, đâu là nội dung chuỗi. Để nguyên thì [style*="display: none"] bị bóp
+    // thành [style*="display:none"], không còn khớp style="display: none;" trong DOM
+    // — selector chết âm thầm ở bản production. Cũng bảo vệ luôn content:"a: b",
+    // url("...").
+    //
+    // Vì sao phải quét chung một lượt: dấu nháy đơn trong comment tiếng Anh (vd
+    // "it doesn't contribute") sẽ bị hiểu nhầm là mở chuỗi và nuốt luôn dấu */ đóng
+    // comment, làm bước xóa comment ăn lan sang các rule phía sau. Quét một lượt thì
+    // cái nào bắt đầu trước thắng: comment nuốt trọn nháy bên trong, và ngược lại
+    // chuỗi nuốt trọn /* bên trong.
+    const MARK = '\u0000'; // Không xuất hiện trong CSS và không bị \s nuốt
+    const literals = [];
+
+    const guarded = cssContent.replace(
+        /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/g,
+        (match) => (match.startsWith('/*')
+            ? ''                                            // Xóa comment
+            : `${MARK}L${literals.push(match) - 1}${MARK}`) // Giữ nguyên chuỗi
+    );
+
+    return guarded
         .replace(/\s+/g, ' ')                // Gộp khoảng trắng
         .replace(/\s*([\{\}:;,])\s*/g, '$1') // Xóa khoảng trắng thừa quanh cấu trúc CSS
         .replace(/;}/g, '}')                 // Xóa dấu chấm phẩy thừa cuối block
-        .trim();
+        .trim()
+        .replace(new RegExp(`${MARK}L(\\d+)${MARK}`, 'g'), (m, i) => literals[Number(i)]);
 }
 
 // Hàm dọn dẹp thư mục cũ

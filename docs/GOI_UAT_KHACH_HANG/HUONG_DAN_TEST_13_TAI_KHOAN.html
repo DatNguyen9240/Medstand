@@ -32,7 +32,6 @@
     --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
     --mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Cascadia Mono', Consolas, 'Liberation Mono', monospace;
 
-    --step: clamp(1rem, .55rem + 1.4vw, 1.3rem);
     --measure: 68ch;
   }
 
@@ -205,6 +204,17 @@
   tr:last-child td { border-bottom: none; }
   td.num { font-variant-numeric: tabular-nums; text-align: right; font-family: var(--mono); }
 
+  /* Bảng ca kiểm thử ở phụ lục — nhiều cột, chữ nhỏ hơn, tràn rộng hơn phần chính */
+  .tbl-cases { width: min(94vw, 84rem); margin-left: calc(50% - min(47vw, 42rem)); }
+  .tbl-cases table { font-size: .82rem; min-width: 62rem; }
+  .tbl-cases th, .tbl-cases td { padding: .55rem .65rem; }
+  .tbl-cases .case-id { font-family: var(--mono); font-size: .78rem; font-weight: 650; color: var(--brand); }
+  .tbl-cases .case-name { display: block; margin-top: .15rem; font-size: .78rem; font-weight: 550; color: var(--ink-soft); }
+  .tbl-cases td:nth-child(4) { white-space: pre-line; }
+  .tbl-cases tbody tr:nth-child(3n+1) td { border-top: 2px solid var(--rule-strong); }
+  .tbl-cases.flat tbody tr:nth-child(3n+1) td { border-top: 1px solid var(--rule); }
+  .tbl-cases .blank { background: color-mix(in srgb, var(--ground) 45%, transparent); }
+
   .pill {
     display: inline-block; font-size: .72rem; font-weight: 650;
     padding: .18rem .5rem; border-radius: 999px; letter-spacing: .02em;
@@ -212,6 +222,7 @@
   .pill.pass { background: var(--pass-bg); color: var(--pass); }
   .pill.hold { background: var(--hold-bg); color: var(--hold); }
   .pill.fail { background: var(--fail-bg); color: var(--fail); }
+  .pill.na   { background: color-mix(in srgb, var(--ink-mute) 16%, transparent); color: var(--ink-mute); }
 
   /* ── Sơ đồ ───────────────────────────────────────────────────────── */
   figure { margin: 0; display: flex; flex-direction: column; gap: .6rem; }
@@ -220,6 +231,7 @@
     border-radius: 12px; padding: 1.2rem; overflow-x: auto;
   }
   .fig-frame svg { display: block; width: 100%; height: auto; min-width: 30rem; }
+  .fig-frame img { display: block; width: 100%; height: auto; border-radius: 8px; }
   figcaption { font-size: .82rem; color: var(--ink-mute); }
 
   .svg-card { fill: var(--surface); stroke: var(--rule-strong); }
@@ -228,21 +240,6 @@
   .svg-s  { fill: var(--ink-soft); font-family: var(--sans); }
   .svg-n  { fill: var(--brand); font-family: var(--mono); font-weight: 700; }
   .svg-ar { stroke: var(--rule-strong); fill: none; }
-
-  /* ── Chỗ chờ ảnh chụp thật ───────────────────────────────────────── */
-  .shot {
-    border: 2px dashed var(--rule-strong); border-radius: 12px;
-    padding: 1.5rem 1.2rem; text-align: center;
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    display: flex; flex-direction: column; gap: .4rem; align-items: center;
-  }
-  .shot .tag {
-    font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
-    color: var(--accent); background: var(--accent-tint);
-    padding: .2rem .6rem; border-radius: 999px;
-  }
-  .shot .what { font-weight: 600; font-size: .95rem; }
-  .shot .how { font-size: .85rem; color: var(--ink-mute); max-width: 42ch; }
 
   /* ── Danh sách ───────────────────────────────────────────────────── */
   ul, ol { margin: 0; padding-left: 1.3rem; display: flex; flex-direction: column; gap: .45rem; max-width: var(--measure); }
@@ -260,6 +257,24 @@
   .role-card .role-name { display: flex; align-items: center; gap: .55rem; font-weight: 650; }
   .role-card .dot { width: .6rem; height: .6rem; border-radius: 50%; flex: none; }
 
+  .codeblock {
+    font-family: var(--mono); font-size: .9rem;
+    background: var(--surface); border: 1px solid var(--rule-strong);
+    border-radius: 8px; padding: .8rem 1rem; overflow-x: auto;
+  }
+
+  /* ── Phụ lục ─────────────────────────────────────────────────────── */
+  .appx-head {
+    display: flex; flex-direction: column; gap: .5rem;
+    padding: 1.4rem 0 0; border-top: 3px solid var(--brand);
+  }
+  .appx-part { display: flex; flex-direction: column; gap: 1rem; scroll-margin-top: 1.5rem; }
+  .appx-part h3 { display: flex; align-items: baseline; gap: .6rem; }
+  .appx-part h3 .lbl {
+    font-family: var(--mono); font-size: .8rem; font-weight: 700; color: var(--surface);
+    background: var(--brand); border-radius: 6px; padding: .1rem .45rem;
+  }
+
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
@@ -269,6 +284,7 @@
     .q-copy, .toc { display: none; }
     .card, .q, .fig-frame, .tbl-scroll { box-shadow: none; break-inside: avoid; }
     section { break-inside: avoid-page; }
+    .tbl-cases table { font-size: .68rem; min-width: 0; }
   }
 </style>
 
@@ -278,60 +294,89 @@
   <header class="masthead">
     <div class="eyebrow">Medstand AI · Kiểm thử Pilot</div>
     <h1>Hướng dẫn kiểm thử<br>bộ 13 tài khoản</h1>
-    <p class="lede">Tài liệu này hướng dẫn bạn chạy thử trợ lý AI bằng tài khoản được cấp, ghi lại kết quả và báo lỗi đúng cách. Mỗi tài khoản mất khoảng <b>20–25 phút</b>.</p>
+    <p class="lede">Tài liệu này hướng dẫn bạn chạy thử trợ lý AI bằng tài khoản được cấp, tạo dữ liệu thử trên môi trường UAT, ghi lại kết quả và báo lỗi đúng cách. Phần chính là checklist nhanh — khoảng <b>35–45 phút</b> cho mỗi tài khoản. Phụ lục là bộ kiểm thử đầy đủ dành cho điều phối viên.</p>
     <div class="rule-line"></div>
     <div class="meta-strip">
-      <span><b>Môi trường</b> medtest.bms7.net</span>
-      <span><b>Chế độ</b> Chỉ đọc — không ghi dữ liệu thật</span>
-      <span><b>Dành cho</b> Sale · Quản lý</span>
+      <span><b>Môi trường</b> medtest.bms7.net — UAT, tách khỏi production</span>
+      <span><b>Dữ liệu thử</b> Bắt buộc tiền tố UAT_TEST</span>
+      <span><b>Dành cho</b> Sale · Quản lý · Điều phối viên</span>
     </div>
   </header>
 
   <!-- ══ MỤC LỤC ══ -->
   <nav class="toc" aria-label="Mục lục">
     <a href="#chuan-bi"><span class="n">01</span> Trước khi bắt đầu</a>
-    <a href="#quy-trinh"><span class="n">02</span> Quy trình một câu hỏi</a>
-    <a href="#bo-cau-hoi"><span class="n">03</span> Bộ câu hỏi bắt buộc</a>
-    <a href="#theo-vai"><span class="n">04</span> Câu hỏi theo vai trò</a>
-    <a href="#doc-ket-qua"><span class="n">05</span> Cách đọc kết quả</a>
-    <a href="#gap-loi"><span class="n">06</span> Khi gặp lỗi</a>
-    <a href="#khong-lam"><span class="n">07</span> Việc không được làm</a>
-    <a href="#phieu"><span class="n">08</span> Phiếu ghi kết quả</a>
+    <a href="#quy-tac-du-lieu"><span class="n">02</span> Quy tắc dữ liệu thử</a>
+    <a href="#quy-trinh"><span class="n">03</span> Quy trình một câu hỏi</a>
+    <a href="#kiem-tra-chung"><span class="n">04</span> Kiểm tra chung cho mọi tài khoản</a>
+    <a href="#bo-cau-hoi"><span class="n">05</span> Bộ câu hỏi bắt buộc</a>
+    <a href="#theo-vai"><span class="n">06</span> Câu hỏi theo vai trò</a>
+    <a href="#tao-du-lieu"><span class="n">07</span> Tạo khách và đơn hàng thử</a>
+    <a href="#doc-ket-qua"><span class="n">08</span> Cách đọc kết quả</a>
+    <a href="#gap-loi"><span class="n">09</span> Khi gặp lỗi</a>
+    <a href="#khong-lam"><span class="n">10</span> Việc không được làm</a>
+    <a href="#phieu"><span class="n">11</span> Phiếu ghi kết quả</a>
+    <a href="#phu-luc"><span class="n">PL</span> Phụ lục kiểm thử đầy đủ</a>
   </nav>
 
-  <!-- ══ 01 CHUẨN BỊ ══ -->
+  <!-- ══ 01 TRƯỚC KHI BẮT ĐẦU ══ -->
   <section id="chuan-bi">
     <div class="sec-head">
       <div class="eyebrow">01</div>
       <h2>Trước khi bắt đầu</h2>
-      <p class="muted">Làm đủ bốn việc dưới đây rồi mới chạy câu hỏi đầu tiên. Bỏ qua bước nào cũng dễ dẫn tới kết quả sai mà không phải lỗi hệ thống.</p>
+      <p class="muted">Làm đủ năm việc dưới đây rồi mới chạy câu hỏi đầu tiên. Bỏ qua bước nào cũng dễ dẫn tới kết quả sai mà không phải lỗi hệ thống.</p>
     </div>
 
     <div class="card">
       <div class="checks">
-        <label class="check"><input type="checkbox" data-k="p1"><span><b>Mở bằng cửa sổ ẩn danh mới.</b> Mỗi tài khoản một cửa sổ riêng. Không dùng lại cửa sổ của tài khoản trước — dữ liệu cũ còn trong bộ nhớ đệm có thể hiển thị nhầm.</span></label>
-        <label class="check"><input type="checkbox" data-k="p2"><span><b>Đăng nhập bằng đúng tài khoản được giao.</b> Điều phối viên sẽ cấp tài khoản và mã khách hàng đại diện cho bạn.</span></label>
-        <label class="check"><input type="checkbox" data-k="p3"><span><b>Kiểm tra tên và vai trò hiển thị ở góc màn hình.</b> Sai tên nghĩa là đăng nhập nhầm — đăng xuất và làm lại.</span></label>
-        <label class="check"><input type="checkbox" data-k="p4"><span><b>Chuẩn bị chỗ ghi kết quả.</b> Dùng phiếu ở mục 08, hoặc bản in của tài liệu này.</span></label>
+        <label class="check"><input type="checkbox" data-k="p1"><span><b>Xác nhận đang ở môi trường UAT.</b> Điều phối viên phải xác nhận bằng văn bản rằng môi trường và cơ sở dữ liệu đã tách khỏi hệ thống thật trước khi bạn tạo bất kỳ dữ liệu nào.</span></label>
+        <label class="check"><input type="checkbox" data-k="p2"><span><b>Mở bằng cửa sổ ẩn danh mới.</b> Mỗi tài khoản một cửa sổ riêng. Không dùng lại cửa sổ của tài khoản trước — dữ liệu cũ còn trong bộ nhớ đệm có thể hiển thị nhầm.</span></label>
+        <label class="check"><input type="checkbox" data-k="p3"><span><b>Đăng nhập bằng đúng tài khoản được giao.</b> Điều phối viên sẽ cấp tài khoản, mã khách hàng đại diện và mã sản phẩm đại diện cho bạn.</span></label>
+        <label class="check"><input type="checkbox" data-k="p4"><span><b>Kiểm tra tên và vai trò hiển thị ở góc màn hình.</b> Sai tên nghĩa là đăng nhập nhầm — đăng xuất và làm lại.</span></label>
+        <label class="check"><input type="checkbox" data-k="p5"><span><b>Chuẩn bị chỗ ghi kết quả.</b> Dùng phiếu ở mục 11, hoặc bản in của tài liệu này.</span></label>
       </div>
     </div>
-
     <div class="card">
       <div class="eyebrow" style="margin-bottom:.7rem">Thông tin buổi test</div>
       <dl class="kv">
         <dt>Tài khoản</dt><dd><span class="fill"></span></dd>
         <dt>Vai trò</dt><dd><span class="fill"></span></dd>
+        <dt>Miền / tuyến được giao</dt><dd><span class="fill"></span></dd>
         <dt>Mã khách đại diện</dt><dd><span class="fill"></span> <span class="muted">— thay vào chỗ ghi <code>MÃ KHÁCH</code> trong các câu hỏi</span></dd>
+        <dt>Mã sản phẩm đại diện</dt><dd><span class="fill"></span> <span class="muted">— thay vào chỗ ghi <code>MÃ SẢN PHẨM</code></span></dd>
+        <dt>Số hóa đơn đại diện</dt><dd><span class="fill"></span> <span class="muted">— thay vào chỗ ghi <code>SỐ HÓA ĐƠN</code></span></dd>
         <dt>Ngày giờ test</dt><dd><span class="fill"></span></dd>
         <dt>Người thực hiện</dt><dd><span class="fill"></span></dd>
       </dl>
     </div>
   </section>
 
-  <!-- ══ 02 QUY TRÌNH ══ -->
-  <section id="quy-trinh">
+  <!-- ══ 02 QUY TẮC DỮ LIỆU THỬ ══ -->
+  <section id="quy-tac-du-lieu">
     <div class="sec-head">
       <div class="eyebrow">02</div>
+      <h2>Quy tắc dữ liệu thử</h2>
+      <p class="muted">Buổi test này có tạo khách hàng và đơn hàng thật trên cơ sở dữ liệu UAT. Bảy quy tắc dưới đây là bắt buộc.</p>
+    </div>
+
+    <div class="note stop"><b>Chỉ thực hiện trên môi trường UAT đã được xác nhận tách khỏi production.</b> Chưa có xác nhận thì không tạo bất kỳ dữ liệu nào.</div>
+    <div class="card">
+      <ol>
+        <li>Mọi dữ liệu bạn tạo phải có tiền tố <code>UAT_TEST</code> trong mã hoặc tên.</li>
+        <li>Không nhập tên, số điện thoại, địa chỉ hay bất kỳ thông tin nào của khách hàng thật.</li>
+        <li>Không chốt đơn và không gửi đơn sang hệ thống khác.</li>
+        <li>Giá và khuyến mãi chỉ thử theo đúng kịch bản được giao.</li>
+        <li>Không sửa cấu hình dùng chung nằm ngoài phạm vi UAT.</li>
+        <li>Ghi lại mã khách, mã đơn và cấu hình đã tạo để đội dự án dọn dữ liệu sau kiểm thử.</li>
+        <li>Nếu thấy dữ liệu nằm ngoài phạm vi tài khoản của bạn: <b>dừng test và báo ngay</b>, không thử tiếp.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ══ 03 QUY TRÌNH MỘT CÂU HỎI ══ -->
+  <section id="quy-trinh">
+    <div class="sec-head">
+      <div class="eyebrow">03</div>
       <h2>Quy trình một câu hỏi</h2>
       <p class="muted">Chạy đúng thứ tự này cho mọi câu hỏi, để kết quả giữa 13 tài khoản đối chiếu được với nhau.</p>
     </div>
@@ -387,26 +432,47 @@
       </div>
       <figcaption>Năm bước áp dụng cho mọi câu hỏi trong tài liệu.</figcaption>
     </figure>
+    <figure>
+      <div class="fig-frame">
+        <img src="01_MAN_HINH_TRO_LY_AI_SAU_DANG_NHAP.png" alt="Màn hình Trợ lý AI của Medstand sau khi đăng nhập, gồm thanh điều hướng, các chức năng gợi ý và khung nhập câu hỏi">
+      </div>
+      <figcaption>Màn hình Trợ lý AI sau khi đăng nhập. Người test nhập câu hỏi tại khung ở cuối màn hình hoặc chọn một chức năng gợi ý.</figcaption>
+    </figure>
+  </section>
 
-    <div class="shot">
-      <span class="tag">Chờ ảnh minh họa</span>
-      <span class="what">Màn hình Trợ lý AI sau khi đăng nhập</span>
-      <span class="how">Cần thấy rõ: khung nhập câu hỏi ở dưới, nút gửi, và tên tài khoản ở góc. Che mã khách hàng thật trước khi gửi ảnh.</span>
+  <!-- ══ 04 KIỂM TRA CHUNG CHO MỌI TÀI KHOẢN ══ -->
+  <section id="kiem-tra-chung">
+    <div class="sec-head">
+      <div class="eyebrow">04</div>
+      <h2>Kiểm tra chung cho mọi tài khoản</h2>
+      <p class="muted">Mười điểm này áp dụng cho cả 13 tài khoản, không phụ thuộc vai trò. Đánh dấu trước khi chuyển sang bộ câu hỏi.</p>
+    </div>
+
+    <div class="card">
+      <div class="checks">
+        <label class="check"><input type="checkbox" data-k="c1"><span><b>Đăng nhập hiển thị đúng tên và đúng vai trò</b> của tài khoản được giao.</span></label>
+        <label class="check"><input type="checkbox" data-k="c2"><span><b>Mở được màn hình Trợ lý AI</b> và khung nhập câu hỏi hoạt động.</span></label>
+        <label class="check"><input type="checkbox" data-k="c3"><span><b>Menu và nút chức năng đúng với vai trò</b> — Sale không thấy chức năng chỉ dành cho Quản lý.</span></label>
+        <label class="check"><input type="checkbox" data-k="c4"><span><b>Không xem được khách, đơn hàng hay dữ liệu ngoài phạm vi</b> được phân quyền.</span></label>
+        <label class="check"><input type="checkbox" data-k="c5"><span><b>Cùng một câu hỏi, Sale và Quản lý trả đúng phạm vi tương ứng</b> — không ai thấy miền khác.</span></label>
+        <label class="check"><input type="checkbox" data-k="c6"><span><b>Đăng xuất rồi đăng nhập tài khoản khác không còn dữ liệu cũ</b> trên màn hình.</span></label>
+        <label class="check"><input type="checkbox" data-k="c7"><span><b>Chế độ sáng / tối và trạng thái giao diện hoạt động</b> đúng, chữ vẫn đọc được ở cả hai chế độ.</span></label>
+        <label class="check"><input type="checkbox" data-k="c8"><span><b>Loading xuất hiện ngay khi gửi câu hỏi</b>, không để màn hình trống không phản hồi.</span></label>
+        <label class="check"><input type="checkbox" data-k="c9"><span><b>Danh sách dài có tìm kiếm, phân trang hoặc cuộn</b> hợp lý, không đổ hết ra một trang.</span></label>
+        <label class="check"><input type="checkbox" data-k="c10"><span><b>Ngày, tiền, mã sản phẩm, mã lô và số điện thoại hiển thị đúng định dạng</b> — ngày <code>dd/MM/yyyy</code>, tiền có đơn vị.</span></label>
+      </div>
     </div>
   </section>
 
-  <!-- ══ 03 BỘ CÂU HỎI ══ -->
+  <!-- ══ 05 BỘ CÂU HỎI BẮT BUỘC ══ -->
   <section id="bo-cau-hoi">
     <div class="sec-head">
-      <div class="eyebrow">03</div>
+      <div class="eyebrow">05</div>
       <h2>Bộ câu hỏi bắt buộc</h2>
       <p class="muted">Chạy đủ cả 11 câu, theo thứ tự. Chép nguyên văn — chỉ thay <code>MÃ KHÁCH</code> bằng mã được giao.</p>
     </div>
 
-    <div class="note">
-      <b>Gõ đúng nguyên văn.</b> Trợ lý hiểu theo cách diễn đạt, nên đổi chữ có thể ra kết quả khác. Nếu muốn thử cách nói khác, cứ thử — nhưng ghi vào phần Ghi chú, đừng thay câu chuẩn.
-    </div>
-
+    <div class="note"><b>Gõ đúng nguyên văn.</b> Trợ lý hiểu theo cách diễn đạt, nên đổi chữ có thể ra kết quả khác. Nếu muốn thử cách nói khác, cứ thử — nhưng ghi vào phần Ghi chú, đừng thay câu chuẩn.</div>
     <div class="qlist">
       <div class="q">
         <div class="q-top">
@@ -416,7 +482,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Danh sách khách cần quan tâm hôm nay, kèm lý do dễ hiểu như lâu chưa mua hoặc tới lịch ghé.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">02</span>
@@ -425,7 +490,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Chỉ khách thuộc tuyến của bạn. Thấy khách miền khác là lỗi nghiêm trọng, báo ngay.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">03</span>
@@ -434,7 +498,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Danh sách khách được giao. Đếm sơ xem có khách nào lạ không.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">04</span>
@@ -443,7 +506,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Tên khách, lần mua cuối và số ngày chưa mua. Không được hiện điểm số hay mã kỹ thuật.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">05</span>
@@ -452,7 +514,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Có số tiền của ngày hôm nay. Đối chiếu với bảng số liệu điều phối viên cung cấp.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">06</span>
@@ -461,7 +522,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Đúng khoảng ngày đã hỏi, đủ 12 ngày. Nếu trả về khoảng ngày khác là lỗi, ghi lại khoảng ngày nó hiện.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">07</span>
@@ -470,7 +530,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Tổng còn nợ và tình trạng thanh toán. Khách không nợ thì phải nói rõ là không nợ, không để trống.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">08</span>
@@ -479,7 +538,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Gõ ngay sau câu 07. Trợ lý phải nhớ đang nói về khách đó và mở chi tiết công nợ, không hỏi lại từ đầu.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">09</span>
@@ -488,7 +546,6 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Danh sách sản phẩm gợi ý kèm lý do. Khách mới chưa đủ lịch sử thì phải nói rõ, không được đoán bừa.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">10</span>
@@ -497,22 +554,21 @@
         </div>
         <div class="q-expect"><b>Mong đợi</b> — Sản phẩm bán kèm gắn với đúng khách vừa hỏi, không phải danh sách chung chung.</div>
       </div>
-
       <div class="q">
         <div class="q-top">
           <span class="q-num">11</span>
           <span class="q-text">Tồn kho sản phẩm A003</span>
           <button class="q-copy" type="button">Chép</button>
         </div>
-        <div class="q-expect"><b>Mong đợi</b> — Số tồn kèm tên kho và số lô. Nếu ghi tồn khả dụng là <i>tham khảo</i> hoặc <i>chưa xác minh</i>, đó là đúng thiết kế — phải kiểm kho trước khi hứa với khách.</div>
+        <div class="q-expect"><b>Mong đợi</b> — Số tồn kèm tên kho và số lô. Nếu ghi tồn khả dụng là tham khảo hoặc chưa xác minh, đó là đúng thiết kế — phải kiểm kho trước khi hứa với khách.</div>
       </div>
     </div>
   </section>
 
-  <!-- ══ 04 THEO VAI TRÒ ══ -->
+  <!-- ══ 06 CÂU HỎI THEO VAI TRÒ ══ -->
   <section id="theo-vai">
     <div class="sec-head">
-      <div class="eyebrow">04</div>
+      <div class="eyebrow">06</div>
       <h2>Câu hỏi theo vai trò</h2>
       <p class="muted">Chạy thêm phần ứng với vai trò của tài khoản bạn đang dùng.</p>
     </div>
@@ -546,7 +602,6 @@
       </div>
       <figcaption>Cùng một câu hỏi, hai vai trò phải ra phạm vi dữ liệu khác nhau. Đây là điểm cần kiểm kỹ.</figcaption>
     </figure>
-
     <div class="grid-2">
       <div class="card role-card">
         <div class="role-name"><span class="dot" style="background:var(--brand)"></span>Nếu bạn là Sale</div>
@@ -556,7 +611,6 @@
         </div>
         <p class="muted" style="font-size:.88rem">Kiểm kỹ: không câu nào được trả về khách ngoài tuyến của bạn.</p>
       </div>
-
       <div class="card role-card">
         <div class="role-name"><span class="dot" style="background:var(--accent)"></span>Nếu bạn là Quản lý</div>
         <div class="qlist">
@@ -568,19 +622,45 @@
     </div>
   </section>
 
-  <!-- ══ 05 ĐỌC KẾT QUẢ ══ -->
+  <!-- ══ 07 TẠO KHÁCH VÀ ĐƠN HÀNG THỬ ══ -->
+  <section id="tao-du-lieu">
+    <div class="sec-head">
+      <div class="eyebrow">07</div>
+      <h2>Tạo khách và đơn hàng thử</h2>
+      <p class="muted">Phần này tạo dữ liệu thật trên cơ sở dữ liệu UAT. Làm theo đúng thứ tự, từng bước chi tiết nằm ở Phụ lục C và D.</p>
+    </div>
+
+    <div class="note">Đọc lại <b>mục 02 — Quy tắc dữ liệu thử</b> trước khi bắt đầu. Mọi mã khách và mã đơn tạo ra phải được ghi lại để dọn sau kiểm thử.</div>
+    <div class="card">
+      <ol>
+        <li><b>Tạo khách hàng UAT.</b> Mở chức năng thêm khách hàng, thử bỏ trống trường bắt buộc và nhập sai định dạng trước, rồi mới tạo khách hợp lệ có mã bắt đầu bằng <code>UAT_TEST</code>. Chi tiết: Phụ lục C.</li>
+        <li><b>Tìm lại khách vừa tạo</b> và kiểm tra Sale / Quản lý chỉ thấy đúng theo phạm vi.</li>
+        <li><b>Thử tạo trùng mã</b> để xem hệ thống có cảnh báo không.</li>
+        <li><b>Tạo đơn hàng UAT</b> cho khách vừa tạo. Thử xác nhận khi chưa có khách hoặc chưa có sản phẩm, thử số lượng 0, số âm và vượt tồn trước khi tạo đơn hợp lệ. Chi tiết: Phụ lục D.</li>
+        <li><b>Kiểm tra đơn giá, số lượng, thành tiền và tổng tiền</b> khớp bảng giá đối chiếu.</li>
+        <li><b>Xác nhận tạo đơn một lần</b>, rồi bấm gửi thêm vài lần để chắc chắn không tạo đơn trùng.</li>
+        <li><b>Đối chiếu lại sau khi tạo</b> — tra cứu khách, đơn hàng, tồn kho và doanh số theo Phụ lục F.</li>
+        <li><b>Ghi lại toàn bộ mã khách và mã đơn</b> vào biên bản UAT.</li>
+      </ol>
+    </div>
+    <div class="note go"><b>Không mặc định đơn vừa tạo phải làm tăng doanh số.</b> Doanh số chỉ thay đổi nếu trạng thái đơn được thiết kế để ghi nhận doanh số — phải căn cứ trạng thái nghiệp vụ của hệ thống, không suy đoán.</div>
+  </section>
+
+  <!-- ══ 08 CÁCH ĐỌC KẾT QUẢ ══ -->
   <section id="doc-ket-qua">
     <div class="sec-head">
-      <div class="eyebrow">05</div>
+      <div class="eyebrow">08</div>
       <h2>Cách đọc kết quả</h2>
       <p class="muted">Bốn điều cần kiểm ở mỗi câu trả lời, trước khi kết luận đạt hay chưa đạt.</p>
     </div>
 
     <div class="tbl-scroll">
       <table>
-        <thead>
-          <tr><th style="width:11rem">Kiểm gì</th><th>Đạt khi</th><th>Báo lỗi khi</th></tr>
-        </thead>
+        <thead><tr>
+          <th style="width:18%">Kiểm gì</th>
+          <th style="width:41%">Đạt khi</th>
+          <th style="width:41%">Báo lỗi khi</th>
+        </tr></thead>
         <tbody>
           <tr>
             <td><b>Đúng phạm vi</b></td>
@@ -590,37 +670,52 @@
           <tr>
             <td><b>Đúng câu hỏi</b></td>
             <td>Trả lời đúng thứ đã hỏi, đúng khoảng thời gian đã nêu.</td>
-            <td>Hỏi tháng này ra tháng khác, hỏi khách A ra khách B.</td>
+            <td>Hỏi tháng này ra tháng khác, hỏi khách A ra khách B, hoặc định tuyến sang chức năng khác.</td>
           </tr>
           <tr>
             <td><b>Đọc hiểu được</b></td>
             <td>Tiếng Việt rõ ràng, ngày dạng <code>dd/MM/yyyy</code>, tiền có đơn vị.</td>
-            <td>Hiện tên cột tiếng Anh, mã kỹ thuật, chữ bị lỗi font.</td>
+            <td>Hiện tên cột tiếng Anh, mã kỹ thuật, lỗi raw hoặc chữ bị lỗi font.</td>
           </tr>
           <tr>
             <td><b>Trung thực</b></td>
             <td>Không có dữ liệu thì nói rõ là chưa có.</td>
-            <td>Biến <i>chưa có dữ liệu</i> thành <i>0</i> hoặc <i>hết hàng</i>.</td>
+            <td>Biến chưa có dữ liệu thành 0 hoặc hết hàng; khẳng định tư vấn chuyên môn về thuốc.</td>
           </tr>
         </tbody>
       </table>
     </div>
-
-    <div class="note go">
-      <b>Không có dữ liệu không phải là lỗi.</b> Khách chưa phát sinh giao dịch thì trợ lý báo không có là đúng. Chỉ ghi lỗi khi bạn <i>chắc chắn</i> dữ liệu đó có thật trong phạm vi của mình.
+    <div class="note go"><b>Không có dữ liệu không phải là lỗi.</b> Khách chưa phát sinh giao dịch thì trợ lý báo không có là đúng. Chỉ ghi lỗi khi bạn <i>chắc chắn</i> dữ liệu đó có thật trong phạm vi của mình.</div>
+    <div class="sec-head" style="gap:.2rem">
+      <h3>Mười điểm chất lượng kết quả</h3>
+      <p class="muted" style="font-size:.9rem">Với các ca ở phụ lục, kiểm thêm mười điểm sau trước khi ghi Đạt.</p>
     </div>
-
-    <div class="shot">
-      <span class="tag">Chờ ảnh minh họa</span>
-      <span class="what">Một thẻ kết quả đúng — ví dụ thẻ công nợ</span>
-      <span class="how">Dùng làm mẫu để người test biết kết quả đạt trông ra sao. Che tên và mã khách hàng thật.</span>
+    <div class="card">
+      <ol>
+        <li>Đúng chức năng, không định tuyến nhầm sang chức năng khác.</li>
+        <li>Tiêu đề và tên thao tác đúng với việc vừa yêu cầu.</li>
+        <li>Có lại từ khóa hoặc câu truy vấn người dùng vừa nhập.</li>
+        <li>Có khoảng thời gian và thời điểm cập nhật khi câu hỏi cần đến thời gian.</li>
+        <li>Có nguồn hoặc trạng thái dữ liệu rõ ràng.</li>
+        <li>Số tổng khớp với bảng chi tiết bên dưới.</li>
+        <li>Danh sách dễ tìm kiếm, lọc và phân trang.</li>
+        <li>Không hiển thị field kỹ thuật hoặc lỗi raw.</li>
+        <li>Không khẳng định tư vấn chuyên môn về thuốc.</li>
+        <li>Có mã tra cứu hoặc requestId khi xảy ra lỗi.</li>
+      </ol>
     </div>
+    <figure>
+      <div class="fig-frame">
+        <img src="02_KET_QUA_DOANH_SO_DUNG.png" alt="Ví dụ kết quả truy vấn doanh số đội ngũ gồm kỳ báo cáo, số liệu tổng quan và bảng chi tiết theo nhân viên">
+      </div>
+      <figcaption>Ví dụ kết quả doanh số đúng: có khoảng thời gian, số liệu tổng quan, nguồn dữ liệu và bảng chi tiết để đối chiếu.</figcaption>
+    </figure>
   </section>
 
-  <!-- ══ 06 GẶP LỖI ══ -->
+  <!-- ══ 09 KHI GẶP LỖI ══ -->
   <section id="gap-loi">
     <div class="sec-head">
-      <div class="eyebrow">06</div>
+      <div class="eyebrow">09</div>
       <h2>Khi gặp lỗi</h2>
       <p class="muted">Thử theo thứ tự này trước khi báo. Phần lớn trường hợp tự xử lý được ở hai bước đầu.</p>
     </div>
@@ -633,30 +728,24 @@
               <path d="M0,0 L7,3.5 L0,7 Z" fill="currentColor" style="color:var(--rule-strong)"/>
             </marker>
           </defs>
-
           <rect class="svg-card" x="300" y="8" width="300" height="52" rx="10"/>
           <text class="svg-t" x="450" y="40" font-size="15" text-anchor="middle">Câu trả lời không như mong đợi</text>
           <line class="svg-ar" x1="450" y1="62" x2="450" y2="86" marker-end="url(#ah2)"/>
-
           <rect class="svg-card" x="250" y="88" width="400" height="62" rx="10"/>
           <text class="svg-t" x="450" y="115" font-size="14" text-anchor="middle">Có phải bạn gõ thiếu mã khách</text>
           <text class="svg-s" x="450" y="136" font-size="13" text-anchor="middle">hoặc thiếu khoảng ngày không?</text>
-
           <line class="svg-ar" x1="250" y1="119" x2="176" y2="119" marker-end="url(#ah2)"/>
           <rect class="svg-card-go" x="8" y="92" width="168" height="56" rx="10"/>
           <text class="svg-t" x="92" y="115" font-size="13.5" text-anchor="middle">Bổ sung rồi</text>
           <text class="svg-t" x="92" y="134" font-size="13.5" text-anchor="middle">hỏi lại</text>
-
           <line class="svg-ar" x1="450" y1="152" x2="450" y2="176" marker-end="url(#ah2)"/>
           <rect class="svg-card" x="250" y="178" width="400" height="62" rx="10"/>
           <text class="svg-t" x="450" y="205" font-size="14" text-anchor="middle">Đăng xuất, đăng nhập lại,</text>
           <text class="svg-s" x="450" y="226" font-size="13" text-anchor="middle">hỏi lại đúng câu đó một lần nữa</text>
-
           <line class="svg-ar" x1="450" y1="242" x2="450" y2="266" marker-end="url(#ah2)"/>
           <rect class="svg-card" x="250" y="268" width="400" height="56" rx="10"/>
           <text class="svg-t" x="450" y="292" font-size="14" text-anchor="middle">Vẫn sai — ghi phiếu và báo lỗi</text>
           <text class="svg-s" x="450" y="313" font-size="12.5" text-anchor="middle">kèm ảnh chụp toàn màn hình</text>
-
           <line class="svg-ar" x1="650" y1="296" x2="724" y2="296" marker-end="url(#ah2)"/>
           <rect class="svg-card" x="732" y="268" width="164" height="56" rx="10"/>
           <text class="svg-s" x="814" y="292" font-size="12.5" text-anchor="middle">Có Mã tra cứu thì</text>
@@ -665,34 +754,45 @@
       </div>
       <figcaption>Nếu màn hình hiện <b>Mã tra cứu</b>, hãy chép lại — đội kỹ thuật dùng nó để tìm đúng lần chạy bị lỗi.</figcaption>
     </figure>
-
+    <div class="sec-head" style="gap:.2rem">
+      <h3>Một báo lỗi đủ dùng cần có</h3>
+      <p class="muted" style="font-size:.9rem">Thiếu một trong chín mục này thì đội kỹ thuật không tái hiện được lỗi.</p>
+    </div>
     <div class="card">
-      <h3 style="margin-bottom:.8rem">Một báo lỗi đủ dùng cần có</h3>
       <ol>
-        <li>Tài khoản và vai trò — <b>không ghi mật khẩu</b></li>
-        <li>Thời điểm xảy ra, ghi cả giờ phút</li>
-        <li>Câu hỏi nguyên văn bạn đã gõ</li>
-        <li>Mã khách hoặc mã sản phẩm liên quan</li>
-        <li>Ảnh chụp toàn màn hình, thấy được cả thông báo lỗi</li>
-        <li>Theo bạn thì kết quả đúng phải như thế nào</li>
+        <li>Tài khoản và vai trò — <b>không ghi mật khẩu</b>.</li>
+        <li>Thời điểm xảy ra, ghi cả giờ phút.</li>
+        <li>Mã ca kiểm thử, ví dụ <code>CN-07-B</code>.</li>
+        <li>Câu hỏi hoặc thao tác nguyên văn bạn đã thực hiện.</li>
+        <li>Mã khách, mã sản phẩm hoặc mã đơn liên quan.</li>
+        <li>Kết quả thực tế nhận được.</li>
+        <li>Kết quả mong đợi theo bạn.</li>
+        <li>Ảnh chụp toàn màn hình, thấy được cả thông báo lỗi.</li>
+        <li>Mã tra cứu hoặc requestId nếu màn hình có hiện.</li>
       </ol>
     </div>
+    <div class="sec-head" style="gap:.2rem">
+      <h3>Quy tắc đặt tên ảnh</h3>
+      <p class="muted" style="font-size:.9rem">Đặt tên đúng quy tắc để điều phối viên ghép ảnh với ca kiểm thử mà không cần hỏi lại.</p>
+    </div>
+    <div class="codeblock">YYYYMMDD_TAIKHOAN_CASEID_PASS-FAIL.png</div>
+    <p>Ví dụ: <code>20260727_NAMDINHB.MED_CN-07-B_FAIL.png</code></p>
   </section>
 
-  <!-- ══ 07 KHÔNG LÀM ══ -->
+  <!-- ══ 10 VIỆC KHÔNG ĐƯỢC LÀM ══ -->
   <section id="khong-lam">
     <div class="sec-head">
-      <div class="eyebrow">07</div>
+      <div class="eyebrow">10</div>
       <h2>Việc không được làm</h2>
     </div>
 
-    <div class="note stop">
-      <b>Đây là bản chạy thử.</b> Số liệu dùng để kiểm tra hệ thống, không phải số liệu kinh doanh chính thức. Đừng dùng kết quả ở đây để chốt đơn hay báo cáo.
-    </div>
-
+    <div class="note stop"><b>Đây là bản chạy thử.</b> Số liệu dùng để kiểm tra hệ thống, không phải số liệu kinh doanh chính thức. Đừng dùng kết quả ở đây để chốt đơn hay báo cáo.</div>
     <div class="card">
       <ul>
-        <li>Không tạo đơn thật, không thêm khách thật, không áp giá hay khuyến mãi.</li>
+        <li>Không tạo dữ liệu khi chưa có xác nhận môi trường UAT đã tách khỏi hệ thống thật.</li>
+        <li>Không dùng tên, số điện thoại, địa chỉ của khách hàng thật cho dữ liệu thử.</li>
+        <li>Không chốt hoặc gửi đơn UAT sang hệ thống khác.</li>
+        <li>Không thử giá và khuyến mãi ngoài kịch bản được giao; không sửa cấu hình dùng chung.</li>
         <li>Không dùng tài khoản Admin để chạy thay — làm vậy sẽ che mất lỗi phân quyền, đúng thứ buổi test này cần tìm.</li>
         <li>Không dùng chung một cửa sổ trình duyệt cho hai tài khoản.</li>
         <li>Không tự sửa dữ liệu để màn hình có kết quả đẹp.</li>
@@ -702,61 +802,1526 @@
     </div>
   </section>
 
-  <!-- ══ 08 PHIẾU ══ -->
+  <!-- ══ 11 PHIẾU GHI KẾT QUẢ ══ -->
   <section id="phieu">
     <div class="sec-head">
-      <div class="eyebrow">08</div>
+      <div class="eyebrow">11</div>
       <h2>Phiếu ghi kết quả</h2>
-      <p class="muted">Điền cho từng câu hỏi. Bản in dùng được trực tiếp.</p>
+      <p class="muted">Điền cho từng câu hỏi ở mục 05 và 06. Bản in dùng được trực tiếp.</p>
     </div>
 
     <div class="card">
-      <div style="display:flex; flex-wrap:wrap; gap:1.5rem; font-size:.9rem">
-        <span><span class="pill pass">Đạt</span> &nbsp;Kết quả đúng như mong đợi</span>
-        <span><span class="pill fail">Chưa đạt</span> &nbsp;Chạy được nhưng kết quả sai</span>
-        <span><span class="pill hold">Chưa chạy được</span> &nbsp;Báo lỗi hệ thống, không ra kết quả</span>
+      <div style="display:flex; flex-wrap:wrap; gap:1rem 1.5rem; font-size:.9rem">
+        <span><span class="pill pass">Đạt</span> &nbsp;Đúng dữ liệu, đúng quyền và đúng giao diện</span>
+        <span><span class="pill fail">Chưa đạt</span> &nbsp;Chạy được nhưng dữ liệu, quyền hoặc hiển thị sai</span>
+        <span><span class="pill hold">Chưa chạy được</span> &nbsp;Hệ thống báo lỗi hoặc không có phản hồi</span>
+        <span><span class="pill na">Không áp dụng</span> &nbsp;Tài khoản / vai trò không có chức năng này</span>
       </div>
     </div>
-
     <div class="tbl-scroll">
       <table>
-        <thead>
-          <tr>
-            <th style="width:3rem">Câu</th>
-            <th>Nội dung</th>
-            <th style="width:9rem">Kết quả</th>
-            <th style="width:12rem">Ghi chú / Mã tra cứu</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th style="width:7%">Câu</th>
+          <th style="width:51%">Nội dung</th>
+          <th style="width:20%">Kết quả</th>
+          <th style="width:22%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
         <tbody>
-          <tr><td class="num">01</td><td>Hôm nay tôi nên làm gì?</td><td></td><td></td></tr>
-          <tr><td class="num">02</td><td>Hôm nay tôi nên ghé khách nào?</td><td></td><td></td></tr>
-          <tr><td class="num">03</td><td>Danh sách khách thuộc tuyến</td><td></td><td></td></tr>
-          <tr><td class="num">04</td><td>Khách nào lâu chưa mua?</td><td></td><td></td></tr>
-          <tr><td class="num">05</td><td>Doanh số hôm nay</td><td></td><td></td></tr>
-          <tr><td class="num">06</td><td>Doanh số 09/07 – 20/07</td><td></td><td></td></tr>
-          <tr><td class="num">07</td><td>Công nợ khách đại diện</td><td></td><td></td></tr>
-          <tr><td class="num">08</td><td>Chi tiết đi <span class="muted">(câu tiếp nối)</span></td><td></td><td></td></tr>
-          <tr><td class="num">09</td><td>Gợi ý đơn hàng</td><td></td><td></td></tr>
-          <tr><td class="num">10</td><td>Gợi ý bán kèm</td><td></td><td></td></tr>
-          <tr><td class="num">11</td><td>Tồn kho A003</td><td></td><td></td></tr>
-          <tr><td class="num">12</td><td><span class="muted">Câu riêng theo vai trò</span></td><td></td><td></td></tr>
-          <tr><td class="num">13</td><td><span class="muted">Câu riêng theo vai trò</span></td><td></td><td></td></tr>
+          <tr>
+            <td>01</td>
+            <td>Hôm nay tôi nên làm gì?</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>02</td>
+            <td>Hôm nay tôi nên ghé khách nào?</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>03</td>
+            <td>Danh sách khách thuộc tuyến</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>04</td>
+            <td>Khách nào lâu chưa mua?</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>05</td>
+            <td>Doanh số hôm nay</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>06</td>
+            <td>Doanh số 09/07 – 20/07</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>07</td>
+            <td>Công nợ khách đại diện</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>08</td>
+            <td>Chi tiết đi (câu tiếp nối)</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>09</td>
+            <td>Gợi ý đơn hàng</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td>Gợi ý bán kèm</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>11</td>
+            <td>Tồn kho A003</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td>Câu riêng theo vai trò</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td>Câu riêng theo vai trò</td>
+            <td></td>
+            <td></td>
+          </tr>
         </tbody>
       </table>
     </div>
-
     <div class="card">
       <div class="eyebrow" style="margin-bottom:.7rem">Xác nhận hoàn thành</div>
       <dl class="kv">
-        <dt>Tổng số câu Đạt</dt><dd><span class="fill"></span> / 13</dd>
+        <dt>Tổng số câu Đạt</dt><dd><span class="fill"></span> <span class="muted">/ 13</span></dd>
+        <dt>Kiểm tra chung mục 04 đã làm đủ</dt><dd><span class="fill"></span></dd>
+        <dt>Đã tạo khách UAT_TEST — mã</dt><dd><span class="fill"></span></dd>
+        <dt>Đã tạo đơn UAT_TEST — mã</dt><dd><span class="fill"></span></dd>
         <dt>Lỗi nghiêm trọng phát hiện</dt><dd><span class="fill"></span></dd>
         <dt>Người thực hiện</dt><dd><span class="fill"></span></dd>
         <dt>Chữ ký · Ngày</dt><dd><span class="fill"></span></dd>
       </dl>
     </div>
-
     <p class="muted" style="font-size:.85rem">Nộp phiếu cho điều phối viên ngay sau khi chạy xong, kèm ảnh chụp các trường hợp Chưa đạt và Chưa chạy được.</p>
+  </section>
+
+  <!-- ══ PHỤ LỤC ══ -->
+  <section id="phu-luc">
+    <div class="appx-head">
+      <div class="eyebrow">Phụ lục</div>
+      <h2>Phụ lục kiểm thử đầy đủ</h2>
+      <p class="muted">Phần này dành cho điều phối viên và người kiểm thử được phân công chạy sâu. Mỗi bảng dùng chung một bộ cột để tổng hợp về một file duy nhất.</p>
+    </div>
+  </section>
+
+  <section class="appx-part" id="pl-a">
+    <h3><span class="lbl">A</span> 24 chức năng hội thoại</h3>
+    <p class="muted" style="font-size:.9rem">Mỗi chức năng có ba ca: ca chính, ca thiếu tham số và ca biên. Thay <code>MÃ KHÁCH</code>, <code>MÃ SẢN PHẨM</code>, <code>SỐ HÓA ĐƠN</code> bằng mã đại diện được giao. Mọi câu hỏi mẫu ở đây đều đã được kiểm chứng là định tuyến đúng chức năng.</p>
+    <div class="tbl-scroll tbl-cases">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">CN-01</span><span class="case-name">Doanh số</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Bảng doanh số đối chiếu của kỳ đang test do điều phối viên cấp.</td>
+            <td>Doanh số hôm nay
+
+Cách hỏi khác: Doanh thu tháng này</td>
+            <td>Nêu rõ kỳ báo cáo, tổng doanh số có đơn vị tiền, thời điểm cập nhật. Số tổng khớp bảng chi tiết. Sale chỉ thấy doanh số của chính mình; Quản lý thấy bảng theo nhân viên trong miền được giao, không có nhân viên miền khác.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-01-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Doanh số từ 32/13/2026 đến 09/07/2026</td>
+            <td>Báo khoảng ngày không hợp lệ và xin nhập lại. Không tự đoán ngày, không trả về số liệu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-01-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Doanh số từ 01/09/2030 đến 30/09/2030</td>
+            <td>Kỳ tương lai / kỳ chưa phát sinh: nói rõ là chưa có dữ liệu. Ghi Chưa đạt nếu hiển thị 0 như một con số doanh số thật mà không kèm giải thích.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-02</span><span class="case-name">Danh sách hóa đơn</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Biết trước kỳ có ít nhất 1 hóa đơn trong phạm vi tài khoản.</td>
+            <td>Danh sách hóa đơn
+
+Cách hỏi khác: Xem hóa đơn</td>
+            <td>Bảng có số hóa đơn, ngày, khách hàng, giá trị. Ngày dạng dd/MM/yyyy, tiền có đơn vị. Danh sách dài phải có tìm kiếm, phân trang hoặc cuộn. Chỉ hóa đơn thuộc phạm vi tài khoản.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-02-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ kỳ và phạm vi đang lấy, thay vì im lặng tự chọn giúp.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-02-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Danh sách hóa đơn (chọn kỳ chưa phát sinh)</td>
+            <td>Nói rõ kỳ không có hóa đơn. Không trả bảng rỗng không có lời giải thích.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-03</span><span class="case-name">Chi tiết hóa đơn</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một SỐ HÓA ĐƠN hợp lệ trong phạm vi, một số không tồn tại, một số thuộc miền khác — điều phối viên cấp.</td>
+            <td>Chi tiết hóa đơn SỐ HÓA ĐƠN
+
+Cách hỏi khác: Xem chi tiết hóa đơn SỐ HÓA ĐƠN</td>
+            <td>Đúng hóa đơn đã hỏi: khách hàng, ngày, danh sách mặt hàng, số lượng, đơn giá, thành tiền, tổng tiền. Tổng khớp cộng dồn dòng chi tiết.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-03-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Chi tiết hóa đơn</td>
+            <td>Hỏi lại số hóa đơn bằng tiếng Việt rõ ràng. Không tự chọn một hóa đơn bất kỳ.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-03-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Chi tiết hóa đơn HD-KHONG-CO-THAT</td>
+            <td>Báo không tìm thấy hóa đơn. Không hiện lỗi kỹ thuật. Với số hóa đơn của miền khác: không trả dữ liệu, dừng test và báo ngay nếu vẫn trả.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-04</span><span class="case-name">Danh sách đơn hàng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Biết trước kỳ có ít nhất 1 đơn hàng trong phạm vi tài khoản.</td>
+            <td>Danh sách đơn hàng
+
+Cách hỏi khác: Xem đơn hàng</td>
+            <td>Bảng có mã đơn, ngày, khách hàng, trạng thái, tổng tiền. Chỉ đơn thuộc phạm vi tài khoản. Có tìm kiếm hoặc phân trang khi danh sách dài.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-04-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ kỳ và phạm vi đang lấy.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-04-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Danh sách đơn hàng (kỳ chưa phát sinh)</td>
+            <td>Nói rõ chưa có đơn trong kỳ. Không biến chưa có dữ liệu thành 0 đơn đã hoàn tất.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-05</span><span class="case-name">Chấm điểm khách hàng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Danh sách khách trong tuyến / miền của tài khoản.</td>
+            <td>Chấm điểm khách hàng
+
+Cách hỏi khác: Chấm điểm khách</td>
+            <td>Phân nhóm khách kèm lý do đọc hiểu được. Sale chỉ thấy khách trong tuyến của mình; Quản lý thấy khách toàn miền được giao. Không hiện mã kỹ thuật hay công thức tính điểm.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-05-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ phạm vi khách đang chấm.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-05-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Chấm điểm khách hàng (tài khoản có khách mới, chưa đủ lịch sử)</td>
+            <td>Khách chưa đủ lịch sử phải được ghi rõ là chưa đủ dữ liệu, không xếp nhóm bừa.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-06</span><span class="case-name">Công nợ khách hàng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Bảng công nợ đối chiếu do điều phối viên cấp.</td>
+            <td>Công nợ khách hàng
+
+Cách hỏi khác: Xem công nợ khách hàng</td>
+            <td>Tổng quan công nợ theo phạm vi tài khoản: tổng còn nợ, số khách có nợ. Tiền có đơn vị. Không có khách ngoài phạm vi.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-06-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ phạm vi và thời điểm cập nhật.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-06-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Công nợ khách hàng (tài khoản không có khách nào còn nợ)</td>
+            <td>Nói rõ không có khách nào còn nợ. Không để trống màn hình.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-07</span><span class="case-name">Công nợ chi tiết</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện được giao, thêm một mã khách của miền khác để thử phạm vi.</td>
+            <td>Chi tiết công nợ MÃ KHÁCH
+
+Cách hỏi khác: Khách MÃ KHÁCH đang nợ bao nhiêu</td>
+            <td>Tổng còn nợ và danh sách hóa đơn còn nợ kèm ngày đến hạn, tình trạng thanh toán. Tổng khớp cộng dồn dòng chi tiết.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-07-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Xem công nợ</td>
+            <td>Hỏi lại mã khách. Không tự chọn một khách bất kỳ trong danh sách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-07-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Chi tiết công nợ KH-KHONG-CO-THAT · rồi thử mã khách của miền khác</td>
+            <td>Mã không tồn tại: báo không tìm thấy khách. Mã ngoài phạm vi: không trả dữ liệu. Hóa đơn thiếu ngày đến hạn phải ghi chưa có ngày đến hạn, không để trống.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-08</span><span class="case-name">Tích lũy</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện, biết trước mốc tích lũy hiện tại.</td>
+            <td>Tích lũy của khách MÃ KHÁCH
+
+Cách hỏi khác: Xem tích lũy khách MÃ KHÁCH</td>
+            <td>Mức tích lũy hiện tại, mốc kế tiếp và khoảng còn thiếu. Đúng khách đã hỏi.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-08-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Xem tích lũy</td>
+            <td>Hỏi lại mã khách, không tự chọn khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-08-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Tích lũy của khách KH-KHONG-CO-THAT</td>
+            <td>Báo không tìm thấy khách. Khách chưa phát sinh tích lũy: nói rõ là chưa có, không hiện 0 như đã đạt mốc.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-09</span><span class="case-name">Tuyến bán hàng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Danh sách tuyến được giao của tài khoản.</td>
+            <td>Tuyến bán hàng hôm nay
+
+Cách hỏi khác: Tuyến hôm nay</td>
+            <td>Chỉ khách thuộc tuyến của tài khoản đang dùng, kèm lý do cần ghé. Xuất hiện khách miền khác là lỗi nghiêm trọng — dừng test và báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-09-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ ngày và tuyến đang lấy.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-09-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Tuyến bán hàng hôm nay (ngày không có lịch tuyến)</td>
+            <td>Nói rõ hôm nay không có lịch tuyến, không trả danh sách khách bất kỳ để lấp chỗ trống.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-10</span><span class="case-name">Gợi ý đơn hàng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện có lịch sử mua, thêm một khách UAT_TEST mới tạo chưa có lịch sử.</td>
+            <td>Gợi ý đơn hàng cho MÃ KHÁCH
+
+Cách hỏi khác: MÃ KHÁCH nên nhập gì</td>
+            <td>Danh sách sản phẩm gợi ý kèm lý do dễ hiểu, gắn đúng khách vừa hỏi. Không phải danh sách bán chạy chung chung.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-10-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Gợi ý đơn hàng</td>
+            <td>Hỏi lại mã khách. Không tự chọn khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-10-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Gợi ý đơn hàng cho khách UAT_TEST mới tạo</td>
+            <td>Khách chưa đủ lịch sử phải được nói rõ, không đoán bừa. Mã khách ngoài phạm vi: không trả dữ liệu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-11</span><span class="case-name">Gợi ý bán kèm</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện có lịch sử mua.</td>
+            <td>Gợi ý bán kèm cho khách MÃ KHÁCH
+
+Cách hỏi khác: Bán kèm gì cho MÃ KHÁCH</td>
+            <td>Sản phẩm bán kèm gắn đúng khách vừa hỏi, kèm lý do. Không lẫn sản phẩm của khách khác.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-11-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Gợi ý bán kèm</td>
+            <td>Hỏi lại mã khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-11-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Gợi ý bán kèm cho khách UAT_TEST mới tạo</td>
+            <td>Khách chưa đủ lịch sử: nói rõ chưa gợi ý được. Mã ngoài phạm vi: không trả dữ liệu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-12</span><span class="case-name">Gợi ý đơn thuốc / sản phẩm tương ứng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ SẢN PHẨM có thật trong danh mục.</td>
+            <td>Gợi ý đơn thuốc cho MÃ SẢN PHẨM
+
+Cách hỏi khác: Đơn thuốc cho MÃ SẢN PHẨM</td>
+            <td>Nhóm sản phẩm đi kèm hợp lý với sản phẩm đã hỏi. Phải có ghi chú đây là gợi ý tham khảo, không phải tư vấn chuyên môn về thuốc.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-12-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Gợi ý đơn thuốc</td>
+            <td>Hỏi lại mã hoặc tên sản phẩm.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-12-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Gợi ý đơn thuốc cho SP-KHONG-CO-THAT</td>
+            <td>Báo không tìm thấy sản phẩm. Từ khóa trả về nhiều kết quả: phải liệt kê để chọn, không tự chọn giúp.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-13</span><span class="case-name">Danh sách tồn kho</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ SẢN PHẨM còn tồn, thêm một sản phẩm tồn bằng 0 nếu có.</td>
+            <td>Tồn kho MÃ SẢN PHẨM
+
+Cách hỏi khác: MÃ SẢN PHẨM còn hàng không</td>
+            <td>Số tồn kèm tên kho và số lô. Nếu ghi tồn khả dụng là tham khảo hoặc chưa xác minh thì đó là đúng thiết kế — phải kiểm kho trước khi hứa với khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-13-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Xem tồn kho</td>
+            <td>Hỏi lại mã hoặc tên sản phẩm. Không liệt kê toàn bộ kho.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-13-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Tồn kho MÃ SẢN PHẨM tồn bằng 0 · rồi thử SP-KHONG-CO-THAT</td>
+            <td>Tồn 0 phải ghi rõ là hết hàng, tồn âm phải được cảnh báo là bất thường chứ không hiển thị như số bình thường. Mã không có thật: báo không tìm thấy.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-14</span><span class="case-name">Tra cứu sản phẩm</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ SẢN PHẨM có thật, thêm một từ khóa gõ sai chính tả.</td>
+            <td>Tra cứu sản phẩm MÃ SẢN PHẨM
+
+Cách hỏi khác: Thông tin sản phẩm MÃ SẢN PHẨM</td>
+            <td>Tên, mã, quy cách, đơn vị tính, nhóm sản phẩm. Có lại từ khóa người dùng vừa nhập trong phần tiêu đề kết quả.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-14-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Tra cứu sản phẩm</td>
+            <td>Hỏi lại mã hoặc tên sản phẩm.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-14-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Tra cứu sản phẩm paraxetamon (cố tình gõ sai)</td>
+            <td>Từ khóa sai: báo không tìm thấy hoặc gợi ý từ khóa gần đúng. Nhiều kết quả: liệt kê để chọn, không tự chọn kết quả đầu tiên.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-15</span><span class="case-name">Sản phẩm trọng tâm</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Danh sách sản phẩm trọng tâm kỳ hiện tại do điều phối viên cấp.</td>
+            <td>Sản phẩm trọng tâm
+
+Cách hỏi khác: Sản phẩm trọng tâm tháng này</td>
+            <td>Danh sách sản phẩm trọng tâm của kỳ, có nêu kỳ áp dụng. Khớp bảng đối chiếu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-15-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống nêu rõ kỳ đang áp dụng.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-15-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Sản phẩm trọng tâm (kỳ chưa cấu hình)</td>
+            <td>Nói rõ kỳ chưa có cấu hình sản phẩm trọng tâm, không lấy tạm kỳ trước.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-16</span><span class="case-name">Đề xuất khuyến mãi</span></td>
+            <td>Quản lý</td>
+            <td>Kịch bản khuyến mãi UAT được giao.</td>
+            <td>Đề xuất khuyến mãi
+
+Cách hỏi khác: Sản phẩm nào cần khuyến mãi</td>
+            <td>Danh sách sản phẩm nên xem xét khuyến mãi kèm lý do. Phải ghi rõ đây là đề xuất để xem xét, chưa phải chương trình đã duyệt.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-16-T</span></td>
+            <td>Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra tài khoản Sale không dùng được hoặc không thấy nút duyệt chương trình.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-16-B</span></td>
+            <td>Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Đề xuất khuyến mãi (đăng nhập bằng tài khoản Sale)</td>
+            <td>Sale không được duyệt chương trình. Nếu Sale duyệt được: lỗi phân quyền nghiêm trọng, dừng test và báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-17</span><span class="case-name">Danh mục</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị riêng.</td>
+            <td>Danh mục sản phẩm
+
+Cách hỏi khác: Danh mục kho hàng</td>
+            <td>Đúng loại danh mục đã hỏi. Danh sách dài có tìm kiếm hoặc phân trang. Chỉ kho và khách thuộc phạm vi tài khoản.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-17-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Danh mục</td>
+            <td>Hỏi lại muốn xem danh mục nào — sản phẩm, kho hàng hay khách hàng.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-17-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Danh mục khách hàng (so với tài khoản khác miền)</td>
+            <td>Hai tài khoản khác miền phải ra hai danh sách khác nhau. Trùng nhau nghĩa là rò rỉ phạm vi — báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-18</span><span class="case-name">Khảo sát 360</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện đã có khảo sát.</td>
+            <td>Khảo sát 360 khách MÃ KHÁCH
+
+Cách hỏi khác: Xem khảo sát 360 của MÃ KHÁCH</td>
+            <td>Kết quả khảo sát của đúng khách đã hỏi, có thời điểm khảo sát gần nhất.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-18-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Khảo sát 360</td>
+            <td>Hỏi lại mã khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-18-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Khảo sát 360 khách UAT_TEST mới tạo</td>
+            <td>Khách chưa khảo sát lần nào: nói rõ chưa có dữ liệu khảo sát.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-19</span><span class="case-name">Danh sách câu hỏi khảo sát</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện.</td>
+            <td>Danh sách câu hỏi khảo sát MÃ KHÁCH
+
+Cách hỏi khác: Câu hỏi khảo sát MÃ KHÁCH</td>
+            <td>Bộ câu hỏi khảo sát áp dụng cho khách đó, tiếng Việt đủ dấu, không lẫn mã kỹ thuật.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-19-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Danh sách câu hỏi khảo sát</td>
+            <td>Hỏi lại mã khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-19-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Danh sách câu hỏi khảo sát KH-KHONG-CO-THAT</td>
+            <td>Báo không tìm thấy khách, không trả bộ câu hỏi mặc định.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-20</span><span class="case-name">Kiểm tra trạng thái khảo sát</span></td>
+            <td>Sale · Quản lý</td>
+            <td>MÃ KHÁCH đại diện.</td>
+            <td>Trạng thái khảo sát MÃ KHÁCH
+
+Cách hỏi khác: Kiểm tra khảo sát MÃ KHÁCH</td>
+            <td>Cho biết khách đã khảo sát hay chưa, lần gần nhất là khi nào.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-20-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Trạng thái khảo sát</td>
+            <td>Hỏi lại mã khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-20-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Trạng thái khảo sát của khách thuộc miền khác</td>
+            <td>Không trả dữ liệu. Nếu vẫn trả: lỗi rò rỉ phạm vi, dừng test và báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-21</span><span class="case-name">Khảo sát trong ngày</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị riêng.</td>
+            <td>Kiểm tra khảo sát ngày hôm nay
+
+Cách hỏi khác: Hôm nay đã khảo sát chưa</td>
+            <td>Số khảo sát đã thực hiện hôm nay trong phạm vi tài khoản, có ngày đang xét.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-21-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống ghi rõ ngày đang xét.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-21-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Kiểm tra khảo sát ngày hôm nay (ngày chưa khảo sát lần nào)</td>
+            <td>Nói rõ hôm nay chưa có khảo sát nào, không để trống.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-22</span><span class="case-name">Lịch sử khảo sát</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị riêng.</td>
+            <td>Lịch sử khảo sát
+
+Cách hỏi khác: Lịch sử khảo sát khách hàng</td>
+            <td>Danh sách khảo sát đã thực hiện, sắp xếp theo thời gian, ngày dạng dd/MM/yyyy. Chỉ trong phạm vi tài khoản.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-22-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống ghi rõ khoảng thời gian đang lấy.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-22-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Lịch sử khảo sát (tài khoản chưa khảo sát lần nào)</td>
+            <td>Nói rõ chưa có lịch sử khảo sát.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-23</span><span class="case-name">Thông báo</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị riêng.</td>
+            <td>Xem thông báo
+
+Cách hỏi khác: Thông báo mới</td>
+            <td>Danh sách thông báo kèm thời điểm. Chỉ thông báo dành cho tài khoản hoặc miền đang đăng nhập.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-23-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Không có tham số bắt buộc</td>
+            <td>Chức năng không cần tham số — kiểm tra hệ thống ghi rõ khoảng thời gian đang lấy.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-23-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Xem thông báo (tài khoản không có thông báo nào)</td>
+            <td>Nói rõ không có thông báo mới, không để trống màn hình.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-24</span><span class="case-name">Tìm sản phẩm theo triệu chứng</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị riêng.</td>
+            <td>Tìm sản phẩm theo triệu chứng đau đầu
+
+Cách hỏi khác: Sản phẩm cho triệu chứng ho</td>
+            <td>Danh sách sản phẩm liên quan kèm ghi chú đây là gợi ý tham khảo. Bắt buộc phải có câu nhắc không thay thế tư vấn chuyên môn về thuốc.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-24-T</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Tìm sản phẩm theo triệu chứng</td>
+            <td>Hỏi lại triệu chứng cụ thể.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">CN-24-B</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sai / dữ liệu rỗng / mã ngoài phạm vi.</td>
+            <td>Tìm sản phẩm theo triệu chứng xyzabc</td>
+            <td>Triệu chứng vô nghĩa: báo không tìm thấy. Ghi Chưa đạt nếu hệ thống khẳng định công dụng điều trị.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="appx-part" id="pl-b">
+    <h3><span class="lbl">B</span> Ca kiểm thử biên</h3>
+    <p class="muted" style="font-size:.9rem">Các trường hợp dễ vỡ nhất. Chạy sau khi bộ 24 chức năng đã qua.</p>
+    <div class="tbl-scroll tbl-cases flat">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">BI-01</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách đại diện được giao.</td>
+            <td>Hỏi công nợ nhưng không nhập mã khách: <code>Xem công nợ</code></td>
+            <td>Hệ thống yêu cầu bổ sung mã khách. Không tự chọn giúp một khách bất kỳ.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-02</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một mã khách chắc chắn không tồn tại.</td>
+            <td>Hỏi <code>Chi tiết công nợ KH-KHONG-CO-THAT</code></td>
+            <td>Thông báo tiếng Việt rõ ràng là không tìm thấy khách. Không hiện lỗi kỹ thuật, không hiện tên cột tiếng Anh.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-03</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một mã khách có thật nhưng thuộc miền khác — điều phối viên cấp.</td>
+            <td>Hỏi <code>Chi tiết công nợ &lt;MÃ KHÁCH MIỀN KHÁC&gt;</code></td>
+            <td>Không trả dữ liệu. Nếu trả về bất kỳ thông tin nào: dừng toàn bộ test và báo ngay — đây là lỗi nghiêm trọng nhất.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-04</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị.</td>
+            <td>Hỏi <code>Doanh số từ 20/07/2026 đến 09/07/2026</code> (ngày đầu sau ngày cuối)</td>
+            <td>Báo khoảng ngày không hợp lệ hoặc xin xác nhận lại. Ghi Chưa đạt nếu hệ thống vẫn trả kết quả cho khoảng ngày đảo ngược.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-05</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị.</td>
+            <td>Hỏi <code>Doanh số từ 32/13/2026 đến 09/07/2026</code></td>
+            <td>Báo ngày không hợp lệ và xin nhập lại.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-06</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị.</td>
+            <td>Hỏi doanh số cho một kỳ trong tương lai</td>
+            <td>Nói rõ kỳ chưa phát sinh. Không hiển thị 0 như một con số doanh số thật.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-07</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một sản phẩm tồn bằng 0; nếu dữ liệu UAT có tồn âm thì thử luôn.</td>
+            <td>Hỏi tồn kho của sản phẩm đó</td>
+            <td>Tồn 0 ghi rõ là hết hàng. Tồn âm phải được đánh dấu bất thường, không hiển thị như số bình thường.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-08</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một khách có công nợ nhưng thiếu hóa đơn hoặc thiếu ngày đến hạn.</td>
+            <td>Hỏi chi tiết công nợ khách đó</td>
+            <td>Ô thiếu dữ liệu ghi rõ là chưa có, không để trống và không hiện ngày mặc định như 01/01/1900.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-09</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Khách UAT_TEST vừa tạo, chưa có lịch sử mua.</td>
+            <td>Hỏi gợi ý đơn hàng và gợi ý bán kèm cho khách đó</td>
+            <td>Nói rõ khách chưa đủ lịch sử để gợi ý. Không đưa danh sách bán chạy chung rồi gọi đó là gợi ý riêng cho khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-10</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một từ khóa sản phẩm gõ sai và một từ khóa cho ra nhiều kết quả.</td>
+            <td>Tra cứu sản phẩm bằng cả hai từ khóa</td>
+            <td>Từ khóa sai: báo không tìm thấy hoặc gợi ý từ gần đúng. Nhiều kết quả: liệt kê để người dùng chọn.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-11</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách đại diện.</td>
+            <td>Hỏi cùng một nội dung bằng 3 cách: <code>Chi tiết công nợ &lt;MÃ KHÁCH&gt;</code> · <code>Khách &lt;MÃ KHÁCH&gt; đang nợ bao nhiêu</code> · <code>Coi công nợ &lt;MÃ KHÁCH&gt;</code></td>
+            <td>Cả ba cách ra cùng một chức năng và cùng một khách. Cách nào không hiểu thì ghi lại nguyên văn vào cột Ghi chú.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-12</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách đại diện.</td>
+            <td>Hỏi <code>Khách &lt;MÃ KHÁCH&gt; đang nợ bao nhiêu</code>, ngay sau đó gõ <code>Chi tiết đi</code></td>
+            <td>Câu thứ hai phải hiểu là đang nói về đúng khách vừa hỏi và mở chi tiết công nợ, không hỏi lại từ đầu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">BI-13</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Không cần chuẩn bị.</td>
+            <td>Bấm gửi cùng một câu hỏi 3 lần liên tiếp thật nhanh</td>
+            <td>Không tạo bản ghi trùng, không tạo đơn trùng. Loading phải xuất hiện ngay, không để màn hình trống.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="appx-part" id="pl-c">
+    <h3><span class="lbl">C</span> Luồng tạo khách hàng UAT</h3>
+    <p class="muted" style="font-size:.9rem">Chạy tuần tự KH-01 đến KH-10. Không bỏ bước kiểm tra ràng buộc trước khi tạo khách hợp lệ.</p>
+    <div class="tbl-scroll tbl-cases flat">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">KH-01</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Đã đăng nhập đúng tài khoản.</td>
+            <td>Mở chức năng thêm khách hàng</td>
+            <td>Màn hình mở được, đúng vai trò được phép.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-02</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Đọc hết các trường và nhãn trên form</td>
+            <td>Nhãn tiếng Việt đủ dấu, không có tên cột tiếng Anh hay mã kỹ thuật.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-03</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Bỏ trống trường bắt buộc rồi bấm lưu</td>
+            <td>Chặn lưu và chỉ rõ trường nào còn thiếu. Không lưu nửa vời.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-04</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Nhập sai định dạng: số điện thoại có chữ, email thiếu @</td>
+            <td>Báo sai định dạng ngay tại trường đó, không để tới lúc lưu mới báo lỗi chung chung.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-05</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Tên và mã khách bắt đầu bằng <code>UAT_TEST</code>.</td>
+            <td>Tạo khách mới hợp lệ</td>
+            <td>Tạo được. Không dùng tên, số điện thoại hay địa chỉ của khách hàng thật.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-06</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Đọc thông báo sau khi lưu</td>
+            <td>Có thông báo tạo thành công rõ ràng, kèm mã khách vừa tạo.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-07</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách vừa tạo.</td>
+            <td>Tìm lại khách vừa tạo trong danh sách hoặc bằng câu hỏi cho trợ lý</td>
+            <td>Tìm thấy đúng khách, thông tin khớp với lúc nhập.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-08</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một tài khoản Sale và một tài khoản Quản lý cùng miền.</td>
+            <td>Đăng nhập lần lượt hai tài khoản và tìm khách vừa tạo</td>
+            <td>Sale chỉ thấy nếu khách thuộc tuyến của mình; Quản lý thấy theo miền được giao.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-09</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách vừa tạo.</td>
+            <td>Tạo lại một khách trùng mã</td>
+            <td>Có cảnh báo trùng mã và chặn tạo. Không tạo ra hai bản ghi cùng mã.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KH-10</span></td>
+            <td>Điều phối viên</td>
+            <td>Danh sách mã khách UAT_TEST đã tạo.</td>
+            <td>Ghi lại toàn bộ mã khách vừa tạo vào biên bản UAT</td>
+            <td>Có đủ danh sách để dọn dữ liệu sau kiểm thử.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note go"><b>Kết quả đạt</b> — Khách được tạo đúng một lần, dữ liệu đúng như đã nhập, tìm lại được và không xuất hiện với tài khoản ngoài phạm vi.</div>
+  </section>
+
+  <section class="appx-part" id="pl-d">
+    <h3><span class="lbl">D</span> Luồng tạo đơn hàng UAT</h3>
+    <p class="muted" style="font-size:.9rem">Chạy sau khi luồng C đã tạo được khách UAT_TEST.</p>
+    <div class="tbl-scroll tbl-cases flat">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">DH-01</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Khách <code>UAT_TEST</code> đã tạo ở luồng KH.</td>
+            <td>Chọn khách UAT_TEST</td>
+            <td>Chọn được đúng khách vừa tạo.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-02</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Mở chức năng thêm đơn hàng</td>
+            <td>Màn hình mở được, đúng vai trò được phép.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-03</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Bấm xác nhận khi chưa chọn khách hoặc chưa thêm sản phẩm</td>
+            <td>Chặn lại và nói rõ còn thiếu gì. Không tạo đơn rỗng.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-04</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một sản phẩm còn tồn.</td>
+            <td>Thêm một sản phẩm vào đơn</td>
+            <td>Sản phẩm vào đơn đúng tên và đơn giá.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-05</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Nhập số lượng 0, số âm, rồi số vượt tồn kho</td>
+            <td>Chặn số lượng 0 và số âm. Vượt tồn phải cảnh báo rõ, không cho qua âm thầm.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-06</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Bảng giá đối chiếu.</td>
+            <td>Kiểm tra đơn giá, số lượng, thành tiền từng dòng và tổng tiền</td>
+            <td>Thành tiền từng dòng và tổng tiền tính đúng, tiền có đơn vị.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-07</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Kịch bản khuyến mãi UAT được giao.</td>
+            <td>Chỉ áp dụng đúng kịch bản khuyến mãi được giao</td>
+            <td>Không tự thử chương trình ngoài kịch bản, không sửa cấu hình dùng chung.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-08</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Xác nhận tạo đơn một lần</td>
+            <td>Có thông báo tạo thành công kèm mã đơn.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-09</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã đơn vừa tạo.</td>
+            <td>Tìm lại đơn trong danh sách đơn hàng</td>
+            <td>Tìm thấy đúng đơn vừa tạo.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-10</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Mở chi tiết đơn vừa tạo</td>
+            <td>Đúng khách, đúng sản phẩm, tổng tiền khớp với lúc tạo.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-11</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Hỏi trợ lý <code>Danh sách đơn hàng</code></td>
+            <td>Đơn vừa tạo xuất hiện trong kết quả của trợ lý.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-12</span></td>
+            <td>Sale · Quản lý</td>
+            <td>—</td>
+            <td>Bấm gửi hoặc xác nhận nhiều lần liên tiếp</td>
+            <td>Không tạo đơn trùng.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DH-13</span></td>
+            <td>Điều phối viên</td>
+            <td>Danh sách mã đơn UAT_TEST.</td>
+            <td>Ghi lại toàn bộ mã đơn vừa tạo vào biên bản UAT</td>
+            <td>Có đủ danh sách để dọn dữ liệu sau kiểm thử.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note go"><b>Kết quả đạt</b> — Đơn được tạo đúng một lần, tổng tiền đúng, liên kết đúng khách hàng và chỉ tài khoản có quyền mới xem được.</div>
+  </section>
+
+  <section class="appx-part" id="pl-e">
+    <h3><span class="lbl">E</span> Kiểm tra giá và khuyến mãi</h3>
+    <p class="muted" style="font-size:.9rem">Chỉ thử theo kịch bản khuyến mãi UAT được giao.</p>
+    <div class="tbl-scroll tbl-cases flat">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">KM-01</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Đơn UAT không áp dụng khuyến mãi.</td>
+            <td>Tạo đơn và kiểm tra giá</td>
+            <td>Giá gốc và tổng tiền đúng bảng giá đối chiếu.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KM-02</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một khuyến mãi hợp lệ trong kịch bản UAT.</td>
+            <td>Tạo đơn đủ điều kiện khuyến mãi</td>
+            <td>Điều kiện áp dụng và mức giảm đúng như kịch bản.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KM-03</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một khuyến mãi đã hết hạn.</td>
+            <td>Thử áp dụng khuyến mãi hết hạn</td>
+            <td>Không được áp dụng, có thông báo rõ lý do.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KM-04</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Một đơn không đủ điều kiện.</td>
+            <td>Thử áp dụng khuyến mãi khi chưa đủ điều kiện</td>
+            <td>Không được áp dụng, nêu rõ còn thiếu điều kiện gì.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KM-05</span></td>
+            <td>Sale</td>
+            <td>Tài khoản Sale.</td>
+            <td>Thử duyệt một chương trình khuyến mãi</td>
+            <td>Sale không duyệt được. Nếu duyệt được: lỗi phân quyền nghiêm trọng, dừng test và báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">KM-06</span></td>
+            <td>Quản lý</td>
+            <td>Không cần chuẩn bị.</td>
+            <td>Mở chức năng đề xuất khuyến mãi</td>
+            <td>Kết quả ghi rõ là đề xuất để xem xét, chưa phải chương trình đã duyệt. Không có thao tác nào làm đổi cấu hình dùng chung.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="appx-part" id="pl-f">
+    <h3><span class="lbl">F</span> Đối chiếu sau khi tạo dữ liệu</h3>
+    <p class="muted" style="font-size:.9rem">Chạy ngay sau khi luồng C và D hoàn tất, khi dữ liệu vừa tạo còn mới.</p>
+    <div class="tbl-scroll tbl-cases flat">
+      <table>
+        <thead><tr>
+          <th style="width:8%">Mã ca</th>
+          <th style="width:9%">Vai trò</th>
+          <th style="width:15%">Chuẩn bị</th>
+          <th style="width:20%">Thao tác / câu hỏi</th>
+          <th style="width:26%">Kết quả mong đợi</th>
+          <th style="width:8%">Thực tế</th>
+          <th style="width:7%">Trạng thái</th>
+          <th style="width:7%">Ghi chú / Mã tra cứu</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="case-id">DC-01</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã khách UAT_TEST.</td>
+            <td>Tra cứu lại khách vừa tạo</td>
+            <td>Thông tin khớp với lúc nhập.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DC-02</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã đơn UAT_TEST.</td>
+            <td>Tra cứu danh sách và chi tiết đơn hàng</td>
+            <td>Đơn có trong danh sách, chi tiết khớp với lúc tạo.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DC-03</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Mã sản phẩm đã dùng trong đơn.</td>
+            <td>Tra cứu tồn kho sản phẩm đó</td>
+            <td>Tồn kho thay đổi đúng theo thiết kế hệ thống. Nếu thiết kế chỉ trừ tồn khi đơn được xuất thì tồn chưa đổi vẫn là đúng.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DC-04</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Bảng doanh số trước khi tạo đơn.</td>
+            <td>Hỏi lại doanh số của kỳ chứa đơn vừa tạo</td>
+            <td>Doanh số chỉ thay đổi nếu trạng thái đơn được thiết kế để ghi nhận doanh số. Không mặc định đơn mới phải làm tăng doanh số — phải căn cứ trạng thái nghiệp vụ.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DC-05</span></td>
+            <td>Sale · Quản lý</td>
+            <td>Khách UAT_TEST và một khách có lịch sử.</td>
+            <td>Hỏi gợi ý đơn hàng và gợi ý bán kèm cho cả hai</td>
+            <td>Gợi ý gắn đúng từng khách, không lẫn dữ liệu giữa hai khách.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+          <tr>
+            <td><span class="case-id">DC-06</span></td>
+            <td>Tài khoản khác miền</td>
+            <td>Một tài khoản thuộc miền khác.</td>
+            <td>Đăng nhập và tìm khách, đơn vừa tạo</td>
+            <td>Không thấy dữ liệu vừa tạo. Nếu thấy: lỗi rò rỉ phạm vi, dừng test và báo ngay.</td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+            <td class="blank"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="appx-part" id="pl-g">
+    <h3><span class="lbl">G</span> Điều kiện hoàn tất UAT</h3>
+    <p class="muted" style="font-size:.9rem">Chỉ xác nhận hoàn tất khi đủ cả bảy điều kiện dưới đây.</p>
+    <div class="card">
+      <div class="checks">
+        <label class="check"><input type="checkbox" data-k="g1"><span>Cả 13 tài khoản đã kiểm tra đăng nhập và phạm vi dữ liệu.</span></label>
+        <label class="check"><input type="checkbox" data-k="g2"><span>Cả 24 chức năng đã có người kiểm tra theo vai trò phù hợp.</span></label>
+        <label class="check"><input type="checkbox" data-k="g3"><span>Luồng tạo khách và luồng tạo đơn UAT đã chạy thành công.</span></label>
+        <label class="check"><input type="checkbox" data-k="g4"><span>Không có lỗi rò rỉ dữ liệu giữa nhân viên, miền hoặc vai trò.</span></label>
+        <label class="check"><input type="checkbox" data-k="g5"><span>Không có lỗi nghiêm trọng ở doanh số, công nợ, tồn kho và phân quyền.</span></label>
+        <label class="check"><input type="checkbox" data-k="g6"><span>Toàn bộ dữ liệu <code>UAT_TEST</code> đã được ghi nhận đầy đủ để dọn.</span></label>
+        <label class="check"><input type="checkbox" data-k="g7"><span>Bản Word và bản HTML có nội dung, thứ tự và hình ảnh đồng nhất.</span></label>
+      </div>
+    </div>
   </section>
 
 </div>
@@ -787,7 +2352,7 @@
     });
   });
 
-  // Ghi nhớ tiến độ chuẩn bị
+  // Ghi nhớ tiến độ các checklist
   var KEY = 'medstand_uat_checklist';
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }

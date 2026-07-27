@@ -2,6 +2,23 @@
    AI Chatbot Page — Medstand v2
    ═══════════════════════════════════════════ */
 
+/* Kích thước visual viewport — JS cập nhật khi bàn phím ảo mở/đóng.
+   iOS (Safari & WKWebView) KHÔNG hỗ trợ interactive-widget=resizes-content:
+   layout viewport giữ nguyên chiều cao khi bàn phím bật lên, nên nếu chỉ
+   dùng 100dvh thì khung chat "trôi" lơ lửng giữa màn hình. */
+:root {
+  /* 100vh làm nền cho trình duyệt cũ chưa có dvh — nếu để 100dvh ở đây thì
+     trên các máy đó height sẽ invalid và khung chat sập về auto. */
+  --chatbot-vvh: 100vh;
+  --chatbot-vv-offset: 0px;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --chatbot-vvh: 100dvh;
+  }
+}
+
 /* ── Page wrapper ── */
 .chatbot-page {
   display: flex;
@@ -14,9 +31,9 @@
 
 /* Khi bàn phím mobile mở, thanh điều hướng được ẩn nên chat dùng toàn bộ
    viewport còn lại thay vì tiếp tục chừa một khoảng bằng nav-height. */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .chatbot-page.chatbot-nav-hidden {
-    height: 100dvh;
+    height: var(--chatbot-vvh, 100vh);
   }
 }
 
@@ -1914,12 +1931,40 @@ tr.expanded .ai-row-toggle::before {
 /* Mobile welcome state: keep the welcome content compact while the composer
    remains anchored above the bottom navigation. */
 @media (max-width: 767px) {
-  /* Khi bàn phím ảo mở, thanh điều hướng dưới được ẩn. Khi đó vùng chat
-     phải dùng toàn bộ visual viewport thay vì tiếp tục chừa chỗ cho nav. */
+  /* Khi bàn phím ảo mở, thanh điều hướng dưới được ẩn và khung chat được
+     ghim đúng bằng visual viewport (JS đo qua window.visualViewport) nên
+     thanh soạn tin luôn dính sát mép trên bàn phím — giống Claude/ChatGPT
+     mobile — thay vì trôi lơ lửng giữa màn hình. */
+  /* :has() để tự huỷ hiệu lực khi router rời trang chat (class trên body có
+     thể còn sót lại nếu blur không kịp bắn). */
+  body.chatbot-keyboard-open:has(.chatbot-page) {
+    /* body vốn chừa chỗ cho bottom nav; nav đã ẩn nên phải bỏ khoảng này,
+       nếu không tài liệu vẫn cao hơn viewport và bị cuộn lệch. */
+    padding-bottom: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   body.chatbot-keyboard-open .chatbot-page,
   body.chatbot-keyboard-open .chatbot-page:has(#chat-welcome:not([style*="display: none"])),
   .chatbot-page.chatbot-nav-hidden:has(#chat-welcome:not([style*="display: none"])) {
-    height: 100dvh;
+    position: fixed;
+    /* Dùng top (không dùng transform) để không tạo containing block mới cho
+       các overlay position:fixed bên trong (mention dropdown, modal…). */
+    top: var(--chatbot-vv-offset, 0px);
+    left: 0;
+    right: 0;
+    height: var(--chatbot-vvh, 100vh);
+    max-height: var(--chatbot-vvh, 100vh);
+    padding-bottom: 0;
+    z-index: 120;
+  }
+
+  /* Composer ôm sát bàn phím — chỉ chừa một khoảng thở nhỏ */
+  body.chatbot-keyboard-open .chat-input-bar {
+    margin-top: 8px;
+    margin-bottom: 0;
+    padding-bottom: 6px;
   }
 
   .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {

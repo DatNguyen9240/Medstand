@@ -5018,9 +5018,11 @@
 
     // ── Keyboard / Focus handling ──
 
-    // interactive-widget=resizes-content đã tự thu viewport khi keyboard mở
+    // Android (interactive-widget=resizes-content) tự thu layout viewport khi
 
-    // → chỉ cần scroll xuống cuối, KHÔNG đẩy input bar thủ công
+    // bàn phím mở. iOS thì KHÔNG → khung chat phải tự bám theo visualViewport,
+
+    // xem _syncChatViewport() bên dưới.
 
     if (window.visualViewport) {
 
@@ -5036,6 +5038,10 @@
 
 
 
+            _queueSyncChatViewport();
+
+
+
             if (document.activeElement === $input) {
 
                 if (grew > 100) {
@@ -5047,6 +5053,8 @@
                 } else {
 
                     // Keyboard might be opening or other resize
+
+                    _pinLayoutViewport();
 
                     _scrollBottom();
 
@@ -5061,6 +5069,12 @@
             }
 
         });
+
+        // iOS đẩy visual viewport lên/xuống trong layout viewport khi bàn phím
+
+        // mở → theo dõi offsetTop để khung chat không lệch.
+
+        window.visualViewport.addEventListener('scroll', _queueSyncChatViewport);
 
     }
 
@@ -6674,15 +6688,135 @@
 
 
 
+    // ── Ghim khung chat theo visual viewport (dùng chung cho mọi mobile) ──
+
+    // Bàn phím ảo được các nền tảng xử lý khác nhau:
+
+    //   • Android/Chromium: interactive-widget=resizes-content thu nhỏ luôn
+
+    //     layout viewport, nên 100dvh cũng co theo.
+
+    //   • iOS (Safari + WKWebView), Firefox/Samsung Internet cũ: layout
+
+    //     viewport GIỮ NGUYÊN, chỉ visual viewport co lại → .chatbot-page vẫn
+
+    //     cao 100dvh, đáy nằm dưới bàn phím, trình duyệt cuộn bù → khung chat
+
+    //     "trôi" lơ lửng giữa màn hình.
+
+    // KHÔNG dò nền tảng (user-agent sniffing dễ sai): luôn đo
+
+    // window.visualViewport — nguồn sự thật chung cho cả hai kiểu — rồi ghim
+
+    // .chatbot-page đúng bằng vùng còn nhìn thấy. Android ra cùng kết quả vì ở
+
+    // đó vv.height đã bằng layout viewport, nên một đường code cho tất cả.
+
+    // 767 để trùng đúng ranh giới CSS (@media max-width:767px / min-width:768px).
+
+    // Trước đây JS dùng >768 nên ở đúng 768px (iPad dọc) trang ăn style desktop
+
+    // nhưng JS lại chạy logic bàn phím mobile — lệch nhau 1px.
+
+    var MOBILE_MAX_WIDTH = 767;
+
+    var _vvRaf = 0;
+
+    var _kbLayoutOpen = false;
+
+
+
+    /** Chiều cao vùng còn nhìn thấy — fallback innerHeight cho trình duyệt cũ
+
+     *  (Android 7/8, WebView đời cũ) không có visualViewport. */
+
+    function _viewportHeight() {
+
+        var vv = window.visualViewport;
+
+        return (vv && vv.height) || window.innerHeight || 0;
+
+    }
+
+
+
+    /** Độ lệch của visual viewport trong layout viewport — iOS đẩy giá trị này
+
+     *  lên khi mở bàn phím, Android luôn để 0. */
+
+    function _viewportOffsetTop() {
+
+        var vv = window.visualViewport;
+
+        return (vv && vv.offsetTop) || 0;
+
+    }
+
+
+
+    function _syncChatViewport() {
+
+        var root = document.documentElement;
+
+        root.style.setProperty('--chatbot-vvh', _viewportHeight() + 'px');
+
+        root.style.setProperty('--chatbot-vv-offset', _viewportOffsetTop() + 'px');
+
+    }
+
+
+
+    function _queueSyncChatViewport() {
+
+        if (_vvRaf) return;
+
+        _vvRaf = requestAnimationFrame(function () {
+
+            _vvRaf = 0;
+
+            _syncChatViewport();
+
+        });
+
+    }
+
+
+
+    /** Kéo layout viewport về 0 — khung chat đã tự co nên không cần cuộn bù. */
+
+    function _pinLayoutViewport() {
+
+        var scroller = document.scrollingElement || document.documentElement;
+
+        if (scroller && scroller.scrollTop !== 0) {
+
+            scroller.scrollTop = 0;
+
+        }
+
+    }
+
+
+
     function _setMobileKeyboardLayout(isOpen) {
 
-        if (window.innerWidth > 768) return;
+        // Trên desktop luôn ép về trạng thái đóng thay vì return sớm: nhờ vậy
 
-        document.body.classList.toggle('chatbot-keyboard-open', Boolean(isOpen));
+        // nếu xoay máy / đổi kích thước lúc bàn phím đang mở thì state cũ
+
+        // (class trên body, navbar bị ẩn) được dọn sạch chứ không kẹt lại.
+
+        isOpen = Boolean(isOpen) && window.innerWidth <= MOBILE_MAX_WIDTH;
+
+        if (isOpen === _kbLayoutOpen) return;
+
+        _kbLayoutOpen = isOpen;
+
+        document.body.classList.toggle('chatbot-keyboard-open', isOpen);
 
         if ($chatbotPage) {
 
-            $chatbotPage.classList.toggle('chatbot-nav-hidden', Boolean(isOpen));
+            $chatbotPage.classList.toggle('chatbot-nav-hidden', isOpen);
 
         }
 
@@ -6698,7 +6832,43 @@
 
         }
 
+        if (isOpen) {
+
+            _syncChatViewport();
+
+            _pinLayoutViewport();
+
+        }
+
     }
+
+
+
+    // Giữ biến CSS luôn khớp thực tế. Android ẩn/hiện thanh địa chỉ khi cuộn,
+
+    // iOS đổi safe-area khi xoay máy — cả hai đều đi qua đây.
+
+    _syncChatViewport();
+
+    window.addEventListener('resize', function () {
+
+        if (window.innerWidth > MOBILE_MAX_WIDTH) {
+
+            _setMobileKeyboardLayout(false);
+
+        }
+
+        _queueSyncChatViewport();
+
+    });
+
+    window.addEventListener('orientationchange', function () {
+
+        // Chờ hệ điều hành ổn định kích thước rồi mới đo lại.
+
+        setTimeout(_syncChatViewport, 300);
+
+    });
 
 
 

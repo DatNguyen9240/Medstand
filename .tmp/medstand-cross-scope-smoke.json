@@ -1,0 +1,42 @@
+﻿[
+    {
+        "Account":  "QLBH013.MED",
+        "Role":  "manager",
+        "ForeignCustomer":  "BNA051",
+        "Passed":  "6",
+        "Failed":  "2",
+        "P95Ms":  "3632",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"QLBH013.MED\",\"role\":\"manager\",\"fixtureCustomer\":\"NDB001\",\"fixtureRegion\":\"MB\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-smoke\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 8,\n  \"passed\": 6,\n  \"failed\": 2,\n  \"p50Ms\": 429,\n  \"p95Ms\": 3632,\n  \"maxMs\": 3632,\n  \"failures\": [\n    {\n      \"id\": \"debt-detail\",\n      \"text\": \"coi cn kh BNA051\",\n      \"expectedApi\": \"@cong_no_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3632,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"order-recommendation\",\n      \"text\": \"gợi ý đơn hàng cho BNA051\",\n      \"expectedApi\": \"@goi_ydon_hang\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3486,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    }\n  ]\n}"
+    },
+    {
+        "Account":  "NAMDINHB.MED",
+        "Role":  "sale",
+        "ForeignCustomer":  "BNA051",
+        "Passed":  "6",
+        "Failed":  "2",
+        "P95Ms":  "3563",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"NAMDINHB.MED\",\"role\":\"sale\",\"fixtureCustomer\":\"NDB001\",\"fixtureRegion\":\"MB\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-smoke\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 8,\n  \"passed\": 6,\n  \"failed\": 2,\n  \"p50Ms\": 390,\n  \"p95Ms\": 3563,\n  \"maxMs\": 3563,\n  \"failures\": [\n    {\n      \"id\": \"debt-detail\",\n      \"text\": \"coi cn kh BNA051\",\n      \"expectedApi\": \"@cong_no_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3563,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"order-recommendation\",\n      \"text\": \"gợi ý đơn hàng cho BNA051\",\n      \"expectedApi\": \"@goi_ydon_hang\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3430,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    }\n  ]\n}"
+    },
+    {
+        "Account":  "QLMN2",
+        "Role":  "manager",
+        "ForeignCustomer":  "NDB001",
+        "Passed":  "6",
+        "Failed":  "2",
+        "P95Ms":  "3879",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"QLMN2\",\"role\":\"manager\",\"fixtureCustomer\":\"DL012\",\"fixtureRegion\":\"MN\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-smoke\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 8,\n  \"passed\": 6,\n  \"failed\": 2,\n  \"p50Ms\": 513,\n  \"p95Ms\": 3879,\n  \"maxMs\": 3879,\n  \"failures\": [\n    {\n      \"id\": \"debt-detail\",\n      \"text\": \"coi cn kh NDB001\",\n      \"expectedApi\": \"@cong_no_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3879,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"order-recommendation\",\n      \"text\": \"gợi ý đơn hàng cho NDB001\",\n      \"expectedApi\": \"@goi_ydon_hang\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3733,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    }\n  ]\n}"
+    },
+    {
+        "Account":  "CanThoA",
+        "Role":  "sale",
+        "ForeignCustomer":  "NDB001",
+        "Passed":  "6",
+        "Failed":  "2",
+        "P95Ms":  "3617",
+        "ExitCode":  1,
+        "Raw":  "{\"loginSuccess\":true,\"account\":\"CanThoA\",\"role\":\"sale\",\"fixtureCustomer\":\"DL012\",\"fixtureRegion\":\"MN\",\"tokenPresent\":true}\n{\n  \"suite\": \"live-smoke\",\n  \"endpoint\": \"https://medtest.bms7.net/api/gateway\",\n  \"transport\": \"gateway\",\n  \"authenticated\": true,\n  \"total\": 8,\n  \"passed\": 6,\n  \"failed\": 2,\n  \"p50Ms\": 507,\n  \"p95Ms\": 3617,\n  \"maxMs\": 3617,\n  \"failures\": [\n    {\n      \"id\": \"debt-detail\",\n      \"text\": \"coi cn kh NDB001\",\n      \"expectedApi\": \"@cong_no_chi_tiet\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3617,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    },\n    {\n      \"id\": \"order-recommendation\",\n      \"text\": \"gợi ý đơn hàng cho NDB001\",\n      \"expectedApi\": \"@goi_ydon_hang\",\n      \"httpStatus\": 500,\n      \"latencyMs\": 3495,\n      \"jsonError\": null,\n      \"pass\": false,\n      \"reason\": \"HTTP_500\"\n    }\n  ]\n}"
+    }
+]
