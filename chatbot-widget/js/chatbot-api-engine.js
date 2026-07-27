@@ -2850,7 +2850,7 @@
 
 
         _loadConfig(apiCode, function (config) {
-
+            if (!_activeApi) return;
             _activeApi.config = config;
 
             // The catalog type picker is opened before config loading.
