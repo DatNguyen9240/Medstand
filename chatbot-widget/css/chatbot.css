@@ -10,7 +10,6 @@
   /* 100vh làm nền cho trình duyệt cũ chưa có dvh — nếu để 100dvh ở đây thì
      trên các máy đó height sẽ invalid và khung chat sập về auto. */
   --chatbot-vvh: 100vh;
-  --chatbot-vv-offset: 0px;
 }
 
 @supports (height: 100dvh) {
@@ -29,13 +28,8 @@
   background: var(--color-background);
 }
 
-/* Khi bàn phím mobile mở, thanh điều hướng được ẩn nên chat dùng toàn bộ
-   viewport còn lại thay vì tiếp tục chừa một khoảng bằng nav-height. */
-@media (max-width: 767px) {
-  .chatbot-page.chatbot-nav-hidden {
-    height: var(--chatbot-vvh, 100vh);
-  }
-}
+/* Chiều cao trang chat trên mobile được gom hết vào khối @media ở cuối file
+   (mục "App-shell khoá cứng vào viewport"). */
 
 /* ── Top brand bar ── */
 .chatbot-topbar {
@@ -1931,33 +1925,51 @@ tr.expanded .ai-row-toggle::before {
 /* Mobile welcome state: keep the welcome content compact while the composer
    remains anchored above the bottom navigation. */
 @media (max-width: 767px) {
-  /* Khi bàn phím ảo mở, thanh điều hướng dưới được ẩn và khung chat được
-     ghim đúng bằng visual viewport (JS đo qua window.visualViewport) nên
-     thanh soạn tin luôn dính sát mép trên bàn phím — giống Claude/ChatGPT
-     mobile — thay vì trôi lơ lửng giữa màn hình. */
-  /* :has() để tự huỷ hiệu lực khi router rời trang chat (class trên body có
-     thể còn sót lại nếu blur không kịp bắn). */
-  body.chatbot-keyboard-open:has(.chatbot-page) {
-    /* body vốn chừa chỗ cho bottom nav; nav đã ẩn nên phải bỏ khoảng này,
-       nếu không tài liệu vẫn cao hơn viewport và bị cuộn lệch. */
-    padding-bottom: 0;
+  /* ── App-shell khoá cứng vào viewport ──────────────────────────────────
+     Đây là điểm mấu chốt để trang chat hành xử như app native.
+
+     Tài liệu KHÔNG cuộn được, chỉ vùng tin nhắn cuộn. Nhờ vậy khi bàn phím
+     bật lên, iOS không còn chỗ nào để tự cuộn đi tìm ô nhập → header đứng
+     yên tại chỗ.
+
+     Bản trước ghim .chatbot-page bằng position:fixed + top theo
+     visualViewport.offsetTop. Đúng về lý thuyết nhưng thực tế trên iPhone,
+     WebKit làm lệch pha giữa vị trí layout và vị trí vẽ của phần tử fixed
+     khi bàn phím mở: header bị vẽ ra ngoài màn hình và con trỏ nhập text
+     nhảy lên phía trên ô nhập đúng bằng chiều cao header. Giữ .chatbot-page
+     trong luồng bình thường và chỉ đổi mỗi height thì không dính lỗi đó.
+
+     :has() để rule tự hết hiệu lực khi router rời trang chat. */
+  html:has(.chatbot-page),
+  body:has(.chatbot-page) {
+    height: 100%;
     overflow: hidden;
     overscroll-behavior: none;
   }
 
-  body.chatbot-keyboard-open .chatbot-page,
-  body.chatbot-keyboard-open .chatbot-page:has(#chat-welcome:not([style*="display: none"])),
-  .chatbot-page.chatbot-nav-hidden:has(#chat-welcome:not([style*="display: none"])) {
+  body:has(.chatbot-page) {
     position: fixed;
-    /* Dùng top (không dùng transform) để không tạo containing block mới cho
-       các overlay position:fixed bên trong (mention dropdown, modal…). */
-    top: var(--chatbot-vv-offset, 0px);
-    left: 0;
-    right: 0;
-    height: var(--chatbot-vvh, 100vh);
-    max-height: var(--chatbot-vvh, 100vh);
+    inset: 0;
+    width: 100%;
+    /* body vốn chừa chỗ cho bottom nav; trang chat tự lo chiều cao của nó. */
     padding-bottom: 0;
-    z-index: 120;
+  }
+
+  /* Chiều cao lấy từ visual viewport (JS đo) chứ không dùng dvh: iOS không
+     thu dvh lại khi bàn phím mở.
+     Biến thể :has(#chat-welcome…) phải viết kèm vì :has() lấy độ ưu tiên của
+     tham số bên trong — có #id nên nó thắng mọi selector chỉ dùng class. */
+  .chatbot-page,
+  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
+    height: calc(var(--chatbot-vvh, 100vh) - var(--nav-height) - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Bàn phím mở → nav dưới ẩn đi, chat chiếm trọn vùng còn nhìn thấy. */
+  .chatbot-page.chatbot-nav-hidden,
+  .chatbot-page.chatbot-nav-hidden:has(#chat-welcome:not([style*="display: none"])) {
+    height: var(--chatbot-vvh, 100vh);
   }
 
   /* Composer ôm sát bàn phím — chỉ chừa một khoảng thở nhỏ */
@@ -1967,10 +1979,22 @@ tr.expanded .ai-row-toggle::before {
     padding-bottom: 6px;
   }
 
-  .chatbot-page:has(#chat-welcome:not([style*="display: none"])) {
-    height: calc(100dvh - var(--nav-height) - env(safe-area-inset-bottom, 0px));
-    min-height: 0;
-    overflow: hidden;
+  /* ── Chi tiết cho ra chất app native ── */
+  html:has(.chatbot-page) {
+    /* Chặn iOS tự phóng to chữ khi xoay ngang / khi khối text hẹp. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  .chatbot-page {
+    /* Bỏ ô xám khi chạm — web mặc định có, app native thì không. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chat-container {
+    /* Cuộn hết danh sách tin thì dừng hẳn, không kéo lan ra nền phía sau. */
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .chatbot-page:has(#chat-welcome:not([style*="display: none"])) .chat-container {

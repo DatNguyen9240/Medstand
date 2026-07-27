@@ -5054,6 +5054,8 @@
 
                     // Keyboard might be opening or other resize
 
+                    _rememberKeyboardInset();
+
                     _pinLayoutViewport();
 
                     _scrollBottom();
@@ -5070,9 +5072,9 @@
 
         });
 
-        // iOS đẩy visual viewport lên/xuống trong layout viewport khi bàn phím
+        // iOS có thể đẩy visual viewport trong layout viewport ở nhịp chuyển
 
-        // mở → theo dõi offsetTop để khung chat không lệch.
+        // tiếp khi bàn phím mở → đo lại cho khung khớp vùng đang nhìn thấy.
 
         window.visualViewport.addEventListener('scroll', _queueSyncChatViewport);
 
@@ -6706,11 +6708,25 @@
 
     // KHÔNG dò nền tảng (user-agent sniffing dễ sai): luôn đo
 
-    // window.visualViewport — nguồn sự thật chung cho cả hai kiểu — rồi ghim
+    // window.visualViewport — nguồn sự thật chung cho cả hai kiểu — rồi đẩy vào
 
-    // .chatbot-page đúng bằng vùng còn nhìn thấy. Android ra cùng kết quả vì ở
+    // biến CSS --chatbot-vvh. Android ra cùng kết quả vì ở đó vv.height đã bằng
 
-    // đó vv.height đã bằng layout viewport, nên một đường code cho tất cả.
+    // layout viewport, nên một đường code cho tất cả.
+
+    //
+
+    // Lưu ý: chỉ đổi CHIỀU CAO của .chatbot-page, tuyệt đối không chuyển nó
+
+    // sang position:fixed. Đã thử và hỏng trên iPhone thật: khi bàn phím mở,
+
+    // WebKit lệch pha giữa vị trí layout và vị trí vẽ của phần tử fixed làm
+
+    // header biến mất khỏi màn hình, con trỏ nhập text nhảy lên phía trên ô
+
+    // nhập. Việc "khoá" tài liệu để iOS không tự cuộn được giao cho CSS
+
+    // (html/body overflow:hidden + position:fixed ở chatbot.css).
 
     // 767 để trùng đúng ranh giới CSS (@media max-width:767px / min-width:768px).
 
@@ -6723,6 +6739,8 @@
     var _vvRaf = 0;
 
     var _kbLayoutOpen = false;
+
+    var _kbSettleTimer = 0;
 
 
 
@@ -6740,15 +6758,17 @@
 
 
 
-    /** Độ lệch của visual viewport trong layout viewport — iOS đẩy giá trị này
+    /** Chiều cao bàn phím đang che màn hình. Trên Android luôn ~0 vì layout
 
-     *  lên khi mở bàn phím, Android luôn để 0. */
+     *  viewport đã tự co, giá trị chỉ thật sự khác 0 trên iOS. */
 
-    function _viewportOffsetTop() {
+    function _measureKeyboardInset() {
 
         var vv = window.visualViewport;
 
-        return (vv && vv.offsetTop) || 0;
+        if (!vv) return 0;
+
+        return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
 
     }
 
@@ -6756,11 +6776,7 @@
 
     function _syncChatViewport() {
 
-        var root = document.documentElement;
-
-        root.style.setProperty('--chatbot-vvh', _viewportHeight() + 'px');
-
-        root.style.setProperty('--chatbot-vv-offset', _viewportOffsetTop() + 'px');
+        document.documentElement.style.setProperty('--chatbot-vvh', _viewportHeight() + 'px');
 
     }
 
@@ -6793,6 +6809,78 @@
             scroller.scrollTop = 0;
 
         }
+
+    }
+
+
+
+    // ── Nhớ chiều cao bàn phím để co trước, tránh giật một nhịp ──
+
+    // Lúc focus thì bàn phím chưa hiện nên chưa đo được nó cao bao nhiêu. Nếu
+
+    // đợi đo xong mới co khung, người dùng thấy composer nhảy một phát. Cách
+
+    // app native làm: nhớ chiều cao lần trước rồi co sẵn ngay khi focus, đo
+
+    // được giá trị thật thì chỉnh lại (thường trùng khớp nên không thấy gì).
+
+    // Cache kèm chiều cao màn hình vì xoay ngang bàn phím cao khác.
+
+    var KB_CACHE_KEY = 'chatbot_kb_inset';
+
+    var _kbCache = null;
+
+
+
+    try {
+
+        var _rawKbCache = JSON.parse(localStorage.getItem(KB_CACHE_KEY));
+
+        if (_rawKbCache && _rawKbCache.kb > 120 && _rawKbCache.h > 0) {
+
+            _kbCache = _rawKbCache;
+
+        }
+
+    } catch (e) { /* cache hỏng → bỏ qua, lần focus đầu sẽ đo lại */ }
+
+
+
+    function _rememberKeyboardInset() {
+
+        var inset = _measureKeyboardInset();
+
+        // <120px gần như chắc chắn không phải bàn phím mà là thanh địa chỉ
+
+        // ẩn/hiện hoặc thanh gợi ý — không ghi đè cache bằng số rác.
+
+        if (inset < 120) return;
+
+        _kbCache = { h: window.innerHeight, kb: inset };
+
+        try {
+
+            localStorage.setItem(KB_CACHE_KEY, JSON.stringify(_kbCache));
+
+        } catch (e) { /* private mode / hết quota → chạy không cache cũng được */ }
+
+    }
+
+
+
+    /** Co khung trước theo chiều cao bàn phím đã nhớ. Trả về true nếu có co. */
+
+    function _preShrinkForKeyboard() {
+
+        if (!_kbCache || _kbCache.h !== window.innerHeight) return false;
+
+        var height = window.innerHeight - _kbCache.kb;
+
+        if (height < 200) return false;
+
+        document.documentElement.style.setProperty('--chatbot-vvh', height + 'px');
+
+        return true;
 
     }
 
@@ -6834,9 +6922,33 @@
 
         if (isOpen) {
 
-            _syncChatViewport();
+            // Co sẵn theo bàn phím đã nhớ; chưa có cache thì đo tạm hiện tại.
+
+            if (!_preShrinkForKeyboard()) {
+
+                _syncChatViewport();
+
+            }
 
             _pinLayoutViewport();
+
+            // Lưới an toàn: nếu bàn phím không hiện thật (bàn phím rời,
+
+            // Bluetooth) thì trả khung về đúng kích thước sau khi mọi thứ đã yên.
+
+            clearTimeout(_kbSettleTimer);
+
+            _kbSettleTimer = setTimeout(function () {
+
+                if (_measureKeyboardInset() < 120) _syncChatViewport();
+
+            }, 700);
+
+        } else {
+
+            clearTimeout(_kbSettleTimer);
+
+            _syncChatViewport();
 
         }
 
