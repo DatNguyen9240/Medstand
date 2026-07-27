@@ -3168,7 +3168,7 @@
         _panelEl.className = 'ae-panel ae-order-create-panel';
         _panelEl.innerHTML = [
             '<div class="ae-panel-header"><span class="ae-panel-title">' + _esc(dispName || 'Lập đơn hàng nhanh') + '</span>',
-            '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-min">−</button><button class="ae-panel-btn" id="ae-panel-close">✕</button></div></div>',
+            '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-close" title="Đóng" aria-label="Đóng">✕</button></div></div>',
             '<div class="ae-order-form">',
             '<label class="ae-order-field ae-order-full"><span>Khách hàng *</span>',
             '<span class="ae-order-combo"><input id="ae-order-customer" autocomplete="off" placeholder="Gõ tên hoặc mã khách hàng...">',
@@ -3197,13 +3197,6 @@
         var custDrop = panel.querySelector('#ae-order-customer-drop');
         var selectedCustomer = null;
 
-        panel.querySelector('#ae-panel-min').onclick = function () {
-            panel.classList.remove('active');
-            document.body.classList.remove('ae-panel-open');
-            setTimeout(function () { panel.style.display = 'none'; }, 200);
-            var trigger = document.getElementById('ae-panel-trigger');
-            if (trigger) trigger.style.display = 'flex';
-        };
         panel.querySelector('#ae-panel-close').onclick = function () { _closeFull(); };
 
         function money(n) {
@@ -3280,10 +3273,12 @@
 
         // ── Khách hàng ──────────────────────────────────────────────────
         function customerLabel(c) {
-            var name = c.DisplayName || c.ObjectName || c.ObjectID || '';
-            return c.ObjectID && String(name).indexOf(c.ObjectID) === -1
-                ? name + ' (' + c.ObjectID + ')'
-                : name;
+            var id = c.ObjectID || '';
+            var name = c.ObjectName || '';
+            var phone = c.Phone || '';
+            var label = id && name ? id + ' - ' + name : (id || name);
+            if (phone && fold(label).indexOf(fold(phone)) === -1) label += ' - ' + phone;
+            return label;
         }
 
         function renderMapped(c) {
