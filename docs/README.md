@@ -27,7 +27,7 @@
 ## Tài liệu dành cho doanh nghiệp
 
 1. [`LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`](LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md)
-   Lộ trình hiện hành sau bàn giao bản sơ bộ ngày 27/07/2026. Bản HTML để gửi khách nằm tại `GOI_UAT_KHACH_HANG/05_LO_TRINH_PHAT_TRIEN_MEDSTAND_AI.html`.
+   Lộ trình phát triển được lưu riêng ngoài gói UAT khách hàng.
 
 2. [`BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`](BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md)
    Danh sách task nội bộ được tách từ roadmap, có mã task, mức ưu tiên, phụ thuộc và điều kiện nghiệm thu.
@@ -45,14 +45,13 @@
 
    | File | Nội dung |
    |---|---|
-   | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` | Hướng dẫn sử dụng chi tiết có hình |
+   | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` | Hướng dẫn sử dụng Medstand AI |
    | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.html` | Bản mở nhanh trên trình duyệt |
-   | `01_HUONG_DAN_TEST_13_TAI_KHOAN.docx` | Hướng dẫn kiểm thử 13 tài khoản — giữ riêng |
-   | `HUONG_DAN_TEST_13_TAI_KHOAN.html` | Bản HTML kiểm thử 13 tài khoản — giữ riêng |
-   | `02_PHIEU_KIEM_THU_SALE_MANAGER.docx` | Phiếu ghi kết quả theo vai trò |
-   | `03_MAU_PHAN_HOI_UAT.docx` | Mẫu báo lỗi |
-   | `04_KICH_BAN_TEST_13_TAI_KHOAN_COPY_PASTE.docx` | Kịch bản 13 tài khoản dạng copy-paste |
-   | `05_LO_TRINH_PHAT_TRIEN_MEDSTAND_AI.html` | Lộ trình phát triển và phạm vi bản Pilot ngày 27/07/2026 |
+   | `02_HUONG_DAN_TEST_13_TAI_KHOAN.docx` | Hướng dẫn kiểm thử 13 tài khoản |
+   | `02_HUONG_DAN_TEST_13_TAI_KHOAN.html` | Bản HTML kiểm thử 13 tài khoản |
+   | `03_PHIEU_KIEM_THU_NHAN_VIEN_QUAN_LY.docx` | Phiếu ghi kết quả theo vai trò |
+   | `04_MAU_GHI_NHAN_LOI_VA_GOP_Y.docx` | Mẫu báo lỗi và góp ý |
+   | `05_KICH_BAN_KIEM_THU_13_TAI_KHOAN.docx` | Kịch bản 13 tài khoản dạng copy-paste |
 
 ## Tài liệu kỹ thuật liên quan
 

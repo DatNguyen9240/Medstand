@@ -4,8 +4,8 @@
  * Nguồn nội dung duy nhất cho bộ hướng dẫn UAT 13 tài khoản.
  *
  * Hai bản đầu ra đọc chung file này nên không thể lệch nội dung:
- *   - docs/GOI_UAT_KHACH_HANG/HUONG_DAN_TEST_13_TAI_KHOAN.html   (build_uat13_html.js)
- *   - docs/GOI_UAT_KHACH_HANG/01_HUONG_DAN_TEST_13_TAI_KHOAN.docx (build_uat13_docx.js)
+ *   - docs/GOI_UAT_KHACH_HANG/02_HUONG_DAN_TEST_13_TAI_KHOAN.html (build_uat13_html.js)
+ *   - docs/GOI_UAT_KHACH_HANG/02_HUONG_DAN_TEST_13_TAI_KHOAN.docx (build_uat13_docx.js)
  *
  * Mọi câu hỏi mẫu trong file này đều đã chạy qua scripts/natural_chat_classifier.js
  * và định tuyến đúng chức năng — kiểm lại bằng: node scripts/verify_uat13_questions.js

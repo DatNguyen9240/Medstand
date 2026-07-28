@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <!-- Inline Cache-Clearing Script (Bypasses Service Worker traps) -->
+  <script>
+    (function () {
+      var appVersion = '11.112';
+      var versionKey = 'medstand_asset_version';
+      var previousVersion = localStorage.getItem(versionKey);
+      // Chỉ dọn cache kỹ thuật khi phát hiện một bản deploy mới. Không xóa
+      // auth_user, cookie đăng nhập, theme hoặc lịch sử hội thoại của người dùng.
+      if (previousVersion && previousVersion !== appVersion) {
+        localStorage.setItem(versionKey, appVersion);
+        var cleanupTasks = [];
+        if ('caches' in window) {
+          cleanupTasks.push(
+            caches.keys().then(function (names) {
+              return Promise.all(names
+                .filter(function (name) { return name.indexOf('medstand-') === 0; })
+                .map(function (name) { return caches.delete(name); }));
+            })
+          );
+        }
+        if ('serviceWorker' in navigator) {
+          cleanupTasks.push(
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(registrations.map(function (registration) {
+                return registration.update();
+              }));
+            })
+          );
+        }
+        try {
+          sessionStorage.removeItem('api_engine_v4_list');
+          var cacheKeys = [];
+          for (var cacheIndex = 0; cacheIndex < sessionStorage.length; cacheIndex++) {
+            var cacheKey = sessionStorage.key(cacheIndex);
+            if (cacheKey && cacheKey.indexOf('_hc_') === 0) cacheKeys.push(cacheKey);
+          }
+          cacheKeys.forEach(function (cacheKey) { sessionStorage.removeItem(cacheKey); });
+        } catch (error) {
+          console.warn('[Cache] Không thể dọn session cache:', error);
+        }
+        var reloadKey = 'medstand_asset_reload_' + appVersion;
+        Promise.allSettled(cleanupTasks).then(function () {
+          if (!sessionStorage.getItem(reloadKey)) {
+            sessionStorage.setItem(reloadKey, '1');
+            window.location.reload();
+          }
+        });
+      } else {
+        localStorage.setItem(versionKey, appVersion);
+      }
+    })();
+    if (window.location.href.indexOf('clean=true') > -1) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+          for (var i = 0; i < registrations.length; i++) {
+            registrations[i].unregister();
+          }
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(function (names) {
+          for (var i = 0; i < names.length; i++) {
+            caches.delete(names[i]);
+          }
+        });
+      }
+      Object.keys(localStorage).forEach(function (key) {
+        if (/^ai_chat_history(?:_v2)?(?:_|$)/.test(key)) {
+          localStorage.removeItem(key);
+        }
+      });
+      if (window.indexedDB) indexedDB.deleteDatabase('MedstandChatDB');
+      var cleanUrl = window.location.href.replace(/[?&]clean=true/g, '').replace(/clean=true/g, '');
+      setTimeout(function () { window.location.href = cleanUrl; }, 300);
+    }
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
+  <link rel="manifest" href="src/pwa/manifest.json">
+  <meta name="theme-color" content="#f4f6fa">
+  <link rel="apple-touch-icon" href="images/logo/medstand-logo.png">
+  <link rel="shortcut icon" href="images/logo/medstand-logo.png" type="image/png">
+  <title>Medstand</title>
+  <!-- ── Core CSS ─────────────────────────────────── -->
+  <link rel="stylesheet" href="src/css/dist/app.bundle.min.css?v=11.112">
+  <!-- ── Theme (must be before body) ─────────────── -->
+  <script src="src/js/dist/theme.min.js?v=11.112"></script>
+  <!-- ── Cash.js (jQuery-like) ───────────────────── -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js"></script>
+</head>
+<body>
+  <!-- Global Spinner -->
+  <div id="global-spinner" class="loading-spinner" hidden aria-live="polite">
+    <span class="spinner-dot"></span>
+  </div>
+  <!-- SPA Content Container (templates provide their own layout wrappers) -->
+  <div id="app-content">
+    <div style="text-align:center;padding:48px 0;color:var(--color-text-muted)">Đang tải...</div>
+  </div>
+  <!-- Sidebar + Nav (managed by router) -->
+  <div id="sidebar-container"></div>
+  <div id="nav-container"></div>
+  <!-- Môi trường — SỬA FILE NÀY KHI DEPLOY SANG SERVER MỚI -->
+  <!-- ── Shared JS ────────────────────────────────── -->
+  <script src="src/js/dist/app.bundle.min.js?v=11.112"></script>
+  <!-- API layer -->
+  <!-- Components -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Leaflet (for maps) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- SPA Router (must be last) -->
+  <script>
+    $(function () {
+      Router.init();
+    });
+  </script>
+  <!--
+    CHATBOT WIDGET V5 — Chỉ load main.js (ES6 module).
+    Các script engine cũ (chatbot-api-engine.js, chatbot.js...) vẫn do
+    Router.js load đúng lúc khi user navigate vào trang #/chatbot.
+    main.js chỉ tạo floating button + Shadow DOM overlay.
+  -->
+  <script src="chatbot-widget/js/chatbot-core.bundle.min.js?v=11.112"></script>
+  <script src="src/pwa/pwa-register.js"></script>
+</body>
+</html>

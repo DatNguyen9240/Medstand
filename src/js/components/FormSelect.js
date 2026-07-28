@@ -303,7 +303,10 @@ var FormSelect = (function () {
 
   // ── clearCache: xóa cache cho 1 hoặc tất cả field ────────────────────
   FormSelect.prototype.clearCache = function (id) {
-    if (id) delete this._caches[id];
+    if (id) {
+      delete this._caches[id];
+      if (this._fields[id]) delete this._fields[id]._cachedOptions;
+    }
     else this._caches = {};
     return this;
   };

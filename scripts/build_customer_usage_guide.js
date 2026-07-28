@@ -208,20 +208,7 @@ function copyBox(label, value) {
 }
 
 function figure(filePath, width, height, caption, altText) {
-  if (!fs.existsSync(filePath)) throw new Error(`Missing guide image: ${filePath}`);
-  return [
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { before: 120, after: 80 },
-      children: [new ImageRun({
-        data: fs.readFileSync(filePath),
-        type: 'png',
-        transformation: { width, height },
-        altText: { title: caption, description: altText || caption, name: path.basename(filePath) },
-      })],
-    }),
-    para(caption, { alignment: AlignmentType.CENTER, size: 18, italics: true, color: colors.gray, after: 180, line: 240 }),
-  ];
+  return [];
 }
 
 const functionRows = [
@@ -441,7 +428,7 @@ function htmlTable(headers, rows) {
 }
 
 function buildHtml() {
-  const image = (src, caption, alt) => `<figure><img src="${src}" alt="${htmlEscape(alt || caption)}"><figcaption>${htmlEscape(caption)}</figcaption></figure>`;
+  const image = () => '';
   const copy = (label, text) => `<div class="copy"><span>${htmlEscape(label)}</span><code>${htmlEscape(text)}</code></div>`;
   return `<!doctype html>
 <html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

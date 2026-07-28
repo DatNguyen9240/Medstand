@@ -10,7 +10,7 @@ const path = require('path');
 const { document: doc } = require('./uat13_content.js');
 
 const root = path.resolve(__dirname, '..');
-const output = path.join(root, 'docs', 'GOI_UAT_KHACH_HANG', 'HUONG_DAN_TEST_13_TAI_KHOAN.html');
+const output = path.join(root, 'docs', 'GOI_UAT_KHACH_HANG', '02_HUONG_DAN_TEST_13_TAI_KHOAN.html');
 
 /* ── Đánh dấu inline: **đậm**, *nghiêng*, `mã` ─────────────────────────── */
 function esc(value) {
@@ -402,13 +402,6 @@ function renderBlock(b, ctx) {
       break;
 
     case 'figure':
-      push('    <figure>');
-      push('      <div class="fig-frame">');
-      if (b.svg) push(`        ${b.svg.replace(/\n/g, '\n        ')}`);
-      else push(`        <img src="${esc(b.img)}" alt="${esc(b.alt || '')}">`);
-      push('      </div>');
-      push(`      <figcaption>${md(b.caption)}</figcaption>`);
-      push('    </figure>');
       break;
 
     case 'questions':

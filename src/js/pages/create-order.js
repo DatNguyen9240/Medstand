@@ -214,6 +214,10 @@ orderForm.onListChange('customer', function(val) {
   var cust = _customersCache.find(function(r) { return r.ObjectID === val; });
   if (cust) {
     _selectedLocationID = cust.LocationID || '';
+    // Xóa danh sách phường/xã của khách trước trước khi đặt giá trị mới.
+    // Nếu hồ sơ khách chưa có XaPhuong, picker sẽ tải lại theo
+    // LocationID để người dùng chọn thủ công, không tự suy đoán.
+    orderForm.clearCache('ward');
     orderForm.setValue('phone', cust.Phone || '');
     orderForm.setValue('address', cust.Address || '');
     
@@ -224,8 +228,6 @@ orderForm.onListChange('customer', function(val) {
       orderForm.setListValue('ward', '', '');
     }
     
-    // Xóa cache trường Phường/Xã để khi nhấn chọn nó sẽ tải lại theo Tỉnh mới
-    orderForm.clearCache('ward');
   }
 });
 
@@ -593,9 +595,11 @@ setTimeout(function() {
                 orderForm.setListValue('customer', c.ObjectID, c.DisplayName || c.ObjectName);
                 
                 // Kích hoạt auto full Phường xã
+                _selectedLocationID = c.LocationID || '';
+                orderForm.clearCache('ward');
                 orderForm.setValue('phone', c.Phone || '');
                 orderForm.setValue('address', c.Address || '');
-                if (c.XaPhuong) orderForm.setListValue('ward', c.XaPhuong, c.XaPhuong);
+                orderForm.setListValue('ward', c.XaPhuong || '', c.XaPhuong || '');
             } else {
                 // Báo lỗi không khớp khách hàng
                 orderForm.setListValue('customer', '', 'Không tìm thấy: ' + cusId);

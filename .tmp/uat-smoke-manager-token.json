@@ -1,0 +1,13 @@
+{
+  "suite": "live-smoke",
+  "endpoint": "https://medtest.bms7.net/api/gateway",
+  "transport": "gateway",
+  "authenticated": true,
+  "total": 8,
+  "passed": 8,
+  "failed": 0,
+  "p50Ms": 274,
+  "p95Ms": 596,
+  "maxMs": 596,
+  "failures": []
+}

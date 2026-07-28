@@ -37,7 +37,7 @@ const root = path.resolve(__dirname, '..');
 const docsDir = path.join(root, 'docs', 'GOI_UAT_KHACH_HANG');
 const output = process.env.UAT13_DOCX_OUT
   ? path.resolve(process.env.UAT13_DOCX_OUT)
-  : path.join(docsDir, '01_HUONG_DAN_TEST_13_TAI_KHOAN.docx');
+  : path.join(docsDir, '02_HUONG_DAN_TEST_13_TAI_KHOAN.docx');
 
 /* ── Khổ giấy A4, lề 2cm ──────────────────────────────────────────────── */
 const A4_W = 11906;
@@ -327,7 +327,6 @@ function renderBlock(b, width) {
       out.push(para('', { after: 160 }));
       break;
     case 'figure':
-      out.push(...figure(b.png || b.img, b.caption));
       break;
     case 'questions':
       out.push(buildTable(
