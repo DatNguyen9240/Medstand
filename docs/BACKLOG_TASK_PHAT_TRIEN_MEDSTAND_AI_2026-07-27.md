@@ -105,13 +105,17 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 
 ### Nhóm B — Phân quyền và dữ liệu
 
-- [ ] **UAT-006 — Kiểm tra đăng nhập 13 tài khoản** · `P0` · `TODO`
+- [x] **UAT-006 — Kiểm tra đăng nhập 13 tài khoản** · `P0` · `DONE`
   - Kiểm tra trạng thái tài khoản, vai trò, chi nhánh và phiên đăng nhập.
   - Nghiệm thu: 13/13 tài khoản đăng nhập được hoặc có danh sách ngoại lệ được khách hàng xác nhận.
+  - Kết quả kiểm tra: `13/13 PASS`; tất cả tài khoản đăng nhập thành công, nhận đúng vai trò `sale/manager`, đúng vùng `MB/MT/MN`, có phiên xác thực hợp lệ và hoàn tất smoke `8/8` không lỗi.
+  - Bằng chứng: `.tmp/medstand-smoke-13.json`.
 
-- [ ] **UAT-007 — Đối soát phạm vi khách hàng của 13 tài khoản** · `P0` · `TODO`
+- [x] **UAT-007 — Đối soát phạm vi khách hàng của 13 tài khoản** · `P0` · `DONE`
   - So sánh kết quả thực tế với `AR_GetObjectByUserFnc` và phạm vi quản lý.
-  - Nghiệm thu: sale không xem được khách ngoài quyền; manager chỉ xem đúng phạm vi được cấp.
+- Nghiệm thu: sale không xem được khách ngoài quyền; manager chỉ xem đúng phạm vi được cấp.
+  - Kết quả kiểm tra: `13/13 PASS`; cả 13 khách đại diện đều nằm trong scope tương ứng; 11 ca chéo miền không phát hiện rò rỉ (`0` leak). Sale chỉ có scope khách được giao; Manager chỉ nhận scope do ERP trả về.
+  - Bằng chứng: kết quả chạy read-only từ `scripts/verify_uat007_customer_scope.js` trên DB `medtest`.
 
 - [ ] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `TODO`
   - Kiểm tra dữ liệu `SY_UserStoreHouseTbl` cho từng tài khoản và vai trò.

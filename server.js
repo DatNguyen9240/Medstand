@@ -115,8 +115,26 @@ app.use((req, res, next) => {
     next();
 });
 
-// Backend URLs ẩn hoàn toàn phía server
-const API_INTERNAL_URL = process.env.API_BASE || 'https://medtest.bms7.net';
+// Backend URLs ẩn hoàn toàn phía server.
+//
+// Không đặt giá trị mặc định ở đây. Trước đây dòng này fallback về
+// 'https://medtest.bms7.net' — vốn là một bản deploy frontend cũ chứ không phải
+// backend nghiệp vụ. Hệ quả khi quên set API_BASE: gateway proxy /api/login sang
+// đó, ăn đúng catch-all /api/* của nó và nhận về
+// 404 "Business APIs are only available through /api/gateway".
+// Thông báo ấy trông y hệt lỗi client gọi sai cổng, nên việc chẩn đoán đi lạc rất
+// lâu trong khi client hoàn toàn đúng. Thiếu cấu hình thì phải im lặng-thất-bại
+// một cách ồn ào, không được đoán bừa một host.
+const API_INTERNAL_URL = String(process.env.API_BASE || '').trim().replace(/\/+$/, '');
+
+if (!API_INTERNAL_URL) {
+    console.error('===================================================');
+    console.error('[Config] THIẾU BIẾN MÔI TRƯỜNG API_BASE');
+    console.error('[Config] Mọi request nghiệp vụ qua /api/gateway sẽ bị từ chối (503).');
+    console.error('[Config] Đặt API_BASE trong .env (local) hoặc Environment Variables');
+    console.error('[Config] của hosting, rồi khởi động lại server.');
+    console.error('===================================================');
+}
 
 const getN8nUrl = () => {
     const configuredUrl = process.env.N8N_INTERNAL_URL
@@ -332,6 +350,24 @@ app.post('/api/gateway', async (req, res) => {
         if (!PUBLIC_GATEWAY_ENDPOINTS.has(endpointPath) && !authorization) {
             const encryptedRes = Cipher.encrypt(JSON.stringify(authRequiredPayload(requestId)));
             return res.status(401).json({ data: encryptedRes });
+        }
+
+        // Thiếu API_BASE thì dừng tại đây kèm mã lỗi chỉ đúng nguyên nhân, thay vì
+        // proxy sang một host đoán bừa rồi trả về lỗi của người khác.
+        //
+        // Đặt SAU lớp kiểm tra auth để không đổi ngữ nghĩa xác thực: request không
+        // token vẫn nhận 401 như bình thường, chỉ request đã hợp lệ (và /api/login)
+        // mới thấy 503 — đủ để lộ ra lỗi cấu hình mà không rò trạng thái hệ thống
+        // cho người gọi ẩn danh.
+        if (!isN8n && !API_INTERNAL_URL) {
+            console.error(`[Proxy Gateway] requestId=${requestId}; Thiếu API_BASE, từ chối chuyển tiếp ${endpoint}`);
+            return sendGatewayError(
+                res,
+                503,
+                requestId,
+                'MISSING_API_BASE',
+                'Máy chủ chưa được cấu hình địa chỉ backend nghiệp vụ (thiếu API_BASE). Vui lòng liên hệ quản trị viên.'
+            );
         }
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);

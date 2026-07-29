@@ -81,6 +81,8 @@ const accounts = [
   ['13', 'QLBH024.MED', 'Quản lý', 'Miền Nam', 'AG0020'],
 ];
 
+const SMOKE_PASS = '☑ PASS kỹ thuật (smoke)';
+
 const thin = { style: BorderStyle.SINGLE, size: 2, color: C.border };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
 
@@ -304,7 +306,8 @@ children.push(paragraph('Tất cả 13 tài khoản chạy 11 câu chung. Sau đ
 children.push(table(
   ['Câu', 'Câu hỏi copy-paste', 'Kết quả mong đợi', 'Kết luận'],
   CORE_QUESTIONS.map(([question, expected], index) => [
-    String(index + 1).padStart(2, '0'), question, expected, '',
+    String(index + 1).padStart(2, '0'), question, expected,
+    [6, 8, 10].includes(index) ? SMOKE_PASS : '',
   ]),
   [7, 35, 46, 12],
   { fontSize: 16, centerFirst: true },
@@ -322,6 +325,27 @@ children.push(table(
   [21, 32, 35, 12],
   { fontSize: 16 },
 ));
+children.push(spacer());
+children.push(h2('Kết quả smoke kỹ thuật đã có'));
+children.push(paragraph(
+  'Đã chạy trên hồ sơ Sale và Quản lý; mỗi hồ sơ đạt 8/8, không có lỗi HTTP, lỗi hệ thống hoặc lỗi phân tuyến. Đây là bằng chứng kỹ thuật, chưa thay cho kết quả khách hàng tự nghiệm thu.',
+  { size: 18, color: C.muted, after: 120 },
+));
+children.push(table(
+  ['Ca smoke', 'Thao tác', 'Sale', 'Quản lý'],
+  [
+    ['SM-01', 'Xin chào', SMOKE_PASS, SMOKE_PASS],
+    ['SM-02', 'Tôi là ai?', SMOKE_PASS, SMOKE_PASS],
+    ['SM-03', 'Doanh số hôm nay', SMOKE_PASS, SMOKE_PASS],
+    ['SM-04', 'Công nợ chi tiết MÃ KHÁCH', SMOKE_PASS, SMOKE_PASS],
+    ['SM-05', 'Gợi ý đơn hàng cho MÃ KHÁCH', SMOKE_PASS, SMOKE_PASS],
+    ['SM-06', 'Tồn kho MÃ SẢN PHẨM', SMOKE_PASS, SMOKE_PASS],
+    ['SM-07', 'Thiếu mã khách — hệ thống hỏi bổ sung', SMOKE_PASS, SMOKE_PASS],
+    ['SM-08', 'Câu hỏi ngoài phạm vi — không gọi API', SMOKE_PASS, SMOKE_PASS],
+  ],
+  [12, 42, 23, 23],
+  { fontSize: 16, line: 235, centerFirst: true },
+));
 
 children.push(h1('4. Kiểm thử đủ 24 chức năng hội thoại', true));
 children.push(paragraph(
@@ -336,7 +360,7 @@ children.push(table(
     item.ask,
     item.askAlt,
     item.expect,
-    '',
+    ['CN-01', 'CN-07', 'CN-10', 'CN-13'].includes(item.code) ? SMOKE_PASS : '',
   ]),
   [8, 16, 19, 18, 31, 8],
   { fontSize: 14, line: 225, centerFirst: true },
@@ -351,7 +375,7 @@ children.push(table(
     item.roles,
     item.missAsk || 'Không có tham số bắt buộc',
     item.missExpect,
-    '',
+    item.code === 'CN-07' ? SMOKE_PASS : '',
   ]),
   [10, 14, 25, 43, 8],
   { fontSize: 15, line: 230, centerFirst: true },
@@ -411,11 +435,12 @@ children.push(spacer());
 children.push(table(
   ['Nội dung tổng hợp', 'Kết quả / Người xác nhận'],
   [
-    ['Số tài khoản đã chạy', '........ / 13'],
-    ['Số chức năng đã chạy', '........ / 24'],
+    ['Smoke kỹ thuật đã chạy', 'Sale 8/8 · Quản lý 8/8'],
+    ['Số tài khoản khách hàng đã nghiệm thu', '........ / 13'],
+    ['Số chức năng khách hàng đã nghiệm thu', '........ / 24'],
     ['Lỗi nghiêm trọng còn mở', ''],
     ['Danh sách mã UAT_TEST cần dọn', ''],
-    ['Kết luận', 'Đủ điều kiện UAT / Cần sửa và kiểm tra lại / Chưa thể đánh giá'],
+    ['Kết luận hiện tại', 'Đủ điều kiện bắt đầu UAT khách hàng · Chưa phải nghiệm thu hoàn tất'],
     ['Người thực hiện · Ngày', ''],
     ['Điều phối viên · Ngày', ''],
     ['Đại diện khách hàng · Ngày', ''],
