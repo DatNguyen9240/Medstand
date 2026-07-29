@@ -35,13 +35,13 @@
    Manifest release candidate hiện hành: [`../release/UAT_MANIFEST_2026-07-27_11.110.md`](../release/UAT_MANIFEST_2026-07-27_11.110.md).
 
 3. [`HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md`](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md)
-   Tài liệu nguồn rút gọn. Bản Word và HTML có hình để gửi người dùng nằm trong `GOI_UAT_KHACH_HANG`.
+   Tài liệu nguồn rút gọn. Bản Word và HTML để gửi người dùng nằm trong `GOI_UAT_KHACH_HANG`.
 
 4. [`KE_HOACH_TEST_13_TAI_KHOAN.md`](KE_HOACH_TEST_13_TAI_KHOAN.md)
    Kế hoạch UAT cho 13 tài khoản thuộc ba miền, gồm câu hỏi copy-paste, kết quả chuẩn, 24 API, test phân quyền và mẫu ký nghiệm thu.
 
 5. [`GOI_UAT_KHACH_HANG/`](GOI_UAT_KHACH_HANG/)
-   Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn sử dụng có hình và bộ kiểm thử riêng:
+   Gói gửi trực tiếp cho người dùng Pilot, gồm hướng dẫn sử dụng và bộ kiểm thử riêng; không kèm hình hoặc lộ trình phát triển:
 
    | File | Nội dung |
    |---|---|
@@ -51,7 +51,7 @@
    | `02_HUONG_DAN_TEST_13_TAI_KHOAN.html` | Bản HTML kiểm thử 13 tài khoản |
    | `03_PHIEU_KIEM_THU_NHAN_VIEN_QUAN_LY.docx` | Phiếu ghi kết quả theo vai trò |
    | `04_MAU_GHI_NHAN_LOI_VA_GOP_Y.docx` | Mẫu báo lỗi và góp ý |
-   | `05_KICH_BAN_KIEM_THU_13_TAI_KHOAN.docx` | Kịch bản 13 tài khoản dạng copy-paste |
+   | `05_KICH_BAN_KIEM_THU_13_TAI_KHOAN.docx` | Kịch bản copy-paste đầy đủ: 13 tài khoản, 24 chức năng, ca biên và luồng dữ liệu UAT |
 
 ## Tài liệu kỹ thuật liên quan
 

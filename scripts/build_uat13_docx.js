@@ -5,7 +5,7 @@
  * Chạy: node scripts/build_uat13_docx.js
  *
  * Bản in: phần chính khổ dọc, phụ lục khổ ngang để bảng 8 cột đọc được.
- * Sơ đồ nhúng dưới dạng PNG lấy từ docs/GOI_UAT_KHACH_HANG/assets/.
+ * Bản gửi khách hàng không nhúng hình ảnh.
  */
 
 const fs = require('fs');

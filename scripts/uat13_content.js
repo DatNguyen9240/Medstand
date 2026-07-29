@@ -1041,7 +1041,7 @@ const document = {
         'Không có lỗi rò rỉ dữ liệu giữa nhân viên, miền hoặc vai trò.',
         'Không có lỗi nghiêm trọng ở doanh số, công nợ, tồn kho và phân quyền.',
         'Toàn bộ dữ liệu `UAT_TEST` đã được ghi nhận đầy đủ để dọn.',
-        'Bản Word và bản HTML có nội dung, thứ tự và hình ảnh đồng nhất.',
+        'Bản Word và bản HTML có nội dung và thứ tự đồng nhất.',
       ],
     },
   },

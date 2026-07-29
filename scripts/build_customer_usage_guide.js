@@ -227,7 +227,7 @@ function buildBody() {
   const body = [];
   body.push(para('HƯỚNG DẪN SỬ DỤNG', { size: 24, bold: true, color: colors.green, after: 100 }));
   body.push(para('MEDSTAND AI', { size: 54, bold: true, color: colors.navy, after: 120 }));
-  body.push(para('Bản chi tiết có hình dành cho Nhân viên kinh doanh và Quản lý', { size: 28, color: colors.gray, after: 260 }));
+  body.push(para('Bản chi tiết dành cho Nhân viên kinh doanh và Quản lý', { size: 28, color: colors.gray, after: 260 }));
   body.push(table(
     ['Thông tin', 'Nội dung'],
     [
@@ -436,7 +436,7 @@ function buildHtml() {
 <style>
 :root{--navy:#17324d;--blue:#2e74b5;--green:#168a4a;--ink:#1b1f23;--muted:#5b6573;--line:#cbd3dd;--soft:#f4f6f9;--blue-soft:#e8eef5;--green-soft:#eaf6ef;--amber:#8a6300;--amber-soft:#fff4d6;--red:#9b1c1c;--red-soft:#fdecec}*{box-sizing:border-box}body{margin:0;background:#eef2f6;color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}.page{max-width:1000px;margin:28px auto;background:white;padding:56px 64px;box-shadow:0 8px 30px #17324d1a;border-radius:14px}.kicker{color:var(--green);font-weight:800;letter-spacing:.08em}.hero h1{font-size:44px;line-height:1.1;color:var(--navy);margin:.2em 0}.subtitle{font-size:20px;color:var(--muted)}h2{color:var(--blue);font-size:28px;margin-top:2.1em;border-bottom:2px solid var(--blue-soft);padding-bottom:8px}h3{color:var(--navy);font-size:21px;margin-top:1.5em}.toc{columns:2;padding:20px 28px;background:var(--soft);border-radius:12px}.toc a{color:var(--navy);text-decoration:none}.toc li{margin:5px 0}.callout{padding:16px 20px;border:1px solid var(--line);border-left:6px solid var(--blue);background:var(--blue-soft);border-radius:8px;margin:18px 0}.callout.success{border-left-color:var(--green);background:var(--green-soft)}.callout.warn{border-left-color:var(--amber);background:var(--amber-soft)}.callout.danger{border-left-color:var(--red);background:var(--red-soft)}figure{margin:24px 0;text-align:center}figure img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px}figcaption{font-size:14px;color:var(--muted);font-style:italic;margin-top:7px}.table-wrap{overflow-x:auto;margin:18px 0}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}th{background:var(--blue-soft);color:var(--navy)}tbody tr:nth-child(even){background:var(--soft)}.copy{display:grid;grid-template-columns:180px 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:10px 0}.copy span{background:var(--green-soft);color:var(--green);font-weight:700;padding:12px}.copy code{padding:12px;background:white;white-space:normal;font:600 15px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}@media(max-width:700px){.page{margin:0;padding:28px 20px;border-radius:0}.hero h1{font-size:34px}.toc{columns:1}.copy{grid-template-columns:1fr}.copy span{padding:8px 12px}}
 </style></head><body><main class="page">
-<header class="hero"><div class="kicker">HƯỚNG DẪN SỬ DỤNG</div><h1>MEDSTAND AI</h1><p class="subtitle">Bản chi tiết có hình dành cho Nhân viên kinh doanh và Quản lý</p><p><b>Môi trường:</b> <a href="https://medtest.bms7.net/#/chatbot">medtest.bms7.net/#/chatbot</a> · <b>Cập nhật:</b> 27/07/2026</p></header>
+<header class="hero"><div class="kicker">HƯỚNG DẪN SỬ DỤNG</div><h1>MEDSTAND AI</h1><p class="subtitle">Bản chi tiết dành cho Nhân viên kinh doanh và Quản lý</p><p><b>Môi trường:</b> <a href="https://medtest.bms7.net/#/chatbot">medtest.bms7.net/#/chatbot</a> · <b>Cập nhật:</b> 28/07/2026</p></header>
 <div class="callout success"><b>Bắt đầu nhanh:</b> nếu đây là lần đầu sử dụng, chỉ cần đọc mục 1 đến mục 4. Bạn có thể bắt đầu hỏi Trợ lý AI trong khoảng 5 phút.</div>
 <nav><h2>Mục lục</h2><ol class="toc">${['Bắt đầu trong 5 phút','Nhận biết màn hình','Cách đặt câu hỏi','Phạm vi theo vai trò','Nhóm chức năng','Cách đọc kết quả','Hiểu dữ liệu','Trạng thái thường gặp','Tự xử lý lỗi','24 chức năng','Quy tắc an toàn','Checklist'].map((x,i)=>`<li><a href="#m${i+1}">${x}</a></li>`).join('')}</ol></nav>
 <section id="m1"><h2>1. Bắt đầu trong 5 phút</h2>${image('assets/so_do_quy_trinh_5_buoc.png','Hình 1 — Quy trình sử dụng nhanh gồm 5 bước.')}<ol><li>Mở medtest bằng Chrome hoặc Microsoft Edge.</li><li>Đăng nhập và kiểm tra đúng tên, vai trò.</li><li>Chọn <b>Trợ lý AI</b> trong menu trái.</li><li>Nhập câu hỏi rõ mã và thời gian.</li><li>Đọc kết quả; chụp ảnh nếu phát hiện sai.</li></ol>${copy('Câu đầu tiên','Xin chào')}${copy('Kiểm tra tài khoản','Tôi là ai?')}${copy('Câu nghiệp vụ','Doanh số hôm nay của tôi là bao nhiêu?')}</section>
@@ -451,7 +451,7 @@ function buildHtml() {
 <section id="m10"><h2>10. Danh sách 24 chức năng</h2>${htmlTable(['Nhóm','Chức năng'],[['Bán hàng','Doanh số; hóa đơn; chi tiết hóa đơn; đơn hàng'],['Khách hàng','Chấm điểm; công nợ tổng/chi tiết; tích lũy'],['Tuyến & gợi ý','Tuyến; gợi ý đơn; bán kèm; sản phẩm liên quan'],['Kho & sản phẩm','Tồn kho; tra cứu; sản phẩm trọng tâm; danh mục'],['Khuyến mãi','Đề xuất khuyến mãi'],['Khảo sát','360; câu hỏi; trạng thái; theo ngày; lịch sử'],['Khác','Thông báo; tìm theo triệu chứng']])}</section>
 <section id="m11"><h2>11. Quy tắc an toàn</h2><ul><li>Chỉ dùng dữ liệu UAT được cấp.</li><li>Không đưa mật khẩu/token vào ảnh.</li><li>Không tự áp giá hoặc phát hành khuyến mãi.</li><li>Nếu thử tạo khách/đơn trong UAT, dùng tiền tố UAT_TEST và đọc màn hình xác nhận.</li><li>Nội dung sản phẩm/thuốc phải được người có chuyên môn kiểm tra.</li></ul></section>
 <section id="m12"><h2>12. Checklist</h2><ul><li>☐ Đúng tài khoản và vai trò.</li><li>☐ Biết mở Trợ lý AI và đặt câu hỏi.</li><li>☐ Biết nhập mã/ngày.</li><li>☐ Biết đọc bảng kết quả.</li><li>☐ Không thấy dữ liệu ngoài phạm vi.</li><li>☐ Biết báo lỗi an toàn.</li></ul><div class="callout"><b>Tài liệu 13 tài khoản:</b> bản Word và HTML vẫn được giữ riêng trong cùng thư mục.</div></section>
-<footer>Medstand AI · Hướng dẫn sử dụng khách hàng · Phiên bản 27/07/2026</footer>
+<footer>Medstand AI · Hướng dẫn sử dụng khách hàng · Phiên bản 28/07/2026</footer>
 </main></body></html>`;
 }
 
@@ -460,7 +460,7 @@ async function main() {
   const document = new Document({
     creator: 'Medstand AI',
     title: 'Hướng dẫn sử dụng Medstand AI',
-    subject: 'Hướng dẫn chi tiết có hình cho khách hàng',
+    subject: 'Hướng dẫn chi tiết cho khách hàng',
     description: 'Hướng dẫn đăng nhập, đặt câu hỏi, đọc kết quả và xử lý lỗi',
     numbering: {
       config: [
