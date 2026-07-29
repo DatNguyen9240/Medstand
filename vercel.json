@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "server.js": {
+      "includeFiles": "{index.html,index.prod.html,env.js,sw.js,{src,pages,chatbot-widget,assets,config}/**,images/*,images/logo/**}"
+    }
+  }
+}
