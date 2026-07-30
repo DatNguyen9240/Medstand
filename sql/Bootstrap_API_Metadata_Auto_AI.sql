@@ -1131,7 +1131,8 @@ USING (VALUES
 
     -- DanhsachTonKho → auto-gen: @danh_sach_ton_kho | cần: @danh_sach_tonkho
     ('API_DanhsachTonKho_AI', '@danh_sach_tonkho'),
-    ('API_HoaDonChiTiet_AI', '@hoa_don_chi_tiet')
+    ('API_HoaDonChiTiet_AI', '@hoa_don_chi_tiet'),
+    ('API_KhachHang_Insert_AI', '@khach_hang_insert_ai')
 
     /* ── THÊM PROJECT MỚI TẠI ĐÂY ─────────────────────────────────────
        ,('API_TenSPKhac_AI', '@ten_api_dung')

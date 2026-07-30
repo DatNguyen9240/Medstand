@@ -3852,6 +3852,10 @@
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="A" type="button">Nhóm A</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="B" type="button">Nhóm B</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="C" type="button">Nhóm C</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip active" data-server-risk="" type="button">Mọi rủi ro</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="LOW" type="button">Rủi ro thấp</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="MEDIUM" type="button">Rủi ro vừa</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="HIGH" type="button">Rủi ro cao</button>';
         } else {
             chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">' + (String(apiCode || '').toLowerCase() === '@don_hang' ? 'Tất cả trạng thái' : 'Tất cả') + '</button>';
         }
@@ -3952,6 +3956,7 @@
             apiCode: apiCode,
             isTierScoring: isTierScoringTable,
             currentTier: '',
+            currentRisk: '',
             currentPage: tierPage,
             pageSize: tierPageSize,
             totalRows: tierTotalRows,
@@ -4407,7 +4412,7 @@
         if (!tbody || !cached || !cached.rows || !cached.keys) return;
 
         var searchInput = container.querySelector('.ai-sales-filter-input');
-        var activeChip = container.querySelector('.ai-sales-filter-chip.active:not([data-server-tier])');
+        var activeChip = container.querySelector('.ai-sales-filter-chip.active:not([data-server-tier]):not([data-server-risk])');
         var filterKey = activeChip ? (activeChip.getAttribute('data-filter') || 'all') : 'all';
         var badgeKey = activeChip ? (activeChip.getAttribute('data-badge-key') || cached.badgeKey) : cached.badgeKey;
         var filtered = _applyModalFilter(cached.rows, cached.keys, searchInput ? searchInput.value : '', filterKey, badgeKey);
@@ -4454,6 +4459,10 @@
             button.classList.toggle('active', String(button.getAttribute('data-server-tier') || '') === String(cache.currentTier || ''));
             button.disabled = Boolean(cache.loading);
         });
+        container.querySelectorAll('[data-server-risk]').forEach(function (button) {
+            button.classList.toggle('active', String(button.getAttribute('data-server-risk') || '') === String(cache.currentRisk || ''));
+            button.disabled = Boolean(cache.loading);
+        });
         var previous = container.querySelector('[data-tier-page-action="prev"]');
         var next = container.querySelector('[data-tier-page-action="next"]');
         if (previous) previous.disabled = Boolean(cache.loading) || Number(cache.currentPage || 1) <= 1;
@@ -4473,7 +4482,7 @@
         }
     }
 
-    function _loadTierScoringPage(control, tier, page) {
+    function _loadTierScoringPage(control, tier, risk, page) {
         var container = control ? control.closest('.ai-view-table') : null;
         var tbody = container ? container.querySelector('tbody') : null;
         var cache = tbody ? _modalDataCache[tbody.id] : null;
@@ -4481,9 +4490,12 @@
         if (!window.ApiEngine || typeof window.ApiEngine.queryData !== 'function') return;
 
         var targetTier = String(tier || '').toUpperCase();
+        var targetRisk = String(risk || '').toUpperCase();
         var targetPage = Math.max(1, Number(page || 1));
         var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 10)));
-        if (targetPage > pageCount && targetTier === String(cache.currentTier || '')) return;
+        if (targetPage > pageCount
+            && targetTier === String(cache.currentTier || '')
+            && targetRisk === String(cache.currentRisk || '')) return;
 
         cache.loading = true;
         cache.loadError = false;
@@ -4494,12 +4506,14 @@
             '@PageSize': Number(cache.pageSize || 10)
         };
         if (targetTier) params['@NhomFilter'] = targetTier;
+        if (targetRisk) params['@RiskLevel'] = targetRisk;
 
         window.ApiEngine.queryData('@cham_diem_kh', params).then(function (newRows) {
             newRows = Array.isArray(newRows) ? newRows : [];
             cache.rows = newRows;
             cache.visibleRows = newRows;
             cache.currentTier = targetTier;
+            cache.currentRisk = targetRisk;
             cache.currentPage = targetPage;
             cache.totalRows = newRows.length
                 ? Number(newRows[0].TotalRows || newRows[0].totalRows || newRows.length)
@@ -4521,13 +4535,13 @@
     }
 
     $messages.addEventListener('click', function (e) {
-        var inlineFilterChip = e.target.closest('.ai-sales-filter-chip:not([data-server-tier])');
+        var inlineFilterChip = e.target.closest('.ai-sales-filter-chip:not([data-server-tier]):not([data-server-risk])');
         if (inlineFilterChip) {
             e.preventDefault();
             e.stopPropagation();
             var inlineTable = inlineFilterChip.closest('.ai-view-table');
             if (!inlineTable) return;
-            inlineTable.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (chip) {
+            inlineTable.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier]):not([data-server-risk])').forEach(function (chip) {
                 chip.classList.toggle('active', chip === inlineFilterChip);
             });
             _applyInlineTableFilter(inlineTable);
@@ -4581,7 +4595,7 @@
             return;
         }
 
-        var tierControl = e.target.closest('[data-server-tier], [data-tier-page-action], [data-tier-page-number]');
+        var tierControl = e.target.closest('[data-server-tier], [data-server-risk], [data-tier-page-action], [data-tier-page-number]');
         if (tierControl) {
             e.preventDefault();
             e.stopPropagation();
@@ -4590,13 +4604,15 @@
             var tierCache = tierTbody ? _modalDataCache[tierTbody.id] : null;
             if (!tierCache) return;
             if (tierControl.hasAttribute('data-server-tier')) {
-                _loadTierScoringPage(tierControl, tierControl.getAttribute('data-server-tier'), 1);
+                _loadTierScoringPage(tierControl, tierControl.getAttribute('data-server-tier'), tierCache.currentRisk, 1);
+            } else if (tierControl.hasAttribute('data-server-risk')) {
+                _loadTierScoringPage(tierControl, tierCache.currentTier, tierControl.getAttribute('data-server-risk'), 1);
             } else if (tierControl.hasAttribute('data-tier-page-number')) {
-                _loadTierScoringPage(tierControl, tierCache.currentTier, Number(tierControl.getAttribute('data-tier-page-number')) || 1);
+                _loadTierScoringPage(tierControl, tierCache.currentTier, tierCache.currentRisk, Number(tierControl.getAttribute('data-tier-page-number')) || 1);
             } else {
                 var direction = tierControl.getAttribute('data-tier-page-action');
                 var nextPage = Number(tierCache.currentPage || 1) + (direction === 'prev' ? -1 : 1);
-                _loadTierScoringPage(tierControl, tierCache.currentTier, nextPage);
+                _loadTierScoringPage(tierControl, tierCache.currentTier, tierCache.currentRisk, nextPage);
             }
             return;
         }
@@ -4837,11 +4853,11 @@
 
                                 }
 
-                                tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (chip) {
+                                tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier]):not([data-server-risk])').forEach(function (chip) {
 
                                     chip.addEventListener('click', function () {
 
-                                        tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier])').forEach(function (c) { c.classList.remove('active'); });
+                                        tableView.querySelectorAll('.ai-sales-filter-chip:not([data-server-tier]):not([data-server-risk])').forEach(function (c) { c.classList.remove('active'); });
 
                                         chip.classList.add('active');
 
@@ -4902,7 +4918,7 @@
             if (!tierCache) return;
             tierCache.pageSize = Number(tierPageSizeControl.value) || 10;
             tierCache.tablePageSize = tierCache.pageSize;
-            _loadTierScoringPage(tierPageSizeControl, tierCache.currentTier, 1);
+            _loadTierScoringPage(tierPageSizeControl, tierCache.currentTier, tierCache.currentRisk, 1);
             return;
         }
         var pageSizeControl = e.target.closest('.ai-table-page-size');

@@ -49,7 +49,9 @@ SELECT DISTINCT A.UserName, U.StoreHouseID, 'DIRECT' AS MappingSource
 INTO #EffectiveStores
 FROM @Accounts A
 INNER JOIN dbo.SY_UserStoreHouseTbl U WITH (NOLOCK) ON U.UserName = A.UserName
-WHERE ISNULL(U.StoreHouseID, '') <> '';
+WHERE U.StoreHouseID IN ('CTY', 'DL02', 'DL03');
+
+ALTER TABLE #EffectiveStores ALTER COLUMN MappingSource VARCHAR(30) NOT NULL;
 
 INSERT #EffectiveStores (UserName, StoreHouseID, MappingSource)
 SELECT DISTINCT A.UserName, UStore.StoreHouseID, 'MANAGER_INHERITED'
@@ -57,7 +59,7 @@ FROM @Accounts A
 INNER JOIN dbo.SY_User SU WITH (NOLOCK) ON SU.UserName = A.UserName AND ISNULL(SU.Manager, 0) = 1
 INNER JOIN dbo.SY_User Child WITH (NOLOCK) ON Child.ManagerID = SU.EmployeeID AND ISNULL(Child.Disable, 0) = 0
 INNER JOIN dbo.SY_UserStoreHouseTbl UStore WITH (NOLOCK) ON UStore.UserName = Child.UserName
-WHERE ISNULL(UStore.StoreHouseID, '') <> ''
+WHERE UStore.StoreHouseID IN ('CTY', 'DL02', 'DL03')
   AND NOT EXISTS (
     SELECT 1 FROM #EffectiveStores E
     WHERE E.UserName = A.UserName AND E.StoreHouseID = UStore.StoreHouseID
@@ -65,9 +67,10 @@ WHERE ISNULL(UStore.StoreHouseID, '') <> ''
 
 SELECT A.SortOrder, A.UserName, A.RoleName, A.RegionID,
        DirectWarehouseCount = (SELECT COUNT(DISTINCT D.StoreHouseID) FROM dbo.SY_UserStoreHouseTbl D WHERE D.UserName = A.UserName),
+       HiddenWarehouseCount = (SELECT COUNT(DISTINCT D.StoreHouseID) FROM dbo.SY_UserStoreHouseTbl D WHERE D.UserName = A.UserName AND D.StoreHouseID NOT IN ('CTY', 'DL02', 'DL03')),
        MappingWarehouseCount = COUNT(DISTINCT E.StoreHouseID),
-       MappingWarehouses = STRING_AGG(CONVERT(VARCHAR(MAX), E.StoreHouseID), ', ') WITHIN GROUP (ORDER BY E.StoreHouseID),
-       MappingSources = STRING_AGG(CONVERT(VARCHAR(MAX), E.MappingSource), ', ') WITHIN GROUP (ORDER BY E.MappingSource),
+       MappingWarehouses = STRING_AGG(CONVERT(VARCHAR(MAX), E.StoreHouseID), ', '),
+       MappingSources = STRING_AGG(CONVERT(VARCHAR(MAX), E.MappingSource), ', '),
        MappingOnlyAllowed = CASE WHEN COUNT(CASE WHEN S.StoreHouseID IS NULL THEN 1 END) = 0 THEN 1 ELSE 0 END,
        MappingStatus = CASE WHEN COUNT(DISTINCT E.StoreHouseID) = 0 THEN 'FAIL_NO_EFFECTIVE_MAPPING'
                             WHEN COUNT(CASE WHEN S.StoreHouseID IS NULL THEN 1 END) > 0 THEN 'REVIEW_UNAPPROVED_WAREHOUSE'
@@ -90,36 +93,49 @@ WHERE U.StoreHouseID IS NOT NULL
 ORDER BY A.SortOrder, U.StoreHouseID;
 
 SELECT A.SortOrder, A.UserName, A.RoleName, A.RegionID,
-       VisibleWarehouseCount = COUNT(DISTINCT T.StoreHouseID),
-       VisibleWarehouses = STRING_AGG(CONVERT(VARCHAR(MAX), T.StoreHouseID), ', ') WITHIN GROUP (ORDER BY T.StoreHouseID),
-       VisibleOnlyMapped = CASE WHEN COUNT(CASE WHEN M.StoreHouseID IS NULL THEN 1 END) = 0 THEN 1 ELSE 0 END,
-       StockStatus = CASE WHEN COUNT(DISTINCT T.StoreHouseID) = 0 THEN 'NO_VISIBLE_STOCK'
-                          WHEN COUNT(CASE WHEN M.StoreHouseID IS NULL THEN 1 END) > 0 THEN 'FAIL_STOCK_OUTSIDE_MAPPING'
-                          ELSE 'PASS' END
+       EffectiveWarehouseCount = COUNT(DISTINCT E.StoreHouseID),
+       EffectiveWarehouses = STRING_AGG(CONVERT(VARCHAR(MAX), E.StoreHouseID), ', ')
 FROM @Accounts A
-OUTER APPLY (
-  SELECT DISTINCT V.StoreHouseID
-  FROM dbo.IV_StockTransactionTbl V WITH (NOLOCK)
-  WHERE ISNULL(V.StoreHouseID, '') <> ''
-    AND EXISTS (SELECT 1 FROM #EffectiveStores U WHERE U.UserName = A.UserName AND U.StoreHouseID = V.StoreHouseID)
-) T
-LEFT JOIN dbo.SY_UserStoreHouseTbl M WITH (NOLOCK) ON M.UserName = A.UserName AND M.StoreHouseID = T.StoreHouseID
+LEFT JOIN #EffectiveStores E ON E.UserName = A.UserName
 GROUP BY A.SortOrder, A.UserName, A.RoleName, A.RegionID
 ORDER BY A.SortOrder;`;
     const result = await pool.request().query(query);
     const mapping = result.recordsets[0] || [];
     const details = result.recordsets[1] || [];
-    const stock = result.recordsets[2] || [];
-    const failures = [
+    const effective = result.recordsets[2] || [];
+    const effectiveByUser = new Map();
+    for (const row of details) {
+      if (!effectiveByUser.has(row.UserName)) effectiveByUser.set(row.UserName, new Set());
+      effectiveByUser.get(row.UserName).add(String(row.StoreHouseID).trim().toUpperCase());
+    }
+    const stock = [];
+    for (const [username, fixture] of Object.entries(fixtures)) {
+      try {
+        const response = await pool.request()
+          .input('Username', sql.VarChar(50), username)
+          .input('ItemID', sql.VarChar(50), '')
+          .input('TenSanPham', sql.VarChar(200), '')
+          .input('timkiem', sql.NVarChar(200), '')
+          .execute('dbo.API_DanhsachTonKho_AI');
+        const rows = response.recordset || [];
+        const warehouses = [...new Set(rows.map((row) => String(row.StoreHouseID || '').trim()).filter(Boolean))];
+        const allowed = effectiveByUser.get(username) || new Set();
+        const outside = warehouses.filter((warehouse) => !allowed.has(warehouse.toUpperCase()));
+        stock.push({ UserName: username, RoleName: fixture.role, RegionID: fixture.region, VisibleWarehouseCount: warehouses.length,
+          VisibleWarehouses: warehouses.join(', '), VisibleOnlyMapped: outside.length === 0 ? 1 : 0,
+          OutsideMappedWarehouses: outside.join(', '), StockStatus: outside.length ? 'FAIL_STOCK_OUTSIDE_MAPPING' : (warehouses.length ? 'PASS' : 'NO_VISIBLE_STOCK') });
+      } catch (error) { stock.push({ UserName: username, StockStatus: 'ERROR_API_DANHSACH_TONKHO', Error: error.message }); }
+    }
+    const reviews = [
       ...mapping.filter((row) => row.MappingStatus !== 'PASS'),
       ...details.filter((row) => row.MappingStatus !== 'PASS'),
-      ...stock.filter((row) => row.StockStatus === 'FAIL_STOCK_OUTSIDE_MAPPING'),
+      ...stock.filter((row) => row.StockStatus === 'FAIL_STOCK_OUTSIDE_MAPPING' || row.StockStatus === 'ERROR_API_DANHSACH_TONKHO'),
     ];
     const summary = {
       task: 'UAT-008', mode: 'READ_ONLY_DATABASE_VERIFICATION', database: env.TEST_DB_DATABASE,
-      status: failures.length ? 'REVIEW_REQUIRED' : 'PASS',
+      status: reviews.length ? 'FAIL' : 'PASS',
       accountsChecked: mapping.length, accountsPassed: mapping.filter((row) => row.MappingStatus === 'PASS').length,
-      mapping, mappingDetails: details, stockVisibility: stock, failures,
+      mapping, mappingDetails: details, effective, stockVisibility: stock, reviews,
     };
     console.log(JSON.stringify(summary, null, 2));
     if (summary.status !== 'PASS') process.exitCode = 1;

@@ -95,7 +95,20 @@ window.API_CONFIG = {
         },
         AI: {
             CATALOG: '/api/API_DanhMuc_AI',
-            ADMIN_UPLOAD: '/webhook/admin-upload'
+            ADMIN_UPLOAD: '/webhook/admin-upload',
+
+            // CORE-001 — nguồn dữ liệu cho ô "Nhóm đối tượng" của khung tạo khách trong chat.
+            //
+            // ObjectGroupID là khoá phân quyền: AR_GetObjectByUserFnc lọc phạm vi khách
+            // hoàn toàn theo cột này (không dùng BranchID). Gán sai giá trị thì khách vừa
+            // tạo sẽ nằm ngoài tầm nhìn của chính người tạo, hoặc rơi vào sổ của bộ phận khác.
+            //
+            // Hai endpoint dưới đây chỉ nhận username từ phiên đăng nhập và tự suy EmployeeID
+            // phía server. Không dùng API_NhomKhachHang cho việc này: nó lọc theo EmployeeID
+            // do client gửi lên, và truyền rỗng thì trả về toàn bộ nhóm của hệ thống.
+            OBJECT_GROUP_BY_USER: '/api/API_ObjectGroupByUser_AI',  // nhóm mà người đăng nhập được gán
+            EMPLOYEE_BY_MANAGER: '/api/API_EmployeeByManager_AI',    // nhân viên dưới quyền, để manager chỉ định người phụ trách
+            CREATE_CUSTOMER: '/api/API_KhachHang_Insert_AI'          // endpoint tạo khách riêng của Chatbot AI
         }
     },
 

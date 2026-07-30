@@ -44,24 +44,28 @@ BEGIN TRY
             ''@khao_sat360'',
             ''@danh_sach_cau_hoi_khao_sat'', ''@kiem_tra_khao_sat'',
             ''@kiem_tra_khao_sat_ngay'', ''@lich_su_khao_sat'', ''@thong_bao'',
-            ''@tim_san_pham_theo_trieu_chung''
+            ''@tim_san_pham_theo_trieu_chung'',
+            /* CORE-001 (2026-07-29): hai API tra cứu phục vụ khung tạo khách hàng
+               trong chat. Bắt buộc có mặt ở đây, nếu không lần chạy lại nào của
+               script này cũng đặt chúng về DENY do nhánh mặc định phía trên. */
+            ''@object_group_by_user'', ''@employee_by_manager''
         );
 
         UPDATE dbo.API_Definition
         SET OperationType = ''MUTATION'',
             RequiredCapability = CASE ApiCode
                 WHEN ''@lap_don_hang'' THEN ''orders.write''
-                WHEN ''@khach_hang_insert'' THEN ''customers.write''
+                WHEN ''@khach_hang_insert_ai'' THEN ''customers.write''
                 WHEN ''@san_pham_trong_tam_import'' THEN ''products.import''
             END,
             AllowedCapabilities = CASE ApiCode
                 WHEN ''@lap_don_hang'' THEN N''["orders.write"]''
-                WHEN ''@khach_hang_insert'' THEN N''["customers.write"]''
+                WHEN ''@khach_hang_insert_ai'' THEN N''["customers.write"]''
                 WHEN ''@san_pham_trong_tam_import'' THEN N''["products.import"]''
             END,
             ScopeResolver = ''VERIFIED_USER_HIERARCHY'',
             OwnershipRule = ''SERVER_VERIFIED_SCOPE_ONLY''
-        WHERE ApiCode IN (''@lap_don_hang'', ''@khach_hang_insert'', ''@san_pham_trong_tam_import'');
+        WHERE ApiCode IN (''@lap_don_hang'', ''@khach_hang_insert_ai'', ''@san_pham_trong_tam_import'');
 
         IF EXISTS (
             SELECT 1 FROM dbo.API_Definition

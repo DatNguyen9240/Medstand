@@ -639,7 +639,7 @@
         var result = Array.isArray(list) ? list.slice() : [];
         var actions = [
             {
-                ApiCode: '@khach_hang_insert',
+                ApiCode: '@khach_hang_insert_ai',
                 DisplayName: 'Tạo khách hàng',
                 Category: 'Thao tác nhanh',
                 UiTemplate: 'FORM',
@@ -929,7 +929,7 @@
         var scope = _getCurrentUserScope();
         var meta = { icon: '⚙️', description: 'Mở chức năng ' + _getApiMenuLabel(api), group: 'other', order: 900 };
         var known = {
-            '@khach_hang_insert': ['👤', 'Tạo khách hàng mới và lưu trực tiếp vào hệ thống', 'action', 10],
+            '@khach_hang_insert_ai': ['👤', 'Tạo khách hàng mới và lưu trực tiếp vào hệ thống', 'action', 10],
             '@lap_don_hang': ['🛒', 'Mở màn hình lập đơn và lưu đơn hàng thật', 'action', 20],
             '@doanh_so': ['📊', 'Xem doanh số theo thời gian và phạm vi được phân quyền', 'daily', 10],
             '@hoa_don': ['🧾', 'Tra cứu danh sách hóa đơn', 'daily', 20],
@@ -2858,13 +2858,14 @@
 
         // Customer creation already has a dedicated authenticated form in this
         // widget, so it does not need mutation metadata from the AI catalog.
-        if (apiCode.toLowerCase() === '@khach_hang_insert') {
+        if (apiCode.toLowerCase() === '@khach_hang_insert_ai') {
             _replaceAtTag(apiCode);
             _activeApi.config = {
                 info: { StoredProcedure: 'API_KhachHang_Insert_AI' },
                 fields: [],
                 filters: []
             };
+            _createTriggerButton();
             _openPanel(_activeApi.config, 'INSERT', dispName);
             return;
         }
@@ -3064,7 +3065,7 @@
         if (!_activeApi) return false;
         var code = (_activeApi.apiCode || '').toLowerCase();
         var sp = (_activeApi.config && _activeApi.config.info && _activeApi.config.info.StoredProcedure || '').toLowerCase();
-        return code.indexOf('khach_hang_insert') !== -1 || code.indexOf('khachhang_insert') !== -1 || sp.indexOf('khachhang_insert') !== -1;
+        return code === '@khach_hang_insert_ai' || sp === 'api_khachhang_insert_ai';
     }
 
     function _customerOptions(rows, valueKey, labelKey) {
@@ -3074,22 +3075,31 @@
     }
 
     function _openCustomerCreatePanel(dispName) {
+        var user = {}; try { user = JSON.parse(localStorage.getItem('auth_user') || '{}'); } catch (e) {}
+        var userScope = _getCurrentUserScope();
         _panelEl = document.createElement('div');
         _panelEl.id = 'ae-panel';
         _panelEl.className = 'ae-panel ae-customer-create-panel';
-        _panelEl.innerHTML = '<div class="ae-panel-header"><span class="ae-panel-title">' + _esc(dispName || 'Tạo khách hàng nhanh') + '</span>'
-            + '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-min">−</button><button class="ae-panel-btn" id="ae-panel-close">✕</button></div></div>'
+        _panelEl.innerHTML = '<div class="ae-panel-header">'
+            + '<div class="ae-panel-title">' + _esc(dispName || 'Tạo khách hàng') + '</div>'
+            + '<div class="ae-panel-actions">'
+            + '<button type="button" class="ae-panel-btn" id="ae-customer-min-btn" title="Thu gọn">−</button>'
+            + '<button type="button" class="ae-panel-btn" id="ae-customer-close-btn" title="Đóng">✕</button>'
+            + '</div>'
+            + '</div>'
             + '<div class="ae-customer-form">'
-            + '<label class="ae-customer-field"><span>Tên khách hàng *</span><input id="ae-customer-name" maxlength="300"></label>'
-            + '<label class="ae-customer-field"><span>Số điện thoại *</span><input id="ae-customer-phone" maxlength="20" inputmode="tel"></label>'
-            + '<label class="ae-customer-field ae-customer-full"><span>Địa chỉ *</span><input id="ae-customer-address" maxlength="500"></label>'
+            + '<label class="ae-customer-field"><span>Tên khách hàng *</span><input id="ae-customer-name" maxlength="150"></label>'
+            + '<label class="ae-customer-field"><span>Số điện thoại *</span><input id="ae-customer-phone" type="tel" maxlength="11" inputmode="numeric" pattern="[0-9]*" autocomplete="tel"></label>'
+            + '<label class="ae-customer-field ae-customer-full"><span>Địa chỉ *</span><input id="ae-customer-address" maxlength="250"></label>'
             + '<label class="ae-customer-field"><span>Loại khách hàng *</span><select id="ae-customer-type"><option value="">-- Chọn --</option><option value="OTC">OTC</option><option value="ETC">ETC</option></select></label>'
             + '<label class="ae-customer-field"><span>Chi nhánh *</span><select id="ae-customer-branch"><option value="">Đang tải...</option></select></label>'
             + '<label class="ae-customer-field"><span>Tỉnh/Thành phố</span><select id="ae-customer-province"><option value="">Đang tải...</option></select></label>'
             + '<label class="ae-customer-field"><span>Quận/Huyện</span><select id="ae-customer-district" disabled><option value="">-- Chọn tỉnh trước --</option></select></label>'
             + '<label class="ae-customer-field"><span>Phường/Xã</span><select id="ae-customer-ward" disabled><option value="">-- Chọn huyện trước --</option></select></label>'
-            + '<label class="ae-customer-field"><span>Mã số thuế</span><input id="ae-customer-tax" maxlength="30"></label>'
+            + '<label class="ae-customer-field"><span>Mã số thuế *</span><input id="ae-customer-tax" type="text" maxlength="13" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>'
+            + '<label class="ae-customer-field"><span>Ngày sinh *</span><input id="ae-customer-birthday" type="date" autocomplete="bday"></label>'
             + '<label class="ae-customer-field"><span>Nhóm khách hàng</span><select id="ae-customer-group"><option value="">Đang tải...</option></select></label>'
+            + (userScope.isManager ? '<label class="ae-customer-field"><span>Giao cho nhân viên *</span><select id="ae-customer-assignee"><option value="">Đang tải...</option></select></label>' : '')
             + '<label class="ae-customer-field"><span>Kênh bán</span><select id="ae-customer-channel"><option value="">Đang tải...</option></select></label>'
             + '<label class="ae-customer-field"><span>Tuyến phụ trách</span><select id="ae-customer-route"><option value="">Đang tải...</option></select></label>'
             + '<div class="ae-customer-error ae-customer-full" id="ae-customer-error" role="alert"></div><div class="ae-customer-review ae-customer-full" id="ae-customer-review" hidden></div></div>'
@@ -3098,37 +3108,77 @@
         document.body.appendChild(panel);
         document.body.classList.add('ae-panel-open');
         requestAnimationFrame(function () { panel.classList.add('active'); });
-        var user = {}; try { user = JSON.parse(localStorage.getItem('auth_user') || '{}'); } catch (e) {}
+        panel.querySelector('#ae-customer-close-btn').onclick = function () { _closePanel(true); };
+        panel.querySelector('#ae-customer-min-btn').onclick = function () {
+            panel.classList.remove('active');
+            document.body.classList.remove('ae-panel-open');
+            setTimeout(function () { panel.style.display = 'none'; }, 200);
+
+            var triggerBtn = document.getElementById('ae-panel-trigger');
+            if (triggerBtn) triggerBtn.style.display = 'flex';
+        };
+        ['#ae-customer-phone', '#ae-customer-tax'].forEach(function (selector) {
+            var numericInput = panel.querySelector(selector);
+            numericInput.addEventListener('input', function () {
+                this.value = this.value.replace(/[^0-9]/g, '');
+            });
+            numericInput.addEventListener('keydown', function (event) {
+                if (event.key.length === 1 && !/[0-9]/.test(event.key)) event.preventDefault();
+            });
+        });
         var errorEl = panel.querySelector('#ae-customer-error');
         function rowsOf(res) { var data = res && (res.data || res); return (data && data.records) || data || []; }
-        function load(endpoint, query, selector, valueKey, labelKey) {
+        function load(endpoint, query, selector, valueKey, labelKey, isOptional) {
             return Http.get(endpoint, { q: JSON.stringify(query || {}) }).then(function (res) {
                 var rows = rowsOf(res); panel.querySelector(selector).innerHTML = _customerOptions(rows, valueKey, labelKey); return rows;
-            }).catch(function () { panel.querySelector(selector).innerHTML = '<option value="">Không tải được dữ liệu</option>'; errorEl.textContent = 'Không thể tải đầy đủ dữ liệu danh mục.'; return []; });
+            }).catch(function () {
+                panel.querySelector(selector).innerHTML = '<option value="">-- Chưa có dữ liệu --</option>';
+                if (!isOptional) { errorEl.textContent = 'Một số danh mục chưa nạp được đầy đủ.'; }
+                return [];
+            });
         }
-        load(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { BranchID: '', SearchText: '' }, '#ae-customer-branch', 'BranchID', 'BranchName').then(function (rows) {
+        load(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { BranchID: '', SearchText: '' }, '#ae-customer-branch', 'BranchID', 'BranchName', true).then(function (rows) {
             if (user.BranchID && rows.some(function (r) { return r.BranchID === user.BranchID; })) { var el = panel.querySelector('#ae-customer-branch'); el.value = user.BranchID; el.disabled = true; }
+            else if (user.branchId) { var el = panel.querySelector('#ae-customer-branch'); if (el) { el.value = user.branchId; } }
         });
-        load(API_CONFIG.ENDPOINTS.FILTER.PROVINCES, { User: user.UserName || '', LocationID: '', SearchText: '' }, '#ae-customer-province', 'LocationID', 'LocationName');
-        load(API_CONFIG.ENDPOINTS.FILTER.CUSTOMER_GROUPS, { User: user.UserName || '', SearchText: '' }, '#ae-customer-group', 'ObjectGroupID', 'ObjectGroupName');
-        load(API_CONFIG.ENDPOINTS.FILTER.CHANNELS, { KenhBan: '' }, '#ae-customer-channel', 'KenhBan', 'TenKenhBan');
-        load(API_CONFIG.ENDPOINTS.FILTER.ROUTE_DAYS, { ThuDiTuyen: '' }, '#ae-customer-route', 'ThuTrongTuan', 'ThuTrongTuan');
-        panel.querySelector('#ae-customer-province').onchange = function () { var v = this.value, d = panel.querySelector('#ae-customer-district'), w = panel.querySelector('#ae-customer-ward'); d.disabled = !v; w.disabled = true; w.innerHTML = '<option value="">-- Chọn huyện trước --</option>'; if (v) load(API_CONFIG.ENDPOINTS.FILTER.DISTRICTS, { User: user.UserName || '', LocationID: v, QuanHuyen: '', SearchText: '' }, '#ae-customer-district', 'QuanHuyen', 'QuanHuyen'); };
-        panel.querySelector('#ae-customer-district').onchange = function () { var p = panel.querySelector('#ae-customer-province').value, v = this.value, w = panel.querySelector('#ae-customer-ward'); w.disabled = !v; if (v) load(API_CONFIG.ENDPOINTS.FILTER.WARDS, { User: user.UserName || '', LocationID: p, QuanHuyen: v, XaPhuong: '', SearchText: '' }, '#ae-customer-ward', 'XaPhuong', 'XaPhuong'); };
-        panel.querySelector('#ae-panel-min').onclick = function () { panel.classList.remove('active'); document.body.classList.remove('ae-panel-open'); setTimeout(function () { panel.style.display = 'none'; }, 200); };
-        panel.querySelector('#ae-panel-close').onclick = function () { _closeFull(); };
+        load(API_CONFIG.ENDPOINTS.FILTER.PROVINCES, { User: user.UserName || '', LocationID: '', SearchText: '' }, '#ae-customer-province', 'LocationID', 'LocationName', false);
+        var groupEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.OBJECT_GROUP_BY_USER) || '/api/API_ObjectGroupByUser_AI';
+        load(groupEndpoint, { User: user.UserName || '' }, '#ae-customer-group', 'ObjectGroupID', 'ObjectGroupName', true);
+        if (userScope.isManager) {
+            var employeeEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.EMPLOYEE_BY_MANAGER) || '/api/API_EmployeeByManager_AI';
+            load(employeeEndpoint, { User: user.UserName || '' }, '#ae-customer-assignee', 'EmployeeID', 'DisplayName', false)
+                .then(function (employees) {
+                    var assignee = panel.querySelector('#ae-customer-assignee');
+                    if (!assignee) return;
+                    assignee.onchange = function () {
+                        var selected = employees.find(function (row) { return String(row.EmployeeID || '') === String(assignee.value || ''); });
+                        if (selected && selected.ObjectGroupID) panel.querySelector('#ae-customer-group').value = selected.ObjectGroupID;
+                    };
+                });
+        }
+        load(API_CONFIG.ENDPOINTS.FILTER.CHANNELS, { KenhBan: '' }, '#ae-customer-channel', 'KenhBan', 'TenKenhBan', true);
+        load(API_CONFIG.ENDPOINTS.FILTER.ROUTE_DAYS, { ThuDiTuyen: '' }, '#ae-customer-route', 'ThuTrongTuan', 'ThuTrongTuan', true);
+        panel.querySelector('#ae-customer-province').onchange = function () { var v = this.value, d = panel.querySelector('#ae-customer-district'), w = panel.querySelector('#ae-customer-ward'); d.disabled = !v; w.disabled = true; w.innerHTML = '<option value="">-- Chọn huyện trước --</option>'; if (v) load(API_CONFIG.ENDPOINTS.FILTER.DISTRICTS, { User: user.UserName || '', LocationID: v, QuanHuyen: '', SearchText: '' }, '#ae-customer-district', 'QuanHuyen', 'QuanHuyen', false); };
+        panel.querySelector('#ae-customer-district').onchange = function () { var p = panel.querySelector('#ae-customer-province').value, v = this.value, w = panel.querySelector('#ae-customer-ward'); w.disabled = !v; if (v) load(API_CONFIG.ENDPOINTS.FILTER.WARDS, { User: user.UserName || '', LocationID: p, QuanHuyen: v, XaPhuong: '', SearchText: '' }, '#ae-customer-ward', 'XaPhuong', 'XaPhuong', false); };
         var reviewed = false, submit = panel.querySelector('#ae-panel-send-btn'), back = panel.querySelector('#ae-customer-back'), review = panel.querySelector('#ae-customer-review');
         back.onclick = function () { reviewed = false; review.hidden = true; back.hidden = true; submit.textContent = 'Kiểm tra thông tin'; };
         submit.onclick = function () {
             errorEl.textContent = '';
             function val(id) { return panel.querySelector(id).value.trim(); }
-            var v = { name: val('#ae-customer-name'), phone: val('#ae-customer-phone').replace(/\s+/g, ''), address: val('#ae-customer-address'), type: val('#ae-customer-type'), branch: val('#ae-customer-branch'), province: val('#ae-customer-province'), district: val('#ae-customer-district'), ward: val('#ae-customer-ward'), tax: val('#ae-customer-tax'), group: val('#ae-customer-group'), channel: val('#ae-customer-channel'), route: val('#ae-customer-route') };
-            if (!v.name || !v.phone || !v.address || !v.type || !v.branch) { errorEl.textContent = 'Vui lòng nhập đủ tên, số điện thoại, địa chỉ, loại khách hàng và chi nhánh.'; return; }
-            if (!/^(?:\+?84|0)\d{8,10}$/.test(v.phone)) { errorEl.textContent = 'Số điện thoại không đúng định dạng.'; return; }
-            if (!reviewed) { reviewed = true; back.hidden = false; submit.textContent = 'Xác nhận tạo khách hàng'; review.hidden = false; review.innerHTML = '<strong>Xác nhận thông tin</strong><span>' + _esc(v.name) + '</span><span>' + _esc(v.phone) + '</span><span>' + _esc(v.address) + '</span>'; return; }
+            var v = { name: val('#ae-customer-name'), phone: val('#ae-customer-phone'), address: val('#ae-customer-address'), type: val('#ae-customer-type'), branch: val('#ae-customer-branch'), province: val('#ae-customer-province'), district: val('#ae-customer-district'), ward: val('#ae-customer-ward'), tax: val('#ae-customer-tax'), birthday: val('#ae-customer-birthday'), group: val('#ae-customer-group'), assignee: userScope.isManager ? val('#ae-customer-assignee') : '', channel: val('#ae-customer-channel'), route: val('#ae-customer-route') };
+            if (!v.name || !v.phone || !v.tax || !v.birthday || !v.address || !v.type || !v.branch) { errorEl.textContent = 'Vui lòng nhập đủ tên, số điện thoại, mã số thuế, ngày sinh, địa chỉ, loại khách hàng và chi nhánh.'; return; }
+            if (userScope.isManager && !v.assignee) { errorEl.textContent = 'Vui lòng chọn nhân viên phụ trách.'; return; }
+            if (!/^\d{10,11}$/.test(v.phone)) { errorEl.textContent = 'Số điện thoại phải gồm 10–11 chữ số và không được có chữ.'; return; }
+            if (!/^\d{10,13}$/.test(v.tax)) { errorEl.textContent = 'Mã số thuế phải gồm 10–13 chữ số và không được có chữ.'; return; }
+            var birthdayDate = new Date(v.birthday + 'T00:00:00');
+            if (Number.isNaN(birthdayDate.getTime()) || birthdayDate > new Date()) { errorEl.textContent = 'Ngày sinh không hợp lệ hoặc lớn hơn ngày hiện tại.'; return; }
+            if (!reviewed) { reviewed = true; back.hidden = false; submit.textContent = 'Xác nhận tạo khách hàng'; review.hidden = false; review.innerHTML = '<strong>Xác nhận thông tin</strong><span>' + _esc(v.name) + '</span><span>' + _esc(v.phone) + '</span><span>Ngày sinh: ' + _esc(v.birthday.split('-').reverse().join('/')) + '</span><span>' + _esc(v.address) + '</span>'; return; }
             submit.disabled = true; submit.textContent = 'Đang tạo...';
-            var payload = { User: user.UserName || '', ObjectID: '', ObjectName: v.name, Phone: v.phone, Address: v.address, TaxCode: v.tax, LoaiKhachHang: v.type, BranchID: v.branch, ObjectGroupID: v.group, LocationID: v.province, QuanHuyen: v.district, XaPhuong: v.ward, KenhBan: v.channel, ThuDiTuyen: v.route, Birthday: '', AccountNoHD: '', AccountNameHD: '', ChuTaiKhoan: '', Latitude: 0, Longitude: 0 };
-            Http.post(API_CONFIG.ENDPOINTS.CUSTOMER.CREATE, payload).then(function (res) { var data = res.data || res, record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data); if (record && record.MsgType == 1) throw new Error(record.Msg || 'Không thể tạo khách hàng.'); var id = record && (record.ObjectID || record.NewObjectID || record.MaKhachHang) || ''; _closeFull(true); if (_cbMsg) _cbMsg('ai', 'Đã tạo khách hàng thành công: ' + v.name + (id ? ' (' + id + ')' : '') + '.'); }).catch(function (err) { errorEl.textContent = err.message || 'Không thể tạo khách hàng.'; reviewed = false; review.hidden = true; back.hidden = true; submit.disabled = false; submit.textContent = 'Kiểm tra thông tin'; });
+            var payload = { User: user.UserName || '', ObjectID: '', ObjectName: v.name, Phone: v.phone, Address: v.address, TaxCode: v.tax, LoaiKhachHang: v.type, BranchID: v.branch, ObjectGroupID: v.group, LocationID: v.province, QuanHuyen: v.district, XaPhuong: v.ward, KenhBan: v.channel, ThuDiTuyen: v.route, Birthday: v.birthday, AccountNoHD: '', AccountNameHD: '', ChuTaiKhoan: '', Latitude: 0, Longitude: 0 };
+            if (v.assignee) payload.AssignedEmployeeID = v.assignee;
+            var createEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.CREATE_CUSTOMER) || API_CONFIG.ENDPOINTS.CUSTOMER.CREATE;
+            var idempotencyKey = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (key) { var random = Math.random() * 16 | 0; return (key === 'x' ? random : (random & 3 | 8)).toString(16); });
+            Http.post(createEndpoint, payload, { idempotencyKey: idempotencyKey }).then(function (res) { var data = res.data || res, record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data); if (record && record.MsgType == 1) throw new Error(record.Msg || 'Không thể tạo khách hàng.'); var id = record && (record.ObjectID || record.NewObjectID || record.MaKhachHang) || ''; _closeFull(true); if (_cbMsg) _cbMsg('ai', 'Đã tạo khách hàng thành công: ' + v.name + (id ? ' (' + id + ')' : '') + '.'); }).catch(function (err) { errorEl.textContent = err.message || 'Không thể tạo khách hàng.'; reviewed = false; review.hidden = true; back.hidden = true; submit.disabled = false; submit.textContent = 'Kiểm tra thông tin'; });
         };
         setTimeout(function () { panel.querySelector('#ae-customer-name').focus(); }, 50);
     }
@@ -6394,7 +6444,7 @@
                     .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
                     .replace(/\s+/g, ' ').trim();
                 if (/^(tao|them)\s+(1\s+)?khach\s*hang(\s+moi)?(\s+(nhe|nha|giup|giup toi))?[.!]?$/.test(createCustomerText)) {
-                    _onApiSelected('@khach_hang_insert');
+                    _onApiSelected('@khach_hang_insert_ai');
                     return true;
                 }
             }

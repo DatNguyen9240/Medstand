@@ -254,7 +254,7 @@ BEGIN
     SELECT DISTINCT US.StoreHouseID
     FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
     WHERE US.UserName = @Username
-      AND ISNULL(US.StoreHouseID, '') <> '';
+      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03');
 
     IF @IsManagerStock = 1 AND ISNULL(@SYS_EmployeeID, '') <> ''
     BEGIN
@@ -265,7 +265,7 @@ BEGIN
           ON US.UserName = U.UserName
         WHERE U.ManagerID = @SYS_EmployeeID
           AND ISNULL(U.Disable, 0) = 0
-          AND ISNULL(US.StoreHouseID, '') <> ''
+          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
           AND NOT EXISTS (
               SELECT 1 FROM #AllowedStores S
               WHERE S.StoreHouseID = US.StoreHouseID

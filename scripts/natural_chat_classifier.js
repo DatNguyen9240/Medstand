@@ -427,9 +427,26 @@ function classifyNaturalMessage(input, options = {}) {
         requiresClarification: !orderCreateCustomerId,
         supported: true,
         responseKey: orderCreateCustomerId ? null : 'ASK_CUSTOMER_FOR_ORDER_CREATE',
-        responseMessage: orderCreateCustomerId ? '' : RESPONSES.ASK_CUSTOMER_FOR_ORDER_CREATE,
       });
     }
+  }
+
+  const customerCreateMatch = folded.match(/^(?:tao|them|dang ky)\s+(?:khach|khach hang|nha thuoc|diem ban)(?:\s+moi)?$/i)
+    || /\b(tao khach hang|them khach hang|dang ky khach hang|tao nha thuoc|them nha thuoc|tao khach moi|them khach moi)\b/.test(folded);
+  if (customerCreateMatch) {
+    return baseResult(normalized, {
+      messageType: 'BUSINESS',
+      intent: 'CUSTOMER_CREATE_PREVIEW',
+      internalIntent: 'CUSTOMER_CREATE_PREVIEW',
+      apiCode: '@khach_hang_insert_ai',
+      confidence: 0.98,
+      entities: {},
+      missingFields: [],
+      requiresClarification: false,
+      supported: true,
+      responseKey: null,
+      responseMessage: '',
+    });
   }
 
   const mutation = /\b(tao|them|sua|xoa|duyet|huy|ghi)\b.*\b(don hang|hoa don|khuyen mai|khach hang|du lieu)\b/.test(folded);

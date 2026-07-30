@@ -739,6 +739,7 @@ body.ae-panel-open::before {
 .ae-panel-send-btn { flex: 1; }
 
 .ae-customer-create-panel { width: min(760px, calc(100vw - 32px)); max-height: min(86vh, 820px); }
+.ae-customer-mobile-title { display:none; }
 .ae-customer-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; padding:18px 20px; overflow-y:auto; }
 .ae-customer-field { display:flex; flex-direction:column; gap:6px; min-width:0; color:var(--ae-text); font-size:13px; font-weight:600; }
 .ae-customer-field input,.ae-customer-field select { width:100%; box-sizing:border-box; min-height:42px; padding:9px 11px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-weight:400; outline:none; }
@@ -748,7 +749,29 @@ body.ae-panel-open::before {
 .ae-customer-error { min-height:18px; color:#dc2626; font-size:13px; font-weight:600; }
 .ae-customer-review { display:flex; flex-direction:column; gap:4px; padding:12px; border:1px solid var(--ae-accent); border-radius:10px; background:var(--ae-accent-soft); color:var(--ae-text); }
 .ae-customer-back-btn { flex:0 0 auto; min-height:42px; padding:0 18px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; }
-@media (max-width:640px) { .ae-customer-create-panel { width:100%; max-height:92vh; } .ae-customer-form { grid-template-columns:1fr; padding:14px; } .ae-customer-full { grid-column:auto; } }
+@media (max-width:640px) {
+    .ae-customer-create-panel {
+        top: var(--header-height, 64px);
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: none;
+        border: 0;
+        border-radius: 0;
+        padding: 0 16px;
+        transform: none;
+    }
+    .ae-customer-create-panel.active { transform:none; }
+    .ae-customer-mobile-title {
+        display:block;
+        padding:14px 14px 8px;
+        color:var(--ae-text-muted);
+        font-size:15px;
+        font-weight:700;
+    }
+    .ae-customer-form { grid-template-columns:1fr; padding:8px 14px 14px; }
+    .ae-customer-full { grid-column:auto; }
+}
 
 /* ── Panel lập đơn nhanh trong khung chat ─────────────────────────────── */
 .ae-order-create-panel { width:min(720px,calc(100vw - 32px)); max-height:min(86vh,820px); }

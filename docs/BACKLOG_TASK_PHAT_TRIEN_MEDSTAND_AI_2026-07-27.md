@@ -117,50 +117,71 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả kiểm tra: `13/13 PASS`; cả 13 khách đại diện đều nằm trong scope tương ứng; 11 ca chéo miền không phát hiện rò rỉ (`0` leak). Sale chỉ có scope khách được giao; Manager chỉ nhận scope do ERP trả về.
   - Bằng chứng: kết quả chạy read-only từ `scripts/verify_uat007_customer_scope.js` trên DB `medtest`.
 
-- [ ] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `TODO`
+- [ ] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `IMPLEMENTED_PENDING_DEPLOYMENT`
   - Kiểm tra dữ liệu `SY_UserStoreHouseTbl` cho từng tài khoản và vai trò.
   - Nghiệm thu: mỗi tài khoản chỉ thấy tồn của các kho được cấp; có bảng mapping được business owner xác nhận.
+  - Business Owner xác nhận ngày 2026-07-29: UAT chỉ hiển thị ba kho chính `CTY / DL02 / DL03`; các kho phụ `LOI`, `DL01`, `KG MT`, `LOIMT`, `KG MN`, `LOIMN` phải được ẩn.
+  - Đã bổ sung bộ lọc allowlist trong các API sử dụng phạm vi kho; chờ triển khai lên DB `medtest` và chạy lại kiểm tra 13 tài khoản trước khi đánh dấu `DONE`.
+  - Bằng chứng và hướng xử lý: [UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md](UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md).
 
-- [ ] **UAT-009 — Chuẩn hóa dữ liệu mẫu theo tài khoản** · `P0` · `TODO`
+- [x] **UAT-009 — Chuẩn hóa dữ liệu mẫu theo tài khoản** · `P0` · `DONE`
   - Chọn khách hàng, sản phẩm, CTBH và tuyến mẫu có dữ liệu thật cho mỗi vùng/vai trò.
   - Không thay đổi dữ liệu khách hàng thật nếu chưa được phép.
   - Nghiệm thu: mỗi account có tối thiểu một bộ input chạy được các luồng thuộc quyền.
+  - Đã chuẩn bị bộ input và script read-only kiểm tra khách, sản phẩm, đơn mẫu và kho chính: [UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md](UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md).
+  - Kết quả: `13/13 PASS`; khách đại diện đúng scope, có dữ liệu giao dịch mẫu, 3 sản phẩm mẫu hoạt động và kho chính hiệu lực.
 
-- [ ] **UAT-010 — Kiểm tra độ mới và ngày chốt dữ liệu** · `P0` · `TODO`
+- [x] **UAT-010 — Kiểm tra độ mới và ngày chốt dữ liệu** · `P0` · `DONE`
   - Xác định `AsOfDate`, múi giờ và quy tắc lấy ngày hệ thống cho dashboard/API.
   - Nghiệm thu: dữ liệu không tính vượt ngày truy vấn; UI hiển thị rõ ngày dữ liệu được chốt.
+  - Kết quả: `13/13 PASS`; DB đúng `UTC+07:00`, không có bản ghi tương lai và không tài khoản nào trả dữ liệu sau ngày chốt `28/07/2026`.
+  - Bằng chứng: [UAT-010_DATA_FRESHNESS_VERIFICATION_2026-07-29.md](UAT-010_DATA_FRESHNESS_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat010_data_freshness.js`.
 
 ### Nhóm C — Kiểm thử runtime bắt buộc
 
-- [ ] **UAT-011 — Test gợi ý đơn hàng** · `P0` · `TODO`
+- [x] **UAT-011 — Test gợi ý đơn hàng** · `P0` · `DONE`
   - Test lịch sử mua, chu kỳ, mùa vụ, khuyến mãi, sản phẩm trọng tâm và tồn kho.
   - Nghiệm thu: kết quả có lý do hợp lệ, không lỗi 500, không gợi ý hàng hết hạn hoặc ngoài kho được cấp.
+  - Kết quả: `13/13 PASS`; mỗi tài khoản có 3 gợi ý, có lý do, không lỗi API, không hàng hết hạn và không kho ngoài allowlist.
+  - Bằng chứng: [UAT-011_ORDER_RECOMMENDATION_VERIFICATION_2026-07-29.md](UAT-011_ORDER_RECOMMENDATION_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat011_order_recommendations.js`.
 
-- [ ] **UAT-012 — Test tuyến và khách giảm mua** · `P0` · `TODO`
+- [x] **UAT-012 — Test tuyến và khách giảm mua** · `P0` · `DONE`
   - Test Top 5–8, ngưỡng 45 ngày, ngày báo động và phạm vi khách hàng.
   - Nghiệm thu: kết quả đúng rule đã công bố và không lọt khách ngoài quyền.
+  - Kết quả: `13/13 PASS`; Top 5/8 đúng thứ tự, 98 ca từ 45 ngày không mua, 13/13 ca báo động còn 3 ngày và `0` rò rỉ scope.
+  - Bằng chứng: [UAT-012_ROUTE_DECLINE_VERIFICATION_2026-07-29.md](UAT-012_ROUTE_DECLINE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat012_route_and_decline.js`.
 
-- [ ] **UAT-013 — Test chấm điểm khách hàng** · `P0` · `TODO`
+- [x] **UAT-013 — Test chấm điểm khách hàng** · `P0` · `DONE`
   - Test nhóm A/B/C, risk 45/90 ngày và xu hướng doanh số.
   - Nghiệm thu kỹ thuật: API/UI chạy ổn định và hiển thị đủ trường.
+  - Kết quả: `13/13 PASS`; khách đại diện trả đúng, `0` rò rỉ scope, `0` sai nhóm/risk/xu hướng, bộ lọc nhóm và rủi ro hoạt động đúng.
   - Lưu ý: công thức cuối cùng được nghiệm thu tại `CORE-006`.
+  - Bằng chứng: [UAT-013_CUSTOMER_SCORING_VERIFICATION_2026-07-29.md](UAT-013_CUSTOMER_SCORING_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat013_customer_scoring.js`.
 
-- [ ] **UAT-014 — Test tích lũy và upsell** · `P0` · `TODO`
+- [x] **UAT-014 — Test tích lũy và upsell** · `P0` · `DONE`
   - Test mốc đã đạt, mốc tiếp theo, số còn thiếu, phần trăm tiến độ và đề xuất bán thêm.
   - Nghiệm thu: kết quả đối soát đúng với dữ liệu hóa đơn/trả hàng mẫu.
+  - Kết quả: `13/13 PASS`; `0` scope leak, `0` sai mốc/còn thiếu/phần trăm, `0` lỗi API, upsell đủ lý do và tồn khả dụng.
+  - Bằng chứng: [UAT-014_LOYALTY_UPSELL_VERIFICATION_2026-07-29.md](UAT-014_LOYALTY_UPSELL_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat014_loyalty_upsell.js`.
 
-- [ ] **UAT-015 — Test tồn kho theo quyền** · `P0` · `TODO`
+- [x] **UAT-015 — Test tồn kho theo quyền** · `P0` · `DONE`
   - Test tồn vật lý, tồn khả dụng, lô hết hạn và phạm vi kho.
   - Nghiệm thu: số liệu khớp DB tại cùng thời điểm chốt và không lộ kho ngoài quyền.
+  - Kết quả sau cập nhật: `13/13 PASS`; `0` dòng ngoài scope, `0` dòng ngoài allowlist, công thức tồn và lô hết hạn đúng.
+  - Bằng chứng: [UAT-015_STOCK_SCOPE_VERIFICATION_2026-07-29.md](UAT-015_STOCK_SCOPE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat015_stock_scope.js`.
 
-- [ ] **UAT-016 — Test tra cứu sản phẩm và triệu chứng** · `P0` · `TODO`
+- [x] **UAT-016 — Test tra cứu sản phẩm và triệu chứng** · `P0` · `DONE`
   - Test tên, mã, giá, kiến thức sản phẩm, từ khóa/triệu chứng và disclaimer.
   - Nghiệm thu: không mô tả kết quả như chẩn đoán; trạng thái tồn kho phải được hiển thị trung thực.
+  - Kết quả: `13/13 PASS`; `0` lỗi API, `0` thiếu giá/disclaimer/lý do, trạng thái tồn và cảnh báo tham khảo hiển thị đúng.
+  - Bằng chứng: [UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md](UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat016_product_symptom_lookup.js`.
 
-- [ ] **UAT-017 — Test tạo khách hàng** · `P0` · `TODO`
+- [ ] **UAT-017 — Test tạo khách hàng** · `P0` · `BLOCKED_CONTRACT_MISMATCH`
   - Test validate, trùng số điện thoại/mã khách, phân quyền và kết quả trả về.
   - Chỉ sử dụng dữ liệu có tiền tố UAT được phép tạo.
   - Nghiệm thu: tạo đúng một bản ghi sau xác nhận; có thể truy vết người tạo.
+  - Kết quả rà soát read-only: có bước preview và endpoint ERP đúng, nhưng widget còn gắn nhãn SP legacy, gửi trường phân quyền từ client, sai giới hạn độ dài, thông báo nhầm “đã tạo khách” thay vì “chờ duyệt”, chưa có bằng chứng chống gửi lặp. Chưa tạo dữ liệu UAT; DB `medtest` không kết nối được tại thời điểm kiểm tra.
+  - Bằng chứng: [UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md](UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat017_customer_create.js`.
 
 - [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `TODO`
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
@@ -198,20 +219,29 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 **Thời gian mục tiêu:** 11/08–15/09/2026  
 **Gate hoàn thành:** `CORE_SALES_FLOW_READY`
 
-- [ ] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `TODO`
+- [x] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `CONTRACT_LOCKED_PENDING_ERP_CLARIFICATION`
   - Chốt trường bắt buộc, trường tùy chọn, validate, scope và response.
   - Nghiệm thu: có contract được frontend, n8n, SQL và business cùng sử dụng.
+  - Kết quả 29/07/2026: contract đã chốt, đủ điều kiện để `CORE-002` và `CORE-003` bắt đầu. Tài liệu: [CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md).
+  - **Phát hiện chặn cứng đã xử lý**: hai đường tạo khách ghi vào hai bảng khác nhau. UI gọi `API_KhachHang_Insert` → `AR_ObjectNewRequireTbl` (`StatusID = 0`, chờ duyệt), còn chat gọi `API_KhachHang_Insert_AI` → ghi thẳng `CF_ObjectTbl`, **bỏ qua chốt duyệt** cùng toàn bộ validate tỉnh/quận/phường, chuẩn hoá SĐT và chống trùng.
+  - **Phát hiện phân quyền**: `AR_GetObjectByUserFnc` lọc phạm vi khách hoàn toàn theo `ObjectGroupID`, **không dùng `BranchID`**. SP chat để mặc định `@ObjectGroupID = 'KH'` nên khách sale tạo ra sẽ nằm ngoài phạm vi của chính họ — kiểm chứng trên `medtest`: 8/9 tài khoản UAT thấy `0` khách nhóm này.
+  - Nhóm `KH` là dữ liệu nghiệp vụ sống của back-office (140 khách, tạo từ 2020, 19 khách có 192 hoá đơn) — **không dọn, không gán lại nhóm**.
+  - Sáu quyết định đã chốt: dùng lại SP của ERP theo đường duyệt; quy tắc chọn `ObjectGroupID` theo vai trò; ngày sinh cho bỏ trống → `1900-01-01`; dùng khung nhập liệu trong chat; trùng SĐT hiện thông tin khách nếu trong quyền; không đụng 140 bản ghi cũ.
+  - Phát sinh cần làm ở `CORE-002`: bổ sung hai API tra cứu `API_ObjectGroupByUser_AI` (nhóm đối tượng của người đăng nhập) và `API_EmployeeByManager_AI` (nhân viên dưới quyền manager).
+  - Còn chờ team ERP làm rõ (không chặn): mapping `@LoaiKhachHang` → cột `LoaiHopDong` và `@KenhBan` → cột `PhanLoaiKhach`; cơ chế chuyển `StatusID` từ `0` sang `6`.
 
-- [ ] **CORE-002 — Xây luồng thu thập thông tin tạo khách** · `P1` · `TODO`
-  - AI hỏi lần lượt các trường còn thiếu và cho phép sửa trước khi xác nhận.
+- [x] **CORE-002 — Xây luồng thu thập thông tin tạo khách** · `P1` · `DONE`
+  - Hiển thị khung nhập liệu ngay trong khung chat, điền sẵn các trường suy được từ tài khoản; cho phép sửa trước khi xác nhận.
   - Phụ thuộc: `CORE-001`.
-  - Nghiệm thu: câu tự nhiên hợp lệ dẫn đến bản xem trước đầy đủ, chưa ghi DB.
+  - Nghiệm thu: câu tự nhiên hợp lệ dẫn đến khung nhập liệu hiện trong chat với các trường suy được đã điền sẵn; người dùng sửa và xem lại trước khi xác nhận; chưa ghi DB.
+  - Kết quả 29/07/2026: Đã hoàn thành 100% renderer `chatbot-widget/js/chatbot-renderer-create-customer.js` (form 7 trường + cascade địa chỉ + validate + xem/sửa preview), đóng gói bundle `11.113` và n8n local 5678. Báo cáo chi tiết: [CORE-002_LUONG_THU_THAP_THONG_TIN_TAO_KHACH_2026-07-29.md](CORE-002_LUONG_THU_THAP_THONG_TIN_TAO_KHACH_2026-07-29.md).
 
-- [ ] **CORE-003 — Xây bước xác nhận và ghi khách hàng** · `P1` · `TODO`
+- [x] **CORE-003 — Xây bước xác nhận và ghi khách hàng** · `P1` · `DONE`
   - Chỉ gọi endpoint tạo thật sau xác nhận rõ ràng.
   - Bổ sung kiểm tra trùng, idempotency, audit và mã kết quả.
   - Phụ thuộc: `CORE-002`.
   - Nghiệm thu: hủy hoặc chưa xác nhận không ghi dữ liệu; xác nhận chỉ tạo một bản ghi.
+  - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp, Audit log và kết nối SP ERP `API_KhachHang_Insert` (`AR_ObjectNewRequireTbl`, `StatusID = 0`, chờ duyệt). Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
 
 - [ ] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `TODO`
   - Chốt customer, item list, số lượng, kho, bảng giá, CTBH và response giỏ hàng.
