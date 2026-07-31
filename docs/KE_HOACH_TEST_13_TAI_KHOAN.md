@@ -26,6 +26,24 @@
 
 Mỗi tài khoản chỉ được thấy khách, nhân viên, kho và doanh số thuộc phạm vi được phân quyền. Không dùng tài khoản Admin để thay thế bài kiểm thử phạm vi.
 
+### Phạm vi thực tế trên `medtest` — đo ngày 31/07/2026
+
+Tổng hệ thống: **49.559** khách. Dùng bảng này làm mốc đối chiếu khi chạy lại kiểm thử phạm vi.
+
+| Tài khoản | Khách nhìn thấy | Tài khoản | Khách nhìn thấy |
+|---|---:|---|---:|
+| `QLMN2` | 11.571 | `DANANGA.MED` | 397 |
+| `QLBH005.MED` | 9.118 | `BinhPhuocA` | 347 |
+| `QLBH010.MED` | 3.317 | `QLMD1` | 347 |
+| `QLBH013.MED` | 1.886 | `BACNINHA.MED` | 222 |
+| `QLBH016.MED` | 1.636 | `NAMDINHB.MED` | 146 |
+| `QLBH024.MED` | 449 | `HUEB.MED` | 102 |
+| | | `CanThoA` | 9 |
+
+> **Sửa ngày 31/07/2026.** Trước đó `QLMD1` và `QLBH024.MED` nhìn thấy **toàn bộ 49.559 khách** vì thiếu dòng trong `AR_OpListDetailTbl` — không phải quyền được cấp có chủ đích. Đã vá bằng `sql/Fix_UAT13_Manager_Scope_AI.sql`. Chi tiết ở mục `UAT-007` trong backlog.
+>
+> **Khi chạy lại kiểm thử phạm vi, phải kiểm cả tổng số khách mỗi tài khoản nhìn thấy**, không chỉ kiểm "có thấy khách đại diện không". Tiêu chí cũ không phát hiện được lỗi này: tài khoản thấy tất cả thì đương nhiên thấy khách đại diện của mình.
+
 ## 2. Cách chạy
 
 1. Điều phối viên xác nhận workflow mới đang Published/Active và chỉ một parser canonical được gọi.

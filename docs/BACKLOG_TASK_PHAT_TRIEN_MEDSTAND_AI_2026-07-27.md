@@ -116,6 +116,17 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 - Nghiệm thu: sale không xem được khách ngoài quyền; manager chỉ xem đúng phạm vi được cấp.
   - Kết quả kiểm tra: `13/13 PASS`; cả 13 khách đại diện đều nằm trong scope tương ứng; 11 ca chéo miền không phát hiện rò rỉ (`0` leak). Sale chỉ có scope khách được giao; Manager chỉ nhận scope do ERP trả về.
   - Bằng chứng: kết quả chạy read-only từ `scripts/verify_uat007_customer_scope.js` trên DB `medtest`.
+  - **[Bổ sung 31/07/2026] Lần PASS trên đã bỏ lọt 2 tài khoản quản lý nhìn thấy TOÀN BỘ 49.559 khách.** Không phải kết quả cũ sai — nó đúng với những gì nó đo. Bài test kiểm hai điều: (a) tài khoản có thấy khách đại diện của mình không, (b) có rò rỉ giữa các cặp chéo miền không. `QLMD1` và `QLBH024.MED` **thoả cả hai** một cách hình thức: thấy tất cả thì đương nhiên thấy khách của mình, và các cặp đối chiếu không chạm tới hai tài khoản này. Tiêu chí còn thiếu là **"phạm vi phải bị chặn"** — không ai đo tổng số khách mỗi tài khoản nhìn thấy.
+  - Nguyên nhân gốc: cả hai có `SY_User.Manager = 1` nhưng **0 dòng trong `AR_OpListDetailTbl`**. `AR_GetObjectByUserFnc` gặp "là quản lý nhưng không có trong sơ đồ tổ chức" thì rẽ vào nhánh ban lãnh đạo và trả về tất cả — hệ thống hiểu "chưa khai giới hạn" thành "không giới hạn".
+  - Đã vá bằng `sql/Fix_UAT13_Manager_Scope_AI.sql` (dựng lại đúng khuôn mẫu của `QLBH013.MED`):
+
+    | Tài khoản | Trước | Sau | Gắn vào nút | Nhân viên dưới quyền |
+    |---|---:|---:|---|---|
+    | `QLMD1` | 49.559 | **347** | `QLKV09` — Quản lý KV Sài Gòn 02 | `TDV_BINHPHUOCA` (nhóm `SGNB`, `SGQ07`) |
+    | `QLBH024.MED` | 49.559 | **449** | `QLKV11` — Quản lý KV Miền Tây 1 | `MED0148` / AnGiangA (nhóm `AGA`) |
+
+    Sau khi vá: 13/13 tài khoản có phạm vi bị chặn (9 → 11.571 khách), 13/13 vẫn nhìn thấy khách đại diện, 11 tài khoản còn lại không đổi một dòng nào. Hai API CORE-001 trước đây trả `FORBIDDEN` cho hai tài khoản này giờ trả đúng nhóm và đúng nhân viên dưới quyền.
+  - **Cảnh báo cho lần chạy lại UAT-007**: phải bổ sung tiêu chí *"không tài khoản nào nhìn thấy 100% khách hàng"*, nếu không lỗi loại này sẽ lại lọt lưới. Ngoài 13 tài khoản UAT, `TRUNGBM` (`NVVP003`) hiện vẫn thấy đủ 49.559 khách vì cùng lỗi — cố ý chưa xử vì nằm ngoài phạm vi UAT và cần khách xác nhận anh ta quản khu vực nào.
 
 - [ ] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `IMPLEMENTED_PENDING_DEPLOYMENT`
   - Kiểm tra dữ liệu `SY_UserStoreHouseTbl` cho từng tài khoản và vai trò.

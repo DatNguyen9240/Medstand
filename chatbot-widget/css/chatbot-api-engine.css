@@ -802,6 +802,7 @@ body.ae-panel-open::before {
 .ae-order-row input { width:100%; box-sizing:border-box; min-height:42px; padding:9px 11px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); font:inherit; font-weight:400; outline:none; }
 .ae-order-row input:focus { border-color:var(--ae-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ae-accent) 16%,transparent); }
 .ae-order-row.has-product .ae-order-prod { border-color:var(--ae-accent); }
+.ae-order-promotion { grid-column:1 / -1; color:#16a34a; font-size:12px; font-weight:600; line-height:1.35; padding:0 2px; }
 .ae-order-del { min-height:42px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; opacity:.7; }
 .ae-order-del:hover { border-color:#dc2626; color:#dc2626; opacity:1; }
 .ae-order-total { text-align:right; font-size:14px; font-weight:700; color:var(--ae-text); }

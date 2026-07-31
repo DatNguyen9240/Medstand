@@ -3389,11 +3389,27 @@
             var sum = 0;
             itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
                 var p = row._product;
-                if (!p) return;
+                var promoEl = row.querySelector('.ae-order-promotion');
+                if (!p) {
+                    if (promoEl) { promoEl.textContent = ''; promoEl.hidden = true; }
+                    return;
+                }
                 var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
                 var promotion = productPromotion(p, qty);
                 var ck = promotion.discountPercent;
                 row.querySelector('.ae-order-ck').value = ck;
+                if (promoEl) {
+                    if (promotion.giftQuantity > 0) {
+                        promoEl.textContent = '🎁 Hàng tặng: ' + promotion.giftQuantity + ' sản phẩm (giá 0đ)';
+                        promoEl.hidden = false;
+                    } else if (promotion.discountPercent > 0) {
+                        promoEl.textContent = '🏷️ Tự động chiết khấu ' + promotion.discountPercent + '% do số lượng dưới mốc';
+                        promoEl.hidden = false;
+                    } else {
+                        promoEl.textContent = '';
+                        promoEl.hidden = true;
+                    }
+                }
                 sum += productPrice(p) * qty * (1 - Math.min(Math.max(ck, 0), 100) / 100);
             });
             totalEl.textContent = 'Tạm tính: ' + money(sum);
@@ -3407,7 +3423,8 @@
                 '<span class="ae-order-drop" hidden></span></span>',
                 '<input class="ae-order-qty" type="number" min="1" step="1" value="1" title="Số lượng">',
                 '<input class="ae-order-ck" type="number" min="0" max="100" step="0.1" value="0" title="Chiết khấu %">',
-                '<button type="button" class="ae-order-del" title="Xóa dòng">✕</button>'
+                '<button type="button" class="ae-order-del" title="Xóa dòng">✕</button>',
+                '<small class="ae-order-promotion" hidden></small>'
             ].join('');
             itemsEl.appendChild(row);
 
