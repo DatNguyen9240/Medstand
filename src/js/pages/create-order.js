@@ -1,40 +1,13 @@
 // -- Helpers ------------------------------------------------------------------
 function genUUID() {
-  return 'AUTO_GEN';
+  var randomPart = (window.crypto && window.crypto.randomUUID)
+    ? window.crypto.randomUUID()
+    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+  return 'UATORD-' + randomPart;
 }
 function todayStr() {
   var d = new Date();
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-}
-
-// -- Promotion Helpers --------------------------------------------------------
-function parsePromotions(productName) {
-  var promos = [];
-  var regex = /(\d+)\s*\+\s*(\d+)/g;
-  var match;
-  while ((match = regex.exec(productName)) !== null) {
-    promos.push({
-      buy: parseInt(match[1], 10),
-      get: parseInt(match[2], 10)
-    });
-  }
-  promos.sort(function (a, b) { return b.buy - a.buy; });
-  return promos;
-}
-
-// Greedy promotion allocator
-function calculateFreeProducts(qty, promos) {
-  var freeQty = 0;
-  var tempQty = qty;
-  for (var i = 0; i < promos.length; i++) {
-    var promo = promos[i];
-    if (promo.buy > 0) {
-      var times = Math.floor(tempQty / promo.buy);
-      freeQty += times * promo.get;
-      tempQty = tempQty % promo.buy;
-    }
-  }
-  return freeQty;
 }
 
 function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
@@ -60,10 +33,11 @@ function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
   } else {
     appendProductRow({
       ItemID: itemId,
-      ItemName: cleanName + ' (KM)',
+      ItemName: cleanName,
       UnitPrice: 0,
       Quantity: freeQty,
       DiscountPercent: 0,
+      PromotionLabel: 'Hàng tặng',
       parentRowId: parentRowId
     });
   }
@@ -75,13 +49,46 @@ var _productsCache = null;
 var _branchLoadError = false;
 var _createOrderActive = true;
 var _orderSubmitIdempotencyKey = '';
-var _draftSubmitIdempotencyKey = '';
+var _orderSubmitFingerprint = '';
+var _orderPendingDocumentId = '';
 
 function newIdempotencyKey(prefix) {
   var randomPart = (window.crypto && window.crypto.randomUUID)
     ? window.crypto.randomUUID()
     : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
   return prefix + '-' + randomPart;
+}
+
+function escapeAttribute(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function mutationFingerprint(payload) {
+  return JSON.stringify(payload || {});
+}
+
+function getOrderSubmitKey(payload) {
+  var fingerprint = mutationFingerprint(payload);
+  if (_orderSubmitFingerprint && _orderSubmitFingerprint !== fingerprint) {
+    _orderPendingDocumentId = genUUID();
+    payload.DocumentID = _orderPendingDocumentId;
+    fingerprint = mutationFingerprint(payload);
+  }
+  if (!_orderSubmitIdempotencyKey || _orderSubmitFingerprint !== fingerprint) {
+    _orderSubmitIdempotencyKey = newIdempotencyKey('order-create');
+    _orderSubmitFingerprint = fingerprint;
+  }
+  return _orderSubmitIdempotencyKey;
+}
+
+function normalizeProductStock(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  var stock = Number(value);
+  return Number.isFinite(stock) ? stock : null;
 }
 
 function destroyProductPicker() {
@@ -211,6 +218,7 @@ $(document).on('change', '#fs-orderDate', function() {
 
 // -- Sự kiện khi chọn khách hàng -> Auto-fill ---------------------------------
 orderForm.onListChange('customer', function(val) {
+  _productsCache = null;
   var cust = _customersCache.find(function(r) { return r.ObjectID === val; });
   if (cust) {
     _selectedLocationID = cust.LocationID || '';
@@ -236,7 +244,7 @@ orderForm.onListChange('customer', function(val) {
 function loadProducts(cb) {
   if (_productsCache) return cb(_productsCache);
   Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
-    q: JSON.stringify({ User: user.UserName || '', ItemID: '', SearchText: '' })
+    q: JSON.stringify({ Username: user.UserName || '', ObjectID: orderForm.getValue('customer') || '', ItemID: '', SearchText: '' })
   }).then(function (res) {
     _productsCache = (res.data || res).records || res.data || res || [];
     cb(_productsCache);
@@ -245,13 +253,15 @@ function loadProducts(cb) {
 
 function buildProductOptions(items) {
   return items.map(function (item) {
-    return {
+    var option = {
       value: item.ItemID || '',
       price: item.UnitPrice || item.Price || 0,
       name: item.ItemName || item.ItemID || '',
+      note: item.GhiChu || '',
       unit: item.UnitName || item.Unit || item.UnitID || '',
       stock: item.QuantityinStock !== undefined ? item.QuantityinStock : (item.TonKho !== undefined ? item.TonKho : '')
     };
+    return option;
   });
 }
 
@@ -277,7 +287,7 @@ function openProductPicker(rowId) {
       '<ul class="select-modal-list product-picker-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
       options.map(function (o, optionIndex) {
         var sel = currentVal === o.value ? ' class="selected"' : '';
-        return '<li data-value="' + o.value + '" data-price="' + o.price + '" data-name="' + o.name + '"' + sel + (optionIndex >= 30 ? ' style="display:none"' : '') + ' title="' + o.name + '">' +
+        return '<li data-value="' + escapeAttribute(o.value) + '" data-price="' + escapeAttribute(o.price) + '" data-stock="' + escapeAttribute(o.stock) + '" data-note="' + encodeURIComponent(o.note || '') + '" data-name="' + escapeAttribute(o.name) + '"' + sel + (optionIndex >= 30 ? ' style="display:none"' : '') + ' title="' + escapeAttribute(o.name) + '">' +
           '<span class="product-option-main"><strong>' + o.value + '</strong><span class="product-option-name">' + o.name + '</span></span>' +
           '<span class="product-option-meta"><span>' + Format.currency(o.price) + '</span>' +
           (o.stock !== '' ? '<span>Tồn: ' + o.stock + '</span>' : '') +
@@ -308,19 +318,15 @@ function openProductPicker(rowId) {
     $overlay.find('#pp-list li').on('click', function () {
       var val = $(this).attr('data-value');
       var price = $(this).attr('data-price');
+      var stock = $(this).attr('data-stock');
+      var note = decodeURIComponent($(this).attr('data-note') || '');
       var name = $(this).attr('data-name');
-      $pickerContainer.attr('data-value', val).attr('data-price', price).attr('data-name', name);
+      $pickerContainer.attr('data-value', val).attr('data-price', price).attr('data-stock', stock).attr('data-note', encodeURIComponent(note)).attr('data-name', name);
       $pickerText.text(name);
       $pickerContainer.addClass('has-value');
       $('#price_' + rowId).val(price);
 
-      // Auto extract discount from product name
-      var autoDiscount = 0;
-      var ckMatch = name.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
-      if (ckMatch) {
-          autoDiscount = parseFloat(ckMatch[1]);
-      }
-      $('#discount_' + rowId).val(autoDiscount);
+      $('#discount_' + rowId).val(0);
 
       destroyProductPicker();
       calculateRowTotal(rowId);
@@ -334,8 +340,16 @@ function calculateRowTotal(rowId) {
   if (!itemId) return null;
   var price = parseFloat($('#price_' + rowId).val() || 0);
   var name = $pickerContainer.attr('data-name') || '';
-  var qty = parseInt($('#qty_' + rowId).val() || 0);
+  var note = decodeURIComponent($pickerContainer.attr('data-note') || '');
+  var qtyValue = Number($('#qty_' + rowId).val() || 0);
+  var qty = Number.isInteger(qtyValue) ? qtyValue : 0;
   var discount = parseFloat($('#discount_' + rowId).val() || 0);
+  var promotionResult = null;
+  if (price > 0 && itemId && qty > 0 && window.MedstandPromotion) {
+    promotionResult = window.MedstandPromotion.calculate(note, qty);
+    discount = promotionResult.discountPercent;
+    $('#discount_' + rowId).val(discount);
+  }
   var subtotal = price * qty;
   var total = subtotal - subtotal * (discount / 100);
   $('#total_' + rowId).val(Format.currency(total));
@@ -344,14 +358,17 @@ function calculateRowTotal(rowId) {
   var $promoSuggest = $('#promoSuggest_' + rowId);
   if ($promoSuggest.length) {
     if (price > 0 && name && qty > 0) {
-      var promos = parsePromotions(name);
-      var freeQty = calculateFreeProducts(qty, promos);
+      var freeQty = promotionResult ? promotionResult.giftQuantity : 0;
       if (freeQty > 0) {
         autoApplyPromotion(rowId, itemId, name, freeQty);
-        $promoSuggest.html('🎁 Đã tự động thêm ' + freeQty + ' sản phẩm khuyến mãi (Giá 0đ).').show();
+        $promoSuggest.html('🎁 Hàng tặng: ' + freeQty + ' sản phẩm (giá 0đ).').show();
       } else {
         autoApplyPromotion(rowId, itemId, name, 0);
-        $promoSuggest.hide().html('');
+        if (promotionResult && promotionResult.discountPercent > 0) {
+          $promoSuggest.html('🏷️ Tự động áp dụng chiết khấu ' + promotionResult.discountPercent + '% do số lượng dưới mốc.').show();
+        } else {
+          $promoSuggest.hide().html('');
+        }
       }
     } else if (price > 0) {
       autoApplyPromotion(rowId, itemId, name, 0);
@@ -360,7 +377,16 @@ function calculateRowTotal(rowId) {
   }
 
   updateLiveTotal();
-  return { itemId: itemId, name: name, price: price, qty: qty, discount: discount, finalTotal: total };
+  return {
+    itemId: itemId,
+    name: name,
+    price: price,
+    qty: qty,
+    discount: discount,
+    stock: normalizeProductStock($pickerContainer.attr('data-stock')),
+    isPromo: $('#row_' + rowId).hasClass('promo-row'),
+    finalTotal: total
+  };
 }
 
 function updateLiveTotal() {
@@ -388,6 +414,35 @@ function collectProducts() {
   return items;
 }
 
+function validateProductRows() {
+  var error = '';
+  $('#dynamicProductRowsContainer .add-product-row').each(function () {
+    if (error) return;
+    var rowId = ($(this).attr('id') || '').split('_')[1];
+    if (!rowId) return;
+    var itemId = $('#productPickerContainer_' + rowId).attr('data-value') || '';
+    if (!itemId) return;
+    var qty = Number($('#qty_' + rowId).val());
+    var stock = normalizeProductStock($('#productPickerContainer_' + rowId).attr('data-stock'));
+    var isPromo = $(this).hasClass('promo-row');
+    if (!Number.isInteger(qty) || qty <= 0) {
+      error = 'Số lượng của sản phẩm ' + itemId + ' phải là số nguyên lớn hơn 0.';
+      return;
+    }
+    var giftQty = 0;
+    if (!isPromo) {
+      $('#dynamicProductRowsContainer .add-product-row[data-parent-row-id="' + rowId + '"]').each(function () {
+        var giftRowId = ($(this).attr('id') || '').split('_')[1];
+        giftQty += Number($('#qty_' + giftRowId).val()) || 0;
+      });
+    }
+    if (!isPromo && stock !== null && qty + giftQty > stock) {
+      error = 'Tổng hàng bán và hàng tặng của sản phẩm ' + itemId + ' vượt tồn khả dụng (' + stock + ').';
+    }
+  });
+  return error;
+}
+
 function appendProductRow(prefill) {
   rowCounter++;
   var rowId = rowCounter;
@@ -402,10 +457,11 @@ function appendProductRow(prefill) {
 
   var parentAttr = p.parentRowId ? ' data-parent-row-id="' + p.parentRowId + '"' : '';
   var removeBtn = isPromo ? '' : '<button type="button" class="btn-remove-row" onclick="removeProductRow(' + rowId + ')">🗑️</button>';
+  var initialStock = p.QuantityinStock !== undefined ? p.QuantityinStock : (p.TonKho !== undefined ? p.TonKho : '');
   var rowHtml = '<div class="responsive-grid add-product-row' + (isPromo ? ' promo-row' : '') + '" id="row_' + rowId + '"' + parentAttr + ' style="margin-bottom:4px;padding-bottom:8px;border-bottom:1px solid var(--color-border)">' +
     '<div style="display:flex;flex-direction:column;min-width:0;">' +
-      '<div id="productPickerContainer_' + rowId + '" class="form-group' + (p.ItemID ? ' has-value' : '') + '" style="cursor:pointer" data-value="' + (p.ItemID || '') + '" data-price="' + (p.UnitPrice || 0) + '" data-name="' + (p.ItemName || '') + '">' + productSelect + '</div>' +
-      '<div id="promoSuggest_' + rowId + '" class="promo-suggest" style="font-size:0.8rem;color:#16a34a;margin-top:2px;font-weight:600;display:none;"></div>' +
+      '<div id="productPickerContainer_' + rowId + '" class="form-group' + (p.ItemID ? ' has-value' : '') + '" style="cursor:pointer" data-value="' + escapeAttribute(p.ItemID || '') + '" data-price="' + escapeAttribute(p.UnitPrice || 0) + '" data-stock="' + escapeAttribute(initialStock) + '" data-note="' + encodeURIComponent(p.GhiChu || '') + '" data-name="' + escapeAttribute(p.ItemName || '') + '">' + productSelect + '</div>' +
+      '<div id="promoSuggest_' + rowId + '" class="promo-suggest" style="font-size:0.8rem;color:#16a34a;margin-top:2px;font-weight:600;' + (p.PromotionLabel ? '' : 'display:none;') + '">' + (p.PromotionLabel || '') + '</div>' +
     '</div>' +
     qtyField +
     priceField +
@@ -415,6 +471,7 @@ function appendProductRow(prefill) {
     '</div>';
 
   $('#dynamicProductRowsContainer').prepend(rowHtml);
+  $('#qty_' + rowId).attr({ min: '1', step: '1', inputmode: 'numeric' });
 
   // Bind click for product picker
   $('#productPickerContainer_' + rowId).on('click', function () {
@@ -439,6 +496,7 @@ function removeProductRow(rowId) {
 // -- Validate & build payload ----------------------------------------------
 function validateAndBuildPayload() {
   var v = orderForm.getValues();
+  var productError = validateProductRows();
   var productRows = collectProducts();
 
   if (_branchLoadError) {
@@ -452,6 +510,7 @@ function validateAndBuildPayload() {
   if (!v.ward) { Alert.warning('Vui lòng chọn phường/xã.'); return null; }
   if (!v.route) { Alert.warning('Vui lòng chọn tuyến thứ.'); return null; }
   if (!v.phone) { Alert.warning('Vui lòng nhập số điện thoại.'); return null; }
+  if (productError) { Alert.warning(productError); return null; }
   if (productRows.length === 0) { Alert.warning('Vui lòng thêm ít nhất 1 sản phẩm.'); return null; }
 
   var itemList = productRows.map(function (p) {
@@ -465,27 +524,15 @@ function validateAndBuildPayload() {
     };
   });
 
-  var docId = v.orderId || genUUID();
+  var docId = v.orderId || _orderPendingDocumentId || genUUID();
+  _orderPendingDocumentId = docId;
   return {
     docId: docId,
     payload: {
-      User: user.UserName || '',
+      Username: user.UserName || '',
       DocumentID: docId,
-      DocumentDate: v.orderDate,
-      BranchID: v.branch,
-      ManagerID: user.ManagerID || 'ADMIN',
-      EmployeeID: user.EmployeeID || 'ADMIN',
       ObjectID: v.customer,
-      Memo: v.memo || '',
-      Notes: v.notes || '',
-      ChanhXe: v.phone || '',
-      DeliverDate: v.orderDate,
-      XaPhuong: v.ward || '',
-      ThuDiTuyen: v.route || '',
-      StatusID: 0,
-      ItemList: JSON.stringify(itemList),
-      SYSManagerID: user.ManagerID || 'ADMIN',
-      SYSEmployeeID: user.EmployeeID || 'ADMIN'
+      ItemList: JSON.stringify(itemList)
     }
   };
 }
@@ -496,6 +543,9 @@ function resetForm() {
   orderForm.setValue('orderDate', todayStr());
   appendProductRow();
   updateLiveTotal();
+  _orderSubmitIdempotencyKey = '';
+  _orderSubmitFingerprint = '';
+  _orderPendingDocumentId = '';
 }
 
 // -- Submit Order -------------------------------------------------------------
@@ -506,56 +556,35 @@ $('#btnSubmitOrder').on('click', function () {
   var $btn = $(this);
   $btn.prop('disabled', true).text('Đang xử lý...');
 
-  if (!_orderSubmitIdempotencyKey) _orderSubmitIdempotencyKey = newIdempotencyKey('order-create');
-  var submitKey = _orderSubmitIdempotencyKey;
+  var submitKey = getOrderSubmitKey(data.payload);
+  var submitSucceeded = false;
   Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload, { idempotencyKey: submitKey }).then(function (res) {
     var d = res.data || res;
     var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
     var msg = record && record.Msg ? record.Msg : '';
-    var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
-    if (msgType == 1) { Alert.error(msg || 'Có lỗi xảy ra.'); return; }
-    Alert.success(msg || 'Tạo đơn hàng thành công!');
+    var msgType = record && record.MsgType !== undefined ? Number(record.MsgType) : NaN;
+    var responseDocumentId = record && record.DocumentID != null ? String(record.DocumentID).trim() : '';
+    if (msgType !== 5 || !responseDocumentId) {
+      Alert.error(msg || 'Phản hồi tạo đơn hàng không hợp lệ. Vui lòng thử lại.');
+      return;
+    }
+    submitSucceeded = true;
+    Alert.success((msg || 'Tạo đơn hàng thành công!') + ' Mã đơn: ' + responseDocumentId);
     resetForm();
   }).catch(function (err) {
     Alert.error(err.message || 'Có lỗi xảy ra.');
   }).finally(function () {
-    if (_orderSubmitIdempotencyKey === submitKey) _orderSubmitIdempotencyKey = '';
+    if (submitSucceeded && _orderSubmitIdempotencyKey === submitKey) {
+      _orderSubmitIdempotencyKey = '';
+      _orderSubmitFingerprint = '';
+    }
     $btn.prop('disabled', false).text('TẠO ĐƠN HÀNG');
   });
 });
 
 // -- Save Draft ---------------------------------------------------------------
 $('#btnDraftOrder').on('click', function () {
-  var data = validateAndBuildPayload();
-  if (!data) return;
-
-  var $btn = $(this);
-  $btn.prop('disabled', true).text('Đang xử lý...');
-
-  // Bước 1: Tạo đơn hàng
-  if (!_draftSubmitIdempotencyKey) _draftSubmitIdempotencyKey = newIdempotencyKey('order-draft');
-  var draftKey = _draftSubmitIdempotencyKey;
-  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload, { idempotencyKey: draftKey }).then(function (res) {
-    var d = res.data || res;
-    var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
-    var msg = record && record.Msg ? record.Msg : '';
-    var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
-    if (msgType == 1) { Alert.error(msg || 'Có lỗi xảy ra.'); return; }
-
-    // Bước 2: Chuyển thành đơn nháp (StatusID = -1)
-    return Http.post(API_CONFIG.ENDPOINTS.ORDERS.SAVE_DRAFT, {
-      DocumentID: data.docId
-    });
-  }).then(function (res) {
-    if (!res) return; // bỏ lỗi ở bước 1
-    Alert.success('Lưu đơn nháp thành công!');
-    resetForm();
-  }).catch(function (err) {
-    Alert.error(err.message || 'Có lỗi xảy ra.');
-  }).finally(function () {
-    if (_draftSubmitIdempotencyKey === draftKey) _draftSubmitIdempotencyKey = '';
-    $btn.prop('disabled', false).text('LƯU NHÁP');
-  });
+  Alert.warning('Lưu nháp chưa hỗ trợ trên endpoint AI. Vui lòng tạo đơn sau khi kiểm tra đầy đủ thông tin.');
 });
 
 // Obsolete promo click handler replaced with reactive auto-promotion
@@ -614,6 +643,9 @@ setTimeout(function() {
       // Khôi phục danh sách sản phẩm
       if (params['@ItemList']) {
           var items = typeof params['@ItemList'] === 'string' ? JSON.parse(params['@ItemList']) : params['@ItemList'];
+          items = (items || []).filter(function (item) {
+              return item.LineType !== 'promotion';
+          });
           if (items && items.length > 0) {
               // Clear empty row
               $('#dynamicProductRowsContainer').html('');
@@ -649,25 +681,6 @@ setTimeout(function() {
                         var realPrice = match.UnitPrice || match.Price || 0;
                         var targetRId = idx + 1;
                         
-                         // Extract Discount (Chiết khấu)
-                         var autoDiscount = 0;
-                         if (it.DiscountPercent !== undefined && it.DiscountPercent !== null && it.DiscountPercent !== '' && parseFloat(it.DiscountPercent) > 0) {
-                             autoDiscount = parseFloat(it.DiscountPercent);
-                         } else if (it.discount !== undefined && it.discount !== null && it.discount !== '' && parseFloat(it.discount) > 0) {
-                             autoDiscount = parseFloat(it.discount);
-                         } else {
-                             var chatbotString = it.ItemName || it.ItemID || '';
-                             var ckMatch = chatbotString.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
-                             if (ckMatch) {
-                                 autoDiscount = parseFloat(ckMatch[1]);
-                             } else {
-                                 var realCkMatch = realName.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
-                                 if (realCkMatch) {
-                                     autoDiscount = parseFloat(realCkMatch[1]);
-                                 }
-                             }
-                         }
-
                         // Nhận diện chatbotPrice để giữ giá 0đ của chatbot nếu có
                         var chatbotPrice = it.Price !== undefined ? it.Price : (it.UnitPrice !== undefined ? it.UnitPrice : null);
                         if (chatbotPrice !== null && parseFloat(chatbotPrice) === 0) {
@@ -675,16 +688,12 @@ setTimeout(function() {
                         }
 
                         var $p = $('#productPickerContainer_' + targetRId);
-                        $p.attr('data-value', match.ItemID).attr('data-name', realName).attr('data-price', realPrice).addClass('has-value');
+                        var realStock = match.QuantityinStock !== undefined ? match.QuantityinStock : (match.TonKho !== undefined ? match.TonKho : '');
+                         $p.attr('data-value', match.ItemID).attr('data-name', realName).attr('data-price', realPrice).attr('data-stock', realStock).attr('data-note', encodeURIComponent(match.GhiChu || '')).addClass('has-value');
                         $p.find('.filter-value-text').text(realName);
                         $('#price_' + targetRId).val(realPrice);
                         
-                        // Set auto discount if detected
-                        if (autoDiscount > 0) {
-                            $('#discount_' + targetRId).val(autoDiscount);
-                        }
-                        
-                        calculateRowTotal(targetRId);
+                         calculateRowTotal(targetRId);
                      }
                   });
               });

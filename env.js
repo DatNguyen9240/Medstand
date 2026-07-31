@@ -51,7 +51,7 @@ window.API_CONFIG = {
         },
         ORDERS: {
             LIST: '/api/API_DonHang_AI',
-            CREATE: '/api/API_DonHang_Insert',
+            CREATE: '/api/API_DonHangChiTiet_Insert_AI',
             UPDATE: '/api/API_DonHang_Update',
             DELETE: '/api/API_DonHang_Delete',
             DETAIL: '/api/API_DonHangChiTiet',
@@ -84,7 +84,7 @@ window.API_CONFIG = {
         FILTER: {
             BRANCHES: '/api/API_ChiNhanhList',
             CUSTOMERS: '/api/API_KhachHangList',
-            PRODUCTS: '/api/API_HangHoaList',
+            PRODUCTS: '/api/API_HangHoaList_AI',
             STATUSES: '/api/API_OrderStatusList',
             PROVINCES: '/api/API_TinhThanh',
             DISTRICTS: '/api/API_QuanHuyen',

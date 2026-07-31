@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
 
-const APP_VERSION = '11.116';
+const APP_VERSION = '11.120';
 
 function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5) {
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -341,6 +341,7 @@ var _dec = function(b64) {
     // ─── 1.4 ĐÓNG GÓI CHATBOT WIDGET UI SCRIPTS ───
     console.log('\nĐang tiến hành đóng gói các UI script bổ trợ của Chatbot...');
     const chatbotUIScripts = [
+        'src/js/utils/promotion.js',
         'chatbot-widget/js/chatbot-suggestions.js',
         'chatbot-widget/js/chatbot-api-engine.js',
         'chatbot-widget/js/chatbot.js',
@@ -557,6 +558,13 @@ var _dec = function(b64) {
             content = content.replace(
                 /src=["'](?:\.\.\/)?src\/js\/(?:utils\/theme\.js|dist\/theme\.min\.js)(?:\?v=[\d.]+)?["']/gi,
                 `src="../src/js/dist/theme.min.js?v=${APP_VERSION}"`
+            );
+
+            // Cache-bust auth bundle as well. Without a version, the service worker can keep
+            // an old SPA fallback response for this URL after an interrupted build.
+            content = content.replace(
+                /src=["'](?:\.\.\/)?src\/js\/dist\/auth\.bundle\.min\.js(?:\?v=[\d.]+)?["']/gi,
+                `src="../src/js/dist/auth.bundle.min.js?v=${APP_VERSION}"`
             );
             
             fs.writeFileSync(filePath, content, 'utf-8');

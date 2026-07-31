@@ -1,6 +1,15 @@
 /* TASK-P0-02
    Adds authorization metadata without changing stored-procedure data logic.
-   Run in UAT first. The transaction rolls back automatically on any error. */
+   Run in UAT first. The transaction rolls back automatically on any error.
+
+   [2026-07-31] Danh sách trắng dưới đây VIẾT TAY, nên mọi API chỉ-đọc mới sinh
+   ra đều im lặng kẹt ở DENY cho tới khi có người thêm tên nó vào. Đã có
+   sql/System - API_Capability_AutoGrant_AI.sql để tự tìm và cấp cho những API
+   như vậy: nó chứng minh procedure không ghi bảng nào bằng
+   sys.dm_sql_referenced_entities, không có SQL động, và có tham số phân quyền
+   do server điền. Chạy nó SAU script này mỗi lần bootstrap sinh procedure mới.
+   Script này vẫn là nơi chốt các quyết định của con người (đặc biệt là nhóm
+   MUTATION, thứ auto-grant không bao giờ tự cấp). */
 SET XACT_ABORT ON;
 BEGIN TRY
     BEGIN TRANSACTION;
@@ -46,9 +55,23 @@ BEGIN TRY
             ''@kiem_tra_khao_sat_ngay'', ''@lich_su_khao_sat'', ''@thong_bao'',
             ''@tim_san_pham_theo_trieu_chung'',
             /* CORE-001 (2026-07-29): hai API tra cứu phục vụ khung tạo khách hàng
-               trong chat. Bắt buộc có mặt ở đây, nếu không lần chạy lại nào của
-               script này cũng đặt chúng về DENY do nhánh mặc định phía trên. */
-            ''@object_group_by_user'', ''@employee_by_manager''
+               trong chat.
+
+               [Sửa 2026-07-31] Bản ghi chú trước ở đây nói rằng thiếu tên trong
+               danh sách này thì mỗi lần chạy lại script sẽ đẩy chúng về DENY.
+               Điều đó SAI: nhánh mặc định phía trên chỉ chạm vào dòng có
+               OperationType IS NULL, nên dòng đã là READ giữ nguyên qua mọi lần
+               chạy lại. Rủi ro thật nằm ở chỗ khác — API MỚI do
+               API_Metadata_AutoBootstrap_AI sinh ra vào đây với OperationType
+               NULL, bị hạ xuống DENY, rồi KẸT Ở ĐÓ VĨNH VIỄN cho tới khi có
+               người nhớ ra phải gõ tên nó vào danh sách này. Đó chính là chuyện
+               đã xảy ra với @hang_hoa_list. */
+            ''@object_group_by_user'', ''@employee_by_manager'',
+            /* Danh mục hàng hóa dành riêng cho luồng lập đơn qua chat, tạo
+               2026-07-31. Chỉ đọc, và tự chặn phạm vi ngay đầu procedure bằng
+               AR_GetObjectByUserFnc(@Username) nên khách ngoài quyền không tra
+               được. @Username đã là IsSystemParam nên client không khai tay được. */
+            ''@hang_hoa_list''
         );
 
         UPDATE dbo.API_Definition

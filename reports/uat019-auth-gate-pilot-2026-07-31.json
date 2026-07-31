@@ -1,0 +1,11 @@
+{
+  "suite": "anonymous-auth-gate",
+  "endpoint": "https://medtest.bms7.net/api/gateway",
+  "transport": "gateway",
+  "pass": true,
+  "httpStatus": 401,
+  "latencyMs": 115,
+  "observedCode": "AUTH_REQUIRED",
+  "expected": "HTTP 401/403 or an authentication/authorization error contract",
+  "risk": null
+}

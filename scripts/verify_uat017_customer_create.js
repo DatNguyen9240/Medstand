@@ -75,6 +75,7 @@ SELECT
       check('FRONTEND_HAS_PREVIEW_AND_EDIT', renderer.includes('ccf-preview-section') && renderer.includes('btn-edit'), 'preview/sửa lại'),
       check('FRONTEND_NUMERIC_PHONE_TAX', /phone.*tax/s.test(renderer) && /replace\(\/\[\^0-9\]\/g, ''\)/.test(renderer), 'SĐT/MST chỉ số'),
       check('FRONTEND_MANAGER_SENDS_ASSIGNEE', renderer.includes('AssignedEmployeeID') && engine.includes('AssignedEmployeeID'), 'modal + renderer'),
+      check('FRONTEND_REQUIRES_CONFIRMED_OBJECT_ID', renderer.includes("msgType !== 5 && msgType !== '5'") && renderer.includes('|| !objectId') && engine.includes("record.MsgType != 5 && record.MsgType !== '5'") && engine.includes('|| !id'), 'không báo thành công nếu thiếu MsgType=5/ObjectID'),
       check('METADATA_IS_AI_CODE', metadata.some((row) => row.ApiCode === '@khach_hang_insert_ai' && row.StoredProcedure === 'API_KhachHang_Insert_AI'), '@khach_hang_insert_ai → API_KhachHang_Insert_AI'),
       check('EXECUTE_POLICY_ONLY_OPENS_AI_CUSTOMER_MUTATION', enforcement.includes("enabledMutationApis = new Set(['@khach_hang_insert_ai'])") && !enforcement.includes("'@san_pham_trong_tam_import': 'products.import'\n};\nconst enabledMutationApis = new Set(['@khach_hang_insert_ai', '@san_pham_trong_tam_import'])"), 'customer mutation only'),
     ];

@@ -748,15 +748,24 @@
                 var data = res.data || res;
                 var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
                 var msg = (record && record.Msg) ? record.Msg : '';
-                var msgType = (record && record.MsgType !== undefined) ? record.MsgType : 5;
+                var msgType = (record && record.MsgType !== undefined) ? record.MsgType : null;
+                var objectId = (record && (record.ObjectID || record.NewObjectID || record.MaKhachHang)) || '';
 
-                // API_KhachHang_Insert_AI: MsgType = 1 là lỗi, khác 1 là thành công.
+                // Chỉ xác nhận thành công khi SP trả cả mã trạng thái thành công và ObjectID.
+                // Response thiếu contract không chứng minh được bản ghi đã được tạo.
                 if (msgType === 1 || msgType === '1') {
                     // Lỗi từ SP — có thể là trùng SĐT, validate, v.v.
                     _showResult(formEl, formId, 'error', msg || 'Có lỗi xảy ra khi tạo khách hàng.', null);
+                } else if ((msgType !== 5 && msgType !== '5') || !objectId) {
+                    _showResult(
+                        formEl,
+                        formId,
+                        'error',
+                        msg || 'Máy chủ chưa xác nhận tạo khách hàng. Vui lòng kiểm tra tài khoản và thử lại.',
+                        null
+                    );
                 } else {
                     // Thành công → khách hàng đã được tạo trực tiếp.
-                    var objectId = (record && record.ObjectID) ? record.ObjectID : '';
                     var successMsg = msg || 'Đã tạo khách hàng <strong>' + _esc(name) + '</strong>.';
                     successMsg += '<br>Khách đã có thể sử dụng cho các nghiệp vụ tiếp theo.';
                     _showResult(formEl, formId, 'success', successMsg, objectId);
@@ -785,7 +794,7 @@
         html += '<div class="ccf-result-icon">' + icon + '</div>';
         html += '<div class="ccf-result-msg">' + message + '</div>';
         if (objectId) {
-            html += '<div class="ccf-result-detail">Mã yêu cầu: <code>' + _esc(objectId) + '</code></div>';
+            html += '<div class="ccf-result-detail">Mã khách hàng: <code>' + _esc(objectId) + '</code></div>';
         }
         html += '</div>';
 

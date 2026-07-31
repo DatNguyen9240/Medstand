@@ -3178,7 +3178,7 @@
             if (v.assignee) payload.AssignedEmployeeID = v.assignee;
             var createEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.CREATE_CUSTOMER) || API_CONFIG.ENDPOINTS.CUSTOMER.CREATE;
             var idempotencyKey = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (key) { var random = Math.random() * 16 | 0; return (key === 'x' ? random : (random & 3 | 8)).toString(16); });
-            Http.post(createEndpoint, payload, { idempotencyKey: idempotencyKey }).then(function (res) { var data = res.data || res, record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data); if (record && record.MsgType == 1) throw new Error(record.Msg || 'Không thể tạo khách hàng.'); var id = record && (record.ObjectID || record.NewObjectID || record.MaKhachHang) || ''; _closeFull(true); if (_cbMsg) _cbMsg('ai', 'Đã tạo khách hàng thành công: ' + v.name + (id ? ' (' + id + ')' : '') + '.'); }).catch(function (err) { errorEl.textContent = err.message || 'Không thể tạo khách hàng.'; reviewed = false; review.hidden = true; back.hidden = true; submit.disabled = false; submit.textContent = 'Kiểm tra thông tin'; });
+            Http.post(createEndpoint, payload, { idempotencyKey: idempotencyKey }).then(function (res) { var data = res.data || res, record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data); if (record && record.MsgType == 1) throw new Error(record.Msg || 'Không thể tạo khách hàng.'); var id = record && (record.ObjectID || record.NewObjectID || record.MaKhachHang) || ''; if (!record || (record.MsgType != 5 && record.MsgType !== '5') || !id) throw new Error(record && record.Msg || 'Máy chủ chưa xác nhận tạo khách hàng. Vui lòng kiểm tra tài khoản và thử lại.'); _closeFull(true); if (_cbMsg) _cbMsg('ai', 'Đã tạo khách hàng thành công: ' + v.name + ' (' + id + ').'); }).catch(function (err) { errorEl.textContent = err.message || 'Không thể tạo khách hàng.'; reviewed = false; review.hidden = true; back.hidden = true; submit.disabled = false; submit.textContent = 'Kiểm tra thông tin'; });
         };
         setTimeout(function () { panel.querySelector('#ae-customer-name').focus(); }, 50);
     }
@@ -3192,6 +3192,7 @@
     // nên tải một lần cho cả phiên, tránh gọi lại mỗi lần mở panel.
     var _orderCustomers = null;
     var _orderProducts = null;
+    var _orderProductsKey = '';
 
     function _orderRows(res) {
         var data = (res && (res.data || res)) || [];
@@ -3268,10 +3269,22 @@
         }
 
         function loadProducts() {
-            if (_orderProducts) return Promise.resolve(_orderProducts);
+            var username = user.UserName || user.Username || '';
+            var objectId = selectedCustomer && selectedCustomer.ObjectID || '';
+            if (!objectId) {
+                errorEl.textContent = 'Vui lòng chọn khách hàng trước khi chọn sản phẩm.';
+                return Promise.resolve([]);
+            }
+            var productsKey = username + '|' + objectId;
+            if (_orderProducts && _orderProductsKey === productsKey) return Promise.resolve(_orderProducts);
             return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
-                q: JSON.stringify({ User: user.UserName || '', ItemID: '', SearchText: '' })
-            }).then(function (res) { _orderProducts = _orderRows(res); return _orderProducts; })
+                q: JSON.stringify({ Username: username, ObjectID: objectId, ItemID: '', SearchText: '' })
+            }).then(function (res) {
+                _orderProducts = _orderRows(res);
+                _orderProductsKey = productsKey;
+                errorEl.textContent = '';
+                return _orderProducts;
+            })
                 .catch(function () { errorEl.textContent = 'Không tải được danh sách sản phẩm.'; return []; });
         }
 
@@ -3367,13 +3380,20 @@
             return Number(p && (p.UnitPrice !== undefined ? p.UnitPrice : p.Price)) || 0;
         }
 
+        function productPromotion(p, quantity) {
+            if (!window.MedstandPromotion || !p) return { discountPercent: 0, giftQuantity: 0 };
+            return window.MedstandPromotion.calculate(p.GhiChu || '', quantity);
+        }
+
         function recalc() {
             var sum = 0;
             itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
                 var p = row._product;
                 if (!p) return;
                 var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
-                var ck = Number(row.querySelector('.ae-order-ck').value) || 0;
+                var promotion = productPromotion(p, qty);
+                var ck = promotion.discountPercent;
+                row.querySelector('.ae-order-ck').value = ck;
                 sum += productPrice(p) * qty * (1 - Math.min(Math.max(ck, 0), 100) / 100);
             });
             totalEl.textContent = 'Tạm tính: ' + money(sum);
@@ -3467,14 +3487,25 @@
                 var typed = row.querySelector('.ae-order-prod').value.trim();
                 if (!p) { if (typed) missing = true; return; }
                 var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
-                if (qty < 1) { missing = true; return; }
+                if (!Number.isInteger(qty) || qty < 1) { missing = true; return; }
+                var promotion = productPromotion(p, qty);
                 items.push({
                     ItemID: p.ItemID,
                     ItemName: p.ItemName || p.ItemID,
                     Quantity: qty,
                     Price: productPrice(p),
-                    DiscountPercent: Number(row.querySelector('.ae-order-ck').value) || 0
+                    DiscountPercent: promotion.discountPercent
                 });
+                if (promotion.giftQuantity > 0) {
+                    items.push({
+                        ItemID: p.ItemID,
+                        ItemName: (p.ItemName || p.ItemID) + ' (Hàng tặng)',
+                        Quantity: promotion.giftQuantity,
+                        Price: 0,
+                        DiscountPercent: 0,
+                        LineType: 'promotion'
+                    });
+                }
             });
             if (missing) {
                 errorEl.textContent = 'Có dòng sản phẩm chưa chọn từ danh sách gợi ý hoặc số lượng không hợp lệ.';

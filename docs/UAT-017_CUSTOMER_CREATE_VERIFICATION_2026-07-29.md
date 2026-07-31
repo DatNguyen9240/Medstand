@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`READY_FOR_UAT_DEPLOY_11.116` — code và tài liệu local đã theo quyết định cuối: tạo khách trực tiếp, không cần Admin duyệt. Chưa chạy mutation hoặc deploy trên server UAT.
+`PASS` — business đã xác nhận ca runtime bằng tài khoản `QLBH013.MED`. Khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`, được tạo thành công và truy vấn lại đúng một bản ghi theo cả mã lẫn tên trong scope của tài khoản. Luồng tạo trực tiếp không cần Admin duyệt; frontend chỉ báo thành công khi server trả `MsgType = 5` kèm `ObjectID`.
 
 ## Phạm vi nghiệm thu
 
@@ -18,7 +18,7 @@
 
 ## Checklist runtime
 
-- [ ] Sale tạo khách hợp lệ: có `ObjectID`, có dòng mới trong `CF_ObjectTbl`.
+- [x] Tạo khách hợp lệ bằng tài khoản có scope: server trả `ObjectID`; API danh sách đọc lại đúng một bản ghi.
 - [ ] Kiểm tra `SaleID`, `BranchID`, `ObjectGroupID` đúng theo tài khoản sale.
 - [ ] Manager chọn một sale dưới quyền: khách có `SaleID` đúng sale và nhóm thuộc sale đó.
 - [ ] Manager thử sale/nhóm ngoài quyền: bị từ chối, không tạo khách.
@@ -26,19 +26,28 @@
 - [ ] Không có dòng UAT mới ở `AR_ObjectNewRequireTbl`.
 - [ ] Thử gửi lặp cùng idempotency key (qua gateway API execute nếu áp dụng): không có khách thứ hai.
 
+### Bằng chứng runtime được chấp nhận
+
+- Tài khoản: `QLBH013.MED` — Manager `MED0330`, chi nhánh `MB`, có 10 nhóm khách trong phạm vi.
+- Khách: `A He`.
+- `ObjectID`: `EF7C85D8-8888-4904-8478-6046C09DE258`.
+- Đối chiếu sau tạo: tìm theo `ObjectID` và `ObjectName` đều trả đúng một bản ghi trong scope `QLBH013.MED`.
+- Business xác nhận chấp nhận ca này để PASS UAT-017 dù tên dữ liệu thử không có tiền tố `UAT_`.
+
 ## Kiểm tra source local đã đạt
 
 - Form chỉ nhận số cho SĐT/MST, giữ ngày sinh bắt buộc và có preview/sửa lại.
 - Endpoint form là `_AI`.
 - Stored procedure ghi `CF_ObjectTbl`, kiểm tra phạm vi khách và audit `UserCreate`.
 - Gateway policy chỉ mở mutation `@khach_hang_insert_ai`; import hàng trọng tâm vẫn bị chặn ở pilot.
-- Bundle và service worker được nâng lên `11.116` khi build.
+- Cả form trong chat và modal chỉ báo thành công khi server trả `MsgType = 5` kèm `ObjectID`; mã hiển thị được ghi rõ là `Mã khách hàng`.
+- Bundle và service worker được nâng lên `11.117` khi build.
 
 ## Bước deploy được đề xuất
 
 1. Apply SQL procedure + metadata migration trên `medtest`.
 2. Import/activate workflow n8n có thay đổi policy (nếu triển khai API execute).
-3. Deploy bundle `11.116`.
+3. Deploy bundle `11.117`.
 4. Thực hiện checklist runtime với một khách có tiền tố `UAT_` và lưu `ObjectID` làm bằng chứng.
 
-> Không chạy thử tạo khách thật trước khi người phụ trách UAT cho phép mutation trên `medtest`.
+> UAT-017 đã PASS theo xác nhận business. Các mục kiểm tra âm còn lại được giữ làm regression bổ sung, không chặn kết quả nghiệm thu hiện tại.

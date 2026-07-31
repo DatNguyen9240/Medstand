@@ -1,223 +1,252 @@
+/*
+  Medstand AI-only order mutation.
+  This procedure does not alter dbo.API_DonHang_Insert used by other systems.
+*/
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
 
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [dbo].[API_DonHangChiTiet_Insert_AI]
-    @Username    VARCHAR(50)   = '',
-    @DocumentID  VARCHAR(50)   = '',
-    @ObjectID    VARCHAR(50)   = '',
-    @ItemList    NVARCHAR(MAX) = ''
+CREATE OR ALTER PROCEDURE dbo.API_DonHangChiTiet_Insert_AI
+    @Username VARCHAR(50) = '',
+    @DocumentID VARCHAR(50) = '',
+    @ObjectID VARCHAR(50) = '',
+    @ItemList NVARCHAR(MAX) = ''
 AS
-SET NOCOUNT ON
-SET XACT_ABORT ON
--- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
-IF OBJECT_ID('tempdb..#Items') IS NOT NULL DROP TABLE #Items;
--- ═══ 1. VALIDATION ═══
-IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
 BEGIN
-    SELECT N'ERR:User không tồn tại hoặc đã bị khóa' AS DocumentID, N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF COALESCE(@ItemList, '') = '' OR @ItemList = '[]'
-BEGIN
-    SELECT N'ERR:Danh sách sản phẩm trống' AS DocumentID, N'Danh sách sản phẩm trống' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF ISJSON(@ItemList) <> 1
-BEGIN
-    SELECT N'ERR:Danh sách sản phẩm không phải JSON hợp lệ' AS DocumentID, N'Danh sách sản phẩm không phải JSON hợp lệ' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF COALESCE(@ObjectID, '') = ''
-BEGIN
-    SELECT N'ERR:Chưa chọn khách hàng (ObjectID là bắt buộc)' AS DocumentID, N'Chưa chọn khách hàng (ObjectID là bắt buộc)' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF NOT EXISTS (SELECT 1 FROM CF_ObjectTbl WHERE ObjectID = @ObjectID)
-BEGIN
-    SELECT N'ERR:Mã khách hàng không tồn tại: ' + @ObjectID AS DocumentID, N'Mã khách hàng không tồn tại' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF NOT EXISTS (SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @ObjectID)
-BEGIN
-    SELECT N'ERR:Không có quyền tạo đơn cho khách hàng này' AS DocumentID, N'Không có quyền tạo đơn cho khách hàng này' AS Msg, 1 AS MsgType
-    RETURN
-END
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-    -- CHẶN CHỦ ĐỘNG MÃ PHIẾU SAI ĐỊNH DẠNG (TRÁNH LỖI ÉP KIỂU HỆ THỐNG)
-    IF COALESCE(@DocumentID, '') <> ''
+    IF NOT EXISTS (SELECT 1 FROM dbo.SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
     BEGIN
-        -- 1. Yêu cầu bắt buộc phải có dấu gạch chéo /
-        IF CHARINDEX('/', @DocumentID) = 0
-        BEGIN
-            SELECT N'ERR:Mã phiếu tự điền phải theo định dạng chuẩn (ví dụ: DMB0526/1)' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
-            RETURN
-        END
+        SELECT NULL AS DocumentID, N'Tài khoản không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-        IF LEN(@DocumentID) > 30
-        BEGIN
-            SELECT N'ERR:Mã phiếu không được vượt quá 30 ký tự' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
-            RETURN
-        END
-        
-        -- 2. Yêu cầu phần số thứ tự sau dấu gạch chéo phải là số nguyên
-        DECLARE @Suffix VARCHAR(50) = SUBSTRING(@DocumentID, CHARINDEX('/', @DocumentID) + 1, LEN(@DocumentID))
-        IF TRY_CAST(@Suffix AS INT) IS NULL
-        BEGIN
-            SELECT N'ERR:Mã phiếu không hợp lệ. Phần số thứ tự sau dấu gạch chéo phải là chữ số (ví dụ: DMB0526/12).' AS DocumentID, N'Mã phiếu không hợp lệ' AS Msg, 1 AS MsgType
-            RETURN
-        END
-    END
+    IF COALESCE(@ObjectID, '') = '' OR NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @ObjectID)
+    BEGIN
+        SELECT NULL AS DocumentID, N'Khách hàng không tồn tại' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-    -- Đã bỏ kiểm tra đơn hàng không tồn tại để tự động khởi tạo nếu truyền mã mới chưa có trong hệ thống
--- ═══ 2. PARSE JSON + LẤY GIÁ ═══
-SELECT 
-    J.ItemID, 
-    SUM(J.Quantity) AS Quantity, 
-    MAX(I.ItemName) AS ItemName, 
-    COALESCE(J.UnitPrice, J.Price, MAX(P.UnitPrice)) AS UnitPrice, 
-    MAX(P.DiemSanPham) AS DiemSanPham,
-    MAX(J.DiscountPercent) AS DiscountPercent
-INTO #Items
-FROM OPENJSON(@ItemList)
-WITH (
-    ItemID          VARCHAR(50)   '$.ItemID',
-    Quantity        DECIMAL(18,2) '$.Quantity',
-    Price           DECIMAL(18,2) '$.Price',
-    UnitPrice       DECIMAL(18,2) '$.UnitPrice',
-    DiscountPercent DECIMAL(18,2) '$.DiscountPercent'
-) J
-LEFT JOIN CF_ItemTbl I ON I.ItemID = J.ItemID
-OUTER APPLY (
-    SELECT TOP 1 UnitPrice, DiemSanPham
-    FROM AR_PriceView
-    WHERE ItemID = J.ItemID
-      AND isDisable = 0
-    ORDER BY 
-      CASE WHEN GETDATE() BETWEEN FromDate AND ToDate THEN 1 ELSE 2 END,
-      FromDate DESC
-) P
-GROUP BY J.ItemID, J.UnitPrice, J.Price
+    IF NOT EXISTS (SELECT 1 FROM dbo.AR_GetObjectByUserFnc(@Username) WHERE ObjectID = @ObjectID)
+    BEGIN
+        SELECT NULL AS DocumentID, N'Bạn không có quyền tạo đơn cho khách hàng này' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-    -- HẠNG MỤC BẢO MẬT BACKEND (SAFEGUARD): Chặn tự ý đưa hàng khuyến mãi 0đ vào đơn nếu không có sản phẩm chính tương ứng
+    IF COALESCE(@ItemList, '') = '' OR ISJSON(@ItemList) <> 1
+    BEGIN
+        SELECT NULL AS DocumentID, N'Danh sách sản phẩm không hợp lệ' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
+
+    DECLARE @BranchID VARCHAR(50) = '';
+    DECLARE @ManagerID VARCHAR(50) = '';
+    DECLARE @EmployeeID VARCHAR(50) = '';
+    DECLARE @CeoID VARCHAR(50) = '';
+    DECLARE @IsGlobal BIT = 0;
+    DECLARE @IsManager BIT = 0;
+    DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
+
+    SELECT @BranchID = COALESCE(BranchID, ''),
+           @ManagerID = COALESCE(ManagerID, ''),
+           @EmployeeID = COALESCE(EmployeeID, ''),
+           @CeoID = COALESCE(CeoID, ''),
+           @IsGlobal = CASE WHEN UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
+           @IsManager = COALESCE(Manager, 0)
+    FROM dbo.SY_User
+    WHERE UserName = @Username;
+
+    INSERT @AllowedStores (StoreHouseID)
+    SELECT DISTINCT StoreHouseID
+    FROM dbo.SY_UserStoreHouseTbl
+    WHERE UserName = @Username AND StoreHouseID IN ('CTY', 'DL02', 'DL03');
+
+    IF @IsManager = 1 AND @EmployeeID <> ''
+    BEGIN
+        INSERT @AllowedStores (StoreHouseID)
+        SELECT DISTINCT US.StoreHouseID
+        FROM dbo.SY_User U
+        JOIN dbo.SY_UserStoreHouseTbl US ON US.UserName = U.UserName
+        WHERE U.ManagerID = @EmployeeID
+          AND COALESCE(U.Disable, 0) = 0
+          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
+          AND NOT EXISTS (SELECT 1 FROM @AllowedStores A WHERE A.StoreHouseID = US.StoreHouseID);
+    END;
+
+    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    BEGIN
+        SELECT NULL AS DocumentID, N'Tài khoản chưa được phân quyền kho' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
+
+    CREATE TABLE #Items (
+        ItemID VARCHAR(50) NULL,
+        Quantity DECIMAL(18,2) NULL,
+        UnitPrice DECIMAL(18,4) NULL,
+        DiscountPercent DECIMAL(18,2) NOT NULL,
+        ItemName NVARCHAR(500) NULL,
+        ErpUnitPrice DECIMAL(18,4) NULL,
+        DiemSanPham DECIMAL(18,2) NULL
+    );
+
+    INSERT #Items (ItemID, Quantity, UnitPrice, DiscountPercent, ItemName, ErpUnitPrice, DiemSanPham)
+    SELECT J.ItemID,
+           SUM(J.Quantity),
+           MAX(J.UnitPrice),
+           MAX(COALESCE(J.DiscountPercent, 0)),
+           MAX(I.ItemName),
+           MAX(P.UnitPrice),
+           MAX(P.DiemSanPham)
+    FROM OPENJSON(@ItemList)
+    WITH (
+        ItemID VARCHAR(50) '$.ItemID',
+        Quantity DECIMAL(18,2) '$.Quantity',
+        UnitPrice DECIMAL(18,4) '$.UnitPrice',
+        DiscountPercent DECIMAL(18,2) '$.DiscountPercent'
+    ) J
+    LEFT JOIN dbo.CF_ItemTbl I ON I.ItemID = J.ItemID
+    OUTER APPLY (
+        SELECT TOP (1) UnitPrice, DiemSanPham
+        FROM dbo.AR_LayGiaSanPhamFnc(CAST(GETDATE() AS DATE), @ObjectID, J.ItemID)
+    ) P
+    GROUP BY J.ItemID, J.UnitPrice;
+
+    IF NOT EXISTS (SELECT 1 FROM #Items)
+       OR EXISTS (
+           SELECT 1
+           FROM #Items X
+           LEFT JOIN dbo.CF_ItemTbl C ON C.ItemID = X.ItemID
+           WHERE COALESCE(X.ItemID, '') = '' OR X.ItemName IS NULL OR C.ItemGroupID <> 'HH1'
+              OR X.Quantity IS NULL OR X.Quantity <= 0 OR X.Quantity <> FLOOR(X.Quantity)
+       )
+       OR EXISTS (SELECT 1 FROM #Items WHERE DiscountPercent < 0 OR DiscountPercent > 100)
+    BEGIN
+        SELECT NULL AS DocumentID, N'Sản phẩm, số lượng hoặc chiết khấu không hợp lệ' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
+
+    /* Dòng giá 0 chỉ hợp lệ khi cùng mã có dòng mua; dòng mua phải khớp giá ERP. */
     IF EXISTS (
-        SELECT 1 
-        FROM #Items I1
-        WHERE I1.UnitPrice = 0
-          AND NOT EXISTS (
-              SELECT 1 
-              FROM #Items I2 
-              WHERE I2.ItemID = I1.ItemID 
-                AND I2.UnitPrice > 0
-          )
+        SELECT 1 FROM #Items I
+        WHERE (I.UnitPrice > 0 AND (I.ErpUnitPrice IS NULL OR ABS(I.UnitPrice - I.ErpUnitPrice) > 0.01))
+           OR (I.UnitPrice = 0 AND NOT EXISTS (SELECT 1 FROM #Items B WHERE B.ItemID = I.ItemID AND B.UnitPrice > 0))
+           OR I.UnitPrice IS NULL OR I.UnitPrice < 0
     )
     BEGIN
-        DROP TABLE #Items
-        SELECT N'ERR:Sản phẩm khuyến mãi 0đ không hợp lệ (phải có sản phẩm mua chính đi kèm trong đơn hàng)' AS DocumentID, N'Sản phẩm khuyến mãi không hợp lệ' AS Msg, 1 AS MsgType
-        RETURN
-    END
+        SELECT NULL AS DocumentID, N'Giá sản phẩm không hợp lệ' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-IF EXISTS (SELECT 1 FROM #Items WHERE ItemName IS NULL)
-BEGIN
-    DECLARE @BadItems NVARCHAR(500)
-    SELECT @BadItems = STRING_AGG(ItemID, ', ') FROM #Items WHERE ItemName IS NULL
-    DROP TABLE #Items
-    SELECT N'ERR:Sản phẩm không tồn tại: ' + @BadItems AS DocumentID, N'Sản phẩm không tồn tại: ' + @BadItems AS Msg, 1 AS MsgType
-    RETURN
-END
-IF EXISTS (SELECT 1 FROM #Items WHERE COALESCE(Quantity, 0) <= 0)
-BEGIN
-    DROP TABLE #Items
-    SELECT N'ERR:Số lượng phải lớn hơn 0' AS DocumentID, N'Số lượng phải lớn hơn 0' AS Msg, 1 AS MsgType
-    RETURN
-END
-IF EXISTS (SELECT 1 FROM #Items WHERE UnitPrice IS NULL)
-BEGIN
-    DECLARE @NoPrice NVARCHAR(500)
-    SELECT @NoPrice = STRING_AGG(ItemID, ', ') FROM #Items WHERE UnitPrice IS NULL
-    DROP TABLE #Items
-    SELECT N'ERR:Sản phẩm chưa có giá: ' + @NoPrice AS DocumentID, N'Sản phẩm chưa có giá: ' + @NoPrice AS Msg, 1 AS MsgType
-    RETURN
-END
--- ═══ 3. TẠO ĐƠN + CHI TIẾT ═══
-BEGIN TRANSACTION
-BEGIN TRY
-    IF COALESCE(@DocumentID, '') = '' OR NOT EXISTS (SELECT 1 FROM AR_OrderTbl WHERE DocumentID = @DocumentID)
-    BEGIN
-        IF COALESCE(@DocumentID, '') = ''
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        IF COALESCE(@DocumentID, '') <> '' AND @DocumentID <> 'AUTO_GEN'
         BEGIN
-            -- 1. Lấy mã chi nhánh của tài khoản đang đăng nhập (mặc định là 'MB' nếu trống)
-            DECLARE @UserBranch VARCHAR(10) = 'MB'
-            SELECT @UserBranch = COALESCE(BranchID, 'MB') 
-            FROM SY_User 
-            WHERE UserName = @Username
-            
-            -- 2. Ghép động tiền tố: 'D' + 'MB' = 'DMB', 'D' + 'MN' = 'DMN'
-            DECLARE @Prefix VARCHAR(10) = 'D' + @UserBranch 
-                                               + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
-                                               + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2)
-            DECLARE @MaxNum INT
-            SELECT @MaxNum = ISNULL(MAX(TRY_CAST(
-                SUBSTRING(DocumentID, CHARINDEX('/', DocumentID) + 1, LEN(DocumentID)) AS INT
-            )), 0)
-            FROM AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
-            WHERE DocumentID LIKE @Prefix + '/%'
-            SET @DocumentID = @Prefix + '/' + CAST(@MaxNum + 1 AS VARCHAR)
-        END
+            IF EXISTS (SELECT 1 FROM dbo.AR_OrderTbl WITH (UPDLOCK, HOLDLOCK) WHERE DocumentID = @DocumentID)
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM dbo.AR_OrderTbl
+                    WHERE DocumentID = @DocumentID
+                      AND (UserCreate <> @Username OR ObjectID <> @ObjectID OR BranchID <> @BranchID OR EmployeeID <> @EmployeeID)
+                )
+                OR EXISTS (
+                    SELECT ItemID, UnitPrice, SUM(Quantity), MAX(DiscountPercent)
+                    FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID GROUP BY ItemID, UnitPrice
+                    EXCEPT
+                    SELECT ItemID, UnitPrice, SUM(Quantity), MAX(DiscountPercent)
+                    FROM #Items GROUP BY ItemID, UnitPrice
+                )
+                OR EXISTS (
+                    SELECT ItemID, UnitPrice, SUM(Quantity), MAX(DiscountPercent)
+                    FROM #Items GROUP BY ItemID, UnitPrice
+                    EXCEPT
+                    SELECT ItemID, UnitPrice, SUM(Quantity), MAX(DiscountPercent)
+                    FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID GROUP BY ItemID, UnitPrice
+                )
+                BEGIN
+                    ROLLBACK TRANSACTION;
+                    SELECT NULL AS DocumentID, N'Mã request đã được dùng cho một nội dung đơn khác' AS Msg, 1 AS MsgType;
+                    RETURN;
+                END;
 
-        INSERT INTO AR_OrderTbl (
+                COMMIT TRANSACTION;
+                SELECT @DocumentID AS DocumentID, N'Đơn hàng đã được tạo trước đó' AS Msg, 5 AS MsgType;
+                RETURN;
+            END;
+        END
+        ELSE
+        BEGIN
+            DECLARE @Prefix VARCHAR(20) = 'D' + COALESCE(NULLIF(@BranchID, ''), 'MB')
+                + RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR), 2)
+                + RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR), 2) + '/';
+            DECLARE @MaxNum INT;
+            SELECT @MaxNum = COALESCE(MAX(TRY_CAST(SUBSTRING(DocumentID, LEN(@Prefix) + 1, 99) AS INT)), 0)
+            FROM dbo.AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
+            WHERE DocumentID LIKE @Prefix + '%';
+            SET @DocumentID = @Prefix + CAST(@MaxNum + 1 AS VARCHAR);
+        END;
+
+        IF EXISTS (
+            SELECT 1
+            FROM (
+                SELECT ItemID, SUM(Quantity) AS RequestedQuantity
+                FROM #Items
+                GROUP BY ItemID
+            ) R
+            OUTER APPLY (
+                SELECT SUM(CASE WHEN T.ExpireDate IS NULL OR T.ExpireDate >= CAST(GETDATE() AS DATE) THEN T.Quantity ELSE 0 END) AS AvailableQuantity
+                FROM dbo.IV_StockTransactionTbl T WITH (UPDLOCK, HOLDLOCK)
+                WHERE T.ItemID = R.ItemID
+                  AND T.StoreHouseID IN ('CTY', 'DL02', 'DL03')
+                  AND (@IsGlobal = 1 OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores))
+            ) S
+            WHERE R.RequestedQuantity > COALESCE(S.AvailableQuantity, 0)
+        )
+        BEGIN
+            ROLLBACK TRANSACTION;
+            SELECT NULL AS DocumentID, N'Số lượng đặt vượt tồn khả dụng trong kho được cấp' AS Msg, 1 AS MsgType;
+            RETURN;
+        END;
+
+        INSERT dbo.AR_OrderTbl (
             DocumentID, DocumentDate, EmployeeID, ManagerID, CeoID,
             ObjectID, BranchID, UserCreate, DateCreate, StatusID
+        ) VALUES (
+            @DocumentID, GETDATE(), @EmployeeID, @ManagerID, @CeoID,
+            @ObjectID, @BranchID, @Username, GETDATE(), 0
+        );
+
+        INSERT dbo.AR_OrderDetailTbl (
+            UserAutoID, DocumentID, ItemID, UnitPrice, Quantity, SoLuongTang,
+            Amount, DiscountPercent, DiscountAmount, TotalAmount,
+            DiemSanPham, DiemTichLuy, Notes
         )
-        SELECT @DocumentID, GETDATE(),
-               COALESCE(EmployeeID, ''),
-               COALESCE(ManagerID, ''),
-               COALESCE(CeoID, ''),
-               @ObjectID,
-               COALESCE(BranchID, ''),
-               @Username, GETDATE(), 0
-        FROM SY_User WHERE UserName = @Username
-    END
-    INSERT INTO AR_OrderDetailTbl (
-        UserAutoID, DocumentID, ItemID, UnitPrice, Quantity, SoLuongTang,
-        Amount, DiscountPercent, DiscountAmount, TotalAmount,
-        DiemSanPham, DiemTichLuy, Notes
-    )
-    SELECT 
-        NEWID(), @DocumentID, ItemID,
-        COALESCE(UnitPrice, 0), Quantity, 0,
-        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0),
-        COALESCE(DiscountPercent, 0),
-        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0) * (COALESCE(DiscountPercent, 0) / 100.0),
-        COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0) * (1.0 - COALESCE(DiscountPercent, 0) / 100.0),
-        COALESCE(DiemSanPham, 0),
-        COALESCE(Quantity, 0) * COALESCE(DiemSanPham, 0),
-        ''
-    FROM #Items
+        SELECT NEWID(), @DocumentID, ItemID, UnitPrice, Quantity, 0,
+               Quantity * UnitPrice,
+               DiscountPercent,
+               Quantity * UnitPrice * DiscountPercent / 100.0,
+               Quantity * UnitPrice * (1.0 - DiscountPercent / 100.0),
+               COALESCE(DiemSanPham, 0),
+               Quantity * COALESCE(DiemSanPham, 0),
+               N''
+        FROM #Items;
 
-    -- Tính toán lại tổng tiền/kho (nếu có các Stp bổ trợ)
-    EXEC AR_Order_AfterSaveStp @DocumentID
+        EXEC dbo.AR_Order_AfterSaveStp @DocumentID;
 
-    -- FALLBACK UPDATE TỔNG TIỀN (PHÒNG THỦ KHI AR_Order_AfterSaveStp CHƯA CẬP NHẬT HOẶC KHÔNG TỒN TẠI TRÊN MÔI TRƯỜNG TEST)
-    UPDATE AR_OrderTbl
-    SET BaseTotal = COALESCE((SELECT SUM(TotalAmount) FROM AR_OrderDetailTbl WHERE DocumentID = @DocumentID), 0)
-    WHERE DocumentID = @DocumentID
+        UPDATE dbo.AR_OrderTbl
+        SET BaseTotal = COALESCE((SELECT SUM(TotalAmount) FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID), 0)
+        WHERE DocumentID = @DocumentID;
 
-    COMMIT TRANSACTION
-END TRY
-BEGIN CATCH
-    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION
-    DECLARE @ErrMsg NVARCHAR(500) = ERROR_MESSAGE()
-    DROP TABLE IF EXISTS #Items
-    SELECT N'ERR:' + @ErrMsg AS DocumentID, N'Hệ thống chưa thể tạo đơn hàng.' AS Msg, 1 AS MsgType
-    RETURN
-END CATCH
-DROP TABLE IF EXISTS #Items
--- ═══ 4. THÀNH CÔNG → trả DocumentID thật ═══
-SELECT @DocumentID AS DocumentID
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        SELECT NULL AS DocumentID, N'Hệ thống chưa thể tạo đơn hàng: ' + ERROR_MESSAGE() AS Msg, 1 AS MsgType;
+        RETURN;
+    END CATCH;
+
+    SELECT @DocumentID AS DocumentID, N'Tạo đơn hàng thành công' AS Msg, 5 AS MsgType;
+END;
 GO
-
-
-

@@ -176,21 +176,26 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả: `13/13 PASS`; `0` lỗi API, `0` thiếu giá/disclaimer/lý do, trạng thái tồn và cảnh báo tham khảo hiển thị đúng.
   - Bằng chứng: [UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md](UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat016_product_symptom_lookup.js`.
 
-- [ ] **UAT-017 — Test tạo khách hàng** · `P0` · `BLOCKED_CONTRACT_MISMATCH`
+- [x] **UAT-017 — Test tạo khách hàng** · `P0` · `PASS`
   - Test validate, trùng số điện thoại/mã khách, phân quyền và kết quả trả về.
   - Chỉ sử dụng dữ liệu có tiền tố UAT được phép tạo.
   - Nghiệm thu: tạo đúng một bản ghi sau xác nhận; có thể truy vết người tạo.
-  - Kết quả rà soát read-only: có bước preview và endpoint ERP đúng, nhưng widget còn gắn nhãn SP legacy, gửi trường phân quyền từ client, sai giới hạn độ dài, thông báo nhầm “đã tạo khách” thay vì “chờ duyệt”, chưa có bằng chứng chống gửi lặp. Chưa tạo dữ liệu UAT; DB `medtest` không kết nối được tại thời điểm kiểm tra.
+  - Kết quả cập nhật 31/07/2026: luồng dùng `API_KhachHang_Insert_AI` để tạo trực tiếp, không qua Admin duyệt. Đã chặn thông báo thành công giả: cả form trong chat và modal chỉ xác nhận thành công khi server trả `MsgType = 5` kèm `ObjectID`; phản hồi thiếu contract được hiển thị là lỗi và giữ form để thử lại. Tài khoản `demo` không có nhóm khách nên không dùng làm tài khoản nghiệm thu; chờ chạy lại bằng tài khoản sale/manager có scope.
+  - Kết quả runtime được business xác nhận: `QLBH013.MED` tạo thành công khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`; truy vấn lại theo cả mã và tên đều trả đúng một bản ghi trong scope của tài khoản. Chấp nhận ca này làm bằng chứng chức năng dù tên không có tiền tố `UAT_`.
   - Bằng chứng: [UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md](UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat017_customer_create.js`.
 
-- [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `TODO`
+- [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `READY_FOR_AI_SQL_DEPLOY`
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
   - Chỉ sử dụng dữ liệu UAT được phép tạo.
   - Nghiệm thu: tạo đúng một đơn, chi tiết đúng và không tạo trùng khi gửi lại request.
+  - Kết quả: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn, giá và retry theo `DocumentID`. Không sửa `API_DonHang_Insert`/`API_HangHoaList` gốc dùng chung. Chưa triển khai hai procedure AI và chưa tạo đơn UAT.
+  - Bằng chứng: [UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md](UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md), script read-only `scripts/verify_uat018_order_create.js`.
 
-- [ ] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `TODO`
+- [ ] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `PASS_STATIC_BLOCKED_AUTHENTICATED_RUNTIME`
   - Chạy bộ câu hỏi theo intent, tham số, hội thoại tiếp nối và các trường hợp thiếu dữ liệu.
   - Nghiệm thu: tối thiểu 95% test chính đạt; không có lỗi P0/P1 chưa được chấp nhận.
+  - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Chưa chạy 31 ca live vì phiên hiện tại không có token UAT và fixture thuộc đúng phạm vi tài khoản.
+  - Bằng chứng: [UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md](UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md), các JSON trong `reports/uat019-*`.
 
 - [ ] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `TODO`
   - Đo riêng API thường và truy vấn AI phức tạp, không chỉ đo cảm nhận trên UI.
@@ -228,6 +233,11 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nhóm `KH` là dữ liệu nghiệp vụ sống của back-office (140 khách, tạo từ 2020, 19 khách có 192 hoá đơn) — **không dọn, không gán lại nhóm**.
   - Sáu quyết định đã chốt: dùng lại SP của ERP theo đường duyệt; quy tắc chọn `ObjectGroupID` theo vai trò; ngày sinh cho bỏ trống → `1900-01-01`; dùng khung nhập liệu trong chat; trùng SĐT hiện thông tin khách nếu trong quyền; không đụng 140 bản ghi cũ.
   - Phát sinh cần làm ở `CORE-002`: bổ sung hai API tra cứu `API_ObjectGroupByUser_AI` (nhóm đối tượng của người đăng nhập) và `API_EmployeeByManager_AI` (nhân viên dưới quyền manager).
+  - **Hai API tra cứu trên: ĐÃ XONG 31/07/2026.** Đã viết, deploy lên `medtest`, kiểm chứng và cấp quyền `READ`.
+    - `API_ObjectGroupByUser_AI` — chép nguyên nhánh phân quyền của `AR_GetObjectByUserFnc`, chỉ nhận `@User` và tự suy `EmployeeID` phía server. Đối chiếu số nhóm trả về với số nhóm thực sự nhìn thấy: 7/7 tài khoản khớp tuyệt đối. Lưu ý bảo trì: `LevelSub` nằm ở bảng cha `AR_OpListTbl`, **không phải** `AR_OpListDetailTbl`.
+    - `API_EmployeeByManager_AI` — bắt buộc `GROUP BY` (QLMN2 trả 122 dòng thô → 38 nhân viên); tên lấy qua `COALESCE` vì một số nhân viên không có dòng `SY_User`.
+    - File: `sql/Module common - API_ObjectGroupByUser_AI.sql`, `sql/Module common - API_EmployeeByManager_AI.sql`, cấp quyền qua `sql/Migrate_API_Capability_CORE001_AI.sql`.
+    - Ngoại lệ đã biết: `QLMD1` và `QLBH024.MED` có `Manager = 1` nhưng không có dòng nào trong `AR_OpListDetailTbl`, nên không sở hữu nhóm nào → hai API trả lỗi `FORBIDDEN` cho họ. Chờ quyết định giới hạn phạm vi hai tài khoản này về Miền Nam (xem `BIZ`/phân quyền).
   - Còn chờ team ERP làm rõ (không chặn): mapping `@LoaiKhachHang` → cột `LoaiHopDong` và `@KenhBan` → cột `PhanLoaiKhach`; cơ chế chuyển `StatusID` từ `0` sang `6`.
 
 - [x] **CORE-002 — Xây luồng thu thập thông tin tạo khách** · `P1` · `DONE`
@@ -241,7 +251,15 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Bổ sung kiểm tra trùng, idempotency, audit và mã kết quả.
   - Phụ thuộc: `CORE-002`.
   - Nghiệm thu: hủy hoặc chưa xác nhận không ghi dữ liệu; xác nhận chỉ tạo một bản ghi.
-  - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp, Audit log và kết nối SP ERP `API_KhachHang_Insert` (`AR_ObjectNewRequireTbl`, `StatusID = 0`, chờ duyệt). Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
+  - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
+  - **[Đính chính 31/07/2026] Dòng kết quả trên trước đây ghi rằng luồng chat "kết nối SP ERP `API_KhachHang_Insert` (`AR_ObjectNewRequireTbl`, `StatusID = 0`, chờ duyệt)". Điều đó KHÔNG ĐÚNG với mã đang chạy.** Kiểm chứng ngày 31/07/2026 trên ba nguồn độc lập:
+    - `chatbot-widget/js/chatbot-renderer-create-customer.js:744` gửi tới `_aiEp.CREATE_CUSTOMER || '/api/API_KhachHang_Insert_AI'`;
+    - `env.js` đặt `CREATE_CUSTOMER: '/api/API_KhachHang_Insert_AI'`;
+    - `chatbot-widget/js/chatbot-api-engine.js:642` đăng ký hành động với `ApiCode: '@khach_hang_insert_ai'`.
+
+    Cả ba đều trỏ vào `API_KhachHang_Insert_AI`, mà procedure này **ghi thẳng `CF_ObjectTbl`, bỏ qua chốt duyệt** — đúng như header của chính nó ghi *"UAT temporary rule (2026-07-29): create the customer directly in CF_ObjectTbl. The approval step through AR_ObjectNewRequireTbl is deferred"*, và như [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md) nêu rõ: *"Không tạo `AR_ObjectNewRequireTbl` trong luồng AI này."*
+
+    Nói cách khác: **lỗ bỏ qua duyệt mà `CORE-001` ghi là "đã xử lý" thực ra vẫn còn mở.** Tài liệu đã mô tả nó thành đã đóng, đó là chỗ nguy hiểm hơn cả bản thân lỗ hổng. Cần quyết định nghiệp vụ, xem `CORE-011` bên dưới. **Không được tắt `API_KhachHang_Insert_AI` trước khi chuyển hướng endpoint — làm vậy là gãy luôn chức năng tạo khách trong chat đang chạy.**
 
 - [ ] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `TODO`
   - Chốt customer, item list, số lượng, kho, bảng giá, CTBH và response giỏ hàng.
@@ -278,6 +296,15 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 - [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `TODO`
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.
   - Nghiệm thu: không có mutation ngoài ý muốn; mọi thao tác ghi đều có audit.
+
+- [ ] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `TODO` · *mở 31/07/2026*
+  - Hiện trạng đã kiểm chứng: chat gọi `API_KhachHang_Insert_AI`, ghi thẳng `CF_ObjectTbl`. Khách xuất hiện ngay, **không qua `AR_ObjectNewRequireTbl`**, trong khi khách tạo từ màn hình UI thì phải chờ duyệt. Hai đường tạo khách đang có hai luật khác nhau.
+  - Đây là câu hỏi nghiệp vụ, không phải câu hỏi kỹ thuật: khách hàng có chấp nhận sale tạo khách không cần duyệt qua chat hay không.
+  - Hai hướng:
+    - **A — Bắt qua duyệt:** đổi `env.js` `CREATE_CUSTOMER` sang `/api/API_KhachHang_Insert`, đổi `ApiCode` trong `chatbot-api-engine.js`, đối chiếu lại tham số hai SP, rồi mới đặt `API_KhachHang_Insert_AI` thành `IsActive = 0`. Chat sẽ trả "đã gửi chờ duyệt" thay vì "đã tạo xong" — phải sửa cả câu thông báo cho người dùng.
+    - **B — Giữ ghi thẳng:** chấp nhận có chủ đích, ghi rõ vào tài liệu bàn giao rằng khách tạo qua chat không qua duyệt, và bỏ chữ "tạm thời (UAT)" khỏi header của SP.
+  - Nghiệm thu: có quyết định bằng văn bản; mã nguồn, `API_Definition` và tài liệu cùng mô tả một luật duy nhất.
+  - Chặn: `CORE-010` không thể nghiệm thu trọn vẹn khi luật ghi khách còn chưa chốt.
 
 ## 4. Giai đoạn 2 — Catalog và chương trình bán hàng
 
@@ -475,6 +502,12 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 
 - [ ] **SEC-002 — Test phân quyền âm** · `P0` · `TODO`
   - Cố ý truy vấn khách, kho, chi nhánh và API ngoài quyền để xác nhận bị chặn.
+  - **Bổ sung 31/07/2026 — cái bẫy danh sách trắng viết tay đã được bịt.** `Migrate_API_Capability_Metadata_AI.sql` nâng API lên `READ` theo một danh sách gõ tay, nên mọi API chỉ-đọc mới do `API_Metadata_AutoBootstrap_AI` sinh ra đều rơi xuống `DENY` rồi **kẹt ở đó im lặng** cho tới khi có người nhớ thêm tên nó vào. Đúng chuyện đã xảy ra với `@hang_hoa_list`.
+    - Đã viết `sql/System - API_Capability_AutoGrant_AI.sql`: tự tìm và cấp `READ`, nhưng chỉ khi chứng minh được cả ba điều — (1) không ghi bảng thật, xác định bằng `sys.dm_sql_referenced_entities` chứ không dò từ khoá; (2) không có SQL động và không gọi procedure lồng; (3) có tham số `IsSystemParam = 1` để server điền danh tính.
+    - Vì sao không dò từ khoá: đã thử, nó gắn cờ "có ghi" cho **21/28** API đang là `READ` vì các procedure báo cáo dùng bảng tạm. Dùng DMV thì khớp 100% với danh sách người duyệt — 28/28 `READ` ghi 0 bảng, 3/3 `MUTATION` ghi đúng bảng nghiệp vụ.
+    - Chạy 31/07/2026: cấp `READ` cho `@audit_log`, `@read_request_audit`, `@tra_cuu_tong_hop`; giữ `DENY` cho 5 API ghi dữ liệu, 3 API thiếu tham số phân quyền và 1 dòng đăng ký mồ côi (`@cap_nhat_ket_qua_khao_sat` trỏ tới procedure không tồn tại — nên xoá hoặc sửa tên).
+    - **Giới hạn còn lại, cần kiểm tay khi làm SEC-002:** cửa số 3 chỉ chứng minh tham số phân quyền *tồn tại*, không chứng minh procedure *thực sự dùng* nó để lọc. Ba API còn `DENY` vì thiếu tham số (`API_ChiTietBaiKhaoSat`, `API_KetQuaBaiKhaoSat`, `API_KiemTraKhaoSatNgay`) là ứng viên rõ ràng cho test phân quyền âm: chúng không nhận danh tính người dùng nên chưa có gì giới hạn phạm vi.
+    - Đã đặt `@capability_auto_grant` thành `DENY` + `IsActive = 0`: trigger bootstrap tự đăng ký chính công cụ phân quyền này thành API gọi được từ chat.
 
 - [ ] **SEC-003 — Audit mutation** · `P0` · `TODO`
   - Lưu người thực hiện, thời gian, request ID, loại thao tác và kết quả; không lưu secret.
