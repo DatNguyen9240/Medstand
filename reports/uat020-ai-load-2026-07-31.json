@@ -1,0 +1,20 @@
+{
+  "suite": "controlled-load",
+  "endpoint": "http://localhost:3000/api/gateway",
+  "transport": "gateway",
+  "remote": false,
+  "total": 40,
+  "concurrency": 4,
+  "durationMs": 20271,
+  "throughputRps": 1.97,
+  "successRate": 100,
+  "p50Ms": 2058,
+  "p95Ms": 5668,
+  "p99Ms": 9785,
+  "maxMs": 9785,
+  "thresholds": {
+    "minSuccessRate": 99,
+    "maxP95Ms": 6000
+  },
+  "failureReasons": {}
+}

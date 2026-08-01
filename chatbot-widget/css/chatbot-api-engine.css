@@ -803,6 +803,14 @@ body.ae-panel-open::before {
 .ae-order-row input:focus { border-color:var(--ae-accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--ae-accent) 16%,transparent); }
 .ae-order-row.has-product .ae-order-prod { border-color:var(--ae-accent); }
 .ae-order-promotion { grid-column:1 / -1; color:#16a34a; font-size:12px; font-weight:600; line-height:1.35; padding:0 2px; }
+/* Dòng hàng tặng: chỉ để đọc, dùng CÙNG lưới cột với .ae-order-row để tên/SL
+   thẳng hàng với dòng cha ngay phía trên. Không có ô nhập và không có nút xóa
+   vì số lượng tặng do chương trình quyết định, người dùng không sửa tay. */
+.ae-order-gift { display:grid; grid-template-columns:minmax(0,1fr) 72px 72px 36px; gap:8px; align-items:center; padding:6px 11px; border:1px dashed #16a34a; border-radius:9px; background:color-mix(in srgb,#16a34a 8%,transparent); font-size:13px; }
+.ae-order-gift-name { min-width:0; overflow-wrap:anywhere; color:var(--ae-text); font-weight:600; }
+.ae-order-gift-qty { color:var(--ae-text); font-weight:600; }
+.ae-order-gift-money { color:#16a34a; font-weight:700; }
+.ae-order-gift-tag { grid-column:1 / -1; color:#16a34a; font-size:12px; font-weight:600; }
 .ae-order-del { min-height:42px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; opacity:.7; }
 .ae-order-del:hover { border-color:#dc2626; color:#dc2626; opacity:1; }
 .ae-order-total { text-align:right; font-size:14px; font-weight:700; color:var(--ae-text); }
@@ -814,4 +822,7 @@ body.ae-panel-open::before {
     /* Sản phẩm chiếm trọn dòng trên, SL/CK/xóa xuống dòng dưới. */
     .ae-order-row { grid-template-columns:minmax(0,1fr) 72px 36px; }
     .ae-order-prodwrap { grid-column:1/-1; }
+    /* Dòng tặng bám theo cùng cách xuống dòng để không lệch với dòng cha. */
+    .ae-order-gift { grid-template-columns:minmax(0,1fr) 72px 36px; }
+    .ae-order-gift-name { grid-column:1/-1; }
 }

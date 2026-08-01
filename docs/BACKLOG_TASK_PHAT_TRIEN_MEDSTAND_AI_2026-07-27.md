@@ -141,6 +141,39 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: mỗi account có tối thiểu một bộ input chạy được các luồng thuộc quyền.
   - Đã chuẩn bị bộ input và script read-only kiểm tra khách, sản phẩm, đơn mẫu và kho chính: [UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md](UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md).
   - Kết quả: `13/13 PASS`; khách đại diện đúng scope, có dữ liệu giao dịch mẫu, 3 sản phẩm mẫu hoạt động và kho chính hiệu lực.
+  - **[Quét toàn diện 31/07/2026] Gọi thật 27 API `READ` × 13 tài khoản = 351 lượt.** Kết quả: **23/27 API trả dữ liệu cho đủ 13/13 tài khoản.**
+
+    Dữ liệu nền đã đủ chuẩn:
+    - `U13D_`: đúng **84 đơn + 168 dòng chi tiết**, 09/07 → 20/07 như tài liệu yêu cầu.
+    - `API_DoanhSo_AI`: **13/13 tài khoản thấy đủ 12 ngày**.
+    - Khảo sát: 13/13 tài khoản đều có đợt khảo sát (từ 2 đến 567 đợt).
+    - Kho: 6/7 quản lý **không có** dòng trong `SY_UserStoreHouseTbl`, nhưng **không phải lỗi** — các procedure có nhánh cho quản lý thừa hưởng kho từ nhân viên dưới quyền qua `SY_User.ManagerID`. Đã kiểm từng tài khoản: 7/7 quản lý đều lấy được kho hợp lệ.
+
+    Ba trường hợp thoạt nhìn là lỗi nhưng **là hành vi đúng**, không cần sửa:
+    - `@hoa_don_chi_tiet` — bắt buộc `@DocumentID`, không có giá trị mặc định. Truyền mã hoá đơn thật thì trả đúng dữ liệu.
+    - `@goi_ydon_thuoc` — cần từ khoá tìm kiếm; thiếu thì trả thông báo validate đúng chuẩn.
+    - `@employee_by_manager` — 6 tài khoản sale nhận *"Tài khoản không có nhân viên nào dưới quyền"*, đúng vì sale không quản lý ai.
+
+    **Chốt phân vai ba mức cho nhóm khuyến mãi — chủ dự án quyết định 31/07/2026.** Ba API này rất dễ bị lẫn khi bảo trì, ghi rõ ra đây:
+
+    | API | Nội dung | Ai xem được |
+    |---|---|---|
+    | `@de_xuat_khuyen_mai` | **Gợi ý** hàng nên đẩy (tồn nhiều / cận hạn) — **chưa ai duyệt** | Chỉ cấp quản lý |
+    | `@san_pham_trong_tam` | Chương trình **đã được công ty duyệt** | **Ai cũng xem**, kể cả sale |
+    | `@san_pham_trong_tam_import` | Nạp/sửa chương trình | Quản lý trở lên, và **chỉ xem** |
+
+    Lý do mức 1 chặn dù mức 2 mở: nội dung mức 1 là *đề xuất*, không phải ưu đãi có thật. Một dòng *"khăn lau còn 373 hộp, hạn 29/08 — nên giảm giá"* rất dễ bị hiểu thành "đang có khuyến mãi món này" rồi nhân viên nói miệng với nhà thuốc lúc đi tuyến. Nhân viên **không bị thiếu thông tin để bán hàng**: `API_HangHoaList_AI` đã trả `GhiChu` nguyên văn điều khoản (*"Mua 8+2, 30+10 (< 8h ck 10%), KHHĐ tặng hàng"*) cho **117/117 sản phẩm**, cộng với mức 2.
+
+    **Đã sửa 3 việc:**
+    1. `@de_xuat_khuyen_mai` — giữ chốt chặn cấp quản lý, nhưng bỏ `SELECT TOP (0)` (bảng rỗng không kèm `Msg` nào → màn hình trắng khó hiểu) thay bằng `Msg` + `MsgType = 0` giải thích và chỉ chỗ xem chương trình đã duyệt.
+    2. `API_SanPhamTrongTam_Import_AI` — **thêm guard cấp quản lý, trước đó KHÔNG HỀ CÓ.** Guard duy nhất là *"tài khoản tồn tại và chưa bị khoá"*, nghĩa là bất kỳ tài khoản sale nào gọi thẳng vào SQL đều ghi đè được chương trình trọng tâm và bậc quà tặng toàn công ty. Cổng n8n có chặn sẵn (`enabledMutationApis` chỉ chứa `@khach_hang_insert_ai`) nhưng procedure phải tự đứng vững nếu bị gọi trực tiếp.
+    3. `API_SanPhamTrongTam_Import_AI` — thêm `@Apply BIT = 0`: mặc định chạy hết mọi bước kiểm tra rồi báo cáo **sẽ** thay đổi gì nhưng **không ghi**. Khớp điều kiện Pilot *"Read-only và preview mutation"* / *"Không tạo đơn, khách hoặc chương trình thật trong Pilot"*. An toàn: đã rà toàn repo, không workflow nào gọi procedure này (`AI_Upload_Reader.json` 0 tham chiếu).
+
+    **Kiểm chứng sau khi sửa:** mức 1 → 7 quản lý nhận 50 dòng, 6 sale nhận thông báo có nghĩa. Mức 2 → **13/13 tài khoản đều xem được**. Mức 3 → sale bị từ chối, quản lý nhận bảng xem trước; đếm `AR_SanPhamTrongTamTbl` trước/sau = **3/3, không ghi gì**.
+
+    File: `sql/Module 6 - API_DeXuatKhuyenMai_AI.sql`, `sql/Module 10 - API_SanPhamTrongTam_Import_AI.sql`.
+
+    Còn tồn tại, chưa chặn demo: `AR_KeHoachDiTuyenTbl` chỉ có 3 dòng của `ADS001`, không tài khoản UAT nào có kế hoạch tuyến. `API_TuyenBanHang_AI` **không đọc bảng này** (nó tính gợi ý chăm sóc từ lịch sử đơn) nên `@tuyen_ban_hang` vẫn chạy đủ 13/13; chỉ màn hình kế hoạch tuyến của ERP là trống.
 
 - [x] **UAT-010 — Kiểm tra độ mới và ngày chốt dữ liệu** · `P0` · `DONE`
   - Xác định `AsOfDate`, múi giờ và quy tắc lấy ngày hệ thống cho dashboard/API.
@@ -202,15 +235,18 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn, giá và retry theo `DocumentID`. Không sửa `API_DonHang_Insert`/`API_HangHoaList` gốc dùng chung. Chưa triển khai hai procedure AI và chưa tạo đơn UAT.
   - Bằng chứng: [UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md](UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md), script read-only `scripts/verify_uat018_order_create.js`.
 
-- [ ] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `PASS_STATIC_BLOCKED_AUTHENTICATED_RUNTIME`
+- [ ] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `FIX_SOURCE_READY_RUNTIME_RETEST_REQUIRED`
   - Chạy bộ câu hỏi theo intent, tham số, hội thoại tiếp nối và các trường hợp thiếu dữ liệu.
   - Nghiệm thu: tối thiểu 95% test chính đạt; không có lỗi P0/P1 chưa được chấp nhận.
-  - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Chưa chạy 31 ca live vì phiên hiện tại không có token UAT và fixture thuộc đúng phạm vi tài khoản.
-  - Bằng chứng: [UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md](UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md), các JSON trong `reports/uat019-*`.
+  - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Live có xác thực `28/31 PASS` (90,32%), chưa đạt ngưỡng 95%; lỗi `upsell` và `product-search` là `502 EMPTY_UPSTREAM_RESPONSE` do n8n trả HTTP 200 nhưng body rỗng, `catalog` là `422 VALIDATION_ERROR` vì workflow yêu cầu từ khóa tối thiểu dù câu hỏi chỉ định loại `khohang`.
+  - Đã sửa source workflow: danh mục kho map `@Type=khohang` không cần từ khóa; upsell/product-search trả `NO_DATA` trực tiếp thay vì rơi vào RAG có thể trả rỗng; RAG lỗi luôn trả JSON. Static `159/159 PASS`, workflow guard `4/4 PASS`. Còn phải import/publish workflow và live retest bằng token còn hiệu lực trước khi đánh dấu PASS.
+  - Bằng chứng: [UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md](UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md), `reports/uat019-live-2026-07-31.json`, các JSON trong `reports/uat019-*`.
 
-- [ ] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `TODO`
+- [x] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `PASS`
   - Đo riêng API thường và truy vấn AI phức tạp, không chỉ đo cảm nhận trên UI.
   - Nghiệm thu mục tiêu: truy vấn thường dưới 3 giây; truy vấn AI phức tạp dưới 6 giây ở p95 hoặc có ngoại lệ được ghi rõ.
+  - Kết quả 31/07/2026: HTTP local chạy 40 request/target, concurrency 4, đạt 100%; web p50/p95 `5/24 ms`, n8n health `1/4 ms`. AI qua gateway có xác thực chạy 40 request, concurrency 4, đạt 100%, p50/p95 `2.058/5.668 ms`; p95 đạt mục tiêu dưới 6 giây. Ghi nhận p99/max `9.785 ms` để theo dõi nhưng không làm trượt tiêu chí p95.
+  - Bằng chứng: [UAT-020_PERFORMANCE_P50_P95_2026-07-31.md](UAT-020_PERFORMANCE_P50_P95_2026-07-31.md), `reports/uat020-infrastructure-load-2026-07-31.json`, `reports/uat020-ai-load-2026-07-31.json`.
 
 - [ ] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `TODO`
   - Test gửi lặp, double-click, retry, context cũ và response nhiều bảng.

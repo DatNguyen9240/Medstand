@@ -1,9 +1,29 @@
 // -- Helpers ------------------------------------------------------------------
+// GIỚI HẠN CỨNG: AR_OrderTbl.DocumentID là varchar(30). Vượt quá thì SQL Server
+// báo "String or binary data would be truncated" và đơn KHÔNG được tạo.
+//
+// Bản cũ dùng 'UATORD-' + crypto.randomUUID() = 7 + 36 = 43 ký tự nên luôn hỏng
+// trên trình duyệt hiện đại. Nhánh dự phòng (Date.now + Math.random) chỉ ~27 ký
+// tự nên vẫn chạy — vì vậy lỗi chỉ lộ ra ở máy có crypto.randomUUID, dễ tưởng là
+// lỗi ngẫu nhiên.
+//
+// Lưu ý tham số @DocumentID của API_DonHangChiTiet_Insert_AI khai varchar(50),
+// rộng hơn cột thật, nên procedure nhận vào bình thường rồi mới chết lúc INSERT.
+// Đừng tin con số 50 đó — 30 mới là giới hạn thật.
+//
+// Mã dài nhất từng dùng trong AR_OrderTbl là 21 ký tự, nên 30 vẫn dư chỗ.
+var ORDER_DOCUMENT_ID_MAX = 30;
 function genUUID() {
-  var randomPart = (window.crypto && window.crypto.randomUUID)
-    ? window.crypto.randomUUID()
-    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
-  return 'UATORD-' + randomPart;
+  var randomPart;
+  if (window.crypto && window.crypto.getRandomValues) {
+    // 2 số 32-bit -> ~14 ký tự base36. Kèm mốc thời gian là đủ chống trùng.
+    randomPart = Array.prototype.map
+      .call(window.crypto.getRandomValues(new Uint32Array(2)), function (n) { return n.toString(36); })
+      .join('');
+  } else {
+    randomPart = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+  return ('UATORD-' + Date.now().toString(36) + randomPart).slice(0, ORDER_DOCUMENT_ID_MAX);
 }
 function todayStr() {
   var d = new Date();

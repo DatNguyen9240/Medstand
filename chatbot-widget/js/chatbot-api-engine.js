@@ -3385,6 +3385,43 @@
             return window.MedstandPromotion.calculate(p.GhiChu || '', quantity);
         }
 
+        // Tên sản phẩm từ API_HangHoaList_AI có kèm điều khoản trong ngoặc, ví dụ
+        // "An thần ngủ ngon (Hộp 3 vỉ x 10 viên) (Mua 10+2 (< 10h ck 7%), KHHĐ tặng hàng)".
+        // Dòng hàng tặng chỉ hiện phần tên, bỏ đuôi điều khoản — cắt đúng bằng biểu
+        // thức mà trang /create-order đang dùng để hai nơi hiển thị giống hệt nhau.
+        function giftDisplayName(p) {
+            return String((p && (p.ItemName || p.ItemID)) || '').replace(/\s*\(Mua\s+[\s\S]*$/, '');
+        }
+
+        /* Dòng hàng tặng — bản sao của hành vi trang /create-order.
+           CỐ Ý dùng class .ae-order-gift chứ KHÔNG phải .ae-order-row: cả recalc()
+           lẫn vòng lặp dựng payload đều duyệt '.ae-order-row', nên nếu dùng chung
+           class thì hàng tặng sẽ bị tính thành một dòng bán bình thường, rồi dòng
+           cha lại đẩy thêm một lần nữa -> tặng gấp đôi.
+           Dòng này chỉ để NHÌN. Dữ liệu gửi đi vẫn do dòng cha sinh ra ở chỗ
+           promotion.giftQuantity > 0 trong hàm submit. */
+        function syncGiftRow(row, p, promotion) {
+            var qty = promotion && promotion.giftQuantity > 0 ? promotion.giftQuantity : 0;
+            if (!qty || !p) {
+                if (row._giftRow) { row._giftRow.remove(); row._giftRow = null; }
+                return;
+            }
+            if (!row._giftRow) {
+                var g = document.createElement('div');
+                g.className = 'ae-order-gift';
+                g.innerHTML = [
+                    '<span class="ae-order-gift-name"></span>',
+                    '<span class="ae-order-gift-qty"></span>',
+                    '<span class="ae-order-gift-money">0 đ</span>',
+                    '<span class="ae-order-gift-tag">Hàng tặng</span>'
+                ].join('');
+                row.insertAdjacentElement('afterend', g);
+                row._giftRow = g;
+            }
+            row._giftRow.querySelector('.ae-order-gift-name').textContent = giftDisplayName(p);
+            row._giftRow.querySelector('.ae-order-gift-qty').textContent = 'SL ' + qty;
+        }
+
         function recalc() {
             var sum = 0;
             itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
@@ -3392,10 +3429,12 @@
                 var promoEl = row.querySelector('.ae-order-promotion');
                 if (!p) {
                     if (promoEl) { promoEl.textContent = ''; promoEl.hidden = true; }
+                    syncGiftRow(row, null, null);
                     return;
                 }
                 var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
                 var promotion = productPromotion(p, qty);
+                syncGiftRow(row, p, promotion);
                 var ck = promotion.discountPercent;
                 row.querySelector('.ae-order-ck').value = ck;
                 if (promoEl) {
@@ -3438,6 +3477,9 @@
             row.querySelector('.ae-order-qty').addEventListener('input', recalc);
             row.querySelector('.ae-order-ck').addEventListener('input', recalc);
             row.querySelector('.ae-order-del').onclick = function () {
+                // Dòng hàng tặng là phần tử anh em, không nằm trong row, nên
+                // row.remove() không kéo theo. Bỏ sót thì nó mồ côi trên giao diện.
+                if (row._giftRow) { row._giftRow.remove(); row._giftRow = null; }
                 row.remove();
                 if (!itemsEl.querySelector('.ae-order-row')) addRow();
                 recalc();

@@ -38,17 +38,41 @@ BEGIN
        vì vậy không được dùng isDisable/ngày hiệu lực để giả định là đã duyệt.
        Khi owner ERP xác nhận nguồn approval, nhánh này mới được nối dữ liệu thật.
     */
+    /* CHỈ CẤP QUẢN LÝ TRỞ LÊN — chủ dự án chốt ngày 31/07/2026.
+
+       Phân biệt ba mức, đừng lẫn lộn khi bảo trì:
+
+         1. Procedure NÀY (@de_xuat_khuyen_mai) — GỢI Ý hàng nên đẩy khuyến mãi,
+            tính từ tồn kho + hạn dùng + tốc độ bán. CHƯA AI DUYỆT. Chỉ quản lý.
+         2. API_SanPhamTrongTam_AI — chương trình sản phẩm trọng tâm ĐÃ ĐƯỢC
+            CÔNG TY DUYỆT. Ai cũng xem được, kể cả nhân viên bán hàng.
+         3. API_SanPhamTrongTam_Import_AI — nạp/sửa chương trình. Quản lý trở lên,
+            và chỉ xem, không ghi (xem @Apply trong file đó).
+
+       Vì sao mức 1 phải chặn dù mức 2 mở: nội dung ở đây là ĐỀ XUẤT, không phải
+       ưu đãi có thật. Một dòng "khăn lau còn 373 hộp, hạn 29/08 — nên giảm giá"
+       rất dễ bị hiểu thành "đang có khuyến mãi món này", rồi nhân viên nói miệng
+       với nhà thuốc lúc đi tuyến. Điều khoản bán hàng chính thức mà nhân viên
+       cần thì đã có sẵn ở nơi khác: API_HangHoaList_AI trả cột GhiChu nguyên văn
+       ("Mua 8+2, 30+10 (< 8h ck 10%)"...) cho 117/117 sản phẩm, cộng với mức 2.
+       Nên chặn ở đây không làm nhân viên thiếu thông tin để bán hàng.
+
+       [Sửa 31/07/2026] Trước đây nhánh này trả SELECT TOP (0) — bảng rỗng đúng
+       cấu trúc nhưng KHÔNG kèm dòng Msg nào, nên 6/6 tài khoản sale trong bộ UAT
+       nhận màn hình trắng, không phân biệt được là chưa có dữ liệu, hỏng, hay
+       mất quyền. Quyết định chặn giữ nguyên; chỉ đổi cách báo sang Msg để người
+       dùng hiểu. Client hiển thị mọi dòng có cả Msg lẫn MsgType thành câu trả
+       lời (chatbot-widget/js/chatbot-api-engine.js), và hai rào chặn khác trong
+       chính procedure này cũng đã dùng đúng dạng đó.
+
+       MsgType = 0 vì đây không phải lỗi: tài khoản hợp lệ, quyền hợp lệ, chỉ là
+       nội dung này không dành cho vai trò đó. MsgType = 1 dành cho lỗi thật. */
     IF @IsGlobal = 0 AND @IsManager = 0
     BEGIN
-        SELECT TOP (0)
-            CAST(NULL AS VARCHAR(50)) AS ProgramID,
-            CAST(NULL AS NVARCHAR(250)) AS ProgramName,
-            CAST(NULL AS DATETIME) AS EffectiveFrom,
-            CAST(NULL AS DATETIME) AS EffectiveTo,
-            CAST(NULL AS NVARCHAR(50)) AS ProgramStatus,
-            CAST(NULL AS NVARCHAR(50)) AS ViewMode,
-            CAST(NULL AS NVARCHAR(50)) AS Audience,
-            CAST(NULL AS NVARCHAR(50)) AS RuleVersion;
+        SELECT N'Đề xuất khuyến mãi là nội dung tham mưu nội bộ, chỉ hiển thị cho cấp quản lý. '
+             + N'Chương trình đã được công ty duyệt thì bạn xem ở mục Sản phẩm trọng tâm, '
+             + N'còn điều khoản bán hàng của từng mặt hàng đã có trong ghi chú sản phẩm.' AS Msg,
+               0 AS MsgType;
         RETURN;
     END;
 

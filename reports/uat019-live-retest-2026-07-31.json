@@ -1,0 +1,324 @@
+{
+  "suite": "live-functional",
+  "endpoint": "http://localhost:3000/api/gateway",
+  "transport": "gateway",
+  "authenticated": true,
+  "total": 31,
+  "passed": 0,
+  "failed": 31,
+  "p50Ms": 89,
+  "p95Ms": 120,
+  "maxMs": 392,
+  "failures": [
+    {
+      "id": "greeting",
+      "text": "xin chào",
+      "expectedApi": null,
+      "httpStatus": 502,
+      "latencyMs": 392,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "identity",
+      "text": "tôi là ai",
+      "expectedApi": null,
+      "httpStatus": 502,
+      "latencyMs": 90,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "capabilities",
+      "text": "bạn làm được gì",
+      "expectedApi": null,
+      "httpStatus": 502,
+      "latencyMs": 85,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "sales-today",
+      "text": "doanh số hôm nay",
+      "expectedApi": "@doanh_so",
+      "httpStatus": 502,
+      "latencyMs": 91,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "sales-month",
+      "text": "doanh số tháng này",
+      "expectedApi": "@doanh_so",
+      "httpStatus": 502,
+      "latencyMs": 89,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "invoice-list",
+      "text": "xem hóa đơn tháng này",
+      "expectedApi": "@hoa_don",
+      "httpStatus": 502,
+      "latencyMs": 89,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "invoice-detail",
+      "text": "xem chi tiết hóa đơn U13S1_MB13_4",
+      "expectedApi": "@hoa_don_chi_tiet",
+      "httpStatus": 502,
+      "latencyMs": 93,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "order-list",
+      "text": "xem đơn hàng tháng này",
+      "expectedApi": "@don_hang",
+      "httpStatus": 502,
+      "latencyMs": 90,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "customer-score",
+      "text": "chấm điểm khách hàng",
+      "expectedApi": "@cham_diem_kh",
+      "httpStatus": 502,
+      "latencyMs": 89,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "debt-summary",
+      "text": "công nợ khách hàng",
+      "expectedApi": "@cong_no_khach_hang",
+      "httpStatus": 502,
+      "latencyMs": 100,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "debt-detail",
+      "text": "coi cn kh EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 502,
+      "latencyMs": 91,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "debt-natural",
+      "text": "EF7C85D8-8888-4904-8478-6046C09DE258 còn nợ bao nhiêu",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 502,
+      "latencyMs": 89,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "loyalty",
+      "text": "xem tích lũy của EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@tich_luy",
+      "httpStatus": 502,
+      "latencyMs": 86,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "route",
+      "text": "xem tuyến bán hàng hôm nay",
+      "expectedApi": "@tuyen_ban_hang",
+      "httpStatus": 502,
+      "latencyMs": 85,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "order-recommendation",
+      "text": "gợi ý đơn hàng cho EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@goi_ydon_hang",
+      "httpStatus": 502,
+      "latencyMs": 85,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "upsell",
+      "text": "gợi ý bán kèm cho EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@upsell_goi_y",
+      "httpStatus": 502,
+      "latencyMs": 91,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "prescription-bundle",
+      "text": "gợi ý đơn thuốc cho sản phẩm A003",
+      "expectedApi": "@goi_ydon_thuoc",
+      "httpStatus": 502,
+      "latencyMs": 93,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "inventory",
+      "text": "kiểm tra tồn kho A003",
+      "expectedApi": "@danh_sach_tonkho",
+      "httpStatus": 502,
+      "latencyMs": 88,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "product-search",
+      "text": "tìm sản phẩm A003",
+      "expectedApi": "@tra_cuu_san_pham",
+      "httpStatus": 502,
+      "latencyMs": 84,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "focus-products",
+      "text": "xem sản phẩm trọng tâm",
+      "expectedApi": "@san_pham_trong_tam",
+      "httpStatus": 502,
+      "latencyMs": 120,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "promotion-review",
+      "text": "xem sản phẩm cần đề xuất khuyến mãi",
+      "expectedApi": "@de_xuat_khuyen_mai",
+      "httpStatus": 502,
+      "latencyMs": 95,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "catalog",
+      "text": "xem danh mục kho hàng",
+      "expectedApi": "@danh_muc",
+      "httpStatus": 502,
+      "latencyMs": 93,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "survey-360",
+      "text": "xem khảo sát 360 của EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@khao_sat360",
+      "httpStatus": 502,
+      "latencyMs": 90,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "survey-questions",
+      "text": "xem danh sách câu hỏi khảo sát của EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@danh_sach_cau_hoi_khao_sat",
+      "httpStatus": 502,
+      "latencyMs": 83,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "survey-status",
+      "text": "kiểm tra trạng thái khảo sát EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@kiem_tra_khao_sat",
+      "httpStatus": 502,
+      "latencyMs": 92,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "survey-daily",
+      "text": "hôm nay tôi đã khảo sát chưa",
+      "expectedApi": "@kiem_tra_khao_sat_ngay",
+      "httpStatus": 502,
+      "latencyMs": 86,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "survey-history",
+      "text": "xem lịch sử khảo sát EF7C85D8-8888-4904-8478-6046C09DE258",
+      "expectedApi": "@lich_su_khao_sat",
+      "httpStatus": 502,
+      "latencyMs": 87,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "notifications",
+      "text": "xem thông báo của tôi",
+      "expectedApi": "@thong_bao",
+      "httpStatus": 502,
+      "latencyMs": 88,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "symptom-search",
+      "text": "tìm sản phẩm theo triệu chứng ho",
+      "expectedApi": "@tim_san_pham_theo_trieu_chung",
+      "httpStatus": 502,
+      "latencyMs": 98,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "missing-customer",
+      "text": "xem công nợ",
+      "expectedApi": "@cong_no_chi_tiet",
+      "httpStatus": 502,
+      "latencyMs": 81,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    },
+    {
+      "id": "unsupported",
+      "text": "thời tiết hôm nay thế nào",
+      "expectedApi": null,
+      "httpStatus": 502,
+      "latencyMs": 79,
+      "jsonError": null,
+      "pass": false,
+      "reason": "HTTP_502"
+    }
+  ]
+}

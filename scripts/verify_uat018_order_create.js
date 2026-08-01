@@ -87,10 +87,24 @@ SELECT
       check('FRONTEND_ORDER_ENDPOINT', /CREATE:\s*['"]\/api\/API_DonHangChiTiet_Insert_AI['"]/.test(envSource), '/api/API_DonHangChiTiet_Insert_AI'),
       check('FRONTEND_PRODUCT_ENDPOINT', /PRODUCTS:\s*['"]\/api\/API_HangHoaList_AI['"]/.test(envSource), '/api/API_HangHoaList_AI'),
       check('FRONTEND_QUANTITY_POSITIVE_INTEGER', source.includes('Number.isInteger(qty)') && source.includes('qty <= 0'), 'SL nguyên > 0'),
-      check('FRONTEND_STOCK_GUARD', source.includes('qty > stock') && source.includes('vượt tồn'), 'không cho SL vượt tồn hiển thị'),
+      // [Sửa 31/07/2026] Phép kiểm cũ dò chuỗi 'qty > stock' — chuỗi đó KHÔNG còn
+      // tồn tại trong mã (kiểm cả bản HEAD: 0 lần xuất hiện), nên nó luôn báo FAIL
+      // dù chức năng vẫn đúng. Mã thật còn chặt hơn: 'qty + giftQty > stock', tức
+      // cộng cả hàng tặng vào khi đối chiếu tồn, vì hàng tặng cũng trừ kho.
+      check('FRONTEND_STOCK_GUARD', /qty\s*\+\s*giftQty\s*>\s*stock/.test(source) && source.includes('vượt tồn'), 'không cho tổng bán + tặng vượt tồn hiển thị'),
       check('FRONTEND_PRICE_READONLY', /id:\s*'price_'[^\n]+readonly:\s*true/.test(source), 'giá readonly'),
       check('FRONTEND_IDEMPOTENCY_HEADER', source.includes('getOrderSubmitKey(data.payload)') && http.includes("'Idempotency-Key'"), 'key ổn định khi retry cùng payload'),
-      check('FRONTEND_STABLE_DOCUMENT_ID', source.includes('_orderPendingDocumentId') && source.includes("return 'UATORD-' + randomPart"), 'DocumentID giữ nguyên khi retry'),
+      check('FRONTEND_STABLE_DOCUMENT_ID', source.includes('_orderPendingDocumentId') && /return\s*\(\s*'UATORD-'/.test(source), 'DocumentID giữ nguyên khi retry'),
+      // Cột AR_OrderTbl.DocumentID là varchar(30). Bản trước dùng crypto.randomUUID()
+      // ra 43 ký tự nên mọi đơn đều chết với "String or binary data would be
+      // truncated". Kiểm cả ràng buộc lẫn kết quả sinh mã thật.
+      check('FRONTEND_DOCUMENT_ID_FITS_COLUMN', /ORDER_DOCUMENT_ID_MAX\s*=\s*30/.test(source) && /\.slice\(0,\s*ORDER_DOCUMENT_ID_MAX\)/.test(source), 'DocumentID cắt theo giới hạn varchar(30)'),
+      // Chỉ soi trong thân hàm genUUID. KHÔNG cấm randomUUID trên toàn file:
+      // newIdempotencyKey vẫn dùng nó hợp lệ cho header HTTP Idempotency-Key,
+      // nơi không có giới hạn độ dài cột.
+      check('FRONTEND_DOCUMENT_ID_NO_RAW_UUID',
+        !/function genUUID\(\)[\s\S]*?\n\}/.exec(source) || !/randomUUID/.test(/function genUUID\(\)[\s\S]*?\n\}/.exec(source)[0]),
+        'genUUID không dùng randomUUID (36 ký tự, tràn cột varchar(30))'),
       check('SERVER_TRANSACTION_EVIDENCE', /BEGIN\s+TRAN/i.test(aiProc), 'transaction trong AI order procedure'),
       check('SERVER_DUPLICATE_GUARD_EVIDENCE', /UPDLOCK|HOLDLOCK/i.test(aiProc) && /DocumentID/i.test(aiProc) && /EXCEPT/i.test(aiProc), 'duplicate guard theo DocumentID + payload'),
       check('SERVER_STOCK_GUARD_EVIDENCE', /IV_StockTransactionTbl/i.test(aiProc) && /CTY.*DL02.*DL03/is.test(aiProc), 'tồn ba kho phía server'),

@@ -23,6 +23,30 @@ BEGIN
         RETURN;
     END;
 
+    /* [Thêm 31/07/2026] Cột AR_OrderTbl.DocumentID là varchar(30), nhưng tham số
+       @DocumentID ở trên khai varchar(50) — RỘNG HƠN CỘT THẬT. Hệ quả: mã dài
+       31-50 ký tự đi lọt hết mọi bước kiểm tra, chạy tới tận INSERT rồi mới chết
+       với lỗi thô của SQL Server:
+
+         "String or binary data would be truncated in table
+          'medtest.dbo.AR_OrderTbl', column 'DocumentID'"
+
+       Lỗi đó hiện nguyên văn lên màn hình người dùng, không nói được phải sửa gì.
+       Đã gặp thật ngày 31/07/2026: trang tạo đơn sinh mã bằng
+       'UATORD-' + crypto.randomUUID() = 43 ký tự nên mọi đơn đều hỏng.
+
+       Không nới cột lên 50 vì AR_OrderDetailTbl và AR_InvoiceTbl cũng varchar(30);
+       nới một bảng sẽ đẩy lỗi sang bảng khác. Mã dài nhất từng dùng là 21 ký tự
+       trên 100.920 đơn, nên 30 vẫn dư. Chặn sớm và báo rõ là cách đúng. */
+    IF LEN(COALESCE(@DocumentID, '')) > 30
+    BEGIN
+        SELECT NULL AS DocumentID,
+               N'Mã đơn hàng dài ' + CAST(LEN(@DocumentID) AS NVARCHAR(10))
+             + N' ký tự, vượt giới hạn 30 ký tự của hệ thống. Vui lòng tải lại trang và thử lại.' AS Msg,
+               1 AS MsgType;
+        RETURN;
+    END;
+
     IF COALESCE(@ObjectID, '') = '' OR NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @ObjectID)
     BEGIN
         SELECT NULL AS DocumentID, N'Khách hàng không tồn tại' AS Msg, 1 AS MsgType;
