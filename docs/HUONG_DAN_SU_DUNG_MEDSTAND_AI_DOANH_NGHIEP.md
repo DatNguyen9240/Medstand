@@ -5,7 +5,7 @@
 | Thông tin | Nội dung |
 |---|---|
 | Môi trường thử nghiệm | `https://medtest.bms7.net/#/chatbot` |
-| Cập nhật | 27/07/2026 |
+| Cập nhật | 01/08/2026 — frontend 11.121 |
 | Người dùng | Nhân viên kinh doanh, Quản lý và người điều phối |
 | Tài liệu chính | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` và `.html` |
 
@@ -17,7 +17,7 @@
 4. Nhập `Xin chào`, sau đó nhập `Tôi là ai?`.
 5. Bắt đầu với câu `Doanh số hôm nay của tôi là bao nhiêu?`.
 
-Một truy vấn thường cần khoảng 1–5 giây. Nếu quá 15 giây, ghi nhận phản hồi chậm; không nhấn gửi liên tục.
+Kết quả kiểm tra gần nhất cho thấy đa số câu trả lời dưới 1 giây, nhưng thời gian có thể tăng theo dữ liệu. Nếu quá 15 giây, ghi nhận phản hồi chậm; không nhấn gửi liên tục.
 
 ## 2. Công thức đặt câu hỏi
 
@@ -48,6 +48,7 @@ Nếu hệ thống hỏi thêm thông tin, hãy bổ sung đúng mã khách hàn
 - Sản phẩm trọng tâm và đề xuất khuyến mãi.
 - Khảo sát 360, câu hỏi, trạng thái, theo ngày và lịch sử.
 - Thông báo và tìm sản phẩm theo triệu chứng.
+- Tạo khách hàng và tạo đơn chỉ thực hiện sau bước xem lại/xác nhận; gửi lại cùng yêu cầu không được tạo thêm bản ghi.
 
 ## 5. Cách đọc kết quả
 
@@ -83,6 +84,14 @@ Không gửi mật khẩu, token hoặc thông tin xác thực.
 - Nếu được phép thử tạo khách/đơn trên UAT, dùng tiền tố `UAT_TEST` và kiểm tra màn hình xác nhận trước khi gửi.
 - Không thực hiện thao tác ghi dữ liệu trên môi trường khác nếu chưa được phê duyệt.
 
-## 9. Tài liệu kiểm thử 13 tài khoản
+## 9. Trạng thái vòng UAT ngày 01/08/2026
+
+- Bộ hội thoại live đạt `31/31`; smoke đạt `8/8`.
+- Phạm vi khách hàng và kho đạt `13/13` tài khoản UAT.
+- Tạo đơn đã kiểm tra chống double-click/retry và không tạo trùng.
+- Hệ thống vẫn ở trạng thái **UAT có kiểm soát**, chưa phải production. Quản trị viên còn phải dọn workflow n8n active trùng và chốt endpoint/secret trước khi công bố hoàn tất UAT.
+- Nếu cùng một câu hỏi bất ngờ cho kết quả khác nhau giữa các lần gửi, ghi lại thời gian và ảnh toàn màn hình; không tiếp tục gửi lặp nhiều lần.
+
+## 10. Tài liệu kiểm thử 13 tài khoản
 
 Các bản Word và HTML dành cho kiểm thử 13 tài khoản được giữ riêng trong `docs/GOI_UAT_KHACH_HANG`. Không thay thế chúng bằng hướng dẫn sử dụng này vì mục đích của hai bộ tài liệu khác nhau.

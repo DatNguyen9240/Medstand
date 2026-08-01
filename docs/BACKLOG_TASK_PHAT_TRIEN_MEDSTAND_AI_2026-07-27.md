@@ -128,12 +128,13 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
     Sau khi vá: 13/13 tài khoản có phạm vi bị chặn (9 → 11.571 khách), 13/13 vẫn nhìn thấy khách đại diện, 11 tài khoản còn lại không đổi một dòng nào. Hai API CORE-001 trước đây trả `FORBIDDEN` cho hai tài khoản này giờ trả đúng nhóm và đúng nhân viên dưới quyền.
   - **Cảnh báo cho lần chạy lại UAT-007**: phải bổ sung tiêu chí *"không tài khoản nào nhìn thấy 100% khách hàng"*, nếu không lỗi loại này sẽ lại lọt lưới. Ngoài 13 tài khoản UAT, `TRUNGBM` (`NVVP003`) hiện vẫn thấy đủ 49.559 khách vì cùng lỗi — cố ý chưa xử vì nằm ngoài phạm vi UAT và cần khách xác nhận anh ta quản khu vực nào.
 
-- [ ] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `IMPLEMENTED_PENDING_DEPLOYMENT`
+- [x] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `PASS`
   - Kiểm tra dữ liệu `SY_UserStoreHouseTbl` cho từng tài khoản và vai trò.
   - Nghiệm thu: mỗi tài khoản chỉ thấy tồn của các kho được cấp; có bảng mapping được business owner xác nhận.
   - Business Owner xác nhận ngày 2026-07-29: UAT chỉ hiển thị ba kho chính `CTY / DL02 / DL03`; các kho phụ `LOI`, `DL01`, `KG MT`, `LOIMT`, `KG MN`, `LOIMN` phải được ẩn.
   - Đã bổ sung bộ lọc allowlist trong các API sử dụng phạm vi kho; chờ triển khai lên DB `medtest` và chạy lại kiểm tra 13 tài khoản trước khi đánh dấu `DONE`.
   - Bằng chứng và hướng xử lý: [UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md](UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md).
+  - Chạy lại 01/08/2026: `13/13 PASS`; mọi output tồn chỉ thuộc mapping hiệu lực trong allowlist `CTY/DL02/DL03`, không còn kho phụ.
 
 - [x] **UAT-009 — Chuẩn hóa dữ liệu mẫu theo tài khoản** · `P0` · `DONE`
   - Chọn khách hàng, sản phẩm, CTBH và tuyến mẫu có dữ liệu thật cho mỗi vùng/vai trò.
@@ -228,19 +229,21 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả runtime được business xác nhận: `QLBH013.MED` tạo thành công khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`; truy vấn lại theo cả mã và tên đều trả đúng một bản ghi trong scope của tài khoản. Chấp nhận ca này làm bằng chứng chức năng dù tên không có tiền tố `UAT_`.
   - Bằng chứng: [UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md](UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat017_customer_create.js`.
 
-- [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `READY_FOR_AI_SQL_DEPLOY`
+- [x] **UAT-018 — Test tạo đơn hàng** · `P0` · `PASS`
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
   - Chỉ sử dụng dữ liệu UAT được phép tạo.
   - Nghiệm thu: tạo đúng một đơn, chi tiết đúng và không tạo trùng khi gửi lại request.
   - Kết quả: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn, giá và retry theo `DocumentID`. Không sửa `API_DonHang_Insert`/`API_HangHoaList` gốc dùng chung. Chưa triển khai hai procedure AI và chưa tạo đơn UAT.
   - Bằng chứng: [UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md](UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md), script read-only `scripts/verify_uat018_order_create.js`.
+  - Controlled mutation 01/08/2026: đơn `UAT21-260801145955-9CA2` có đúng 1 header, 1 detail, tổng `95.000`; hai request đồng thời không tạo trùng và payload khác dùng cùng ID bị từ chối.
 
-- [ ] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `FIX_SOURCE_READY_RUNTIME_RETEST_REQUIRED`
+- [x] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `PASS`
   - Chạy bộ câu hỏi theo intent, tham số, hội thoại tiếp nối và các trường hợp thiếu dữ liệu.
   - Nghiệm thu: tối thiểu 95% test chính đạt; không có lỗi P0/P1 chưa được chấp nhận.
   - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Live có xác thực `28/31 PASS` (90,32%), chưa đạt ngưỡng 95%; lỗi `upsell` và `product-search` là `502 EMPTY_UPSTREAM_RESPONSE` do n8n trả HTTP 200 nhưng body rỗng, `catalog` là `422 VALIDATION_ERROR` vì workflow yêu cầu từ khóa tối thiểu dù câu hỏi chỉ định loại `khohang`.
   - Đã sửa source workflow: danh mục kho map `@Type=khohang` không cần từ khóa; upsell/product-search trả `NO_DATA` trực tiếp thay vì rơi vào RAG có thể trả rỗng; RAG lỗi luôn trả JSON. Static `159/159 PASS`, workflow guard `4/4 PASS`. Còn phải import/publish workflow và live retest bằng token còn hiệu lực trước khi đánh dấu PASS.
   - Bằng chứng: [UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md](UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md), `reports/uat019-live-2026-07-31.json`, các JSON trong `reports/uat019-*`.
+  - Retest public 01/08/2026 bằng token manager tạm: smoke `8/8`, live `31/31`, p95 live `334 ms`; không còn lỗi 502/422 cũ. Bằng chứng: `reports/uat023-*-2026-08-01.json`.
 
 - [x] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `PASS`
   - Đo riêng API thường và truy vấn AI phức tạp, không chỉ đo cảm nhận trên UI.
@@ -248,23 +251,27 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả 31/07/2026: HTTP local chạy 40 request/target, concurrency 4, đạt 100%; web p50/p95 `5/24 ms`, n8n health `1/4 ms`. AI qua gateway có xác thực chạy 40 request, concurrency 4, đạt 100%, p50/p95 `2.058/5.668 ms`; p95 đạt mục tiêu dưới 6 giây. Ghi nhận p99/max `9.785 ms` để theo dõi nhưng không làm trượt tiêu chí p95.
   - Bằng chứng: [UAT-020_PERFORMANCE_P50_P95_2026-07-31.md](UAT-020_PERFORMANCE_P50_P95_2026-07-31.md), `reports/uat020-infrastructure-load-2026-07-31.json`, `reports/uat020-ai-load-2026-07-31.json`.
 
-- [ ] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `TODO`
+- [x] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `PASS`
   - Test gửi lặp, double-click, retry, context cũ và response nhiều bảng.
   - Nghiệm thu: mutation có idempotency; truy vấn lặp cùng input/cùng mốc dữ liệu cho kết quả nhất quán.
+  - Kết quả 01/08/2026: resilience `5/5`; 5 truy vấn lặp trả cùng 117 dòng và cùng SHA-256; response nhiều bảng giữ đủ metadata + dữ liệu; hai mutation đồng thời tạo đúng một đơn.
 
 ### Nhóm D — Báo cáo và bàn giao UAT
 
-- [ ] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `TODO`
+- [x] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `DONE_WITH_OPEN_BLOCKERS`
   - Mỗi lỗi phải có account, thời gian, input, kết quả thực tế, kết quả mong đợi, ảnh/log và request ID nếu có.
   - Nghiệm thu: không còn lỗi chỉ mô tả bằng câu “không chạy”.
+  - Báo cáo: [UAT-022_TONG_HOP_LOI_P0_P1_P2_2026-08-01.md](UAT-022_TONG_HOP_LOI_P0_P1_P2_2026-08-01.md). Còn 1 P0 cấu hình workflow và 2 P1 endpoint/secret có bằng chứng, owner action và điều kiện đóng rõ ràng.
 
-- [ ] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `TODO`
+- [x] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `BLOCKED_RELEASE_REPORT_PUBLISHED`
   - Thay thế bằng chứng cũ bằng kết quả test sau deploy theo manifest.
   - Nghiệm thu: báo cáo ghi rõ tổng pass/fail/blocked, phiên bản, môi trường và ngày chạy.
+  - Báo cáo: [UAT-023_BAO_CAO_RUNTIME_MOI_2026-08-01.md](UAT-023_BAO_CAO_RUNTIME_MOI_2026-08-01.md). Công bố đúng trạng thái `BLOCKED_RELEASE`, không che P0 workflow trùng.
 
-- [ ] **UAT-024 — Cập nhật tài liệu khách hàng sau vòng UAT** · `P1` · `TODO`
+- [x] **UAT-024 — Cập nhật tài liệu khách hàng sau vòng UAT** · `P1` · `DONE`
   - Cập nhật ảnh, câu lệnh mẫu, giới hạn và chức năng đã thay đổi.
-  - Nghiệm thu: tài liệu khớp đúng UI và runtime đang được khách sử dụng.
+- Nghiệm thu: tài liệu khớp đúng UI và runtime đang được khách sử dụng.
+  - Đã cập nhật [HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md) theo frontend `11.121`, kết quả live mới, mutation có xác nhận/idempotency và giới hạn UAT còn mở.
 
 ## 3. Giai đoạn 1 — Hoàn thiện nghiệp vụ bán hàng cốt lõi
 

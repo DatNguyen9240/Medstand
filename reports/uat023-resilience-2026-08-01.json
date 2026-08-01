@@ -1,0 +1,32 @@
+{
+  "suite": "network-resilience",
+  "total": 5,
+  "passed": 5,
+  "results": [
+    {
+      "test": "retry-5xx-then-success",
+      "pass": true,
+      "attempts": 3
+    },
+    {
+      "test": "do-not-retry-4xx",
+      "pass": true,
+      "attempts": 1,
+      "message": "Client Error [400]"
+    },
+    {
+      "test": "timeout-aborts-request",
+      "pass": true,
+      "message": "Request Time Out or Aborted"
+    },
+    {
+      "test": "reject-invalid-json",
+      "pass": true,
+      "message": "Invalid JSON formatting from Server"
+    },
+    {
+      "test": "deduplicate-in-flight-request",
+      "pass": true
+    }
+  ]
+}
