@@ -670,10 +670,12 @@ setTimeout(function() {
               // Clear empty row
               $('#dynamicProductRowsContainer').html('');
               rowCounter = 0;
+              var hydratedRowIds = [];
               
               items.forEach(function(it) {
                   appendProductRow();
                   var currentRId = rowCounter;
+                  hydratedRowIds.push(currentRId);
                   var $picker = $('#productPickerContainer_' + currentRId);
                   var pId = it.ItemID;
                   var pName = it.ItemName || it.ItemID;
@@ -682,7 +684,6 @@ setTimeout(function() {
                   $picker.find('.filter-value-text').text(pName);
                   $('#qty_' + currentRId).val(it.Quantity || 1);
                   $('#price_' + currentRId).val(it.Price || 0);
-                  calculateRowTotal(currentRId);
               });
               
               // Load full list
@@ -699,13 +700,7 @@ setTimeout(function() {
                      if (match) {
                         var realName = match.ItemName || match.ItemID;
                         var realPrice = match.UnitPrice || match.Price || 0;
-                        var targetRId = idx + 1;
-                        
-                        // Nhận diện chatbotPrice để giữ giá 0đ của chatbot nếu có
-                        var chatbotPrice = it.Price !== undefined ? it.Price : (it.UnitPrice !== undefined ? it.UnitPrice : null);
-                        if (chatbotPrice !== null && parseFloat(chatbotPrice) === 0) {
-                            realPrice = 0;
-                        }
+                        var targetRId = hydratedRowIds[idx];
 
                         var $p = $('#productPickerContainer_' + targetRId);
                         var realStock = match.QuantityinStock !== undefined ? match.QuantityinStock : (match.TonKho !== undefined ? match.TonKho : '');

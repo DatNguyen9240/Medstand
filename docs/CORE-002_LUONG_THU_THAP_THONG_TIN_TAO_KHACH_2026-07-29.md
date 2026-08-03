@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`DONE_LOCAL_11.116` — form tạo khách đã hoàn thiện cho UAT, chờ deploy cùng endpoint và stored procedure.
+`DONE_DEPLOYED_AND_UAT_VERIFIED` — form tạo khách đã deploy trong frontend `11.121`, đồng bộ với endpoint/stored procedure và được kiểm chứng trong UAT-017.
 
 ## Trải nghiệm người dùng
 

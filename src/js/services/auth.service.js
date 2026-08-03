@@ -12,6 +12,9 @@ const AuthService = (() => {
   function setCookie(name, value, days) {
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
     const isSecure = window.location.protocol === 'https:';
+    // Legacy builds wrote the auth cookie from /pages. Remove every known
+    // variant first so Http never reads an older token before the new root cookie.
+    deleteCookie(name);
     // SameSite=Strict và Secure (nếu là HTTPS) để bảo mật cao hơn
     document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/;SameSite=Strict${isSecure ? ';Secure' : ''}`;
   }
@@ -88,6 +91,12 @@ const AuthService = (() => {
   async function login(username, password) {
     console.log('[Auth] login attempt:', username);
     try {
+      // A new login must not inherit a stale token from another path/session.
+      // Keep all unrelated local data intact.
+      deleteCookie('auth_token');
+      localStorage.removeItem('auth_user');
+      if (typeof Http !== 'undefined' && Http.clearCache) Http.clearCache();
+
       const data = await Http.post(EP.LOGIN, { username, password });
       console.log('[Auth] login response:', data);
 
@@ -106,7 +115,7 @@ const AuthService = (() => {
 
       // Gọi API lấy thông tin chi tiết người dùng
       try {
-        const infoRes = await Http.post(EP.USER_INFO);
+        const infoRes = await Http.post(EP.USER_INFO, {}, { timeoutMs: 5000 });
         if (infoRes && infoRes.code === 0 && infoRes.records && infoRes.records.length > 0) {
           const userInfo = mergeIdentityFields(infoRes.records[0], data);
           localStorage.setItem('auth_user', JSON.stringify(userInfo));
@@ -172,7 +181,7 @@ const AuthService = (() => {
     if (!token && !hasLocalIdentity) return false;
 
     try {
-      const result = await Http.post(EP.USER_INFO);
+      const result = await Http.post(EP.USER_INFO, {}, { timeoutMs: 5000 });
       if (result && result.code === 0) {
         if (result.records && result.records.length > 0) {
           const current = JSON.parse(localStorage.getItem('auth_user') || '{}');

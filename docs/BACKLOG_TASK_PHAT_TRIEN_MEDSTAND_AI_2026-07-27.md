@@ -278,21 +278,18 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 **Thời gian mục tiêu:** 11/08–15/09/2026  
 **Gate hoàn thành:** `CORE_SALES_FLOW_READY`
 
-- [x] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `CONTRACT_LOCKED_PENDING_ERP_CLARIFICATION`
+- [x] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `CONTRACT_LOCKED_DIRECT_CREATE_UAT`
   - Chốt trường bắt buộc, trường tùy chọn, validate, scope và response.
   - Nghiệm thu: có contract được frontend, n8n, SQL và business cùng sử dụng.
-  - Kết quả 29/07/2026: contract đã chốt, đủ điều kiện để `CORE-002` và `CORE-003` bắt đầu. Tài liệu: [CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md).
-  - **Phát hiện chặn cứng đã xử lý**: hai đường tạo khách ghi vào hai bảng khác nhau. UI gọi `API_KhachHang_Insert` → `AR_ObjectNewRequireTbl` (`StatusID = 0`, chờ duyệt), còn chat gọi `API_KhachHang_Insert_AI` → ghi thẳng `CF_ObjectTbl`, **bỏ qua chốt duyệt** cùng toàn bộ validate tỉnh/quận/phường, chuẩn hoá SĐT và chống trùng.
-  - **Phát hiện phân quyền**: `AR_GetObjectByUserFnc` lọc phạm vi khách hoàn toàn theo `ObjectGroupID`, **không dùng `BranchID`**. SP chat để mặc định `@ObjectGroupID = 'KH'` nên khách sale tạo ra sẽ nằm ngoài phạm vi của chính họ — kiểm chứng trên `medtest`: 8/9 tài khoản UAT thấy `0` khách nhóm này.
-  - Nhóm `KH` là dữ liệu nghiệp vụ sống của back-office (140 khách, tạo từ 2020, 19 khách có 192 hoá đơn) — **không dọn, không gán lại nhóm**.
-  - Sáu quyết định đã chốt: dùng lại SP của ERP theo đường duyệt; quy tắc chọn `ObjectGroupID` theo vai trò; ngày sinh cho bỏ trống → `1900-01-01`; dùng khung nhập liệu trong chat; trùng SĐT hiện thông tin khách nếu trong quyền; không đụng 140 bản ghi cũ.
-  - Phát sinh cần làm ở `CORE-002`: bổ sung hai API tra cứu `API_ObjectGroupByUser_AI` (nhóm đối tượng của người đăng nhập) và `API_EmployeeByManager_AI` (nhân viên dưới quyền manager).
-  - **Hai API tra cứu trên: ĐÃ XONG 31/07/2026.** Đã viết, deploy lên `medtest`, kiểm chứng và cấp quyền `READ`.
+  - Kết quả cập nhật 01/08/2026: contract đã chốt theo luồng `Chatbot → API_KhachHang_Insert_AI → CF_ObjectTbl`; khách được tạo trực tiếp và dùng ngay, không qua `AR_ObjectNewRequireTbl`. Đây là quyết định nghiệp vụ đã được UAT-017 chấp nhận, không còn là lỗi bỏ qua duyệt. Tài liệu: [CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md).
+  - Contract hiện hành bắt buộc ngày sinh hợp lệ; kiểm tra lại tỉnh/quận/phường, chuẩn hoá và chống trùng SĐT, MST, nhóm khách và quan hệ Manager → Sale ở server. Thành công chỉ khi `MsgType = 5` và có `ObjectID`.
+  - `ObjectGroupID` không còn mặc định cứng là `KH`; phải thuộc phạm vi tài khoản hoặc sale được Manager giao. Nhóm `KH` cũ là dữ liệu nghiệp vụ sống của back-office nên không dọn và không gán lại.
+  - Hai API tra cứu phục vụ contract đã hoàn tất, deploy lên `medtest`, kiểm chứng và cấp quyền `READ` ngày 31/07/2026:
     - `API_ObjectGroupByUser_AI` — chép nguyên nhánh phân quyền của `AR_GetObjectByUserFnc`, chỉ nhận `@User` và tự suy `EmployeeID` phía server. Đối chiếu số nhóm trả về với số nhóm thực sự nhìn thấy: 7/7 tài khoản khớp tuyệt đối. Lưu ý bảo trì: `LevelSub` nằm ở bảng cha `AR_OpListTbl`, **không phải** `AR_OpListDetailTbl`.
     - `API_EmployeeByManager_AI` — bắt buộc `GROUP BY` (QLMN2 trả 122 dòng thô → 38 nhân viên); tên lấy qua `COALESCE` vì một số nhân viên không có dòng `SY_User`.
     - File: `sql/Module common - API_ObjectGroupByUser_AI.sql`, `sql/Module common - API_EmployeeByManager_AI.sql`, cấp quyền qua `sql/Migrate_API_Capability_CORE001_AI.sql`.
-    - Ngoại lệ đã biết: `QLMD1` và `QLBH024.MED` có `Manager = 1` nhưng không có dòng nào trong `AR_OpListDetailTbl`, nên không sở hữu nhóm nào → hai API trả lỗi `FORBIDDEN` cho họ. Chờ quyết định giới hạn phạm vi hai tài khoản này về Miền Nam (xem `BIZ`/phân quyền).
-  - Còn chờ team ERP làm rõ (không chặn): mapping `@LoaiKhachHang` → cột `LoaiHopDong` và `@KenhBan` → cột `PhanLoaiKhach`; cơ chế chuyển `StatusID` từ `0` sang `6`.
+  - Ngoại lệ `QLMD1` và `QLBH024.MED` đã được xử lý và kiểm chứng lại trong UAT-007; hai API hiện trả đúng nhóm và nhân viên dưới quyền.
+  - Còn chờ team ERP làm rõ nhưng không chặn contract hiện tại: mapping `@LoaiKhachHang` → `LoaiHopDong` và `@KenhBan` → `PhanLoaiKhach`. Cơ chế chuyển `StatusID` từ `0` sang `6` không áp dụng cho luồng chat tạo trực tiếp.
 
 - [x] **CORE-002 — Xây luồng thu thập thông tin tạo khách** · `P1` · `DONE`
   - Hiển thị khung nhập liệu ngay trong khung chat, điền sẵn các trường suy được từ tài khoản; cho phép sửa trước khi xác nhận.
@@ -306,18 +303,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Phụ thuộc: `CORE-002`.
   - Nghiệm thu: hủy hoặc chưa xác nhận không ghi dữ liệu; xác nhận chỉ tạo một bản ghi.
   - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
-  - **[Đính chính 31/07/2026] Dòng kết quả trên trước đây ghi rằng luồng chat "kết nối SP ERP `API_KhachHang_Insert` (`AR_ObjectNewRequireTbl`, `StatusID = 0`, chờ duyệt)". Điều đó KHÔNG ĐÚNG với mã đang chạy.** Kiểm chứng ngày 31/07/2026 trên ba nguồn độc lập:
-    - `chatbot-widget/js/chatbot-renderer-create-customer.js:744` gửi tới `_aiEp.CREATE_CUSTOMER || '/api/API_KhachHang_Insert_AI'`;
-    - `env.js` đặt `CREATE_CUSTOMER: '/api/API_KhachHang_Insert_AI'`;
-    - `chatbot-widget/js/chatbot-api-engine.js:642` đăng ký hành động với `ApiCode: '@khach_hang_insert_ai'`.
+  - Cập nhật 01/08/2026: frontend, ApiCode và endpoint đều thống nhất gọi `API_KhachHang_Insert_AI`; procedure ghi trực tiếp `CF_ObjectTbl` theo contract đã được business/UAT chấp nhận. UAT-017 đã PASS; frontend chỉ công nhận thành công khi `MsgType = 5` và có `ObjectID`.
 
-    Cả ba đều trỏ vào `API_KhachHang_Insert_AI`, mà procedure này **ghi thẳng `CF_ObjectTbl`, bỏ qua chốt duyệt** — đúng như header của chính nó ghi *"UAT temporary rule (2026-07-29): create the customer directly in CF_ObjectTbl. The approval step through AR_ObjectNewRequireTbl is deferred"*, và như [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md) nêu rõ: *"Không tạo `AR_ObjectNewRequireTbl` trong luồng AI này."*
-
-    Nói cách khác: **lỗ bỏ qua duyệt mà `CORE-001` ghi là "đã xử lý" thực ra vẫn còn mở.** Tài liệu đã mô tả nó thành đã đóng, đó là chỗ nguy hiểm hơn cả bản thân lỗ hổng. Cần quyết định nghiệp vụ, xem `CORE-011` bên dưới. **Không được tắt `API_KhachHang_Insert_AI` trước khi chuyển hướng endpoint — làm vậy là gãy luôn chức năng tạo khách trong chat đang chạy.**
-
-- [ ] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `TODO`
+- [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `CONTRACT_LOCKED_CURRENT_RUNTIME`
   - Chốt customer, item list, số lượng, kho, bảng giá, CTBH và response giỏ hàng.
   - Nghiệm thu: phân biệt rõ `preview`, `confirmed`, `created`, `failed`.
+  - Kết quả 03/08/2026: đã khóa contract theo runtime hiện tại tại [CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md](CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md). Chat chỉ tạo `preview`; xác nhận mới gọi `API_DonHangChiTiet_Insert_AI`; chỉ `MsgType = 5` kèm `DocumentID` là `created`; mọi kết quả khác là `failed` hoặc cần đối soát khi timeout.
+  - Quy tắc server đã chốt: khách phải trong `AR_GetObjectByUserFnc`; chỉ hàng `HH1`; số lượng nguyên dương; giá lấy lại qua `AR_LayGiaSanPhamFnc`; SQL tự tính tiền; retry cùng `DocumentID`/payload không tạo đơn thứ hai, payload khác dùng cùng mã bị từ chối.
+  - Giới hạn đã ghi rõ, chuyển sang `CORE-005`/`STOCK-001`: tồn đang cộng theo các kho được cấp (`CTY`/`DL02`/`DL03`) chứ chưa chọn kho xuất cụ thể; CTBH preview đọc từ `GhiChu` nhưng SQL chưa kiểm tra `PromotionID`/`RuleVersion`; mã `UATORD-*` hiện kiêm khóa retry và mã nghiệp vụ nên chưa phải quy tắc ERP dài hạn.
 
 - [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `TODO`
   - Thu thập thông tin, kiểm tra tồn/giá, hiển thị preview, xác nhận và tạo đơn thật.
@@ -351,14 +344,11 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.
   - Nghiệm thu: không có mutation ngoài ý muốn; mọi thao tác ghi đều có audit.
 
-- [ ] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `TODO` · *mở 31/07/2026*
-  - Hiện trạng đã kiểm chứng: chat gọi `API_KhachHang_Insert_AI`, ghi thẳng `CF_ObjectTbl`. Khách xuất hiện ngay, **không qua `AR_ObjectNewRequireTbl`**, trong khi khách tạo từ màn hình UI thì phải chờ duyệt. Hai đường tạo khách đang có hai luật khác nhau.
-  - Đây là câu hỏi nghiệp vụ, không phải câu hỏi kỹ thuật: khách hàng có chấp nhận sale tạo khách không cần duyệt qua chat hay không.
-  - Hai hướng:
-    - **A — Bắt qua duyệt:** đổi `env.js` `CREATE_CUSTOMER` sang `/api/API_KhachHang_Insert`, đổi `ApiCode` trong `chatbot-api-engine.js`, đối chiếu lại tham số hai SP, rồi mới đặt `API_KhachHang_Insert_AI` thành `IsActive = 0`. Chat sẽ trả "đã gửi chờ duyệt" thay vì "đã tạo xong" — phải sửa cả câu thông báo cho người dùng.
-    - **B — Giữ ghi thẳng:** chấp nhận có chủ đích, ghi rõ vào tài liệu bàn giao rằng khách tạo qua chat không qua duyệt, và bỏ chữ "tạm thời (UAT)" khỏi header của SP.
-  - Nghiệm thu: có quyết định bằng văn bản; mã nguồn, `API_Definition` và tài liệu cùng mô tả một luật duy nhất.
-  - Chặn: `CORE-010` không thể nghiệm thu trọn vẹn khi luật ghi khách còn chưa chốt.
+- [x] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `DECISION_B_DIRECT_CREATE_ACCEPTED` · *đóng 01/08/2026*
+  - Quyết định nghiệp vụ: chấp nhận phương án B. Chat gọi `API_KhachHang_Insert_AI`, ghi trực tiếp `CF_ObjectTbl`; khách dùng được ngay và không qua `AR_ObjectNewRequireTbl`.
+  - Luồng tạo khách của ERP UI vẫn độc lập và tiếp tục theo cơ chế duyệt hiện có. Sự khác biệt này là chủ đích của contract chat, không phải trạng thái tạm chưa xử lý.
+  - Bằng chứng nghiệm thu: CORE-001/002/003 thống nhất cùng hành vi; UAT-017 PASS; response thành công bắt buộc `MsgType = 5` và có `ObjectID`; kiểm tra quyền, dữ liệu và chống trùng nằm ở server.
+  - Nếu business muốn chuyển chat về cơ chế duyệt sau này, phải mở change request mới, cập nhật đồng bộ endpoint, contract, tài liệu và bộ test trước khi thay đổi runtime.
 
 ## 4. Giai đoạn 2 — Catalog và chương trình bán hàng
 

@@ -254,7 +254,8 @@ const Http = (() => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const controller = new AbortController();
-        const tid = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        const requestTimeout = Number(options?.timeoutMs) > 0 ? Number(options.timeoutMs) : TIMEOUT_MS;
+        const tid = setTimeout(() => controller.abort(), requestTimeout);
         const res = await fetch(targetUrl, { ...targetOptions, signal: controller.signal || targetOptions.signal });
         clearTimeout(tid);
         if (!res.ok && res.status >= 500) {
@@ -358,6 +359,7 @@ const Http = (() => {
           method: 'POST',
           headers: _headers(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
           body: JSON.stringify(body),
+          timeoutMs: options.timeoutMs,
         });
         return _handleResponse(res);
       } finally {

@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`READY_FOR_UAT_DEPLOY_11.116` — quyết định cuối cùng: khách tạo từ chatbot được ghi trực tiếp, không qua bước Admin duyệt.
+`CONTRACT_LOCKED_DIRECT_CREATE_UAT` — đã deploy và được UAT-017 chấp nhận. Quyết định cuối cùng: khách tạo từ chatbot được ghi trực tiếp, không qua bước Admin duyệt.
 
 ## Luồng được chốt
 
@@ -53,3 +53,5 @@ Chatbot → /api/API_KhachHang_Insert_AI → dbo.CF_ObjectTbl
 ## Quyết định lịch sử
 
 Tài liệu này thay thế các nội dung cũ mô tả trạng thái `PENDING_APPROVAL` hoặc dùng `API_KhachHang_Insert` cho chatbot. Các nội dung đó không còn là contract áp dụng cho UAT hiện tại.
+
+Cập nhật 01/08/2026: ngoại lệ phân quyền của `QLMD1` và `QLBH024.MED` đã được xử lý, UAT-007 xác nhận hai API tra cứu trả đúng phạm vi. Hai mapping ERP `@LoaiKhachHang` → `LoaiHopDong` và `@KenhBan` → `PhanLoaiKhach` vẫn chờ làm rõ nhưng không chặn contract tạo trực tiếp; chuyển `StatusID 0 → 6` không áp dụng cho luồng này.

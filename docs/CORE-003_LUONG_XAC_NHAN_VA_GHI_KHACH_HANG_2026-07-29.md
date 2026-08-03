@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`READY_FOR_UAT_DEPLOY_11.116` — luồng ghi không có bước duyệt Admin.
+`DONE_DIRECT_CREATE_UAT` — luồng ghi trực tiếp không qua bước duyệt Admin đã deploy và UAT-017 PASS.
 
 ## Endpoint và bảng đích
 
@@ -18,7 +18,7 @@ Endpoint có hậu tố `_AI` để tách biệt với API ERP cũ. Stored proce
 
 - Form sinh `Idempotency-Key`, khoá nút gửi khi đang xử lý và cho phép quay lại sửa trước khi xác nhận.
 - Kết quả `MsgType = 1` được hiển thị là lỗi, không đóng form để người dùng sửa.
-- Kết quả khác `1` là thành công: form khoá, hiển thị `ObjectID` và ghi rõ khách có thể sử dụng ngay.
+- Chỉ kết quả `MsgType = 5` kèm `ObjectID` mới là thành công: form khoá và ghi rõ khách có thể sử dụng ngay. Mọi kết quả khác đều không được hiển thị là đã tạo khách.
 
 ## Bảo vệ server
 
@@ -27,9 +27,8 @@ Endpoint có hậu tố `_AI` để tách biệt với API ERP cũ. Stored proce
 - Chặn SĐT trùng trong cả khách sống và yêu cầu ERP đang chờ cũ.
 - Không tạo `AR_ObjectNewRequireTbl` trong luồng AI này.
 
-## Điều kiện deploy
+## Trạng thái deploy và nghiệm thu
 
-1. Apply procedure `sql/Module common - API_KhachHang_Insert_AI.sql`.
-2. Đồng bộ metadata về ApiCode `@khach_hang_insert_ai` theo script capability.
-3. Import/activate workflow n8n đã cập nhật (nếu instance dùng API execute).
-4. Deploy frontend bundle `11.116` và kiểm tra cache service worker.
+1. Procedure `sql/Module common - API_KhachHang_Insert_AI.sql` và metadata ApiCode `@khach_hang_insert_ai` đã được đồng bộ trên môi trường UAT.
+2. Frontend `11.121` đang dùng `/api/API_KhachHang_Insert_AI` và contract response `MsgType = 5` + `ObjectID`.
+3. UAT-017 đã PASS cho luồng tạo trực tiếp, kiểm tra quyền, validate dữ liệu và chống trùng.
