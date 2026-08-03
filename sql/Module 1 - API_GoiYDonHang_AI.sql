@@ -238,71 +238,42 @@ BEGIN
         RETURN;
     END
 
-    -- Lấy tồn kho theo đúng phạm vi kho của tài khoản. Theo quyết định Pilot,
-    -- tồn vật lý còn hạn được dùng làm số lượng có thể bán tạm thời cho tới khi
-    -- ERP xác nhận có cơ chế giữ chỗ/hàng khóa riêng.
-    DECLARE @IsGlobalStock BIT = 0;
-    DECLARE @IsManagerStock BIT = 0;
-    SELECT
-        @IsGlobalStock = CASE WHEN UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
-        @IsManagerStock = ISNULL(Manager, 0)
-    FROM dbo.SY_User WITH (NOLOCK)
-    WHERE UserName = @Username AND ISNULL(Disable, 0) = 0;
+    -- STOCK-001: cùng một nguồn tồn cho tra cứu, tư vấn và bước tạo đơn.
+    -- Hàm trừ lượng đã giữ trong đơn mở và chỉ trả các kho người dùng được phép xem.
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
 
     CREATE TABLE #AllowedStores (StoreHouseID VARCHAR(50) PRIMARY KEY);
     INSERT INTO #AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManagerStock = 1 AND ISNULL(@SYS_EmployeeID, '') <> ''
+    IF NOT EXISTS (SELECT 1 FROM #AllowedStores)
     BEGIN
-        INSERT INTO #AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-          ON US.UserName = U.UserName
-        WHERE U.ManagerID = @SYS_EmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1 FROM #AllowedStores S
-              WHERE S.StoreHouseID = US.StoreHouseID
-          );
+        SELECT N'Tài khoản chưa được phân quyền kho hoặc cấu hình tồn kho chưa hợp lệ.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity,
+               N'WAREHOUSE_SCOPE_UNAVAILABLE' AS Code;
+        RETURN;
     END
 
-    CREATE TABLE #StockByItem
+    SELECT ItemID, StoreHouseID, StoreHouseName,
+           PhysicalStock, ReservedStock, AvailableStock,
+           WarehouseScope, StockDataStatus,
+           StockUpdatedAt, StockAsOfAt, LatestStockMovementDate,
+           StockDataSource, RuleVersion
+    INTO #StockByItem
+    FROM
     (
-        ItemID VARCHAR(50) PRIMARY KEY,
-        PhysicalStock DECIMAL(18, 2) NULL,
-        AvailableStock DECIMAL(18, 2) NULL
-    );
-
-    IF @IsGlobalStock = 1 OR EXISTS (SELECT 1 FROM #AllowedStores)
-    BEGIN
-        INSERT INTO #StockByItem (ItemID, PhysicalStock, AvailableStock)
-        SELECT
-            S.ItemID,
-            CAST(SUM(ISNULL(S.Quantity, 0)) AS DECIMAL(18, 2)),
-            CAST(CASE
-                WHEN SUM(CASE
-                    WHEN S.ExpireDate IS NULL OR CAST(S.ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
-                        THEN ISNULL(S.Quantity, 0)
-                    ELSE 0
-                END) > 0
-                THEN SUM(CASE
-                    WHEN S.ExpireDate IS NULL OR CAST(S.ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
-                        THEN ISNULL(S.Quantity, 0)
-                    ELSE 0
-                END)
-                ELSE 0
-            END AS DECIMAL(18, 2))
-        FROM dbo.IV_StockTransactionTbl S WITH (NOLOCK)
-        WHERE @IsGlobalStock = 1
-           OR S.StoreHouseID IN (SELECT StoreHouseID FROM #AllowedStores)
-        GROUP BY S.ItemID;
-    END
+        SELECT S.*,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY S.ItemID
+                   ORDER BY S.AvailableStock DESC, S.StoreHouseID
+               ) AS StockRank
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) S
+        WHERE S.AvailableStock > 0
+    ) RankedStock
+    WHERE StockRank = 1;
 
     -- ═══════════════════════════════════════════════════
     -- KHÔNG TRUYỀN khách hàng (khachhang) → Top sản phẩm bán chạy nhất
@@ -478,21 +449,18 @@ BEGIN
         CASE WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN NULL
              WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0
              ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [ConLaiNgay],
-        CASE
-            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores) THEN NULL
-            ELSE ISNULL(ST.PhysicalStock, 0)
-        END                                             AS [PhysicalStock],
-        CASE
-            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores) THEN NULL
-            ELSE ISNULL(ST.AvailableStock, 0)
-        END                                             AS [AvailableStock],
-        CASE
-            WHEN @IsGlobalStock = 0 AND NOT EXISTS (SELECT 1 FROM #AllowedStores)
-                THEN N'WAREHOUSE_SCOPE_UNAVAILABLE'
-            WHEN ISNULL(ST.PhysicalStock, 0) < 0
-                THEN N'STOCK_RECONCILIATION_REQUIRED'
-            ELSE N'PHYSICAL_AS_SELLABLE_TEMPORARY'
-        END                                             AS [StockDataStatus],
+        ST.PhysicalStock                                AS [PhysicalStock],
+        ST.ReservedStock                                AS [ReservedStock],
+        ST.AvailableStock                               AS [AvailableStock],
+        ST.StoreHouseID                                 AS [StoreHouseID],
+        ST.StoreHouseName                               AS [StoreHouseName],
+        ST.WarehouseScope                               AS [WarehouseScope],
+        ST.StockDataStatus                              AS [StockDataStatus],
+        ST.StockUpdatedAt                               AS [StockUpdatedAt],
+        ST.StockAsOfAt                                  AS [StockAsOfAt],
+        ST.LatestStockMovementDate                      AS [LatestStockMovementDate],
+        ST.StockDataSource                              AS [StockDataSource],
+        ST.RuleVersion                                  AS [StockRuleVersion],
         CASE 
             WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Khách mới cần chăm sóc'
             WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm'
@@ -531,10 +499,15 @@ BEGIN
     LEFT JOIN #KhuyenMai KM ON L.ItemID = KM.ItemID
     LEFT JOIN #TrongTam TT  ON L.ItemID = TT.ItemID
     LEFT JOIN #DaMuaHomNay HN ON L.ItemID = HN.ItemID
-    LEFT JOIN #StockByItem ST ON L.ItemID = ST.ItemID
+    JOIN #StockByItem ST ON L.ItemID = ST.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
     LEFT JOIN CF_ObjectTbl KH WITH (NOLOCK) ON KH.ObjectID = @MaKhachHang
     WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
+      AND CASE WHEN @SYS_BranchID = 'MB' THEN COALESCE(CF.IsDisableMB, 0)
+               WHEN @SYS_BranchID = 'MN' THEN COALESCE(CF.IsDisableMN, 0)
+               ELSE CASE WHEN COALESCE(CF.IsDisableMB, 0) = 0 OR COALESCE(CF.IsDisableMN, 0) = 0 THEN 0 ELSE 1 END
+          END = 0
+      AND ST.AvailableStock > 0
       AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
              (CASE WHEN L.SoLanMua >= 3 AND CK.ChuKyTrungBinh IS NOT NULL THEN 1 ELSE 0 END) DESC,

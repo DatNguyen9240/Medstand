@@ -60,6 +60,13 @@ async function main() {
         const recommendationRows = rows.filter((item) => !messageRows.includes(item));
         const missingReason = recommendationRows.filter((item) => !first(item, ['RecommendationReason', 'ChiTiet', 'Gợi ý', 'TrangThai']));
         const expired = recommendationRows.filter((item) => /EXPIRED|HẾT HẠN|HET HAN/i.test(String(first(item, ['StockDataStatus', 'TrangThai', 'ChiTiet']) || '')));
+        const invalidAvailableStock = recommendationRows.filter((item) => Number(first(item, ['AvailableStock']) || 0) <= 0);
+        const invalidStockContract = recommendationRows.filter((item) =>
+          first(item, ['StockDataStatus']) !== 'AVAILABLE_FOR_SALE'
+          || !first(item, ['StoreHouseID'])
+          || !first(item, ['StockUpdatedAt', 'StockAsOfAt'])
+          || first(item, ['ReservedStock']) === null
+        );
         const outsideWarehouse = recommendationRows.filter((item) => {
           const warehouse = first(item, ['StoreHouseID', 'WarehouseID', 'MaKho']);
           return warehouse && !['CTY', 'DL02', 'DL03'].includes(String(warehouse).trim().toUpperCase());
@@ -69,6 +76,8 @@ async function main() {
         row.ErrorCount = errorMessages.length;
         row.MissingReasonCount = missingReason.length;
         row.ExpiredRecommendationCount = expired.length;
+        row.InvalidAvailableStockCount = invalidAvailableStock.length;
+        row.InvalidStockContractCount = invalidStockContract.length;
         row.OutsideWarehouseCount = outsideWarehouse.length;
         row.SampleReasons = recommendationRows.slice(0, 3).map((item) => first(item, ['RecommendationReason', 'ChiTiet', 'Gợi ý', 'TrangThai']));
         row.SampleItems = recommendationRows.slice(0, 10).map((item) => first(item, ['MaSanPham', 'ItemID', 'Mã SP']));
@@ -76,6 +85,8 @@ async function main() {
           : !recommendationRows.length ? 'FAIL_NO_RECOMMENDATION'
             : missingReason.length ? 'FAIL_MISSING_REASON'
               : expired.length ? 'FAIL_EXPIRED_RECOMMENDATION'
+                : invalidAvailableStock.length ? 'FAIL_NO_SELLABLE_STOCK'
+                  : invalidStockContract.length ? 'FAIL_STOCK_CONTRACT'
                 : outsideWarehouse.length ? 'FAIL_OUTSIDE_WAREHOUSE'
                   : 'PASS';
         if (errorMessages.length) row.Errors = errorMessages.map((item) => item.Msg || item.Message);

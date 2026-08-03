@@ -31,6 +31,7 @@ BEGIN
     DECLARE @EmployeeID VARCHAR(50) = '';
     DECLARE @IsManager BIT = 0;
     DECLARE @IsGlobal BIT = 0;
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
 
     SELECT
@@ -55,29 +56,10 @@ BEGIN
     END;
 
     INSERT INTO @AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManager = 1 AND @EmployeeID <> ''
-    BEGIN
-        INSERT INTO @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-          ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1
-              FROM @AllowedStores A
-              WHERE A.StoreHouseID = US.StoreHouseID
-          );
-    END;
-
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg,
                1 AS MsgType,
@@ -278,17 +260,19 @@ BEGIN
         END AS [Quà Kế Tiếp];
 
     ;WITH StockByItem AS (
-        SELECT
-            T.ItemID,
-            SUM(ISNULL(T.Quantity, 0)) AS PhysicalStock,
-            SUM(CASE
-                WHEN T.ExpireDate IS NOT NULL AND CAST(T.ExpireDate AS DATE) < @Today THEN 0
-                ELSE ISNULL(T.Quantity, 0)
-            END) AS NonExpiredPhysicalStock
-        FROM dbo.IV_StockTransactionTbl T WITH (NOLOCK)
-        WHERE @IsGlobal = 1
-           OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
-        GROUP BY T.ItemID
+        SELECT Ranked.*
+        FROM
+        (
+            SELECT S.*,
+                   ROW_NUMBER() OVER
+                   (
+                       PARTITION BY S.ItemID
+                       ORDER BY S.AvailableStock DESC, S.StoreHouseID
+                   ) AS StockRank
+            FROM dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) S
+            WHERE S.AvailableStock > 0
+        ) Ranked
+        WHERE Ranked.StockRank = 1
     )
     SELECT DISTINCT TOP (@TopN)
         'PRODUCT' AS RecordType,
@@ -297,35 +281,32 @@ BEGIN
         D.ItemID AS ItemID,
         I.ItemName AS ItemName,
         I.Unit AS Unit,
-        CAST(ISNULL(S.PhysicalStock, 0) AS DECIMAL(18, 2)) AS PhysicalStock,
-        CAST(CASE
-            WHEN ISNULL(S.NonExpiredPhysicalStock, 0) > 0 THEN S.NonExpiredPhysicalStock
-            ELSE 0
-        END AS DECIMAL(18, 2)) AS AvailableStock,
-        CASE
-            WHEN ISNULL(S.PhysicalStock, 0) < 0 THEN 'STOCK_RECONCILIATION_REQUIRED'
-            WHEN ISNULL(S.NonExpiredPhysicalStock, 0) <= 0 THEN 'NO_STOCK_IN_ASSIGNED_WAREHOUSES'
-            ELSE 'PHYSICAL_AS_SELLABLE_TEMPORARY'
-        END AS StockDataStatus,
-        CASE
-            WHEN ISNULL(S.PhysicalStock, 0) < 0 THEN N'Cần đối soát tồn kho'
-            WHEN ISNULL(S.NonExpiredPhysicalStock, 0) <= 0 THEN N'Chưa có tồn trong kho được phân quyền'
-            ELSE N'Còn tồn ERP; kiểm tra lại trước khi chốt đơn'
-        END AS StockStatusLabel,
+        S.PhysicalStock,
+        S.NonExpiredPhysicalStock,
+        S.ReservedStock,
+        S.AvailableStock,
+        S.StoreHouseID,
+        S.StoreHouseName,
+        S.WarehouseScope,
+        S.StockDataStatus,
+        N'Còn tồn khả dụng tại kho được phân quyền' AS StockStatusLabel,
         CAST(CASE WHEN PR.UnitPrice > 0 THEN PR.UnitPrice ELSE NULL END AS DECIMAL(18, 2)) AS UnitPrice,
         CASE WHEN PR.UnitPrice > 0 THEN 'PRICE_AVAILABLE' ELSE 'PRICE_NOT_CONFIGURED' END AS PriceStatus,
-        CAST(NULL AS DATETIME2(0)) AS StockUpdatedAt,
-        N'IV_StockTransactionTbl' AS DataSource,
+        S.StockUpdatedAt,
+        S.StockAsOfAt,
+        S.LatestStockMovementDate,
+        S.StockDataSource AS DataSource,
+        S.RuleVersion AS StockRuleVersion,
         N'BR-FOCUS-PRODUCT-V1-DRAFT' AS RuleVersion,
         D.ItemID AS [Mã sp],
         I.ItemName AS [Sản Phẩm],
         I.Unit AS [ĐVT],
-        CAST(ISNULL(S.PhysicalStock, 0) AS DECIMAL(18, 2)) AS [Tồn Kho],
+        S.AvailableStock AS [Tồn Kho],
         CAST(CASE WHEN PR.UnitPrice > 0 THEN PR.UnitPrice ELSE NULL END AS DECIMAL(18, 2)) AS [Giá Bán]
     FROM dbo.AR_SanPhamTrongTamDetailTbl D WITH (NOLOCK)
     JOIN dbo.CF_ItemTbl I WITH (NOLOCK)
       ON I.ItemID = D.ItemID
-    LEFT JOIN StockByItem S
+    JOIN StockByItem S
       ON S.ItemID = D.ItemID
     OUTER APPLY (
         SELECT TOP 1 PD.UnitPrice
@@ -338,6 +319,18 @@ BEGIN
         ORDER BY PH.FromDate DESC, PH.DocumentID DESC
     ) PR
     WHERE D.DocumentID = @ProgramID
+      AND S.AvailableStock > 0
+      AND PR.UnitPrice > 0
+      AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = S.RuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+          )
       AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
       AND I.ItemID NOT LIKE 'BB%'
       AND I.ItemID NOT LIKE 'TUI%'

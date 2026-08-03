@@ -33,36 +33,18 @@ BEGIN
 
     DECLARE @ToDate DATE = CAST(COALESCE(@DocumentDate, GETDATE()) AS DATE);
     DECLARE @BranchID VARCHAR(50) = '';
-    DECLARE @IsGlobal BIT = 0;
-    DECLARE @IsManager BIT = 0;
-    DECLARE @EmployeeID VARCHAR(50) = '';
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
 
-    SELECT @BranchID = COALESCE(BranchID, ''),
-           @IsGlobal = CASE WHEN UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
-           @IsManager = COALESCE(Manager, 0),
-           @EmployeeID = COALESCE(EmployeeID, '')
+    SELECT @BranchID = COALESCE(BranchID, '')
     FROM dbo.SY_User
     WHERE UserName = @Username;
 
     INSERT @AllowedStores (StoreHouseID)
-    SELECT DISTINCT StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl
-    WHERE UserName = @Username AND StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManager = 1 AND @EmployeeID <> ''
-    BEGIN
-        INSERT @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U
-        JOIN dbo.SY_UserStoreHouseTbl US ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND COALESCE(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (SELECT 1 FROM @AllowedStores A WHERE A.StoreHouseID = US.StoreHouseID);
-    END;
-
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SELECT N'Tài khoản chưa được phân quyền kho' AS Msg, 1 AS MsgType;
         RETURN;
@@ -79,41 +61,40 @@ BEGIN
            P.UnitPrice,
            P.DiemSanPham,
            P.GhiChu,
-           CAST(CASE WHEN COALESCE(S.AvailableQuantity, 0) > 0 THEN S.AvailableQuantity ELSE 0 END AS DECIMAL(18,2)) AS QuantityinStock,
-           CAST(CASE WHEN COALESCE(S.AvailableQuantity, 0) > 0 THEN S.AvailableQuantity ELSE 0 END AS DECIMAL(18,2)) AS TonKho,
+           CAST(COALESCE(S.AvailableStock, 0) AS DECIMAL(18,2)) AS QuantityinStock,
+           CAST(COALESCE(S.AvailableStock, 0) AS DECIMAL(18,2)) AS TonKho,
            S.StoreHouseID,
-           N'SELECTED_AUTHORIZED_STORE' AS WarehouseScope,
-           SYSDATETIMEOFFSET() AS StockUpdatedAt
+           S.StoreHouseName,
+           COALESCE(S.PhysicalStock, 0) AS PhysicalStock,
+           COALESCE(S.ReservedStock, 0) AS ReservedStock,
+           COALESCE(S.AvailableStock, 0) AS AvailableStock,
+           COALESCE(S.WarehouseScope, N'AUTHORIZED_WAREHOUSE_NO_STOCK') AS WarehouseScope,
+           COALESCE(S.StockDataStatus, N'NO_SELLABLE_STOCK') AS StockDataStatus,
+           COALESCE(S.StockUpdatedAt, @StockAsOfUtc) AS StockUpdatedAt,
+           COALESCE(S.StockAsOfAt, @StockAsOfUtc) AS StockAsOfAt,
+           S.LatestStockMovementDate,
+           COALESCE(S.StockDataSource, N'IV_StockTransactionTbl-AR_OrderOpenReservation') AS StockDataSource,
+           S.RuleVersion AS StockRuleVersion
     FROM dbo.CF_ItemTbl I
     OUTER APPLY (
         SELECT TOP (1) UnitPrice, DiemSanPham, GhiChu
         FROM dbo.AR_LayGiaSanPhamFnc(@ToDate, @ObjectID, I.ItemID)
     ) P
     OUTER APPLY (
-        SELECT TOP (1)
-               PStock.StoreHouseID,
-               PStock.PhysicalQuantity - COALESCE(RStock.ReservedQuantity, 0) AS AvailableQuantity
-        FROM (
-            SELECT T.StoreHouseID,
-                   SUM(CASE WHEN T.ExpireDate IS NULL OR CAST(T.ExpireDate AS DATE) >= @ToDate THEN T.Quantity ELSE 0 END) AS PhysicalQuantity
-            FROM dbo.IV_StockTransactionTbl T
-            WHERE T.ItemID = I.ItemID
-              AND T.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-              AND (@IsGlobal = 1 OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores))
-            GROUP BY T.StoreHouseID
-        ) PStock
-        OUTER APPLY (
-            SELECT SUM(COALESCE(D.Quantity, 0) + COALESCE(D.SoLuongTang, 0)) AS ReservedQuantity
-            FROM dbo.AR_OrderDetailTbl D
-            JOIN dbo.AR_OrderTbl O ON O.DocumentID = D.DocumentID
-            WHERE D.ItemID = I.ItemID
-              AND D.StoreHouseID = PStock.StoreHouseID
-              AND O.StatusID IN (-2, -1, 0, 1, 2, 4)
-        ) RStock
-        ORDER BY PStock.PhysicalQuantity - COALESCE(RStock.ReservedQuantity, 0) DESC,
-                 PStock.StoreHouseID
+        SELECT TOP (1) Stock.*
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, I.ItemID, @StockAsOfUtc) Stock
+        ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
     ) S
-    WHERE I.ItemGroupID = 'HH1'
+    WHERE EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = S.RuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+          )
       AND (@ItemID = '' OR I.ItemID = @ItemID)
       AND CASE WHEN @BranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
                WHEN @BranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)

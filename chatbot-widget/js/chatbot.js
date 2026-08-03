@@ -2312,7 +2312,7 @@
         if (normalizedKey === 'phone' || normalizedKey === 'customerphone') {
             return _formatPhoneNumber(value);
         }
-        if (['documentdate', 'deliverdate', 'datecreate', 'expiredate', 'handung', 'asofdate', 'ngay', 'ngaytao'].indexOf(normalizedKey) !== -1) {
+        if (['documentdate', 'deliverdate', 'datecreate', 'expiredate', 'handung', 'asofdate', 'ngay', 'ngaytao', 'stockupdatedat', 'stockasofat', 'lateststockmovementdate'].indexOf(normalizedKey) !== -1) {
             return _formatVietnameseDate(value);
         }
         if (normalizedKey === 'documentid' && isOrder) return _formatOrderDocumentId(value);
@@ -2332,6 +2332,8 @@
             'PHYSICAL_ONLY_UNVERIFIED': 'Có số tồn kho nhưng chưa xác minh số có thể bán',
             'PHYSICAL_STOCK_NOT_QUERIED': 'Chưa kiểm tra kho cho kết quả này',
             'PHYSICAL_AS_SELLABLE_TEMPORARY': 'Theo tồn kho hiện tại',
+            'AVAILABLE_FOR_SALE': 'Còn hàng có thể bán',
+            'RESERVED_OUT': 'Đã được giữ hết cho đơn đang mở',
             'EXPIRED_NOT_SELLABLE': 'Hết hạn - không được bán',
             'STOCK_RECONCILIATION_REQUIRED': 'Cần đối soát kho',
             'WAREHOUSE_SCOPE_UNAVAILABLE': 'Tài khoản chưa được phân quyền kho',
@@ -3492,10 +3494,17 @@
             'diemuutien': 'Điểm Ưu Tiên',
             'lydoghe': 'Lý Do Ghé',
             'physicalstock': 'Tồn ERP',
-            'availablestock': 'Tồn khả dụng tham khảo',
+            'nonexpiredphysicalstock': 'Tồn vật lý còn hạn',
+            'reservedstock': 'Đã giữ cho đơn mở',
+            'availablestock': 'Tồn khả dụng',
             'stockdatastatus': 'Trạng thái dữ liệu tồn kho',
             'freshnessstatus': 'Độ mới dữ liệu',
             'stockupdatedat': 'Cập nhật tồn kho lúc',
+            'stockasofat': 'Tồn được tính tại',
+            'lateststockmovementdate': 'Phát sinh kho mới nhất',
+            'warehousescope': 'Phạm vi kho',
+            'stockdatasource': 'Nguồn dữ liệu tồn',
+            'stockruleversion': 'Phiên bản quy tắc tồn',
             'revenuebasis': 'Cơ sở tính doanh số',
             'revenuerecognition': 'Cách ghi nhận doanh số',
             'doanhsodaxuat': 'Doanh số đã xuất/giao',
@@ -3553,9 +3562,12 @@
         }
         if (api === '@goi_ydon_hang') {
             var orderSuggestionDict = {
-                'physicalstock': 'Tồn kho hiện tại',
+                'physicalstock': 'Tồn vật lý',
+                'reservedstock': 'Đã giữ cho đơn mở',
                 'availablestock': 'Số lượng có thể bán',
-                'stockdatastatus': 'Tình trạng tồn kho'
+                'stockdatastatus': 'Tình trạng tồn kho',
+                'storehouseid': 'Kho có thể bán',
+                'stockasofat': 'Tính tồn tại'
             };
             if (orderSuggestionDict[lower]) return orderSuggestionDict[lower];
         }
@@ -3613,7 +3625,7 @@
             'doanhso', 'soluong', 'sotien', 'thanhtien', 'chinhanh',
             'xuhuong', 'trangthai', 'tiendo', 'muctieu',
             'risklevel', 'diemtonghop', 'lydochinh',
-            'physicalstock', 'availablestock', 'stockdatastatus', 'actionstatus', 'lastvisitstatus', 'dotincay',
+            'physicalstock', 'reservedstock', 'availablestock', 'storehouseid', 'stockdatastatus', 'stockasofat', 'actionstatus', 'lastvisitstatus', 'dotincay',
             // Order & general document columns
             'documentid', 'documentdate', 'objectname', 'basetotal', 'statusname', 'employeename', 'docno'
         ];
@@ -3680,7 +3692,7 @@
 
         if (normalizedApiCode === '@danh_sach_tonkho') {
             var inventoryPrimaryOrder = [
-                'itemid', 'itemname', 'storehousename', 'lot', 'physicalstock', 'availablestock'
+                'itemid', 'itemname', 'storehousename', 'lot', 'physicalstock', 'reservedstock', 'availablestock'
             ];
             var inventoryPrimary = [];
             inventoryPrimaryOrder.forEach(function (wanted) {
@@ -3718,7 +3730,7 @@
 
         function _isNumCol(k) {
         var lowerK = String(k || '').toLowerCase().replace(/_/g, '');
-        var numKeywords = ['doanhso', 'doanhthu', 'soluong', 'tonkho', 'physicalstock', 'availablestock', 'toncuoi', 'tien', 'gia', 'chietkhau', 'thanhtien', 'dongia', 'amount', 'qty', 'price', 'revenue', 'sales', 'total', 'discount', 'sum', 'val'];
+        var numKeywords = ['doanhso', 'doanhthu', 'soluong', 'tonkho', 'physicalstock', 'reservedstock', 'availablestock', 'toncuoi', 'tien', 'gia', 'chietkhau', 'thanhtien', 'dongia', 'amount', 'qty', 'price', 'revenue', 'sales', 'total', 'discount', 'sum', 'val'];
         for (var i = 0; i < numKeywords.length; i++) {
             if (lowerK.indexOf(numKeywords[i]) !== -1) {
                 return true;

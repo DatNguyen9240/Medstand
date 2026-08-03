@@ -13,7 +13,6 @@ BEGIN
     IF OBJECT_ID('tempdb..#GiaThiTruong') IS NOT NULL DROP TABLE #GiaThiTruong;
     IF OBJECT_ID('tempdb..#KhachQuen') IS NOT NULL DROP TABLE #KhachQuen;
     IF OBJECT_ID('tempdb..#BanChay') IS NOT NULL DROP TABLE #BanChay;
-    IF OBJECT_ID('tempdb..#StockByLot') IS NOT NULL DROP TABLE #StockByLot;
     IF OBJECT_ID('tempdb..#TonKho') IS NOT NULL DROP TABLE #TonKho;
     IF OBJECT_ID('tempdb..#KetQuaKichBan1') IS NOT NULL DROP TABLE #KetQuaKichBan1;
     IF OBJECT_ID('tempdb..#KetQuaKichBan2') IS NOT NULL DROP TABLE #KetQuaKichBan2;
@@ -34,6 +33,8 @@ BEGIN
     DECLARE @IsGlobal BIT = 0
     DECLARE @IsManager BIT = 0
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY)
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME()
+    DECLARE @StockRuleVersion VARCHAR(30) = NULL
     SELECT @SYSBranchID = COALESCE(BranchID, ''),
            @SYSUserGroupID = COALESCE(UserGroupID, ''),
            @EmployeeID = COALESCE(EmployeeID, ''),
@@ -48,28 +49,13 @@ BEGIN
     END
 
     INSERT INTO @AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManager = 1 AND ISNULL(@EmployeeID, '') <> ''
-    BEGIN
-        INSERT INTO @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-          ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1 FROM @AllowedStores A
-              WHERE A.StoreHouseID = US.StoreHouseID
-          );
-    END
+    SELECT TOP (1) @StockRuleVersion = RuleVersion
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg, 1 AS MsgType;
         RETURN;
@@ -326,31 +312,26 @@ BEGIN
         ORDER BY DoanhSoChiNhanh DESC;
     END
 
-    -- ═══ 7. Tồn kho đúng phạm vi user; lô hết hạn/âm không được tính là có thể bán ═══
-    SELECT
-        T.ItemID,
-        T.StoreHouseID,
-        T.Lot,
-        T.ExpireDate,
-        SUM(ISNULL(T.Quantity, 0)) AS RemainingPhysical
-    INTO #StockByLot
-    FROM dbo.IV_StockTransactionTbl T WITH (NOLOCK)
-    WHERE @IsGlobal = 1
-       OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
-    GROUP BY T.ItemID, T.StoreHouseID, T.Lot, T.ExpireDate;
-
-    SELECT
-        ItemID,
-        SUM(RemainingPhysical) AS PhysicalStock,
-        SUM(CASE
-            WHEN RemainingPhysical > 0
-             AND (ExpireDate IS NULL OR CAST(ExpireDate AS DATE) >= CAST(GETDATE() AS DATE))
-                THEN RemainingPhysical
-            ELSE 0
-        END) AS QuantityinStock
+    -- STOCK-001: chọn đúng một kho được cấp có tồn khả dụng cao nhất cho mỗi sản phẩm.
+    SELECT ItemID, StoreHouseID, StoreHouseName,
+           PhysicalStock, ReservedStock,
+           AvailableStock AS QuantityinStock,
+           WarehouseScope, StockDataStatus,
+           StockUpdatedAt, StockAsOfAt, LatestStockMovementDate,
+           StockDataSource, RuleVersion
     INTO #TonKho
-    FROM #StockByLot
-    GROUP BY ItemID;
+    FROM
+    (
+        SELECT S.*,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY S.ItemID
+                   ORDER BY S.AvailableStock DESC, S.StoreHouseID
+               ) AS StockRank
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) S
+        WHERE S.AvailableStock > 0
+    ) RankedStock
+    WHERE StockRank = 1;
 
     -- ═══ 7.5. Danh sách sản phẩm trọng tâm     -- Chuẩn hóa các liên từ nối tiếng Việt thành khoảng trắng/dấu phẩy đề phòng n8n chưa xử lý
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng với ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
@@ -438,8 +419,17 @@ BEGIN
             CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
             ISNULL(S.QuantityinStock, 0)               AS TonKho,
             ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+            ISNULL(S.ReservedStock, 0)                 AS ReservedStock,
             ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
-            N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
+            S.StoreHouseID,
+            S.StoreHouseName,
+            S.WarehouseScope,
+            S.StockDataStatus,
+            S.StockUpdatedAt,
+            S.StockAsOfAt,
+            S.LatestStockMovementDate,
+            S.StockDataSource,
+            S.RuleVersion                              AS StockRuleVersion,
             (
                 -- Ưu tiên 1: Tên chứa từ khoá nguyên bản ở đầu (VD: Bắt đầu bằng chữ "Thuốc ho")
                 (CASE WHEN I.ItemName COLLATE Vietnamese_CI_AS LIKE REPLACE(@timkiem, 'thuoc ', '') + N'%' OR I.ItemName COLLATE Vietnamese_CI_AS LIKE @timkiem + N'%' THEN 500000 ELSE 0 END) +
@@ -472,9 +462,24 @@ BEGIN
         LEFT JOIN #TonKho S ON I.ItemID = S.ItemID  
         LEFT JOIN #GiaThiTruong G ON I.ItemID = G.ItemID
         WHERE ISNULL(I.isDisable, 0) = 0
+          AND CASE WHEN @SYSBranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
+                   WHEN @SYSBranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)
+                   ELSE CASE WHEN COALESCE(I.IsDisableMB, 0) = 0 OR COALESCE(I.IsDisableMN, 0) = 0 THEN 0 ELSE 1 END
+              END = 0
+          AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = @StockRuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+          )
           AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
           AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
           AND ISNULL(S.QuantityinStock, 0) > 0
+          AND ISNULL(G.GiaHienTai, 0) > 0
           AND (
               I.ItemName COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR 
               I.TuKhoa COLLATE Vietnamese_CI_AS LIKE N'%'+@timkiem+N'%' OR
@@ -490,22 +495,10 @@ BEGIN
         IF NOT EXISTS (SELECT 1 FROM #KetQuaKichBan1)
         BEGIN
             SELECT 
-                0 AS DoanhSoDaDat,
-                0 AS MucTieuTiepTheo,
-                0 AS SoTienConThieu,
-                N'Rất tiếc, hệ thống không tìm thấy kết quả nào' AS LoiNhacAI,
-                'N/A' AS ItemID, 
-                N'Không tìm thấy sản phẩm' AS ItemName, 
-                '' AS Unit, 
-                0 AS GiaBan,
-                0 AS TonKho,
-                0 AS PhysicalStock,
-                0 AS AvailableStock,
-                N'NO_SELLABLE_STOCK' AS StockDataStatus,
-                0 AS PriorityScore,
-                N'Vui lòng thử lại với từ khóa khác hoặc kiểm tra lại tên.' AS LyDoGoiY,
-                N'LEGACY_UPSELL_DRAFT' AS RuleSource,
-                N'BR-UPSELL-V1-DRAFT' AS RuleVersion;
+                N'Không tìm thấy sản phẩm liên quan còn tồn khả dụng và có giá bán.' AS Msg,
+                0 AS MsgType,
+                N'NO_DATA' AS Severity,
+                N'NO_SELLABLE_STOCK' AS Code;
         END
         ELSE
         BEGIN
@@ -535,8 +528,17 @@ BEGIN
             CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
             ISNULL(S.QuantityinStock, 0)               AS TonKho,
             ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+            ISNULL(S.ReservedStock, 0)                 AS ReservedStock,
             ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
-            N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
+            S.StoreHouseID,
+            S.StoreHouseName,
+            S.WarehouseScope,
+            S.StockDataStatus,
+            S.StockUpdatedAt,
+            S.StockAsOfAt,
+            S.LatestStockMovementDate,
+            S.StockDataSource,
+            S.RuleVersion                              AS StockRuleVersion,
             (
                 (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
                 (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
@@ -558,9 +560,24 @@ BEGIN
         LEFT JOIN #BanChay BC ON I.ItemID = BC.ItemID
         LEFT JOIN #TrongTam TT ON I.ItemID = TT.ItemID
         WHERE ISNULL(I.isDisable, 0) = 0
+          AND CASE WHEN @SYSBranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
+                   WHEN @SYSBranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)
+                   ELSE CASE WHEN COALESCE(I.IsDisableMB, 0) = 0 OR COALESCE(I.IsDisableMN, 0) = 0 THEN 0 ELSE 1 END
+              END = 0
+          AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = @StockRuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+          )
           AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
           AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
           AND ISNULL(S.QuantityinStock, 0) > 0
+          AND ISNULL(G.GiaHienTai, 0) > 0
           AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
 
         -- Fallback khi không có sản phẩm thuộc các nhóm trọng tâm/khách quen/bán chạy.
@@ -583,8 +600,17 @@ BEGIN
                 CAST(ISNULL(G.GiaHienTai, 0) AS BIGINT)   AS GiaBan,
                 ISNULL(S.QuantityinStock, 0)               AS TonKho,
                 ISNULL(S.PhysicalStock, 0)                 AS PhysicalStock,
+                ISNULL(S.ReservedStock, 0)                 AS ReservedStock,
                 ISNULL(S.QuantityinStock, 0)               AS AvailableStock,
-                N'PHYSICAL_AS_SELLABLE_TEMPORARY'          AS StockDataStatus,
+                S.StoreHouseID,
+                S.StoreHouseName,
+                S.WarehouseScope,
+                S.StockDataStatus,
+                S.StockUpdatedAt,
+                S.StockAsOfAt,
+                S.LatestStockMovementDate,
+                S.StockDataSource,
+                S.RuleVersion                              AS StockRuleVersion,
                 (
                     (CASE WHEN TT.ItemID IS NOT NULL THEN 300000 ELSE 0 END) +
                     (CASE WHEN BC.ItemID IS NOT NULL THEN 100000 ELSE 0 END) +
@@ -605,17 +631,42 @@ BEGIN
             LEFT JOIN #BanChay BC ON I.ItemID = BC.ItemID
             LEFT JOIN #TrongTam TT ON I.ItemID = TT.ItemID
             WHERE ISNULL(I.isDisable, 0) = 0
+              AND CASE WHEN @SYSBranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
+                       WHEN @SYSBranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)
+                       ELSE CASE WHEN COALESCE(I.IsDisableMB, 0) = 0 OR COALESCE(I.IsDisableMN, 0) = 0 THEN 0 ELSE 1 END
+                  END = 0
+              AND EXISTS
+              (
+                  SELECT 1
+                  FROM dbo.AI_BusinessRuleConfigTbl C
+                  CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+                  WHERE C.RuleCode = 'BR-STOCK-001'
+                    AND C.RuleVersion = @StockRuleVersion
+                    AND C.ConfigKey = 'SellableItemGroupIDs'
+                    AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+              )
               AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
               AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%'
               AND ISNULL(S.QuantityinStock, 0) > 0
+              AND ISNULL(G.GiaHienTai, 0) > 0
               AND (TT.ItemID IS NOT NULL OR KQ.ItemID IS NOT NULL OR BC.ItemID IS NOT NULL);
         END
 
-        SELECT * FROM #KetQuaKichBan2 ORDER BY PriorityScore DESC, ItemID ASC;
+        IF NOT EXISTS (SELECT 1 FROM #KetQuaKichBan2)
+        BEGIN
+            SELECT N'Không có sản phẩm còn tồn khả dụng và có giá bán trong phạm vi kho của tài khoản.' AS Msg,
+                   0 AS MsgType,
+                   N'NO_DATA' AS Severity,
+                   N'NO_SELLABLE_STOCK' AS Code;
+        END
+        ELSE
+        BEGIN
+            SELECT * FROM #KetQuaKichBan2 ORDER BY PriorityScore DESC, ItemID ASC;
+        END
         DROP TABLE #KetQuaKichBan2;
     END
 
-    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #StockByLot; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
+    DROP TABLE #GiaThiTruong; DROP TABLE #KhachQuen; DROP TABLE #BanChay; DROP TABLE #TonKho; DROP TABLE #LatestPriceHeader; DROP TABLE #TrongTam;
 END
 GO
 

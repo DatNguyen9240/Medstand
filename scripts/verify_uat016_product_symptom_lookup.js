@@ -41,13 +41,11 @@ async function productLookup(pool, username, keyword) {
   return response.recordset || [];
 }
 
-async function symptomLookup(pool, username, customerId, keyword) {
+async function symptomLookup(pool, username, keyword) {
   const response = await pool.request()
     .input('Username', sql.VarChar(50), username)
-    .input('MaKhachHang', sql.NVarChar(100), customerId)
-    .input('timkiem', sql.NVarChar(50), keyword)
-    .input('TopN', sql.Int, 5)
-    .execute('dbo.API_UpsellGoiY_AI');
+    .input('Keyword', sql.NVarChar(100), keyword)
+    .execute('dbo.API_TimSanPhamTheoTrieuChung_AI');
   return response.recordset || [];
 }
 
@@ -80,14 +78,27 @@ async function main() {
         const medicalStatusMissing = productRows.filter((row) => !first(row, ['RecommendationStatus', 'RuleVersion', 'DataSource']));
         const invalidStockStatus = productRows.filter((row) => {
           const value = first(row, ['StockDataStatus']);
-          return value !== 'PHYSICAL_STOCK_NOT_QUERIED' && value !== null;
+          return value !== 'AVAILABLE_FOR_SALE';
         });
-        const symptomRowsRaw = await symptomLookup(pool, username, fixture.customerId, 'ho');
+        const invalidProductStock = productRows.filter((row) =>
+          Number(first(row, ['AvailableStock']) || 0) <= 0
+          || !first(row, ['StoreHouseID'])
+          || !first(row, ['StockUpdatedAt', 'StockAsOfAt'])
+          || first(row, ['ReservedStock']) === null
+        );
+        const symptomRowsRaw = await symptomLookup(pool, username, 'ho');
         const symptomMessages = symptomRowsRaw.filter(isMessage);
         const symptomRows = symptomRowsRaw.filter((row) => !isMessage(row));
         const symptomMissingReason = symptomRows.filter((row) => !first(row, ['LyDoGoiY', 'RecommendationReason', 'ChiTiet']));
         const symptomNoStock = symptomRows.filter((row) => Number(first(row, ['AvailableStock', 'QuantityinStock', 'TonKho']) || 0) <= 0);
         const symptomDisclaimerMissing = symptomRows.filter((row) => !first(row, ['MedicalDisclaimer', 'RecommendationStatus', 'RuleVersion']));
+        const symptomInvalidStock = symptomRows.filter((row) =>
+          Number(first(row, ['AvailableStock']) || 0) <= 0
+          || first(row, ['StockDataStatus']) !== 'AVAILABLE_FOR_SALE'
+          || !first(row, ['StoreHouseID'])
+          || !first(row, ['StockUpdatedAt', 'StockAsOfAt'])
+          || first(row, ['ReservedStock']) === null
+        );
         const errors = [];
         if (productMessages.some(isError)) errors.push('PRODUCT_LOOKUP_API_ERROR');
         if (!productRows.length) errors.push('PRODUCT_LOOKUP_NO_RESULT');
@@ -96,11 +107,13 @@ async function main() {
         if (disclaimerMissing.length) errors.push('PRODUCT_DISCLAIMER_MISSING');
         if (medicalStatusMissing.length) errors.push('PRODUCT_METADATA_MISSING');
         if (invalidStockStatus.length) errors.push('PRODUCT_INVALID_STOCK_STATUS');
+        if (invalidProductStock.length) errors.push('PRODUCT_INVALID_STOCK_CONTRACT');
         if (symptomMessages.some(isError)) errors.push('SYMPTOM_API_ERROR');
         if (!symptomRows.length) errors.push('SYMPTOM_NO_RESULT');
         if (symptomMissingReason.length) errors.push('SYMPTOM_REASON_MISSING');
         if (symptomNoStock.length) errors.push('SYMPTOM_NO_SELLABLE_STOCK');
         if (symptomDisclaimerMissing.length) errors.push('SYMPTOM_DISCLAIMER_OR_RULE_MISSING');
+        if (symptomInvalidStock.length) errors.push('SYMPTOM_INVALID_STOCK_CONTRACT');
         Object.assign(result, {
           ProductLookupRows: productRows.length,
           ProductLookupErrorMessages: productMessages.filter(isError).length,
@@ -109,11 +122,13 @@ async function main() {
           ProductDisclaimerMissingCount: disclaimerMissing.length,
           ProductMetadataMissingCount: medicalStatusMissing.length,
           ProductInvalidStockStatusCount: invalidStockStatus.length,
+          ProductInvalidStockContractCount: invalidProductStock.length,
           SymptomRows: symptomRows.length,
           SymptomErrorMessages: symptomMessages.filter(isError).length,
           SymptomMissingReasonCount: symptomMissingReason.length,
           SymptomNoSellableStockCount: symptomNoStock.length,
           SymptomDisclaimerOrRuleMissingCount: symptomDisclaimerMissing.length,
+          SymptomInvalidStockContractCount: symptomInvalidStock.length,
           ProductSample: productRows.slice(0, 3).map((row) => ({ ItemID: first(row, ['ItemID', 'Mã sp']), ItemName: first(row, ['ItemName', 'Sản Phẩm']), Price: first(row, ['UnitPrice', 'Đơn Giá']), Disclaimer: Boolean(first(row, ['MedicalDisclaimer'])) })),
           SymptomSample: symptomRows.slice(0, 3).map((row) => ({ ItemID: first(row, ['ItemID', 'MaSanPham', 'Mã SP']), ItemName: first(row, ['ItemName', 'TenSanPham']), Reason: first(row, ['LyDoGoiY', 'RecommendationReason', 'ChiTiet']) })),
           Errors: errors,

@@ -22,6 +22,7 @@ BEGIN
     DECLARE @SYSEmployeeID  VARCHAR(50) = ''
     DECLARE @SYSIsGlobal    BIT = 0
     DECLARE @SYSIsManager   BIT = 0
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME()
     DECLARE @AllowedObjects TABLE (ObjectID VARCHAR(50) PRIMARY KEY)
     DECLARE @AllowedEmployees TABLE (EmployeeID VARCHAR(50) PRIMARY KEY)
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY)
@@ -72,27 +73,8 @@ BEGIN
     END
 
     INSERT INTO @AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-
-    IF @SYSIsManager = 1 AND ISNULL(@SYSEmployeeID, '') <> ''
-    BEGIN
-        INSERT INTO @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        INNER JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-            ON US.UserName = U.UserName
-        WHERE U.ManagerID = @SYSEmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1
-              FROM @AllowedStores A
-              WHERE A.StoreHouseID = US.StoreHouseID
-          )
-    END
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc)
 
     -- =========================================
     -- 1. Không truyền type → trả categories
@@ -528,11 +510,7 @@ BEGIN
                 FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
             ) AS ExtraData
         FROM CF_StoreHouseTbl WITH (NOLOCK)
-        WHERE StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND (
-              @SYSIsGlobal = 1
-              OR StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
-          )
+        WHERE StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
           AND (
               @timkiem = ''
               OR StoreHouseID LIKE '%' + @timkiem + '%'

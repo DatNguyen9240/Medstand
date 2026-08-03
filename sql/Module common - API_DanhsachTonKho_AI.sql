@@ -15,6 +15,7 @@ BEGIN
     DECLARE @IsGlobal BIT = 0
     DECLARE @IsManager BIT = 0
     DECLARE @EmployeeID VARCHAR(50) = ''
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME()
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY)
     SELECT @SYSBranchID = COALESCE(BranchID, ''),
            @IsGlobal = CASE WHEN UserGroupID IN ('Admin', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END,
@@ -23,71 +24,55 @@ BEGIN
     FROM SY_User WHERE UserName = @Username
 
     INSERT INTO @AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc)
 
-    IF @IsManager = 1 AND ISNULL(@EmployeeID, '') <> ''
-    BEGIN
-        INSERT INTO @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-          ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1 FROM @AllowedStores A
-              WHERE A.StoreHouseID = US.StoreHouseID
-          )
-    END
-
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg, 1 AS MsgType
         RETURN
     END
+    ;WITH LotBalance AS
+    (
+        SELECT A.ItemID, A.StoreHouseID, A.BranchID, A.Lot, A.ExpireDate,
+               SUM(CASE WHEN A.Quantity >= 0 THEN A.Quantity ELSE 0 END) AS Nhap,
+               SUM(CASE WHEN A.Quantity < 0 THEN -A.Quantity ELSE 0 END) AS Xuat,
+               SUM(COALESCE(A.Quantity, 0)) AS TonCuoi
+        FROM dbo.IV_StockTransactionTbl A
+        WHERE A.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
+        GROUP BY A.ItemID, A.StoreHouseID, A.BranchID, A.Lot, A.ExpireDate
+        HAVING SUM(COALESCE(A.Quantity, 0)) <> 0
+    )
     SELECT
         A.ItemID, I.ItemName, I.Unit AS DonViTinh,
-        A.StoreHouseID, SH.StoreHouseName, A.BranchID,
+        A.StoreHouseID, S.StoreHouseName, A.BranchID,
         A.Lot, A.ExpireDate,
-        SUM(CASE WHEN A.Quantity >= 0 THEN A.Quantity ELSE 0 END) AS Nhap,
-        SUM(CASE WHEN A.Quantity < 0 THEN -A.Quantity ELSE 0 END) AS Xuat,
-        SUM(ISNULL(A.Quantity,0)) AS TonCuoi,
-        SUM(ISNULL(A.Quantity,0)) AS PhysicalStock,
-        CAST(CASE
-            WHEN A.ExpireDate IS NOT NULL AND CAST(A.ExpireDate AS DATE) < CAST(GETDATE() AS DATE) THEN 0
-            WHEN SUM(ISNULL(A.Quantity, 0)) > 0 THEN SUM(ISNULL(A.Quantity, 0))
-            ELSE 0
-        END AS DECIMAL(18, 2)) AS AvailableStock,
+        A.Nhap, A.Xuat, A.TonCuoi,
+        CAST(A.TonCuoi AS DECIMAL(18, 2)) AS LotPhysicalStock,
+        S.PhysicalStock,
+        S.NonExpiredPhysicalStock,
+        S.ReservedStock,
+        S.AvailableStock,
+        S.WarehouseScope,
+        S.StockDataStatus,
+        S.StockUpdatedAt,
+        S.StockAsOfAt,
+        S.LatestStockMovementDate,
+        S.StockDataSource AS RuleSource,
+        S.RuleVersion,
         CASE
-            WHEN A.ExpireDate IS NOT NULL AND CAST(A.ExpireDate AS DATE) < CAST(GETDATE() AS DATE)
-                THEN N'EXPIRED_NOT_SELLABLE'
-            WHEN SUM(ISNULL(A.Quantity, 0)) < 0
-                THEN N'STOCK_RECONCILIATION_REQUIRED'
-            ELSE N'PHYSICAL_AS_SELLABLE_TEMPORARY'
-        END AS StockDataStatus,
-        N'LEGACY_DEFAULT' AS RuleSource,
-        N'BR-STOCK-V1-DRAFT' AS RuleVersion,
-        CASE
-            WHEN SUM(ISNULL(A.Quantity,0)) < 0 THEN N'Cần đối soát'
+            WHEN S.StockDataStatus = N'STOCK_RECONCILIATION_REQUIRED' THEN N'Cần đối soát'
             WHEN A.ExpireDate IS NOT NULL AND A.ExpireDate < GETDATE() THEN N'Hết hạn'
-            ELSE N'Còn hàng'
+            WHEN S.AvailableStock > 0 THEN N'Còn hàng có thể bán'
+            ELSE N'Không còn tồn khả dụng'
         END AS TrangThai
-    FROM IV_StockTransactionTbl A
-    LEFT JOIN CF_ItemTbl I ON A.ItemID = I.ItemID
-    LEFT JOIN CF_StoreHouseTbl SH ON SH.StoreHouseID = A.StoreHouseID
+    FROM LotBalance A
+    JOIN dbo.CF_ItemTbl I ON A.ItemID = I.ItemID
+    LEFT JOIN dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) S
+      ON S.ItemID = A.ItemID
+     AND S.StoreHouseID = A.StoreHouseID
     WHERE (@ItemID = '' OR A.ItemID = @ItemID)
       AND (@TenSanPham = '' OR I.ItemName LIKE '%' + @TenSanPham + '%')
       AND (@timkiem = '' OR I.ItemName LIKE '%' + @timkiem + '%' OR A.ItemID LIKE '%' + @timkiem + '%')
-      AND (
-          @IsGlobal = 1
-          OR A.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
-      )
-    GROUP BY A.ItemID, I.ItemName, I.Unit, A.StoreHouseID, SH.StoreHouseName, A.BranchID,
-             A.Lot, A.ExpireDate
-    HAVING SUM(ISNULL(A.Quantity, 0)) <> 0
 END
 GO

@@ -339,9 +339,11 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope. Bằng chứng: [UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md](UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md).
   - **Trạng thái cập nhật:** phần SQL, rule business và API runtime đã hoàn tất; task chỉ còn gate bằng chứng end-to-end qua UI/token thật cho bốn bộ lọc `A/B/C/UNRATED`, gồm ảnh và request ID. Vì gate này chưa chạy nên giữ checkbox mở, chưa đánh dấu `DONE`.
 
-- [ ] **STOCK-001 — Bắt buộc kiểm tra tồn thật trong tư vấn sản phẩm** · `P1` · `TODO`
+- [x] **STOCK-001 — Bắt buộc kiểm tra tồn thật trong tư vấn sản phẩm** · `P1` · `DONE`
   - Thay trạng thái `PHYSICAL_STOCK_NOT_QUERIED` bằng truy vấn tồn theo quyền khi nghiệp vụ yêu cầu hàng còn tồn.
   - Nghiệm thu: kết quả ghi rõ kho, thời điểm cập nhật và tồn khả dụng; không gợi ý hàng không bán được.
+  - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Báo cáo: [STOCK-001_TON_KHA_DUNG_THEO_QUYEN_2026-08-03.md](STOCK-001_TON_KHA_DUNG_THEO_QUYEN_2026-08-03.md).
+  - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS. Token UAT PASS ba gate: sản phẩm bán được `req-11760-msd0saxz`, chặn hàng `RESERVED_OUT` `req-11763-msd0semv`, tìm theo triệu chứng `req-11766-msd0sgq1` trả 8 dòng với kho/thời điểm/tồn khả dụng đầy đủ. Lỗi alias `@Keyword`/`@timkiem` phát hiện trong UAT đã sửa tại SQL theo contract tương thích ngược; deploy lại `12/12` và gate `13/13` tài khoản PASS.
 
 - [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `TODO`
   - Mỗi gợi ý hiển thị lần mua cuối, chu kỳ, ngày dự kiến, lý do và nguồn rule.

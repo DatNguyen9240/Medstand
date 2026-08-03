@@ -11,6 +11,42 @@ BEGIN
     IF OBJECT_ID('tempdb..#Items') IS NOT NULL DROP TABLE #Items;
     IF OBJECT_ID('tempdb..#LatestPriceHeader') IS NOT NULL DROP TABLE #LatestPriceHeader;
     IF OBJECT_ID('tempdb..#FinalPrices') IS NOT NULL DROP TABLE #FinalPrices;
+    IF OBJECT_ID('tempdb..#AIStock') IS NOT NULL DROP TABLE #AIStock;
+
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.SY_User
+        WHERE UserName = @Username
+          AND COALESCE(Disable, 0) = 0
+    )
+    BEGIN
+        SELECT N'Tài khoản không tồn tại hoặc đã bị khóa.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity,
+               N'INVALID_USER' AS Code;
+        RETURN;
+    END;
+
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @BranchID VARCHAR(50) = '';
+    DECLARE @StockRuleVersion VARCHAR(30) = NULL;
+
+    SELECT @BranchID = COALESCE(BranchID, '')
+    FROM dbo.SY_User
+    WHERE UserName = @Username;
+
+    SELECT TOP (1) @StockRuleVersion = RuleVersion
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
+
+    IF @StockRuleVersion IS NULL
+    BEGIN
+        SELECT N'Tài khoản chưa được phân quyền kho bán hàng.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity,
+               N'WAREHOUSE_SCOPE_UNAVAILABLE' AS Code;
+        RETURN;
+    END;
 
     SET @timkiem = LTRIM(RTRIM(ISNULL(@timkiem, '')));
     IF @timkiem = ''
@@ -76,6 +112,10 @@ BEGIN
     INTO #MatchedItems
     FROM CF_ItemTbl I WITH (NOLOCK)
     WHERE (ISNULL(I.isDisable, 0) = 0)
+      AND CASE WHEN @BranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
+               WHEN @BranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)
+               WHEN @BranchID = 'MT' THEN COALESCE(I.IsDisableMT, 0)
+               ELSE COALESCE(I.IsDisable, 0) END = 0
       AND (
           @timkiem = '' OR
           I.ItemID LIKE @timkiem + '%' OR
@@ -89,8 +129,17 @@ BEGIN
                  OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(I.TuKhoa, ''), ',', ' '), '.', ' '), '-', ' ') + N' ' COLLATE Vietnamese_CI_AS LIKE N'% ' + T.Term + N' %'
           )
       )
-      AND ISNULL(I.ItemGroupID, '') NOT IN ('KM', 'DV', 'VT', 'BB', 'Vat Tu', 'Bao Bi', 'TUI')
-      AND I.ItemID NOT LIKE 'BB%' AND I.ItemID NOT LIKE 'TUI%' AND I.ItemID NOT LIKE 'PB%' AND I.ItemID NOT LIKE 'NY%';
+      AND EXISTS
+      (
+          SELECT 1
+          FROM dbo.AI_BusinessRuleConfigTbl C
+          CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') S
+          WHERE C.RuleCode = 'BR-STOCK-001'
+            AND C.RuleVersion = @StockRuleVersion
+            AND C.ConfigKey = 'SellableItemGroupIDs'
+            AND C.Status = 'APPROVED'
+            AND UPPER(LTRIM(RTRIM(S.value))) = UPPER(COALESCE(I.ItemGroupID, ''))
+      );
 
     DECLARE @MaxScore INT = 0;
     SELECT @MaxScore = MAX(MatchScore) FROM #MatchedItems;
@@ -104,6 +153,18 @@ BEGIN
     WHERE MatchScore = @MaxScore OR (@MaxScore < 80 AND MatchScore > 0);
 
     DROP TABLE #MatchedItems;
+
+    SELECT
+        S.*,
+        ROW_NUMBER() OVER
+        (
+            PARTITION BY S.ItemID
+            ORDER BY S.AvailableStock DESC, S.StoreHouseID
+        ) AS StockRank
+    INTO #AIStock
+    FROM dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) S
+    JOIN #Items I ON I.ItemID = S.ItemID
+    WHERE S.AvailableStock > 0;
 
 
     -- 2. Tìm giá bán từ Bảng giá (Price List) - Thay thế cho lịch sử bán hàng
@@ -154,7 +215,13 @@ BEGIN
 
     -- 3. Trả kết quả. Không suy tồn khả dụng từ tồn vật lý khi chưa có
     -- reservation/blocked/damaged/expired và warehouse scope đã xác minh.
-    IF NOT EXISTS (SELECT 1 FROM #Items)
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM #Items I
+        JOIN #AIStock S ON S.ItemID = I.ItemID AND S.StockRank = 1
+        JOIN #FinalPrices P ON P.ItemID = I.ItemID AND P.UnitPrice > 0
+    )
     BEGIN
         SELECT
             CAST(NULL AS BIGINT) AS [STT],
@@ -162,7 +229,14 @@ BEGIN
             CAST(NULL AS NVARCHAR(500)) AS [Sản Phẩm],
             CAST(NULL AS BIGINT) AS [Đơn Giá],
             CAST(NULL AS DECIMAL(18, 2)) AS PhysicalStock,
+            CAST(NULL AS DECIMAL(18, 2)) AS ReservedStock,
             CAST(NULL AS DECIMAL(18, 2)) AS AvailableStock,
+            CAST(NULL AS VARCHAR(50)) AS StoreHouseID,
+            CAST(NULL AS NVARCHAR(200)) AS StoreHouseName,
+            CAST(NULL AS NVARCHAR(50)) AS WarehouseScope,
+            CAST(NULL AS DATETIME2(0)) AS StockUpdatedAt,
+            CAST(NULL AS DATETIME2(0)) AS StockAsOfAt,
+            CAST(NULL AS DATETIME) AS LatestStockMovementDate,
             CAST(NULL AS NVARCHAR(50)) AS StockDataStatus,
             CAST(NULL AS NVARCHAR(100)) AS RecommendationStatus,
             CAST(NULL AS NVARCHAR(500)) AS MedicalDisclaimer,
@@ -177,9 +251,16 @@ BEGIN
             I.ItemID AS [Mã sp],
             I.ItemName AS [Sản Phẩm],
             CAST(ISNULL(P.UnitPrice, 0) AS BIGINT) AS [Đơn Giá],
-            CAST(NULL AS DECIMAL(18, 2)) AS PhysicalStock,
-            CAST(NULL AS DECIMAL(18, 2)) AS AvailableStock,
-            N'PHYSICAL_STOCK_NOT_QUERIED' AS StockDataStatus,
+            S.PhysicalStock,
+            S.ReservedStock,
+            S.AvailableStock,
+            S.StoreHouseID,
+            S.StoreHouseName,
+            S.WarehouseScope,
+            S.StockUpdatedAt,
+            S.StockAsOfAt,
+            S.LatestStockMovementDate,
+            S.StockDataStatus,
             K.Ingredients AS [Thành Phần],
             K.MainUses AS [Công Dụng],
             K.TargetPatients AS [Đối Tượng],
@@ -189,14 +270,17 @@ BEGIN
             N'REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED' AS RecommendationStatus,
             N'Thông tin chỉ để tham khảo; không thay thế chẩn đoán, kê đơn hoặc tư vấn của người có chuyên môn.' AS MedicalDisclaimer,
             N'BR-MED-V1-DRAFT' AS RuleVersion,
-            N'API_TraCuuSanPham_AI' AS DataSource
+            S.RuleVersion AS StockRuleVersion,
+            N'API_TraCuuSanPham_AI' AS DataSource,
+            S.StockDataSource
         FROM #Items I
-        LEFT JOIN #FinalPrices P ON I.ItemID = P.ItemID
+        JOIN #FinalPrices P ON I.ItemID = P.ItemID AND P.UnitPrice > 0
+        JOIN #AIStock S ON S.ItemID = I.ItemID AND S.StockRank = 1
         LEFT JOIN dbo.AI_ProductKnowledgeTbl K ON I.ItemID = K.ItemID
         ORDER BY I.OrderIndex ASC;
     END
 
 
-    DROP TABLE #Items; DROP TABLE #LatestPriceHeader; DROP TABLE #FinalPrices;
+    DROP TABLE #Items; DROP TABLE #LatestPriceHeader; DROP TABLE #FinalPrices; DROP TABLE #AIStock;
 END
 GO

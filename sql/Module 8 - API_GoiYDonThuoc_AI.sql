@@ -30,6 +30,26 @@ BEGIN
                N'MISSING_PRODUCT_KEYWORD' AS Code;
         RETURN;
     END
+
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @BranchID VARCHAR(50) = '';
+    DECLARE @StockRuleVersion VARCHAR(30) = NULL;
+
+    SELECT @BranchID = COALESCE(BranchID, '')
+    FROM dbo.SY_User
+    WHERE UserName = @Username;
+
+    SELECT TOP (1) @StockRuleVersion = RuleVersion
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
+
+    IF @StockRuleVersion IS NULL
+    BEGIN
+        SELECT N'Tài khoản chưa được phân quyền kho bán hàng.' AS Msg,
+               1 AS MsgType,
+               N'OUT_OF_SCOPE' AS Severity,
+               N'WAREHOUSE_SCOPE_UNAVAILABLE' AS Code;
+        RETURN;
+    END;
    
     -- Chuẩn hóa các liên từ nối tiếng Việt thành dấu phẩy đề phòng n8n chưa xử lý
     SET @timkiem = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@timkiem, N' cùng với ', ','), N' Cùng with ', ','), N' đi kèm ', ','), N' Đi kèm ', ','), N' và ', ','), N' Và ', ',');
@@ -89,7 +109,21 @@ BEGIN
         OR N' ' + REPLACE(REPLACE(REPLACE(ISNULL(CF.TuKhoa,''), ',', ' '), '.', ' '), '-', ' ') + N' ' LIKE N'% ' + K.TuKhoa + N' %'
     )
     WHERE ISNULL(CF.isDisable, 0) = 0
-      AND ISNULL(CF.ItemGroupID, '') = 'HH1';
+      AND CASE WHEN @BranchID = 'MB' THEN COALESCE(CF.IsDisableMB, 0)
+               WHEN @BranchID = 'MN' THEN COALESCE(CF.IsDisableMN, 0)
+               WHEN @BranchID = 'MT' THEN COALESCE(CF.IsDisableMT, 0)
+               ELSE COALESCE(CF.IsDisable, 0) END = 0
+      AND EXISTS
+      (
+          SELECT 1
+          FROM dbo.AI_BusinessRuleConfigTbl C
+          CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+          WHERE C.RuleCode = 'BR-STOCK-001'
+            AND C.RuleVersion = @StockRuleVersion
+            AND C.ConfigKey = 'SellableItemGroupIDs'
+            AND C.Status = 'APPROVED'
+            AND UPPER(LTRIM(RTRIM(V.value))) = UPPER(COALESCE(CF.ItemGroupID, ''))
+      );
 
     -- SELECT * FROM #Table1; -- COMMENT ĐỂ TRÁNH CRASH N8N KHI TRẢ 2 BẢNG
 
@@ -111,7 +145,21 @@ BEGIN
         WHERE ItemName LIKE @CoreName + '%'
           AND ItemID NOT IN (SELECT ItemID FROM @Table1)
           AND ISNULL(isDisable, 0) = 0
-          AND ISNULL(ItemGroupID, '') = 'HH1';
+          AND CASE WHEN @BranchID = 'MB' THEN COALESCE(IsDisableMB, 0)
+                   WHEN @BranchID = 'MN' THEN COALESCE(IsDisableMN, 0)
+                   WHEN @BranchID = 'MT' THEN COALESCE(IsDisableMT, 0)
+                   ELSE COALESCE(IsDisable, 0) END = 0
+          AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = @StockRuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND C.Status = 'APPROVED'
+                AND UPPER(LTRIM(RTRIM(V.value))) = UPPER(COALESCE(ItemGroupID, ''))
+          );
     END
 
     -- 2.2. Logic bán chéo thông minh dựa trên lịch sử hóa đơn thực tế (Market Basket Analysis)
@@ -130,7 +178,21 @@ BEGIN
       AND I.DocumentDate >= DATEADD(month, -6, GETDATE())
       AND I.StatusID IN (3, 6, 7, 8)
       AND ISNULL(CF.isDisable, 0) = 0
-      AND ISNULL(CF.ItemGroupID, '') = 'HH1'
+      AND CASE WHEN @BranchID = 'MB' THEN COALESCE(CF.IsDisableMB, 0)
+               WHEN @BranchID = 'MN' THEN COALESCE(CF.IsDisableMN, 0)
+               WHEN @BranchID = 'MT' THEN COALESCE(CF.IsDisableMT, 0)
+               ELSE COALESCE(CF.IsDisable, 0) END = 0
+      AND EXISTS
+      (
+          SELECT 1
+          FROM dbo.AI_BusinessRuleConfigTbl C
+          CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+          WHERE C.RuleCode = 'BR-STOCK-001'
+            AND C.RuleVersion = @StockRuleVersion
+            AND C.ConfigKey = 'SellableItemGroupIDs'
+            AND C.Status = 'APPROVED'
+            AND UPPER(LTRIM(RTRIM(V.value))) = UPPER(COALESCE(CF.ItemGroupID, ''))
+      )
     GROUP BY CF.ItemID, CF.ItemName, CF.Unit
     ORDER BY COUNT(DISTINCT I.DocumentID) DESC;
 
@@ -162,12 +224,65 @@ BEGIN
         RETURN;
     END
 
-    -- Xuất kết quả Bảng dồn sắp xếp theo thứ tự ưu tiên
-    SELECT ItemID, ItemName, Unit, CanhBaoAI,
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM @FinalGoiY F
+        CROSS APPLY
+        (
+            SELECT TOP (1) Stock.AvailableStock
+            FROM dbo.AI_StockAvailableByUserFnc(@Username, F.ItemID, @StockAsOfUtc) Stock
+            WHERE Stock.AvailableStock > 0
+            ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
+        ) S
+    )
+    BEGIN
+        SELECT N'Không có sản phẩm liên quan còn tồn khả dụng trong kho được phân quyền.' AS Msg,
+               0 AS MsgType,
+               N'NO_DATA' AS Severity,
+               N'NO_SELLABLE_RELATED_PRODUCT' AS Code;
+        RETURN;
+    END;
+
+    -- Chỉ xuất sản phẩm còn bán được tại một kho cụ thể.
+    SELECT F.ItemID, F.ItemName, F.Unit, F.CanhBaoAI,
+           S.PhysicalStock,
+           S.ReservedStock,
+           S.AvailableStock,
+           S.StoreHouseID,
+           S.StoreHouseName,
+           S.WarehouseScope,
+           S.StockDataStatus,
+           S.StockUpdatedAt,
+           S.StockAsOfAt,
+           S.LatestStockMovementDate,
+           S.StockDataSource,
+           S.RuleVersion AS StockRuleVersion,
+           P.UnitPrice,
            N'REFERENCE_ONLY_MEDICAL_REVIEW_REQUIRED' AS RecommendationStatus,
            N'Thông tin chỉ để tham khảo; không thay thế chẩn đoán, kê đơn hoặc tư vấn của người có chuyên môn.' AS MedicalDisclaimer
-    FROM @FinalGoiY
-    ORDER BY Priority ASC, ItemName ASC;
+    FROM @FinalGoiY F
+    CROSS APPLY
+    (
+        SELECT TOP (1) Stock.*
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, F.ItemID, @StockAsOfUtc) Stock
+        WHERE Stock.AvailableStock > 0
+        ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
+    ) S
+    CROSS APPLY
+    (
+        SELECT TOP (1) D.UnitPrice
+        FROM dbo.AR_PriceDetailTbl D
+        JOIN dbo.AR_PriceTbl H ON H.DocumentID = D.DocumentID
+        WHERE D.ItemID = F.ItemID
+          AND COALESCE(H.isDisable, 0) = 0
+          AND D.UnitPrice > 0
+        ORDER BY
+            CASE WHEN H.FromDate <= GETDATE()
+                       AND (H.ToDate IS NULL OR H.ToDate >= GETDATE()) THEN 0 ELSE 1 END,
+            H.FromDate DESC
+    ) P
+    ORDER BY F.Priority ASC, F.ItemName ASC;
 
 END
 GO

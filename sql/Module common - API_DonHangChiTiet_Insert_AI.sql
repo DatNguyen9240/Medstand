@@ -156,24 +156,17 @@ BEGIN
     END;
 
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @StockRuleVersion VARCHAR(30) = NULL;
+
     INSERT @AllowedStores (StoreHouseID)
-    SELECT DISTINCT StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl
-    WHERE UserName = @Username AND StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManager = 1
-    BEGIN
-        INSERT @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U
-        JOIN dbo.SY_UserStoreHouseTbl US ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND COALESCE(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (SELECT 1 FROM @AllowedStores A WHERE A.StoreHouseID = US.StoreHouseID);
-    END;
+    SELECT TOP (1) @StockRuleVersion = RuleVersion
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SET @ResultCode = 'WAREHOUSE_SCOPE_REQUIRED';
         SET @ResultMsg = N'Tài khoản chưa được phân quyền kho';
@@ -204,7 +197,17 @@ BEGIN
             SELECT 1
             FROM #RawItems R
             LEFT JOIN dbo.CF_ItemTbl I ON I.ItemID = R.ItemID
-            WHERE COALESCE(R.ItemID, '') = '' OR I.ItemID IS NULL OR I.ItemGroupID <> 'HH1'
+            WHERE COALESCE(R.ItemID, '') = '' OR I.ItemID IS NULL
+               OR NOT EXISTS
+                  (
+                      SELECT 1
+                      FROM dbo.AI_BusinessRuleConfigTbl C
+                      CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+                      WHERE C.RuleCode = 'BR-STOCK-001'
+                        AND C.RuleVersion = @StockRuleVersion
+                        AND C.ConfigKey = 'SellableItemGroupIDs'
+                        AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+                  )
                OR CASE WHEN @BranchID = 'MB' THEN COALESCE(I.IsDisableMB, 0)
                        WHEN @BranchID = 'MN' THEN COALESCE(I.IsDisableMN, 0)
                        WHEN @BranchID = 'MT' THEN COALESCE(I.IsDisableMT, 0)
@@ -601,8 +604,7 @@ BEGIN
                             THEN T.Quantity ELSE 0 END) AS PhysicalQuantity
             FROM dbo.IV_StockTransactionTbl T WITH (UPDLOCK, HOLDLOCK)
             JOIN #Items I ON I.ItemID = T.ItemID
-            WHERE T.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-              AND (@IsGlobal = 1 OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores))
+            WHERE T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
             GROUP BY T.ItemID, T.StoreHouseID
         ), Reserved AS (
             SELECT D.ItemID, D.StoreHouseID,
@@ -611,7 +613,16 @@ BEGIN
             JOIN dbo.AR_OrderTbl O WITH (HOLDLOCK) ON O.DocumentID = D.DocumentID
             JOIN #Items I ON I.ItemID = D.ItemID
             WHERE COALESCE(D.StoreHouseID, '') <> ''
-              AND O.StatusID IN (-2, -1, 0, 1, 2, 4)
+              AND EXISTS
+                  (
+                      SELECT 1
+                      FROM dbo.AI_BusinessRuleConfigTbl C
+                      CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+                      WHERE C.RuleCode = 'BR-STOCK-001'
+                        AND C.RuleVersion = @StockRuleVersion
+                        AND C.ConfigKey = 'ReservedOrderStatusIDs'
+                        AND TRY_CONVERT(INT, LTRIM(RTRIM(V.value))) = O.StatusID
+                  )
               AND O.DocumentID <> @DocumentID
             GROUP BY D.ItemID, D.StoreHouseID
         ), Ranked AS (

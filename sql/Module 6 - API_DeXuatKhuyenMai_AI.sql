@@ -14,6 +14,7 @@ BEGIN
     DECLARE @EmployeeID VARCHAR(50) = '';
     DECLARE @IsGlobal BIT = 0;
     DECLARE @IsManager BIT = 0;
+    DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
     DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
 
     SELECT
@@ -77,29 +78,10 @@ BEGIN
     END;
 
     INSERT INTO @AllowedStores (StoreHouseID)
-    SELECT DISTINCT US.StoreHouseID
-    FROM dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-    WHERE US.UserName = @Username
-      AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03');
+    SELECT StoreHouseID
+    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
 
-    IF @IsManager = 1 AND ISNULL(@EmployeeID, '') <> ''
-    BEGIN
-        INSERT INTO @AllowedStores (StoreHouseID)
-        SELECT DISTINCT US.StoreHouseID
-        FROM dbo.SY_User U WITH (NOLOCK)
-        JOIN dbo.SY_UserStoreHouseTbl US WITH (NOLOCK)
-          ON US.UserName = U.UserName
-        WHERE U.ManagerID = @EmployeeID
-          AND ISNULL(U.Disable, 0) = 0
-          AND US.StoreHouseID IN ('CTY', 'DL02', 'DL03')
-          AND NOT EXISTS (
-              SELECT 1
-              FROM @AllowedStores A
-              WHERE A.StoreHouseID = US.StoreHouseID
-          );
-    END;
-
-    IF @IsGlobal = 0 AND NOT EXISTS (SELECT 1 FROM @AllowedStores)
+    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
     BEGIN
         SELECT N'Tài khoản chưa được phân quyền kho.' AS Msg, 1 AS MsgType;
         RETURN;
@@ -114,24 +96,46 @@ BEGIN
         SUM(ISNULL(T.Quantity, 0)) AS RemainingPhysical
     INTO #StockByLot
     FROM dbo.IV_StockTransactionTbl T WITH (NOLOCK)
-    WHERE @IsGlobal = 1
-       OR T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
+    WHERE T.StoreHouseID IN (SELECT StoreHouseID FROM @AllowedStores)
     GROUP BY T.ItemID, T.StoreHouseID, T.Lot, T.ExpireDate
     HAVING SUM(ISNULL(T.Quantity, 0)) > 0;
 
     SELECT
-        ItemID,
-        SUM(RemainingPhysical) AS PhysicalStock,
-        SUM(CASE
-            WHEN ExpireDate IS NULL OR CAST(ExpireDate AS DATE) >= CAST(GETDATE() AS DATE)
-                THEN RemainingPhysical
-            ELSE 0
-        END) AS AvailableStock,
-        MIN(CASE WHEN ExpireDate >= GETDATE() THEN ExpireDate END) AS NearestExpireDate
+        S.ItemID,
+        S.StoreHouseID,
+        S.StoreHouseName,
+        S.PhysicalStock,
+        S.ReservedStock,
+        S.AvailableStock,
+        S.WarehouseScope,
+        S.StockDataStatus,
+        S.StockUpdatedAt,
+        S.StockAsOfAt,
+        S.LatestStockMovementDate,
+        S.StockDataSource,
+        S.RuleVersion,
+        LotInfo.NearestExpireDate
     INTO #PhysicalStock
-    FROM #StockByLot
-    GROUP BY ItemID
-    HAVING SUM(RemainingPhysical) > 0;
+    FROM
+    (
+        SELECT Stock.*,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY Stock.ItemID
+                   ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
+               ) AS StockRank
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, '', @StockAsOfUtc) Stock
+        WHERE Stock.AvailableStock > 0
+    ) S
+    OUTER APPLY
+    (
+        SELECT MIN(L.ExpireDate) AS NearestExpireDate
+        FROM #StockByLot L
+        WHERE L.ItemID = S.ItemID
+          AND L.StoreHouseID = S.StoreHouseID
+          AND (L.ExpireDate IS NULL OR L.ExpireDate >= GETDATE())
+    ) LotInfo
+    WHERE S.StockRank = 1;
 
     /* Tốc độ bán 30 ngày chỉ dùng hóa đơn hoàn tất trong phạm vi chi nhánh. */
     SELECT
@@ -152,7 +156,17 @@ BEGIN
             Item.ItemName,
             Item.Unit,
             S.PhysicalStock,
+            S.ReservedStock,
             S.AvailableStock,
+            S.StoreHouseID,
+            S.StoreHouseName,
+            S.WarehouseScope,
+            S.StockDataStatus,
+            S.StockUpdatedAt,
+            S.StockAsOfAt,
+            S.LatestStockMovementDate,
+            S.StockDataSource,
+            S.RuleVersion AS StockRuleVersion,
             S.NearestExpireDate,
             ISNULL(V.DailySalesVelocity, 0) AS DailySalesVelocity,
             CASE
@@ -167,7 +181,17 @@ BEGIN
           ON Item.ItemID = S.ItemID
         LEFT JOIN #SalesVelocity V
           ON V.ItemID = S.ItemID
-        WHERE ISNULL(Item.ItemGroupID, '') = 'HH1'
+        WHERE S.AvailableStock > 0
+          AND EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+              WHERE C.RuleCode = 'BR-STOCK-001'
+                AND C.RuleVersion = S.RuleVersion
+                AND C.ConfigKey = 'SellableItemGroupIDs'
+                AND LTRIM(RTRIM(V.value)) = Item.ItemGroupID
+          )
     )
     SELECT TOP (50)
         C.ItemID,
@@ -175,11 +199,16 @@ BEGIN
         C.Unit,
         CAST(C.PhysicalStock AS DECIMAL(18, 2)) AS TonKho,
         CAST(C.PhysicalStock AS DECIMAL(18, 2)) AS PhysicalStock,
+        CAST(C.ReservedStock AS DECIMAL(18, 2)) AS ReservedStock,
         CAST(C.AvailableStock AS DECIMAL(18, 2)) AS AvailableStock,
-        CASE
-            WHEN C.AvailableStock > 0 THEN N'PHYSICAL_AS_SELLABLE_TEMPORARY'
-            ELSE N'EXPIRED_NOT_SELLABLE'
-        END AS StockDataStatus,
+        C.StoreHouseID,
+        C.StoreHouseName,
+        C.WarehouseScope,
+        C.StockDataStatus,
+        C.StockUpdatedAt,
+        C.StockAsOfAt,
+        C.LatestStockMovementDate,
+        C.StockRuleVersion,
         C.NearestExpireDate AS HanDung,
         C.ProposalReasonCode,
         CASE C.ProposalReasonCode
@@ -202,7 +231,7 @@ BEGIN
         N'PENDING_COMPANY_APPROVAL' AS ApprovalStatus,
         N'MANAGER_REVIEW' AS ViewMode,
         N'MANAGER_ADMIN' AS Audience,
-        N'IV_StockTransactionTbl' AS DataSource,
+        C.StockDataSource AS DataSource,
         N'BR-ACTION-V1-DRAFT' AS RuleVersion
     FROM Candidate C
     WHERE C.ProposalReasonCode <> N'MONITOR'

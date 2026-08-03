@@ -107,6 +107,12 @@ async function main() {
         const upsellRows = upsellRaw.filter((row) => !isMessage(row));
         const upsellMissingReason = upsellRows.filter((row) => !first(row, ['LyDoGoiY', 'RecommendationReason', 'ChiTiet', 'TrangThai']));
         const upsellNoStock = upsellRows.filter((row) => Number(first(row, ['AvailableStock', 'QuantityinStock', 'TonKho']) || 0) <= 0);
+        const upsellInvalidStockContract = upsellRows.filter((row) =>
+          first(row, ['StockDataStatus']) !== 'AVAILABLE_FOR_SALE'
+          || !first(row, ['StoreHouseID'])
+          || !first(row, ['StockUpdatedAt', 'StockAsOfAt'])
+          || first(row, ['ReservedStock']) === null
+        );
         const upsellInvalidRows = upsellRows.filter((row) => !first(row, ['ItemID', 'MaSanPham', 'Mã SP']) || first(row, ['ItemName', 'TenSanPham']) === null);
         const upsellDuplicateIds = upsellRows.map((row) => String(first(row, ['ItemID', 'MaSanPham', 'Mã SP']) || '')).filter(Boolean);
         const duplicateCount = upsellDuplicateIds.length - new Set(upsellDuplicateIds).size;
@@ -115,6 +121,7 @@ async function main() {
         if (!upsellRows.length) upsellErrors.push('UPSELL_NO_RECOMMENDATION');
         if (upsellMissingReason.length) upsellErrors.push('UPSELL_REASON_MISSING');
         if (upsellNoStock.length) upsellErrors.push('UPSELL_NO_SELLABLE_STOCK');
+        if (upsellInvalidStockContract.length) upsellErrors.push('UPSELL_INVALID_STOCK_CONTRACT');
         if (upsellInvalidRows.length) upsellErrors.push('UPSELL_REQUIRED_FIELD_MISSING');
         if (duplicateCount) upsellErrors.push('UPSELL_DUPLICATE_ITEM');
 
@@ -134,6 +141,7 @@ async function main() {
           UpsellErrorMessageCount: upsellMessages.filter(messageIsError).length,
           UpsellMissingReasonCount: upsellMissingReason.length,
           UpsellNoStockCount: upsellNoStock.length,
+          UpsellInvalidStockContractCount: upsellInvalidStockContract.length,
           UpsellDuplicateItemCount: duplicateCount,
           Errors: [...loyaltyErrors, ...upsellErrors],
           Status: [...loyaltyErrors, ...upsellErrors].length ? 'FAIL' : 'PASS',
