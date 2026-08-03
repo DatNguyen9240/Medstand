@@ -210,7 +210,42 @@ const getBearerAuthorization = (req) => {
     return match && match[1] ? 'Bearer ' + decodeURIComponent(match[1]) : '';
 };
 
-const requestIdOf = (req) => String(req.headers['x-request-id'] || req.headers['x-correlation-id'] || crypto.randomUUID());
+const requestIdOf = (req) => {
+    const hint = String(req.headers['x-request-id'] || req.headers['x-correlation-id'] || '').trim();
+    if (/^req-[A-Za-z0-9._:-]{4,96}$/.test(hint)) return hint;
+    return `req-${crypto.randomUUID()}`;
+};
+
+const unwrapUserInfoRecord = (payload) => {
+    let data = payload;
+    for (let depth = 0; depth < 4 && data; depth += 1) {
+        if (Array.isArray(data)) return data[0] || null;
+        if (Array.isArray(data.records)) return data.records[0] || null;
+        if (data.data !== undefined) { data = data.data; continue; }
+        if (data.Data !== undefined) { data = data.Data; continue; }
+        return data;
+    }
+    return data || null;
+};
+
+const resolveVerifiedGatewayUsername = async (authorization) => {
+    const response = await fetchWithTimeout(`${API_INTERNAL_URL}/api/API_UserInfo`, {
+        method: 'POST',
+        headers: {
+            'Authorization': authorization,
+            'Content-Type': 'application/json'
+        },
+        body: '{}'
+    });
+    if (!response.ok) return '';
+    const text = await response.text();
+    if (!text.trim()) return '';
+    let payload;
+    try { payload = JSON.parse(text); } catch (_) { return ''; }
+    const record = unwrapUserInfoRecord(payload);
+    if (!record || Number(record.Disable ?? record.disable ?? 0) !== 0) return '';
+    return String(record.UserName || record.Username || record.username || record.User || record.userId || '').trim();
+};
 
 const authRequiredPayload = (requestId) => ({
     success: false,
@@ -317,7 +352,8 @@ app.post('/api/gateway', async (req, res) => {
             return sendGatewayError(res, 400, requestId, validationError.message, 'Invalid gateway endpoint or method.');
         }
         const { method, endpoint } = normalizedRequest;
-        const { body, multipart } = requestPayload;
+        let body = requestPayload.body;
+        const { multipart } = requestPayload;
 
         // Lưu ý: nhánh này hiện không thể chạy tới — normalizeGatewayRequest() đã ném
         // INVALID_GATEWAY_ENDPOINT cho endpoint rỗng (không bắt đầu bằng /api/ hoặc /webhook/).
@@ -368,6 +404,34 @@ app.post('/api/gateway', async (req, res) => {
                 'MISSING_API_BASE',
                 'Máy chủ chưa được cấu hình địa chỉ backend nghiệp vụ (thiếu API_BASE). Vui lòng liên hệ quản trị viên.'
             );
+        }
+
+        // Mutation tạo đơn không được tin Username do trình duyệt gửi. Xác minh lại
+        // token bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
+        // idempotency vào body để procedure SQL xử lý nguyên tử.
+        if (endpointPath === '/api/API_DonHangChiTiet_Insert_AI') {
+            if (method !== 'POST' || !body || typeof body !== 'object' || Array.isArray(body)) {
+                return sendGatewayError(res, 400, requestId, 'INVALID_ORDER_MUTATION', 'Yêu cầu tạo đơn không hợp lệ.');
+            }
+            const idempotencyKey = String(req.headers['idempotency-key'] || '').trim();
+            if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(idempotencyKey)) {
+                return sendGatewayError(res, 422, requestId, 'IDEMPOTENCY_KEY_REQUIRED', 'Yêu cầu tạo đơn thiếu khóa chống gửi lặp hợp lệ.');
+            }
+            let verifiedUsername = '';
+            try {
+                verifiedUsername = await resolveVerifiedGatewayUsername(authorization);
+            } catch (identityError) {
+                console.error(`[Proxy Gateway Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
+            }
+            if (!verifiedUsername) {
+                return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản đăng nhập. Vui lòng đăng nhập lại.');
+            }
+            body = {
+                ...body,
+                Username: verifiedUsername,
+                IdempotencyKey: idempotencyKey,
+                RequestID: requestId
+            };
         }
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);

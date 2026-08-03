@@ -305,18 +305,22 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
   - Cập nhật 01/08/2026: frontend, ApiCode và endpoint đều thống nhất gọi `API_KhachHang_Insert_AI`; procedure ghi trực tiếp `CF_ObjectTbl` theo contract đã được business/UAT chấp nhận. UAT-017 đã PASS; frontend chỉ công nhận thành công khi `MsgType = 5` và có `ObjectID`.
 
-- [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `CONTRACT_LOCKED_CURRENT_RUNTIME`
+- [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `CONTRACT_LOCKED_CORE005_PATCH_PENDING_DEPLOY`
   - Chốt customer, item list, số lượng, kho, bảng giá, CTBH và response giỏ hàng.
   - Nghiệm thu: phân biệt rõ `preview`, `confirmed`, `created`, `failed`.
   - Kết quả 03/08/2026: đã khóa contract theo runtime hiện tại tại [CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md](CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md). Chat chỉ tạo `preview`; xác nhận mới gọi `API_DonHangChiTiet_Insert_AI`; chỉ `MsgType = 5` kèm `DocumentID` là `created`; mọi kết quả khác là `failed` hoặc cần đối soát khi timeout.
-  - Quy tắc server đã chốt: khách phải trong `AR_GetObjectByUserFnc`; chỉ hàng `HH1`; số lượng nguyên dương; giá lấy lại qua `AR_LayGiaSanPhamFnc`; SQL tự tính tiền; retry cùng `DocumentID`/payload không tạo đơn thứ hai, payload khác dùng cùng mã bị từ chối.
-  - Giới hạn đã ghi rõ, chuyển sang `CORE-005`/`STOCK-001`: tồn đang cộng theo các kho được cấp (`CTY`/`DL02`/`DL03`) chứ chưa chọn kho xuất cụ thể; CTBH preview đọc từ `GhiChu` nhưng SQL chưa kiểm tra `PromotionID`/`RuleVersion`; mã `UATORD-*` hiện kiêm khóa retry và mã nghiệp vụ nên chưa phải quy tắc ERP dài hạn.
+  - Quy tắc server đã chốt: khách phải trong `AR_GetObjectByUserFnc`; chỉ hàng `HH1`; số lượng nguyên dương; giá và CTBH được SQL tính lại; hàng tặng nằm trong `SoLuongTang`; SQL chọn một kho được phép và ghi `StoreHouseID`.
+  - Cập nhật 03/08/2026: frontend không còn tự sinh `UATORD-*`; khi bỏ trống mã đơn, frontend truyền `AUTO_GEN` và SQL sinh `D{BranchID}{MM}{YY}/{n}`. `Idempotency-Key` HTTP được giữ riêng để chống double-click/retry.
+  - Contract sau bản vá CORE-005 đã cập nhật cơ chế kho, idempotency, audit và identity; giới hạn còn lại là ERP chưa có `PromotionID`/`RuleVersion`. Chưa coi là runtime mới trước khi deploy đồng bộ.
 
-- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `TODO`
+- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `IMPLEMENTED_LOCAL_VERIFIED_PENDING_DEPLOY_UAT`
   - Thu thập thông tin, kiểm tra tồn/giá, hiển thị preview, xác nhận và tạo đơn thật.
   - Bổ sung idempotency và audit.
   - Phụ thuộc: `CORE-004`, `STOCK-001`.
   - Nghiệm thu: trả về mã đơn; gửi lặp không tạo đơn thứ hai.
+  - Kết quả code 03/08/2026: frontend giao SQL sinh mã `D{BranchID}{MM}{YY}/{n}`; hàng tặng dùng `SoLuongTang`; SQL kiểm tra lại giá/CTBH/tồn, chọn và ghi một kho được cấp; gateway xác minh identity từ token; idempotency lưu fingerprint và kết quả cùng transaction với đơn. Báo cáo: [CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md](CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md).
+  - Kiểm chứng rollback trên `medtest`: ca `QLBH013.MED` / `DL011` / `A008`, mua `10` tặng `2`, lần đầu và replay cùng trả `DMB0826/1`, DB trong transaction chỉ có 1 header + 1 detail (`SoLuongTang = 2`, kho `CTY`); payload khác cùng key trả `IDEMPOTENCY_CONFLICT`; toàn bộ đã rollback, không lưu dữ liệu test.
+  - Chưa đánh dấu `DONE`: còn deploy đồng bộ SQL + gateway + frontend và chạy UAT runtime concurrency/double-click sau deploy.
 
 - [ ] **CORE-006 — Chốt công thức phân nhóm A/B/C** · `P1` · `TODO`
   - Business owner chọn ngưỡng doanh số cố định, percentile hoặc mô hình kết hợp.

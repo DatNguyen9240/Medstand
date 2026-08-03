@@ -3353,7 +3353,19 @@
         }
 
         function renderMapped(c) {
+            var previousObjectId = selectedCustomer && selectedCustomer.ObjectID || '';
             selectedCustomer = c;
+            if (previousObjectId && (!c || previousObjectId !== c.ObjectID)) {
+                _orderProducts = null;
+                _orderProductsKey = '';
+                itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
+                    row._product = null;
+                    row.classList.remove('has-product');
+                    row.querySelector('.ae-order-prod').value = '';
+                    if (row._giftRow) { row._giftRow.remove(); row._giftRow = null; }
+                });
+                recalc();
+            }
             if (!c) { mappedEl.hidden = true; mappedEl.innerHTML = ''; return; }
             var branch = user.BranchID || '';
             mappedEl.innerHTML = [
@@ -3372,12 +3384,22 @@
         // ── Dòng sản phẩm ───────────────────────────────────────────────
         function productLabel(p) {
             var name = p.ItemName || p.ItemID || '';
-            return p.ItemID && String(name).indexOf(p.ItemID) === -1
+            var label = p.ItemID && String(name).indexOf(p.ItemID) === -1
                 ? name + ' (' + p.ItemID + ')'
                 : name;
+            var stock = productStock(p);
+            if (stock !== null) label += ' · Tồn ' + stock + (p.StoreHouseID ? ' kho ' + p.StoreHouseID : '');
+            return label;
         }
         function productPrice(p) {
             return Number(p && (p.UnitPrice !== undefined ? p.UnitPrice : p.Price)) || 0;
+        }
+        function productStock(p) {
+            if (!p) return null;
+            var raw = p.QuantityinStock !== undefined ? p.QuantityinStock : p.TonKho;
+            if (raw === undefined || raw === null || raw === '') return null;
+            var stock = Number(raw);
+            return isFinite(stock) ? stock : null;
         }
 
         function productPromotion(p, quantity) {
@@ -3398,8 +3420,8 @@
            lẫn vòng lặp dựng payload đều duyệt '.ae-order-row', nên nếu dùng chung
            class thì hàng tặng sẽ bị tính thành một dòng bán bình thường, rồi dòng
            cha lại đẩy thêm một lần nữa -> tặng gấp đôi.
-           Dòng này chỉ để NHÌN. Dữ liệu gửi đi vẫn do dòng cha sinh ra ở chỗ
-           promotion.giftQuantity > 0 trong hàm submit. */
+           Dòng này chỉ để NHÌN. Khi gửi, số lượng tặng nằm trong SoLuongTang
+           của chính dòng bán để khớp contract SQL/ERP. */
         function syncGiftRow(row, p, promotion) {
             var qty = promotion && promotion.giftQuantity > 0 ? promotion.giftQuantity : 0;
             if (!qty || !p) {
@@ -3461,7 +3483,7 @@
                 '<span class="ae-order-combo ae-order-prodwrap"><input class="ae-order-prod" autocomplete="off" placeholder="Tên hoặc mã sản phẩm">',
                 '<span class="ae-order-drop" hidden></span></span>',
                 '<input class="ae-order-qty" type="number" min="1" step="1" value="1" title="Số lượng">',
-                '<input class="ae-order-ck" type="number" min="0" max="100" step="0.1" value="0" title="Chiết khấu %">',
+                '<input class="ae-order-ck" type="number" min="0" max="100" step="0.1" value="0" title="Chiết khấu do SQL/CTBH xác định" readonly>',
                 '<button type="button" class="ae-order-del" title="Xóa dòng">✕</button>',
                 '<small class="ae-order-promotion" hidden></small>'
             ].join('');
@@ -3541,6 +3563,8 @@
             }
             var items = [];
             var missing = false;
+            var stockError = '';
+            var priceError = false;
             itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
                 var p = row._product;
                 var typed = row.querySelector('.ae-order-prod').value.trim();
@@ -3548,26 +3572,32 @@
                 var qty = Number(row.querySelector('.ae-order-qty').value) || 0;
                 if (!Number.isInteger(qty) || qty < 1) { missing = true; return; }
                 var promotion = productPromotion(p, qty);
+                var stock = productStock(p);
+                if (productPrice(p) <= 0) { priceError = true; return; }
+                if (stock !== null && qty + promotion.giftQuantity > stock) {
+                    stockError = (p.ItemName || p.ItemID) + ': cần ' + (qty + promotion.giftQuantity)
+                        + ', tồn khả dụng ' + stock + (p.StoreHouseID ? ' tại kho ' + p.StoreHouseID : '') + '.';
+                    return;
+                }
                 items.push({
                     ItemID: p.ItemID,
                     ItemName: p.ItemName || p.ItemID,
                     Quantity: qty,
+                    SoLuongTang: promotion.giftQuantity,
                     Price: productPrice(p),
                     DiscountPercent: promotion.discountPercent
                 });
-                if (promotion.giftQuantity > 0) {
-                    items.push({
-                        ItemID: p.ItemID,
-                        ItemName: (p.ItemName || p.ItemID) + ' (Hàng tặng)',
-                        Quantity: promotion.giftQuantity,
-                        Price: 0,
-                        DiscountPercent: 0,
-                        LineType: 'promotion'
-                    });
-                }
             });
             if (missing) {
                 errorEl.textContent = 'Có dòng sản phẩm chưa chọn từ danh sách gợi ý hoặc số lượng không hợp lệ.';
+                return;
+            }
+            if (priceError) {
+                errorEl.textContent = 'Có sản phẩm chưa có giá hợp lệ cho khách hàng này.';
+                return;
+            }
+            if (stockError) {
+                errorEl.textContent = 'Không đủ tồn kho. ' + stockError;
                 return;
             }
             if (!items.length) {

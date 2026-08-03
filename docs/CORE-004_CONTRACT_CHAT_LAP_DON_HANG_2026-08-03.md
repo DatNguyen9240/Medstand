@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`CONTRACT_LOCKED_CURRENT_RUNTIME` — khóa theo hành vi đã kiểm chứng của frontend `11.121`, `API_HangHoaList_AI` và `API_DonHangChiTiet_Insert_AI`. Tài liệu này không xác nhận rằng kho xuất cụ thể hoặc CTBH đã được ERP duyệt tự động.
+`CONTRACT_LOCKED_CORE005_PATCH_PENDING_DEPLOY` — contract đã cập nhật theo bản vá CORE-005 ngày 03/08/2026. SQL đã compile và chạy mutation kiểm soát trong transaction rollback trên `medtest`; chưa coi là runtime mới cho tới khi deploy đủ SQL, gateway và frontend.
 
 ## Ranh giới hai bước
 
@@ -28,7 +28,7 @@ Chat / @lap_don_hang
 | `created` | Server trả `MsgType = 5` và `DocumentID` khác rỗng. Có thể là đơn mới hoặc replay đúng nội dung của đơn đã tạo trước đó. | Có đúng một đơn |
 | `failed` | HTTP lỗi, timeout, `MsgType` khác `5`, thiếu `DocumentID`, sai quyền, sai giá/tồn hoặc payload không hợp lệ. UI không được thông báo đã tạo đơn. | Không có commit mới |
 
-`confirmed` không đồng nghĩa `created`. Sau timeout, client phải giữ nguyên `DocumentID` và payload để retry; không được tự khẳng định đơn đã thất bại hoặc tự sinh mã mới khi chưa đối soát.
+`confirmed` không đồng nghĩa `created`. Sau timeout, client phải giữ nguyên payload và `Idempotency-Key` để retry; không được tự khẳng định đơn đã thất bại hoặc tạo một key mới khi chưa đối soát.
 
 ## Dữ liệu preview
 
@@ -47,11 +47,12 @@ Chat / @lap_don_hang
       "unitPrice": 0,
       "discountPercent": 0,
       "availableStock": 0,
-      "promotionSource": "GhiChu|none"
+      "promotionSource": "GhiChu|none",
+      "storeHouseId": "CTY"
     }
   ],
   "stockScope": {
-    "mode": "ALLOWED_STORES_AGGREGATE",
+    "mode": "SELECTED_AUTHORIZED_STORE",
     "storeHouseIds": ["CTY", "DL02", "DL03"]
   },
   "previewOnly": true
@@ -64,50 +65,59 @@ Các trường hiển thị như tên khách, tên hàng, giá, tồn và tổng
 
 ```json
 {
-  "Username": "<được đối chiếu bằng phiên đăng nhập>",
-  "DocumentID": "<khóa mutation ổn định, tối đa 30 ký tự>",
+  "Username": "<gateway ghi đè từ token đã xác minh>",
+  "DocumentID": "AUTO_GEN",
+  "DocumentDate": "2026-08-03",
+  "BranchID": "MB",
   "ObjectID": "<khách hàng>",
-  "ItemList": "[{\"ItemID\":\"...\",\"Quantity\":1,\"UnitPrice\":95000,\"DiscountPercent\":0}]"
+  "Memo": "<ghi chú>",
+  "Notes": "<diễn giải>",
+  "XaPhuong": "<phường/xã>",
+  "ThuDiTuyen": "<tuyến thứ>",
+  "ItemList": "[{\"ItemID\":\"...\",\"Quantity\":10,\"SoLuongTang\":2,\"UnitPrice\":75000,\"DiscountPercent\":0}]"
 }
 ```
 
+Header bắt buộc: `Idempotency-Key`. Gateway xác minh bearer token qua `API_UserInfo`, ghi đè `Username`, rồi gắn `IdempotencyKey` và `RequestID` vào body trước khi gọi SQL.
+
 | Trường | Quy tắc hiện hành |
 |---|---|
-| `Username` | Tài khoản phải tồn tại và chưa khóa; SQL kiểm tra lại quyền với khách. |
-| `DocumentID` | Bắt buộc ổn định cho cùng một lần tạo/retry và dài không quá 30 ký tự. Runtime hiện dùng tiền tố `UATORD-`; đây là khóa mutation kiêm mã đơn, chưa phải quy tắc đánh số ERP dài hạn. Nếu để rỗng hoặc truyền `AUTO_GEN`, SQL sinh `D{BranchID}{MM}{YY}/{n}`. |
+| `Username` | Không tin giá trị từ trình duyệt. Gateway lấy lại từ token; SQL kiểm tra tài khoản chưa khóa và quyền với khách. |
+| `DocumentID` | Nếu người dùng để trống, frontend truyền `AUTO_GEN`; SQL sinh `D{BranchID}{MM}{YY}/{n}` và trả mã thật trong response. Frontend không tự sinh mã nghiệp vụ. |
+| `DocumentDate`, `BranchID` | Ngày không nhỏ hơn ngày hiện tại; chi nhánh phải đúng chi nhánh của tài khoản. |
 | `ObjectID` | Bắt buộc tồn tại và thuộc kết quả `AR_GetObjectByUserFnc(Username)`. |
-| `ItemList` | JSON có ít nhất một dòng hợp lệ. SQL chỉ đọc `ItemID`, `Quantity`, `UnitPrice`, `DiscountPercent`; không tin `Amount`, `DiscountAmount`, `DiemSanPham` hoặc `Notes` từ client. |
+| `ItemList` | JSON có ít nhất một dòng hợp lệ. Hàng tặng nằm trong `SoLuongTang` của dòng bán; không tạo thêm dòng giá `0`. SQL không tin tổng tiền do client gửi. |
 | `Quantity` | Số nguyên lớn hơn 0; tổng dòng mua và dòng tặng cùng mã không được vượt tồn khả dụng. |
-| `UnitPrice` | Dòng bán phải khớp `AR_LayGiaSanPhamFnc` với sai số tối đa `0.01`; dòng giá `0` chỉ hợp lệ nếu cùng mã có dòng mua giá dương. |
-| `DiscountPercent` | Từ `0` đến `100`; SQL tự tính lại tiền chiết khấu và thành tiền. |
+| `UnitPrice` | Phải dương và khớp `AR_LayGiaSanPhamFnc(DocumentDate, ObjectID, ItemID)` với sai số tối đa `0.01`. |
+| `SoLuongTang`, `DiscountPercent` | SQL tính lại từ `GhiChu` hiện hành và từ chối payload không khớp; SQL tự tính tiền chiết khấu/thành tiền. |
 
 ## Khách hàng và phân quyền
 
 - Danh sách khách phải lấy từ endpoint có scope; SQL vẫn kiểm tra lại bằng `AR_GetObjectByUserFnc`.
-- Chi nhánh, `EmployeeID`, `ManagerID` và `CeoID` lấy từ `SY_User`, không lấy từ payload.
+- `EmployeeID`, `ManagerID` và `CeoID` lấy từ `SY_User`; `BranchID` từ request chỉ được chấp nhận khi trùng chi nhánh của tài khoản.
 - Không được tạo đơn cho khách ngoài quyền dù client sửa `ObjectID` thủ công.
 
 ## Sản phẩm, bảng giá và CTBH
 
 - Chỉ sản phẩm tồn tại và thuộc `CF_ItemTbl.ItemGroupID = 'HH1'` được tạo đơn.
 - Giá có thẩm quyền là kết quả `AR_LayGiaSanPhamFnc(GETDATE(), ObjectID, ItemID)` tại thời điểm submit.
-- Frontend có thể diễn giải `GhiChu` để hiển thị gợi ý mua/tặng hoặc chiết khấu trong preview.
-- SQL hiện chưa đối chiếu một `PromotionID`/`RuleVersion` CTBH được duyệt. Nó chỉ kiểm tra giá bán khớp ERP, chiết khấu trong khoảng hợp lệ và hàng giá `0` có dòng mua cùng mã.
-- Vì vậy preview không được mô tả CTBH là “đã được ERP phê duyệt” nếu chưa có nguồn rule có định danh.
+- Frontend diễn giải `GhiChu` để preview mua/tặng hoặc chiết khấu; SQL diễn giải lại cùng vế khách thường (trước `KHHĐ/KHHD`) khi submit.
+- SQL từ chối khi giá, `SoLuongTang` hoặc `DiscountPercent` không khớp dữ liệu ERP tại `DocumentDate`.
+- Chưa có `PromotionID`/`RuleVersion`, nên audit hiện chứng minh rule text được áp tại thời điểm submit chứ chưa chứng minh một phiên bản CTBH có định danh.
 
 ## Kho và tồn
 
 - Kho được phép giới hạn trong `CTY`, `DL02`, `DL03`, theo kho của tài khoản; manager được cộng kho của nhân viên trực thuộc.
-- Tồn hiện được SQL cộng trên toàn bộ kho được phép, bỏ qua lô hết hạn.
-- Request chưa có `StoreHouseID`; header/detail đơn cũng chưa ghi kho xuất cụ thể trong procedure này.
-- Do đó contract hiện hành chỉ được hiển thị “tồn khả dụng trong phạm vi kho được cấp”, không được khẳng định một kho cụ thể sẽ xuất hàng. Chọn và giữ chỗ kho cụ thể thuộc `STOCK-001`/`CORE-005`.
+- `API_HangHoaList_AI` chọn một kho được phép có tồn khả dụng cao nhất, bỏ lô hết hạn và trừ lượng đã giữ bởi đơn ở trạng thái `-2,-1,0,1,2,4`.
+- Khi tạo đơn, SQL khóa và tính lại cùng quy tắc, yêu cầu toàn bộ `Quantity + SoLuongTang` đủ trong một kho rồi ghi `StoreHouseID` vào detail.
+- Tồn trên preview chỉ là ảnh chụp; kết quả cuối cùng luôn theo lần kiểm tra trong transaction tạo đơn.
 
 ## Idempotency và mã đơn
 
-- Cùng `DocumentID`, cùng người tạo, khách, chi nhánh, nhân viên và cùng tập dòng hàng: SQL trả `MsgType = 5` với chính `DocumentID`, không chèn thêm header/detail.
-- Cùng `DocumentID` nhưng payload khác: SQL trả `MsgType = 1` và không ghi thêm.
-- Frontend phải giữ nguyên `DocumentID` khi retry cùng payload.
-- Việc đổi từ `UATORD-*` sang mã ERP cần tách khóa request khỏi mã nghiệp vụ và được xử lý như một thay đổi contract trong CORE-005; không đổi âm thầm ở CORE-004.
+- Khi mã đơn được nhập rõ ràng, cùng `DocumentID` và cùng payload: SQL trả `MsgType = 5` với chính mã đó, không chèn thêm header/detail; payload khác dùng cùng mã bị từ chối.
+- Khi mã đơn để trống, frontend truyền `AUTO_GEN`; SQL chịu trách nhiệm cấp mã nghiệp vụ. `Idempotency-Key` được băm cùng identity và fingerprint request, lưu kết quả trong cùng transaction với đơn.
+- Retry cùng key và fingerprint trả `DocumentID` đã cache với `IsReplay = 1`, kể cả giá/tồn đã đổi sau commit đầu. Cùng key nhưng fingerprint khác trả `IDEMPOTENCY_CONFLICT`.
+- Chỉ mã `DocumentID` trong response `MsgType = 5` mới được hiển thị là mã đơn đã tạo.
 
 ## Response mutation
 
@@ -117,7 +127,9 @@ Các trường hiển thị như tên khách, tên hàng, giá, tồn và tổng
 {
   "DocumentID": "<mã đơn>",
   "Msg": "Tạo đơn hàng thành công | Đơn hàng đã được tạo trước đó",
-  "MsgType": 5
+  "MsgType": 5,
+  "RequestID": "req-...",
+  "IsReplay": false
 }
 ```
 
@@ -127,7 +139,9 @@ Các trường hiển thị như tên khách, tên hàng, giá, tồn và tổng
 {
   "DocumentID": null,
   "Msg": "<lỗi nghiệp vụ an toàn>",
-  "MsgType": 1
+  "MsgType": 1,
+  "RequestID": "req-...",
+  "Code": "<mã lỗi>"
 }
 ```
 
@@ -138,12 +152,11 @@ Frontend chỉ chuyển sang `created` khi đồng thời có `MsgType = 5` và 
 1. Frontend, chat/n8n, SQL và tài liệu dùng cùng bốn trạng thái `preview`, `confirmed`, `created`, `failed`.
 2. Preview và hủy không ghi `AR_OrderTbl`/`AR_OrderDetailTbl`.
 3. Giá, quyền khách, sản phẩm, số lượng và tồn được server kiểm tra lại.
-4. Retry cùng `DocumentID` và payload không tạo đơn thứ hai; tái sử dụng mã với payload khác bị từ chối.
-5. UI mô tả đúng giới hạn kho tổng hợp và CTBH chưa có rule định danh.
+4. Retry cùng `Idempotency-Key` và payload trả cùng mã, không tạo đơn thứ hai; cùng key/payload khác bị từ chối.
+5. Detail ghi đúng `SoLuongTang` và một `StoreHouseID` được phép; UI mô tả đúng giới hạn CTBH chưa có rule định danh.
 
-## Việc chuyển sang CORE-005 / STOCK-001
+## Việc còn lại sau bản vá CORE-005
 
-- Bổ sung lựa chọn/phân bổ `StoreHouseID` cụ thể hoặc quyết định rõ cơ chế server chọn kho.
-- Đưa CTBH sang nguồn rule có `PromotionID`/`RuleVersion` và kiểm tra lại phía server.
-- Quyết định tách `Idempotency-Key`/request ID khỏi `DocumentID`, đồng thời bỏ tiền tố UAT khỏi mã nghiệp vụ thật.
-- Bổ sung audit mutation liên kết request ID, người dùng và `DocumentID`.
+- Deploy đồng bộ migration, hai procedure AI, gateway và bundle frontend; không deploy lẻ contract.
+- Chạy UAT runtime sau deploy cho double-click/concurrency và lưu bằng chứng request ID/mã đơn.
+- Nếu business yêu cầu truy nguyên phiên bản CTBH, bổ sung nguồn `PromotionID`/`RuleVersion`; đây là phần chưa có trong ERP hiện tại.

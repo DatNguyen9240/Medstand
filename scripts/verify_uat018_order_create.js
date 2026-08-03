@@ -80,6 +80,10 @@ SELECT
     const source = fs.readFileSync(path.join(ROOT, 'src', 'js', 'pages', 'create-order.js'), 'utf8');
     const http = fs.readFileSync(path.join(ROOT, 'src', 'js', 'services', 'http.js'), 'utf8');
     const envSource = fs.readFileSync(path.join(ROOT, 'env.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+    const chatSource = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot-api-engine.js'), 'utf8');
+    const orderParameters = parameters.filter((row) => row.ProcName === 'API_DonHangChiTiet_Insert_AI')
+      .map((row) => row.ParameterName);
     const checks = [
       check('DB_IS_MEDTEST', dbName === 'medtest', dbName),
       check('AI_ORDER_PROC_EXISTS', Boolean(aiProc), 'dbo.API_DonHangChiTiet_Insert_AI'),
@@ -94,21 +98,19 @@ SELECT
       check('FRONTEND_STOCK_GUARD', /qty\s*\+\s*giftQty\s*>\s*stock/.test(source) && source.includes('vượt tồn'), 'không cho tổng bán + tặng vượt tồn hiển thị'),
       check('FRONTEND_PRICE_READONLY', /id:\s*'price_'[^\n]+readonly:\s*true/.test(source), 'giá readonly'),
       check('FRONTEND_IDEMPOTENCY_HEADER', source.includes('getOrderSubmitKey(data.payload)') && http.includes("'Idempotency-Key'"), 'key ổn định khi retry cùng payload'),
-      check('FRONTEND_STABLE_DOCUMENT_ID', source.includes('_orderPendingDocumentId') && /return\s*\(\s*'UATORD-'/.test(source), 'DocumentID giữ nguyên khi retry'),
-      // Cột AR_OrderTbl.DocumentID là varchar(30). Bản trước dùng crypto.randomUUID()
-      // ra 43 ký tự nên mọi đơn đều chết với "String or binary data would be
-      // truncated". Kiểm cả ràng buộc lẫn kết quả sinh mã thật.
-      check('FRONTEND_DOCUMENT_ID_FITS_COLUMN', /ORDER_DOCUMENT_ID_MAX\s*=\s*30/.test(source) && /\.slice\(0,\s*ORDER_DOCUMENT_ID_MAX\)/.test(source), 'DocumentID cắt theo giới hạn varchar(30)'),
-      // Chỉ soi trong thân hàm genUUID. KHÔNG cấm randomUUID trên toàn file:
-      // newIdempotencyKey vẫn dùng nó hợp lệ cho header HTTP Idempotency-Key,
-      // nơi không có giới hạn độ dài cột.
-      check('FRONTEND_DOCUMENT_ID_NO_RAW_UUID',
-        !/function genUUID\(\)[\s\S]*?\n\}/.exec(source) || !/randomUUID/.test(/function genUUID\(\)[\s\S]*?\n\}/.exec(source)[0]),
-        'genUUID không dùng randomUUID (36 ký tự, tràn cột varchar(30))'),
+      check('FRONTEND_SQL_GENERATED_DOCUMENT_ID', /var\s+docId\s*=\s*v\.orderId\s*\|\|\s*['"]AUTO_GEN['"]/.test(source), 'mã trống được giao cho SQL sinh'),
+      check('FRONTEND_NO_BUSINESS_ID_GENERATOR', !source.includes('UATORD-') && !source.includes('function genUUID()'), 'frontend không tự sinh mã đơn'),
+      check('FRONTEND_GIFT_IN_SO_LUONG_TANG', source.includes('SoLuongTang: p.giftQty || 0') && chatSource.includes('SoLuongTang: promotion.giftQuantity'), 'hàng tặng nằm trên dòng bán'),
+      check('CHAT_NO_ZERO_PRICE_GIFT_LINE', !/LineType:\s*['"]promotion['"]/.test(chatSource), 'chat không tạo dòng tặng giá 0 riêng'),
+      check('GATEWAY_VERIFIES_ORDER_IDENTITY', serverSource.includes('resolveVerifiedGatewayUsername(authorization)') && serverSource.includes('Username: verifiedUsername'), 'Username lấy từ token đã xác minh'),
+      check('SERVER_MUTATION_CONTEXT_PARAMETERS', ['@DocumentDate', '@BranchID', '@IdempotencyKey', '@RequestID'].every((name) => orderParameters.includes(name)), orderParameters.join(', ')),
       check('SERVER_TRANSACTION_EVIDENCE', /BEGIN\s+TRAN/i.test(aiProc), 'transaction trong AI order procedure'),
-      check('SERVER_DUPLICATE_GUARD_EVIDENCE', /UPDLOCK|HOLDLOCK/i.test(aiProc) && /DocumentID/i.test(aiProc) && /EXCEPT/i.test(aiProc), 'duplicate guard theo DocumentID + payload'),
-      check('SERVER_STOCK_GUARD_EVIDENCE', /IV_StockTransactionTbl/i.test(aiProc) && /CTY.*DL02.*DL03/is.test(aiProc), 'tồn ba kho phía server'),
+      check('SERVER_DUPLICATE_GUARD_EVIDENCE', /AI_API_MutationIdempotency/i.test(aiProc) && /RequestFingerprintHash/i.test(aiProc) && /UPDLOCK|HOLDLOCK/i.test(aiProc), 'idempotency key + fingerprint khóa trong transaction'),
+      check('SERVER_RESULT_CACHE_EVIDENCE', /ResultEntityID/i.test(aiProc) && /IsReplay/i.test(aiProc), 'retry trả mã đơn đã cache'),
+      check('SERVER_STOCK_GUARD_EVIDENCE', /IV_StockTransactionTbl/i.test(aiProc) && /ReservedQuantity/i.test(aiProc) && /StoreHouseID/i.test(aiProc), 'tồn khả dụng và kho cụ thể phía server'),
       check('SERVER_PRICE_GUARD_EVIDENCE', /AR_LayGiaSanPhamFnc/i.test(aiProc) && /UnitPrice/i.test(aiProc), 'đối chiếu giá nguồn ERP phía server'),
+      check('SERVER_PROMOTION_GUARD_EVIDENCE', /ExpectedGiftQuantity/i.test(aiProc) && /ExpectedDiscountPercent/i.test(aiProc), 'đối chiếu SoLuongTang/chiết khấu phía server'),
+      check('PRODUCT_SELECTED_STORE_EVIDENCE', /ReservedQuantity/i.test(productProc) && /SELECTED_AUTHORIZED_STORE/i.test(productProc), 'catalog trả một kho và tồn khả dụng'),
       check('LEGACY_PROCS_UNTOUCHED_BY_AI_SOURCES', !/CREATE\s+OR\s+ALTER\s+PROCEDURE\s+dbo\.API_DonHang_Insert\b/i.test(aiProc + productProc) && !/CREATE\s+OR\s+ALTER\s+PROCEDURE\s+dbo\.API_HangHoaList\b/i.test(aiProc + productProc), 'không sửa procedure gốc'),
     ];
 
