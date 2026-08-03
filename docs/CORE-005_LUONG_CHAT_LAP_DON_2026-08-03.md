@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`IMPLEMENTED_LOCAL_VERIFIED_PENDING_DEPLOY_UAT` — code đã sửa và đã kiểm chứng trên schema thật `medtest` bằng transaction rollback. Chưa đánh dấu `DONE` vì runtime dùng cho người dùng chưa được deploy và chưa có UAT concurrency sau deploy.
+`SQL_DEPLOYED_LOCAL_GATEWAY_11.124_VERIFIED_PENDING_END_TO_END_UAT` — SQL mới đã được deploy lên `medtest`; gateway local đã restart và phục vụ frontend `11.124`. Chưa đánh dấu `DONE` vì chưa chạy mutation qua token/UI thật và UAT concurrency sau deploy.
 
 Bundle frontend đã đóng gói: `11.124`.
 Manifest deploy đồng bộ: [CORE005_DEPLOY_MANIFEST_2026-08-03_11.124.md](../release/CORE005_DEPLOY_MANIFEST_2026-08-03_11.124.md).
@@ -51,12 +51,16 @@ Manifest deploy đồng bộ: [CORE005_DEPLOY_MANIFEST_2026-08-03_11.124.md](../
 
 ### Đối chiếu runtime đang phục vụ
 
-`scripts/verify_uat018_order_create.js` chạy read-only lúc `2026-08-03T04:42:32Z` xác nhận frontend/source mới đạt các gate mã đơn, quà tặng và identity, nhưng procedure đang deploy trên `medtest` vẫn là contract cũ bốn tham số. Sáu gate server còn fail: mutation context, fingerprint idempotency, result cache, tồn/kho cụ thể, promotion guard và catalog selected-store. Vì vậy không được đánh dấu `DONE` hoặc mô tả runtime đã sửa trước deploy.
+- Trước deploy, kiểm tra read-only lúc `2026-08-03T04:42:32Z` phát hiện procedure tạo đơn còn contract cũ bốn tham số.
+- Sau khi chạy lại ba file SQL, kiểm tra lúc `2026-08-03T04:53:15Z` PASS toàn bộ `23/23` gate; procedure tạo đơn có đủ 12 tham số và catalog có đủ 6 tham số.
+- Mutation rollback chạy trực tiếp trên procedure đã deploy PASS ca `A008` mua `10` tặng `2`: create/replay/conflict đúng, một header + một detail, kho `CTY`, không lưu dữ liệu test.
+- Gateway local đã restart sang process mới; smoke test xác nhận frontend `11.124` và order guard `IDEMPOTENCY_KEY_REQUIRED`. Smoke này không gửi mutation.
+- Kiểm tra lại read-only lúc `2026-08-03T05:04:01Z`: SQL/source tiếp tục PASS `23/23`; gateway PID `32384` tiếp tục phục vụ `11.124`. Audit sau deploy chưa có `CREATE_DONHANG`, `REPLAY_DONHANG` hoặc `CREATE_DONHANG_FAILED`; `ConcurrencyProven = false`. Vì vậy trạng thái vẫn phải chờ end-to-end UAT.
 
 ## Điều kiện để chuyển `DONE`
 
-1. Deploy đồng bộ migration, hai procedure, gateway và frontend bundle theo cùng manifest.
-2. Chạy lại smoke runtime qua gateway với token thật và xác nhận response có `DocumentID`, `RequestID`.
+1. ~~Deploy migration và hai procedure lên `medtest`; restart gateway local và phục vụ bundle `11.124`.~~ Hoàn thành 03/08/2026.
+2. Chạy smoke runtime qua gateway với token thật và xác nhận response có `DocumentID`, `RequestID`.
 3. Chạy double-click/hai request đồng thời cùng key và xác nhận chỉ có một header/detail.
 4. Chạy lại trường hợp mua `10` tặng `2` trên dữ liệu UAT được phép và lưu log/ảnh/request ID.
 5. Chạy regression tạo đơn không khuyến mãi, giá thay đổi, thiếu tồn, khách ngoài quyền và đổi khách/ngày.

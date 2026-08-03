@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`READY_FOR_COORDINATED_DEPLOY` — không deploy riêng procedure tạo đơn. SQL mới yêu cầu identity/idempotency do gateway mới gắn, nên SQL + `server.js` + frontend phải phát hành trong cùng cửa sổ bảo trì.
+`SQL_DEPLOYED_LOCAL_GATEWAY_VERIFIED_PENDING_END_TO_END_UAT` — ba file SQL đã chạy trên `medtest`; gateway local đã restart và phục vụ frontend `11.124`. Còn chờ mutation qua token/UI thật, concurrency UAT và xác nhận môi trường frontend từ xa nếu có.
 
 ## Đích
 

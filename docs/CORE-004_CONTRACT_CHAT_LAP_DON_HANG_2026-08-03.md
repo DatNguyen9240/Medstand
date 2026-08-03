@@ -2,7 +2,7 @@
 
 ## Trạng thái
 
-`CONTRACT_LOCKED_CORE005_PATCH_PENDING_DEPLOY` — contract đã cập nhật theo bản vá CORE-005 ngày 03/08/2026. SQL đã compile và chạy mutation kiểm soát trong transaction rollback trên `medtest`; chưa coi là runtime mới cho tới khi deploy đủ SQL, gateway và frontend.
+`CONTRACT_DEPLOYED_SQL_LOCAL_GATEWAY_11.124_PENDING_END_TO_END_UAT` — contract CORE-005 đã deploy lên SQL `medtest`; gateway local và frontend `11.124` đã nạp đúng guard mới. Còn chờ mutation qua token/UI thật và UAT concurrency để nghiệm thu toàn luồng.
 
 ## Ranh giới hai bước
 

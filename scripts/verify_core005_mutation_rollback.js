@@ -11,6 +11,7 @@ const sql = require('mssql');
 const promotion = require('../src/js/utils/promotion.js');
 
 const ROOT = path.resolve(__dirname, '..');
+const USE_DEPLOYED_RUNTIME = process.argv.includes('--runtime');
 const SQL_FILES = [
   'sql/Migrate_API_Mutation_Idempotency_AI.sql',
   'sql/Module common - API_HangHoaList_AI.sql',
@@ -85,9 +86,11 @@ async function main() {
 
     await transaction.begin(sql.ISOLATION_LEVEL.SERIALIZABLE);
     began = true;
-    for (const relativePath of SQL_FILES) {
-      const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
-      for (const batch of batches(source)) await new sql.Request(transaction).batch(batch);
+    if (!USE_DEPLOYED_RUNTIME) {
+      for (const relativePath of SQL_FILES) {
+        const source = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+        for (const batch of batches(source)) await new sql.Request(transaction).batch(batch);
+      }
     }
 
     const users = (await new sql.Request(transaction).query(`
@@ -210,7 +213,7 @@ SELECT
     process.stdout.write(`${JSON.stringify({
       Status: 'PASS',
       Database: dbName,
-      Mode: 'CONTROLLED_MUTATION_ROLLBACK',
+      Mode: USE_DEPLOYED_RUNTIME ? 'DEPLOYED_RUNTIME_MUTATION_ROLLBACK' : 'CONTROLLED_MUTATION_ROLLBACK',
       Candidate: {
         Username: candidate.user.UserName,
         ObjectID: candidate.customer.ObjectID,

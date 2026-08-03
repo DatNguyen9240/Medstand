@@ -313,14 +313,15 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Cập nhật 03/08/2026: frontend không còn tự sinh `UATORD-*`; khi bỏ trống mã đơn, frontend truyền `AUTO_GEN` và SQL sinh `D{BranchID}{MM}{YY}/{n}`. `Idempotency-Key` HTTP được giữ riêng để chống double-click/retry.
   - Contract sau bản vá CORE-005 đã cập nhật cơ chế kho, idempotency, audit và identity; giới hạn còn lại là ERP chưa có `PromotionID`/`RuleVersion`. Chưa coi là runtime mới trước khi deploy đồng bộ.
 
-- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `IMPLEMENTED_LOCAL_VERIFIED_PENDING_DEPLOY_UAT`
+- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `SQL_DEPLOYED_LOCAL_GATEWAY_11.124_VERIFIED_PENDING_END_TO_END_UAT`
   - Thu thập thông tin, kiểm tra tồn/giá, hiển thị preview, xác nhận và tạo đơn thật.
   - Bổ sung idempotency và audit.
   - Phụ thuộc: `CORE-004`, `STOCK-001`.
   - Nghiệm thu: trả về mã đơn; gửi lặp không tạo đơn thứ hai.
   - Kết quả code 03/08/2026: frontend giao SQL sinh mã `D{BranchID}{MM}{YY}/{n}`; hàng tặng dùng `SoLuongTang`; SQL kiểm tra lại giá/CTBH/tồn, chọn và ghi một kho được cấp; gateway xác minh identity từ token; idempotency lưu fingerprint và kết quả cùng transaction với đơn. Báo cáo: [CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md](CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md).
   - Kiểm chứng rollback trên `medtest`: ca `QLBH013.MED` / `DL011` / `A008`, mua `10` tặng `2`, lần đầu và replay cùng trả `DMB0826/1`, DB trong transaction chỉ có 1 header + 1 detail (`SoLuongTang = 2`, kho `CTY`); payload khác cùng key trả `IDEMPOTENCY_CONFLICT`; toàn bộ đã rollback, không lưu dữ liệu test.
-  - Chưa đánh dấu `DONE`: còn deploy đồng bộ SQL + gateway + frontend và chạy UAT runtime concurrency/double-click sau deploy.
+  - Cập nhật runtime 03/08/2026: SQL `medtest` PASS `23/23` gate; mutation rollback trực tiếp trên procedure đã deploy PASS ca mua `10` tặng `2`; gateway local đã restart và smoke PASS frontend `11.124` + order guard mới. Chưa đánh dấu `DONE`: còn mutation qua token/UI thật và UAT concurrency/double-click có bằng chứng request ID.
+  - Kiểm tra lại `2026-08-03T05:04:01Z`: `23/23` gate vẫn PASS, gateway local PID `32384` hoạt động; audit sau deploy chưa có create/replay/failure của `API_DonHangChiTiet_Insert_AI`, nên chưa có bằng chứng end-to-end và `ConcurrencyProven = false`.
 
 - [ ] **CORE-006 — Chốt công thức phân nhóm A/B/C** · `P1` · `TODO`
   - Business owner chọn ngưỡng doanh số cố định, percentile hoặc mô hình kết hợp.
