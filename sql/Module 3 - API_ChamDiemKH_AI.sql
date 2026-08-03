@@ -1,13 +1,14 @@
 USE medtest;
 GO
 
--- ╔══════════════════════════════════════════════════════════════════════╗
--- ║  MODULE 3: AI CHẤM ĐIỂM KHÁCH HÀNG (RFM-C FRAMEWORK)              ║
--- ║  Triết lý: Không hardcode ngưỡng. Dùng PERCENT_RANK() để tự động   ║
--- ║  phân cụm dựa trên phân phối thực tế của toàn bộ thị trường.       ║
--- ║  Nhóm A = Top 20% doanh số. Nhóm B = Tiếp theo 30%. C = Còn lại.  ║
--- ╚══════════════════════════════════════════════════════════════════════╝
-CREATE OR ALTER PROCEDURE API_ChamDiemKH_AI
+/*
+    CORE-006 / CORE-007 — phân nhóm khách hàng theo rule APPROVED.
+
+    Business threshold, kỳ dữ liệu, status, risk/trend ratio và UTC offset đều
+    được đọc từ dbo.AI_BusinessRuleConfigTbl. Procedure fail-closed khi thiếu,
+    sai kiểu hoặc trộn version cấu hình; không có fallback business hard-code.
+*/
+CREATE OR ALTER PROCEDURE dbo.API_ChamDiemKH_AI
     @Username      VARCHAR(50) = '',
     @MaKhachHang   NVARCHAR(100) = '',
     @NhomFilter    VARCHAR(50) = '',
@@ -16,275 +17,481 @@ CREATE OR ALTER PROCEDURE API_ChamDiemKH_AI
     @RiskLevel     VARCHAR(20) = '',
     @Page          INT = 1,
     @PageSize      INT = 10,
-    -- Giữ 4 tham số để tương thích client cũ. Tier chỉ dùng Frequency + Monetary;
-    -- Recency/Consumption không được cộng vào ValueSegment.
-    @W_Recency     DECIMAL(18,2) = 0.25,  -- Chỉ dùng cho tương thích; Recency thuộc Risk
-    @W_Frequency   DECIMAL(18,2) = 0.25,  -- Trọng số Frequency
-    @W_Monetary    DECIMAL(18,2) = 0.30,  -- Trọng số Monetary (ưu tiên hơn 1 chút)
-    @W_Consumption DECIMAL(18,2) = 0.20   -- Chỉ dùng cho tương thích/diagnostic
+    -- Giữ để tương thích client cũ; BR-TIER-V2 không dùng trọng số client.
+    @W_Recency     DECIMAL(18,2) = NULL,
+    @W_Frequency   DECIMAL(18,2) = NULL,
+    @W_Monetary    DECIMAL(18,2) = NULL,
+    @W_Consumption DECIMAL(18,2) = NULL,
+    @AsOfDate      DATE = NULL
 AS
 BEGIN
-    SET NOCOUNT ON
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
 
-    -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
     IF OBJECT_ID('tempdb..#AllowedObjects') IS NOT NULL DROP TABLE #AllowedObjects;
+    IF OBJECT_ID('tempdb..#VisibleObjects') IS NOT NULL DROP TABLE #VisibleObjects;
+    IF OBJECT_ID('tempdb..#SalesStatus') IS NOT NULL DROP TABLE #SalesStatus;
+    IF OBJECT_ID('tempdb..#RecognizedStatus') IS NOT NULL DROP TABLE #RecognizedStatus;
     IF OBJECT_ID('tempdb..#Raw') IS NOT NULL DROP TABLE #Raw;
     IF OBJECT_ID('tempdb..#Scored') IS NOT NULL DROP TABLE #Scored;
-    IF OBJECT_ID('tempdb..#Final') IS NOT NULL DROP TABLE #Final;
     IF OBJECT_ID('tempdb..#Segmented') IS NOT NULL DROP TABLE #Segmented;
 
-    SET @Page = CASE WHEN ISNULL(@Page, 0) < 1 THEN 1 ELSE @Page END
-    SET @PageSize = CASE WHEN ISNULL(@PageSize, 0) < 1 THEN 10 WHEN @PageSize > 100 THEN 100 ELSE @PageSize END
-    SET @EmployeeID = ISNULL(@EmployeeID, '')
-    SET @BranchID = ISNULL(@BranchID, '')
-    SET @RiskLevel = UPPER(ISNULL(@RiskLevel, ''))
-    IF @RiskLevel NOT IN ('', 'LOW', 'MEDIUM', 'HIGH') SET @RiskLevel = ''
+    SET @Page = CASE WHEN ISNULL(@Page, 0) < 1 THEN 1 ELSE @Page END;
+    SET @PageSize = CASE WHEN ISNULL(@PageSize, 0) < 1 THEN 10 WHEN @PageSize > 100 THEN 100 ELSE @PageSize END;
+    SET @MaKhachHang = COALESCE(@MaKhachHang, '');
+    SET @EmployeeID = COALESCE(@EmployeeID, '');
+    SET @BranchID = COALESCE(@BranchID, '');
+    SET @NhomFilter = UPPER(COALESCE(@NhomFilter, ''));
+    SET @RiskLevel = UPPER(COALESCE(@RiskLevel, ''));
 
-    -- Tự động chuẩn hóa nếu người dùng truyền trọng số dạng % (ví dụ: 30.0 thay vì 0.3)
-    IF @W_Recency > 1.0 OR @W_Frequency > 1.0 OR @W_Monetary > 1.0 OR @W_Consumption > 1.0
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.SY_User
+        WHERE UserName = @Username
+          AND COALESCE(Disable, 0) = 0
+    )
     BEGIN
-        SET @W_Recency = @W_Recency / 100.0
-        SET @W_Frequency = @W_Frequency / 100.0
-        SET @W_Monetary = @W_Monetary / 100.0
-        SET @W_Consumption = @W_Consumption / 100.0
-    END
+        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
 
-    -- P0: ValueSegment/Tier chỉ phản ánh tần suất mua và doanh số.
-    -- Nếu client truyền trọng số không hợp lệ thì quay về tỷ lệ mặc định 25/30.
-    IF @W_Frequency < 0 OR @W_Monetary < 0 OR (@W_Frequency + @W_Monetary) <= 0
+    IF OBJECT_ID(N'dbo.AI_BusinessRuleConfigTbl', N'U') IS NULL
+        THROW 51100, N'TIER_CONFIG_TABLE_MISSING', 1;
+
+    DECLARE @RuleCode VARCHAR(80) = 'BR-TIER-005';
+    DECLARE @RuleVersion VARCHAR(30);
+    DECLARE @RuleEffectiveFrom DATETIME2(0);
+    DECLARE @NowUtc DATETIME2(0) = SYSUTCDATETIME();
+
+    DECLARE @RequiredKeys TABLE (ConfigKey VARCHAR(80) NOT NULL PRIMARY KEY);
+    INSERT INTO @RequiredKeys (ConfigKey)
+    VALUES
+        ('Method'), ('RevenueWindowMonths'), ('FrequencyWindowMonths'),
+        ('TrendWindowMonths'), ('SalesStatusIDs'), ('ReturnStatusIDs'),
+        ('TierAMinNetRevenue'), ('TierAMinFrequency'),
+        ('TierBMinNetRevenue'), ('TierBMinFrequency'),
+        ('NoHistorySegment'), ('NoHistoryRiskLevel'),
+        ('HighRiskDays'), ('MediumRiskDays'), ('RiskDeclineRatio'),
+        ('GrowthTrendRatio'), ('DeclineTrendRatio'), ('NewCustomerDays'),
+        ('UtcOffsetMinutes'), ('RevenueBasis'), ('ReturnApplicationRule');
+
+    SELECT TOP (1)
+        @RuleVersion = M.RuleVersion,
+        @RuleEffectiveFrom = M.EffectiveFrom
+    FROM dbo.AI_BusinessRuleConfigTbl M
+    WHERE M.RuleCode = @RuleCode
+      AND M.ConfigKey = 'Method'
+      AND M.Status = 'APPROVED'
+      AND M.EffectiveFrom IS NOT NULL
+      AND M.EffectiveFrom <= @NowUtc
+      AND (M.EffectiveTo IS NULL OR M.EffectiveTo > @NowUtc)
+      AND NOT EXISTS
+      (
+          SELECT 1
+          FROM @RequiredKeys R
+          WHERE NOT EXISTS
+          (
+              SELECT 1
+              FROM dbo.AI_BusinessRuleConfigTbl C
+              WHERE C.RuleCode = M.RuleCode
+                AND C.RuleVersion = M.RuleVersion
+                AND C.ConfigKey = R.ConfigKey
+                AND C.Status = 'APPROVED'
+                AND C.EffectiveFrom IS NOT NULL
+                AND C.EffectiveFrom <= @NowUtc
+                AND (C.EffectiveTo IS NULL OR C.EffectiveTo > @NowUtc)
+          )
+      )
+    ORDER BY M.EffectiveFrom DESC, M.RuleConfigID DESC;
+
+    IF @RuleVersion IS NULL
+        THROW 51101, N'TIER_CONFIG_APPROVED_VERSION_NOT_FOUND_OR_INCOMPLETE', 1;
+
+    DECLARE @Config TABLE
+    (
+        ConfigKey VARCHAR(80) NOT NULL PRIMARY KEY,
+        ConfigValue NVARCHAR(200) NOT NULL
+    );
+
+    INSERT INTO @Config (ConfigKey, ConfigValue)
+    SELECT C.ConfigKey, C.ConfigValue
+    FROM dbo.AI_BusinessRuleConfigTbl C
+    JOIN @RequiredKeys R ON R.ConfigKey = C.ConfigKey
+    WHERE C.RuleCode = @RuleCode
+      AND C.RuleVersion = @RuleVersion
+      AND C.Status = 'APPROVED'
+      AND C.EffectiveFrom IS NOT NULL
+      AND C.EffectiveFrom <= @NowUtc
+      AND (C.EffectiveTo IS NULL OR C.EffectiveTo > @NowUtc);
+
+    DECLARE @Method VARCHAR(80);
+    DECLARE @RevenueWindowMonths INT;
+    DECLARE @FrequencyWindowMonths INT;
+    DECLARE @TrendWindowMonths INT;
+    DECLARE @SalesStatusIDs VARCHAR(200);
+    DECLARE @ReturnStatusIDs VARCHAR(200);
+    DECLARE @TierAMinNetRevenue DECIMAL(19,2);
+    DECLARE @TierAMinFrequency INT;
+    DECLARE @TierBMinNetRevenue DECIMAL(19,2);
+    DECLARE @TierBMinFrequency INT;
+    DECLARE @NoHistorySegment VARCHAR(20);
+    DECLARE @NoHistoryRiskLevel VARCHAR(20);
+    DECLARE @HighRiskDays INT;
+    DECLARE @MediumRiskDays INT;
+    DECLARE @RiskDeclineRatio DECIMAL(9,4);
+    DECLARE @GrowthTrendRatio DECIMAL(9,4);
+    DECLARE @DeclineTrendRatio DECIMAL(9,4);
+    DECLARE @NewCustomerDays INT;
+    DECLARE @UtcOffsetMinutes INT;
+    DECLARE @RevenueBasis NVARCHAR(200);
+    DECLARE @ReturnApplicationRule NVARCHAR(200);
+
+    SELECT
+        @Method = MAX(CASE WHEN ConfigKey = 'Method' THEN ConfigValue END),
+        @RevenueWindowMonths = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'RevenueWindowMonths' THEN ConfigValue END)),
+        @FrequencyWindowMonths = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'FrequencyWindowMonths' THEN ConfigValue END)),
+        @TrendWindowMonths = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'TrendWindowMonths' THEN ConfigValue END)),
+        @SalesStatusIDs = MAX(CASE WHEN ConfigKey = 'SalesStatusIDs' THEN ConfigValue END),
+        @ReturnStatusIDs = MAX(CASE WHEN ConfigKey = 'ReturnStatusIDs' THEN ConfigValue END),
+        @TierAMinNetRevenue = TRY_CONVERT(DECIMAL(19,2), MAX(CASE WHEN ConfigKey = 'TierAMinNetRevenue' THEN ConfigValue END)),
+        @TierAMinFrequency = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'TierAMinFrequency' THEN ConfigValue END)),
+        @TierBMinNetRevenue = TRY_CONVERT(DECIMAL(19,2), MAX(CASE WHEN ConfigKey = 'TierBMinNetRevenue' THEN ConfigValue END)),
+        @TierBMinFrequency = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'TierBMinFrequency' THEN ConfigValue END)),
+        @NoHistorySegment = UPPER(MAX(CASE WHEN ConfigKey = 'NoHistorySegment' THEN ConfigValue END)),
+        @NoHistoryRiskLevel = UPPER(MAX(CASE WHEN ConfigKey = 'NoHistoryRiskLevel' THEN ConfigValue END)),
+        @HighRiskDays = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'HighRiskDays' THEN ConfigValue END)),
+        @MediumRiskDays = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'MediumRiskDays' THEN ConfigValue END)),
+        @RiskDeclineRatio = TRY_CONVERT(DECIMAL(9,4), MAX(CASE WHEN ConfigKey = 'RiskDeclineRatio' THEN ConfigValue END)),
+        @GrowthTrendRatio = TRY_CONVERT(DECIMAL(9,4), MAX(CASE WHEN ConfigKey = 'GrowthTrendRatio' THEN ConfigValue END)),
+        @DeclineTrendRatio = TRY_CONVERT(DECIMAL(9,4), MAX(CASE WHEN ConfigKey = 'DeclineTrendRatio' THEN ConfigValue END)),
+        @NewCustomerDays = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'NewCustomerDays' THEN ConfigValue END)),
+        @UtcOffsetMinutes = TRY_CONVERT(INT, MAX(CASE WHEN ConfigKey = 'UtcOffsetMinutes' THEN ConfigValue END)),
+        @RevenueBasis = MAX(CASE WHEN ConfigKey = 'RevenueBasis' THEN ConfigValue END),
+        @ReturnApplicationRule = MAX(CASE WHEN ConfigKey = 'ReturnApplicationRule' THEN ConfigValue END)
+    FROM @Config;
+
+    IF @Method <> 'FIXED_NET_REVENUE_FREQUENCY'
+       OR @RevenueWindowMonths IS NULL OR @RevenueWindowMonths <= 0
+       OR @FrequencyWindowMonths IS NULL OR @FrequencyWindowMonths <= 0
+       OR @FrequencyWindowMonths > @RevenueWindowMonths
+       OR @TrendWindowMonths IS NULL OR @TrendWindowMonths <= 0
+       OR @TrendWindowMonths * 2 > @RevenueWindowMonths
+       OR @TierAMinNetRevenue IS NULL OR @TierBMinNetRevenue IS NULL
+       OR @TierAMinNetRevenue <= @TierBMinNetRevenue OR @TierBMinNetRevenue < 0
+       OR @TierAMinFrequency IS NULL OR @TierBMinFrequency IS NULL
+       OR @TierAMinFrequency <= @TierBMinFrequency OR @TierBMinFrequency < 0
+       OR @NoHistorySegment IS NULL OR @NoHistorySegment IN ('A', 'B', 'C')
+       OR @NoHistoryRiskLevel IS NULL
+       OR @HighRiskDays IS NULL OR @MediumRiskDays IS NULL
+       OR @HighRiskDays <= @MediumRiskDays OR @MediumRiskDays < 0
+       OR @RiskDeclineRatio IS NULL OR @RiskDeclineRatio <= 0
+       OR @GrowthTrendRatio IS NULL OR @GrowthTrendRatio <= 1
+       OR @DeclineTrendRatio IS NULL OR @DeclineTrendRatio <= 0 OR @DeclineTrendRatio >= 1
+       OR @NewCustomerDays IS NULL OR @NewCustomerDays < 0
+       OR @UtcOffsetMinutes IS NULL OR @UtcOffsetMinutes NOT BETWEEN -840 AND 840
+       OR NULLIF(@RevenueBasis, '') IS NULL
+       OR NULLIF(@ReturnApplicationRule, '') IS NULL
+        THROW 51102, N'TIER_CONFIG_INVALID_VALUE', 1;
+
+    CREATE TABLE #SalesStatus (StatusID INT NOT NULL PRIMARY KEY);
+    CREATE TABLE #RecognizedStatus (StatusID INT NOT NULL PRIMARY KEY);
+
+    IF EXISTS
+    (
+        SELECT 1 FROM STRING_SPLIT(@SalesStatusIDs, ',')
+        WHERE TRY_CONVERT(INT, LTRIM(RTRIM(value))) IS NULL
+    ) OR EXISTS
+    (
+        SELECT 1 FROM STRING_SPLIT(@ReturnStatusIDs, ',')
+        WHERE TRY_CONVERT(INT, LTRIM(RTRIM(value))) IS NULL
+    )
+        THROW 51103, N'TIER_CONFIG_INVALID_STATUS_LIST', 1;
+
+    INSERT INTO #SalesStatus (StatusID)
+    SELECT DISTINCT TRY_CONVERT(INT, LTRIM(RTRIM(value)))
+    FROM STRING_SPLIT(@SalesStatusIDs, ',');
+
+    INSERT INTO #RecognizedStatus (StatusID)
+    SELECT StatusID FROM #SalesStatus;
+
+    INSERT INTO #RecognizedStatus (StatusID)
+    SELECT DISTINCT TRY_CONVERT(INT, LTRIM(RTRIM(value)))
+    FROM STRING_SPLIT(@ReturnStatusIDs, ',') R
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM #RecognizedStatus X
+        WHERE X.StatusID = TRY_CONVERT(INT, LTRIM(RTRIM(R.value)))
+    );
+
+    IF NOT EXISTS (SELECT 1 FROM #SalesStatus)
+       OR NOT EXISTS (SELECT 1 FROM #RecognizedStatus)
+        THROW 51104, N'TIER_CONFIG_EMPTY_STATUS_LIST', 1;
+
+    IF @AsOfDate IS NULL
+        SET @AsOfDate = CONVERT(DATE, DATEADD(MINUTE, @UtcOffsetMinutes, SYSUTCDATETIME()));
+
+    DECLARE @EndExclusive DATETIME2(0) = DATEADD(DAY, 1, CONVERT(DATETIME2(0), @AsOfDate));
+    DECLARE @RevenueStart DATETIME2(0) = DATEADD(MONTH, -@RevenueWindowMonths, @EndExclusive);
+    DECLARE @FrequencyStart DATETIME2(0) = DATEADD(MONTH, -@FrequencyWindowMonths, @EndExclusive);
+    DECLARE @RecentTrendStart DATETIME2(0) = DATEADD(MONTH, -@TrendWindowMonths, @EndExclusive);
+    DECLARE @PriorTrendStart DATETIME2(0) = DATEADD(MONTH, -(@TrendWindowMonths * 2), @EndExclusive);
+
+    IF @RiskLevel NOT IN ('', 'LOW', 'MEDIUM', 'HIGH', @NoHistoryRiskLevel)
+        SET @RiskLevel = '';
+
+    IF @NhomFilter LIKE '%VIP%' SET @NhomFilter = 'A';
+    ELSE IF @NhomFilter LIKE N'%ỔN ĐỊNH%' SET @NhomFilter = 'B';
+    ELSE IF @NhomFilter LIKE N'%NGUY CƠ%'
     BEGIN
-        SET @W_Frequency = 0.25
-        SET @W_Monetary = 0.30
-    END
-    DECLARE @TierWeightTotal DECIMAL(18,4) = @W_Frequency + @W_Monetary
+        SET @NhomFilter = '';
+        IF @RiskLevel = '' SET @RiskLevel = 'HIGH';
+    END;
+    ELSE IF @NhomFilter LIKE N'%CHƯA ĐỦ%' SET @NhomFilter = @NoHistorySegment;
+    ELSE IF @NhomFilter NOT IN ('', 'A', 'B', 'C', @NoHistorySegment) SET @NhomFilter = '';
 
-    -- 0. Kiểm tra quyền
-    IF NOT EXISTS (SELECT 1 FROM SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0)
-    BEGIN
-        SELECT N'User không tồn tại hoặc đã bị khóa' AS Msg, 1 AS MsgType RETURN
-    END
+    IF @MaKhachHang LIKE '%NhomFilter%'
+       OR UPPER(@MaKhachHang) LIKE '%VIP%'
+       OR UPPER(@MaKhachHang) LIKE N'%ỔN ĐỊNH%'
+       OR UPPER(@MaKhachHang) LIKE N'%NGUY CƠ%'
+        SET @MaKhachHang = '';
 
-    -- Chuẩn hóa tham số NhomFilter (chấp nhận cả tiếng Việt lẫn ký tự)
-    IF UPPER(@NhomFilter) LIKE '%VIP%' OR @NhomFilter = 'A'           SET @NhomFilter = 'A'
-    ELSE IF UPPER(@NhomFilter) LIKE '%ỔN ĐỊNH%' OR @NhomFilter = 'B' SET @NhomFilter = 'B'
-    ELSE IF UPPER(@NhomFilter) LIKE '%NGUY CƠ%'
-    BEGIN
-        -- BR-TIER-002: "nguy cơ" là RiskLevel, không phải ValueSegment C.
-        SET @NhomFilter = ''
-        IF @RiskLevel = '' SET @RiskLevel = 'HIGH'
-    END
-    ELSE IF @NhomFilter = 'C' SET @NhomFilter = 'C'
-    ELSE IF @NhomFilter != ''                                          SET @NhomFilter = ''
+    DECLARE @SYSBranchID VARCHAR(50) = '';
+    SELECT @SYSBranchID = COALESCE(BranchID, '')
+    FROM dbo.SY_User
+    WHERE UserName = @Username;
 
-    -- Dọn rác nếu AI nhận diện nhầm NhomFilter thành MaKhachHang
-    IF @MaKhachHang LIKE '%NhomFilter%' OR UPPER(@MaKhachHang) LIKE '%VIP%'
-       OR UPPER(@MaKhachHang) LIKE '%ỔN ĐỊNH%' OR UPPER(@MaKhachHang) LIKE '%NGUY CƠ%'
-        SET @MaKhachHang = ''
-
-    DECLARE @SYSBranchID VARCHAR(50) = ''
-    SELECT @SYSBranchID = COALESCE(BranchID, '') FROM SY_User WHERE UserName = @Username
-
-    -- Phạm vi tối đa luôn lấy từ ERP. Không có mapping thì không có dữ liệu
-    -- (fail-closed), thay vì hiểu BranchID rỗng là được xem toàn hệ thống.
-    CREATE TABLE #AllowedObjects (ObjectID VARCHAR(50) PRIMARY KEY)
+    CREATE TABLE #AllowedObjects (ObjectID VARCHAR(50) NOT NULL PRIMARY KEY);
     INSERT INTO #AllowedObjects (ObjectID)
-    SELECT DISTINCT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)
+    SELECT DISTINCT ObjectID
+    FROM dbo.AR_GetObjectByUserFnc(@Username);
 
-    -- Bộ lọc chi nhánh do client gửi chỉ được phép thu hẹp phạm vi của user.
     IF @SYSBranchID <> '' AND @BranchID <> '' AND @BranchID <> @SYSBranchID
     BEGIN
-        SELECT N'Bạn không có quyền xem dữ liệu của chi nhánh đã chọn.' AS Msg, 1 AS MsgType
-        DROP TABLE #AllowedObjects
-        RETURN
-    END
+        SELECT N'Bạn không có quyền xem dữ liệu của chi nhánh đã chọn.' AS Msg, 1 AS MsgType;
+        DROP TABLE #RecognizedStatus;
+        DROP TABLE #SalesStatus;
+        DROP TABLE #AllowedObjects;
+        RETURN;
+    END;
 
-    -- SMART CUSTOMER RESOLUTION (NAME TO ID)
-     IF @MaKhachHang <> '' AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
-     BEGIN
-         DECLARE @ResolvedID VARCHAR(50) = ''
-         DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
+    IF @MaKhachHang <> ''
+       AND NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID = @MaKhachHang)
+    BEGIN
+        DECLARE @ResolvedID VARCHAR(50) = '';
+        DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang);
 
-         -- 1. Fast Path: Match by ObjectID or ObjectName directly without scalar function scan
-         SELECT TOP 1 @ResolvedID = ObjectID 
-         FROM dbo.CF_ObjectTbl 
-         WHERE (ObjectID LIKE '%' + @CleanSearch + '%'
-            OR ObjectName LIKE '%' + @CleanSearch + '%') AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
-         ORDER BY 
-             CASE WHEN ObjectID = @CleanSearch THEN 1
-                  WHEN ObjectName = @CleanSearch THEN 2
-                  WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
-                  ELSE 4
-             END,
-             COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-             LEN(ObjectName) ASC;
+        SELECT TOP (1) @ResolvedID = O.ObjectID
+        FROM dbo.CF_ObjectTbl O
+        JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
+        WHERE O.ObjectID LIKE '%' + @CleanSearch + '%'
+           OR O.ObjectName LIKE '%' + @CleanSearch + '%'
+        ORDER BY
+            CASE WHEN O.ObjectID = @CleanSearch THEN 1
+                 WHEN O.ObjectName = @CleanSearch THEN 2
+                 WHEN O.ObjectName LIKE @CleanSearch + '%' THEN 3
+                 ELSE 4 END,
+            LEN(O.ObjectName), O.ObjectID;
 
-         -- 2. Slow Path: Fallback to heavy clean function scan only if Fast Path found nothing
-         IF @ResolvedID = ''
-         BEGIN
-             SELECT TOP 1 @ResolvedID = ObjectID 
-             FROM dbo.CF_ObjectTbl 
-             WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%'
-                OR ObjectID LIKE '%' + @CleanSearch + '%') AND (@SYSBranchID = '' OR BranchID = @SYSBranchID)
-             ORDER BY 
-                 CASE WHEN ObjectID = @CleanSearch THEN 1
-                      WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
-                      WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
-                      ELSE 4
-                 END,
-                 COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-                 LEN(ObjectName) ASC;
-         END
+        IF @ResolvedID = ''
+        BEGIN
+            SELECT TOP (1) @ResolvedID = O.ObjectID
+            FROM dbo.CF_ObjectTbl O
+            JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
+            WHERE dbo.ufn_clean_customer_name(O.ObjectName) LIKE '%' + @CleanSearch + '%'
+               OR O.ObjectID LIKE '%' + @CleanSearch + '%'
+            ORDER BY
+                CASE WHEN O.ObjectID = @CleanSearch THEN 1
+                     WHEN dbo.ufn_clean_customer_name(O.ObjectName) = @CleanSearch THEN 2
+                     ELSE 3 END,
+                LEN(O.ObjectName), O.ObjectID;
+        END;
 
-         IF @ResolvedID <> ''
-         BEGIN
-             SET @MaKhachHang = @ResolvedID
-         END
-     END
+        IF @ResolvedID <> '' SET @MaKhachHang = @ResolvedID;
+    END;
 
+    CREATE TABLE #VisibleObjects (ObjectID VARCHAR(50) NOT NULL PRIMARY KEY);
+    INSERT INTO #VisibleObjects (ObjectID)
+    SELECT AO.ObjectID
+    FROM #AllowedObjects AO
+    WHERE (@EmployeeID = '' AND @BranchID = '')
+       OR EXISTS
+       (
+           SELECT 1
+           FROM dbo.AR_OrderAndReturnView V
+           JOIN #SalesStatus SS ON SS.StatusID = V.StatusID
+           WHERE V.ObjectID = AO.ObjectID
+             AND V.DocumentDate >= @RevenueStart
+             AND V.DocumentDate < @EndExclusive
+             AND (@EmployeeID = '' OR V.EmployeeID = @EmployeeID)
+             AND (@BranchID = '' OR V.BranchID = @BranchID)
+       );
 
-    -- ═══ BƯỚC 1: AGGREGATION — Gom dữ liệu 12 tháng gần nhất ═══
+    ;WITH RecognizedTransactions AS
+    (
+        SELECT
+            V.DocumentID, V.ObjectID, V.DocumentDate, V.StatusID,
+            CONVERT(DECIMAL(19,2), COALESCE(V.TotalAmount, 0)) AS TotalAmount
+        FROM dbo.AR_OrderAndReturnView V
+        JOIN #RecognizedStatus RS ON RS.StatusID = V.StatusID
+        WHERE V.DocumentDate >= @RevenueStart
+          AND V.DocumentDate < @EndExclusive
+    )
     SELECT
-        I.ObjectID,
-        -- R: Recency — Số ngày kể từ lần mua gần nhất (càng thấp càng tốt)
-        DATEDIFF(DAY, MAX(I.DocumentDate), GETDATE())                                       AS Recency_Days,
-        -- F: Frequency — Số đơn hàng trong 6 tháng
-        COUNT(DISTINCT CASE WHEN I.DocumentDate >= DATEADD(MONTH,-6,GETDATE())
-                            THEN I.DocumentID END)                                           AS Frequency_6M,
-        -- M: Monetary — Tổng doanh số 12 tháng
-        SUM(D.TotalAmount)                                                                  AS Monetary_12M,
-        -- C: Consumption — Doanh số 3 tháng gần / Doanh số 3 tháng trước
-        -- (Đo tốc độ tiêu thụ thực tế, không phải tồn kho)
-        SUM(CASE WHEN I.DocumentDate >= DATEADD(MONTH,-3,GETDATE())
-                 THEN D.TotalAmount ELSE 0 END)                                             AS DoanhSo3ThangGan,
-        SUM(CASE WHEN I.DocumentDate BETWEEN DATEADD(MONTH,-6,GETDATE())
-                                         AND DATEADD(MONTH,-3,GETDATE())
-                 THEN D.TotalAmount ELSE 0 END)                                             AS DoanhSo3ThangTruoc,
-        MAX(I.DocumentDate)                                                                 AS LanMuaCuoi
+        KH.ObjectID,
+        COUNT(DISTINCT CASE WHEN SS.StatusID IS NOT NULL THEN T.DocumentID END) AS InvoiceCount_12M,
+        COUNT(DISTINCT CASE WHEN SS.StatusID IS NOT NULL AND T.DocumentDate >= @FrequencyStart THEN T.DocumentID END) AS Frequency_6M,
+        CONVERT(DECIMAL(19,2), COALESCE(SUM(T.TotalAmount), 0)) AS Monetary_12M,
+        CONVERT(DECIMAL(19,2), COALESCE(SUM(CASE WHEN SS.StatusID IS NOT NULL AND T.DocumentDate >= @RecentTrendStart THEN T.TotalAmount ELSE 0 END), 0)) AS DoanhSo3ThangGan,
+        CONVERT(DECIMAL(19,2), COALESCE(SUM(CASE WHEN SS.StatusID IS NOT NULL AND T.DocumentDate >= @PriorTrendStart AND T.DocumentDate < @RecentTrendStart THEN T.TotalAmount ELSE 0 END), 0)) AS DoanhSo3ThangTruoc,
+        MAX(CASE WHEN SS.StatusID IS NOT NULL THEN T.DocumentDate END) AS LanMuaCuoi
     INTO #Raw
-    FROM AR_InvoiceTbl I
-    JOIN AR_InvoiceDetailTbl D ON I.DocumentID = D.DocumentID
-    JOIN #AllowedObjects AO ON AO.ObjectID = I.ObjectID
-    WHERE I.DocumentDate >= DATEADD(MONTH, -12, GETDATE())
-      AND I.StatusID IN (3, 6, 7, 8)
-      AND (@SYSBranchID = '' OR I.BranchID = @SYSBranchID)
-      AND (@BranchID = '' OR I.BranchID = @BranchID)
-      AND (@EmployeeID = '' OR I.EmployeeID = @EmployeeID)
-    GROUP BY I.ObjectID
+    FROM dbo.CF_ObjectTbl KH
+    JOIN #VisibleObjects VO ON VO.ObjectID = KH.ObjectID
+    LEFT JOIN RecognizedTransactions T ON T.ObjectID = KH.ObjectID
+    LEFT JOIN #SalesStatus SS ON SS.StatusID = T.StatusID
+    WHERE COALESCE(KH.isDisable, 0) = 0
+      AND COALESCE(KH.isCustomer, 0) = 1
+    GROUP BY KH.ObjectID;
 
-    -- ═══ BƯỚC 2: NORMALIZATION — Chuẩn hóa về thang 0-100 bằng PERCENT_RANK ═══
-    -- Không hardcode ngưỡng. Hệ thống tự tính dựa trên phân phối thực tế.
     SELECT
-        ObjectID,
-        Recency_Days, Frequency_6M, Monetary_12M, LanMuaCuoi,
-        DoanhSo3ThangGan, DoanhSo3ThangTruoc,
-        -- R: Đảo ngược (ngày ít = tốt hơn)
-        CAST(PERCENT_RANK() OVER (ORDER BY Recency_Days DESC) * 100 AS INT)                AS R_Score,
-        -- F: Thuận chiều (nhiều đơn = tốt hơn)
-        CAST(PERCENT_RANK() OVER (ORDER BY Frequency_6M ASC) * 100 AS INT)                 AS F_Score,
-        -- M: Thuận chiều (doanh số cao = tốt hơn)
-        CAST(PERCENT_RANK() OVER (ORDER BY Monetary_12M ASC) * 100 AS INT)                 AS M_Score,
-        -- C: Tốc độ tăng tiêu thụ (3T gần / 3T trước — phòng thủ chia cho 0)
-        CAST(PERCENT_RANK() OVER (
-            ORDER BY (DoanhSo3ThangGan * 1.0 / NULLIF(DoanhSo3ThangTruoc, 0)) ASC
-        ) * 100 AS INT)                                                                     AS C_Score
+        R.*,
+        CASE WHEN R.LanMuaCuoi IS NULL THEN NULL
+             ELSE DATEDIFF(DAY, R.LanMuaCuoi, @AsOfDate) END AS Recency_Days,
+        CAST(CASE
+            WHEN R.LanMuaCuoi IS NULL THEN 0
+            WHEN DATEDIFF(DAY, R.LanMuaCuoi, @AsOfDate) <= 0 THEN 100
+            WHEN DATEDIFF(DAY, R.LanMuaCuoi, @AsOfDate) >= @HighRiskDays THEN 0
+            ELSE 100 - (DATEDIFF(DAY, R.LanMuaCuoi, @AsOfDate) * 100.0 / @HighRiskDays)
+        END AS INT) AS R_Score,
+        CAST(CASE
+            WHEN R.Frequency_6M <= 0 THEN 0
+            WHEN R.Frequency_6M >= @TierAMinFrequency THEN 100
+            ELSE R.Frequency_6M * 100.0 / NULLIF(@TierAMinFrequency, 0)
+        END AS INT) AS F_Score,
+        CAST(CASE
+            WHEN R.Monetary_12M <= 0 THEN 0
+            WHEN R.Monetary_12M >= @TierAMinNetRevenue THEN 100
+            ELSE R.Monetary_12M * 100.0 / NULLIF(@TierAMinNetRevenue, 0)
+        END AS INT) AS M_Score,
+        CAST(CASE
+            WHEN R.DoanhSo3ThangTruoc <= 0 OR R.DoanhSo3ThangGan <= 0 THEN 0
+            WHEN R.DoanhSo3ThangGan >= R.DoanhSo3ThangTruoc THEN 100
+            ELSE R.DoanhSo3ThangGan * 100.0 / NULLIF(R.DoanhSo3ThangTruoc, 0)
+        END AS INT) AS C_Score
     INTO #Scored
-    FROM #Raw
+    FROM #Raw R;
 
-    -- ═══ BƯỚC 3: SCORING — Tier chỉ dùng Frequency + Monetary ═══
     SELECT
-        ObjectID, Recency_Days, Frequency_6M, Monetary_12M, LanMuaCuoi,
-        DoanhSo3ThangGan, DoanhSo3ThangTruoc,
-        R_Score, F_Score, M_Score, C_Score,
-        CAST(
-            ((@W_Frequency * F_Score) + (@W_Monetary * M_Score))
-            / NULLIF(@TierWeightTotal, 0)
-        AS INT)                                                                              AS TotalScore
-    INTO #Final
-    FROM #Scored
-
-    -- ═══ BƯỚC 4: SEGMENTATION — Phân cụm tự động theo phân phối ═══
-    -- Nhom/ValueSegment phản ánh Frequency + Monetary. RiskLevel là chiều rủi ro
-    -- riêng, tránh ép khách giá trị cao xuống nhóm C chỉ vì lâu chưa mua.
-    SELECT
-        F.*,
+        S.*,
+        CASE WHEN S.F_Score < S.M_Score THEN S.F_Score ELSE S.M_Score END AS TotalScore,
         CASE
-            WHEN TotalScore >= PERCENTILE_CONT(0.80) WITHIN GROUP (ORDER BY TotalScore) OVER () THEN 'A'
-            WHEN TotalScore >= PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY TotalScore) OVER () THEN 'B'
+            WHEN S.InvoiceCount_12M = 0 THEN @NoHistorySegment
+            WHEN S.Monetary_12M >= @TierAMinNetRevenue AND S.Frequency_6M >= @TierAMinFrequency THEN 'A'
+            WHEN S.Monetary_12M >= @TierBMinNetRevenue AND S.Frequency_6M >= @TierBMinFrequency THEN 'B'
             ELSE 'C'
         END AS ValueSegment,
         CASE
-            WHEN TotalScore >= PERCENTILE_CONT(0.80) WITHIN GROUP (ORDER BY TotalScore) OVER () THEN 'A'
-            WHEN TotalScore >= PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY TotalScore) OVER () THEN 'B'
+            WHEN S.InvoiceCount_12M = 0 THEN @NoHistorySegment
+            WHEN S.Monetary_12M >= @TierAMinNetRevenue AND S.Frequency_6M >= @TierAMinFrequency THEN 'A'
+            WHEN S.Monetary_12M >= @TierBMinNetRevenue AND S.Frequency_6M >= @TierBMinFrequency THEN 'B'
             ELSE 'C'
         END AS Nhom,
-        CASE WHEN Recency_Days >= 90 THEN 'HIGH'
-             WHEN Recency_Days >= 45 OR DoanhSo3ThangGan < DoanhSo3ThangTruoc * 0.8 THEN 'MEDIUM'
-             ELSE 'LOW' END AS RiskLevel
+        CASE
+            WHEN S.InvoiceCount_12M = 0 THEN @NoHistoryRiskLevel
+            WHEN S.Recency_Days >= @HighRiskDays THEN 'HIGH'
+            WHEN S.Recency_Days >= @MediumRiskDays
+              OR S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * @RiskDeclineRatio THEN 'MEDIUM'
+            ELSE 'LOW'
+        END AS RiskLevel
     INTO #Segmented
-    FROM #Final F
+    FROM #Scored S;
 
-    -- ═══ KẾT QUẢ ═══
-    ;WITH Result AS (
+    ;WITH Result AS
+    (
         SELECT
-            KH.ObjectID, KH.ObjectName AS TenCuaHang, KH.Phone,
-            S.Nhom, S.ValueSegment, S.RiskLevel,
-            CASE S.Nhom WHEN 'A' THEN N'Khách VIP (Top 20%)'
-                        WHEN 'B' THEN N'Khách hàng thường'
-                        WHEN 'C' THEN N'Khách giá trị thấp' END AS PhanLoai,
+            KH.ObjectID,
+            KH.ObjectName AS TenCuaHang,
+            KH.Phone,
+            S.Nhom,
+            S.ValueSegment,
+            S.RiskLevel,
+            CASE S.Nhom
+                WHEN 'A' THEN N'Khách giá trị cao'
+                WHEN 'B' THEN N'Khách giá trị trung bình'
+                WHEN 'C' THEN N'Khách giá trị thấp'
+                ELSE N'Chưa đủ dữ liệu trong kỳ'
+            END AS PhanLoai,
             S.TotalScore AS DiemTongHop,
             S.R_Score, S.F_Score, S.M_Score, S.C_Score,
-            CAST(S.Monetary_12M AS BIGINT) AS DoanhSo12Thang,
-            CAST(S.DoanhSo3ThangGan AS BIGINT) AS DoanhSo3ThangGan,
-            S.LanMuaCuoi, S.Recency_Days AS SoNgayKhongMua,
-            CASE WHEN S.Frequency_6M = 0 OR S.LanMuaCuoi IS NULL THEN N'NEW_CUSTOMER: chưa đủ dữ liệu lịch sử'
-                 WHEN S.DoanhSo3ThangTruoc = 0 THEN N'Khách mới hoặc chưa đủ chu kỳ'
-                 WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * 1.1 THEN N'Tăng trưởng'
-                 WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.9 THEN N'Sụt giảm'
-                 ELSE N'Ổn định' END AS XuHuong,
-            CASE WHEN S.Recency_Days >= 90
-                    THEN N'Không phát sinh đơn hàng trong ' + CAST(S.Recency_Days AS NVARCHAR(10)) + N' ngày.'
-                 WHEN S.DoanhSo3ThangTruoc > 0 AND S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * 0.8
-                    THEN N'Doanh số 3 tháng gần nhất giảm trên 20% so với kỳ trước.'
-                 WHEN KH.DateCreate >= DATEADD(DAY,-30,GETDATE())
-                    THEN N'Khách mới, chưa đủ dữ liệu lịch sử để đánh giá ổn định.'
-                 ELSE N'Tier phân nhóm theo tần suất mua và doanh số; Risk tính riêng từ độ lâu chưa mua và xu hướng giảm.' END AS LyDoChinh,
-            CASE WHEN S.RiskLevel = 'HIGH' THEN 3 WHEN S.RiskLevel = 'MEDIUM' THEN 2 ELSE 1 END AS RiskPriority
-        FROM CF_ObjectTbl KH
-        JOIN #Segmented S ON KH.ObjectID = S.ObjectID
-        WHERE ISNULL(KH.isDisable, 0) = 0 AND ISNULL(KH.isCustomer, 0) = 1
-          AND (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)
+            CONVERT(BIGINT, S.Monetary_12M) AS DoanhSo12Thang,
+            CONVERT(BIGINT, S.DoanhSo3ThangGan) AS DoanhSo3ThangGan,
+            S.InvoiceCount_12M AS SoHoaDon12Thang,
+            S.Frequency_6M AS SoLanMua6Thang,
+            CONVERT(DECIMAL(19,2), S.Monetary_12M / NULLIF(CONVERT(DECIMAL(19,2), @RevenueWindowMonths), 0)) AS DoanhSoThuanTrungBinhThang,
+            CONVERT(DECIMAL(19,2), S.Monetary_12M / NULLIF(CONVERT(DECIMAL(19,2), S.InvoiceCount_12M), 0)) AS GiaTriDonThuanTrungBinh,
+            S.LanMuaCuoi,
+            S.Recency_Days AS SoNgayKhongMua,
+            CASE
+                WHEN S.InvoiceCount_12M = 0 THEN N'NEW_CUSTOMER: chưa đủ dữ liệu trong kỳ'
+                WHEN S.DoanhSo3ThangTruoc = 0 THEN N'Khách mới hoặc chưa đủ chu kỳ'
+                WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * @GrowthTrendRatio THEN N'Tăng trưởng'
+                WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * @DeclineTrendRatio THEN N'Sụt giảm'
+                ELSE N'Ổn định'
+            END AS XuHuong,
+            CASE
+                WHEN S.InvoiceCount_12M = 0 THEN N'Không có hóa đơn hợp lệ trong kỳ đánh giá; chưa xếp A/B/C.'
+                WHEN S.Recency_Days >= @HighRiskDays
+                    THEN N'Không phát sinh đơn hàng trong ' + CONVERT(NVARCHAR(10), S.Recency_Days) + N' ngày.'
+                WHEN S.DoanhSo3ThangTruoc > 0 AND S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * @RiskDeclineRatio
+                    THEN N'Doanh số kỳ gần nhất giảm vượt ngưỡng cấu hình so với kỳ trước.'
+                WHEN KH.DateCreate >= DATEADD(DAY, -@NewCustomerDays, @AsOfDate)
+                    THEN N'Khách mới, chưa đủ chu kỳ để đánh giá ổn định.'
+                ELSE N'Nhóm giá trị tính từ doanh số thuần và tần suất theo rule cấu hình; risk được tính độc lập.'
+            END AS LyDoChinh,
+            CASE S.RiskLevel WHEN 'HIGH' THEN 3 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 1 ELSE 0 END AS RiskPriority
+        FROM dbo.CF_ObjectTbl KH
+        JOIN #Segmented S ON S.ObjectID = KH.ObjectID
+        WHERE (@MaKhachHang = '' OR KH.ObjectID = @MaKhachHang)
           AND (@NhomFilter = '' OR S.Nhom = @NhomFilter)
           AND (@RiskLevel = '' OR S.RiskLevel = @RiskLevel)
-    ), Numbered AS (
+    ), Numbered AS
+    (
         SELECT *, COUNT(*) OVER () AS TotalRows
         FROM Result
     )
-    SELECT ObjectID, TenCuaHang, Phone, Nhom, ValueSegment, RiskLevel,
-           PhanLoai, DiemTongHop, R_Score, F_Score, M_Score, C_Score,
-           DoanhSo12Thang, DoanhSo3ThangGan,
-           CONVERT(VARCHAR(10), LanMuaCuoi, 103) AS LanMuaCuoi,
-           SoNgayKhongMua, XuHuong, LyDoChinh, TotalRows,
-           @Page AS [Page], @PageSize AS PageSize,
-           N'FREQUENCY_MONETARY_PERCENTILE_DRAFT' AS RuleSource,
-           N'BR-TIER-V1-DRAFT' AS RuleVersion
+    SELECT
+        ObjectID, TenCuaHang, Phone, Nhom, ValueSegment, RiskLevel,
+        PhanLoai, DiemTongHop, R_Score, F_Score, M_Score, C_Score,
+        DoanhSo12Thang, DoanhSo3ThangGan, SoHoaDon12Thang, SoLanMua6Thang,
+        DoanhSoThuanTrungBinhThang, GiaTriDonThuanTrungBinh,
+        CONVERT(VARCHAR(10), LanMuaCuoi, 103) AS LanMuaCuoi,
+        SoNgayKhongMua, XuHuong, LyDoChinh, TotalRows,
+        @Page AS [Page], @PageSize AS PageSize,
+        @Method AS RuleSource,
+        @RuleCode + '/' + @RuleVersion AS RuleVersion,
+        @RuleEffectiveFrom AS RuleEffectiveFromUtc,
+        @AsOfDate AS AsOfDate,
+        @RevenueBasis AS RevenueBasis,
+        @ReturnApplicationRule AS ReturnApplicationRule
     FROM Numbered
     ORDER BY RiskPriority DESC, DiemTongHop DESC, ObjectID ASC
-    OFFSET ((@Page - 1) * @PageSize) ROWS FETCH NEXT @PageSize ROWS ONLY
+    OFFSET ((@Page - 1) * @PageSize) ROWS
+    FETCH NEXT @PageSize ROWS ONLY;
 
-    DROP TABLE #AllowedObjects; DROP TABLE #Raw; DROP TABLE #Scored; DROP TABLE #Final; DROP TABLE #Segmented;
-END
+    DROP TABLE #Segmented;
+    DROP TABLE #Scored;
+    DROP TABLE #Raw;
+    DROP TABLE #VisibleObjects;
+    DROP TABLE #AllowedObjects;
+    DROP TABLE #RecognizedStatus;
+    DROP TABLE #SalesStatus;
+END;
 GO
 
-/* -- TEST SCRIPT --
--- Xem toàn bộ bảng xếp hạng
-EXEC API_ChamDiemKH_AI @Username = 'admin';
-
--- Chỉ xem nhóm VIP
-EXEC API_ChamDiemKH_AI @Username = 'admin', @NhomFilter = 'A';
-
--- Thay trọng số: CEO muốn ưu tiên tần suất mua hơn
-EXEC API_ChamDiemKH_AI @Username = 'admin', @W_Recency=0.20, @W_Frequency=0.40, @W_Monetary=0.25, @W_Consumption=0.15;
-
--- Xem chi tiết 1 khách
-EXEC API_ChamDiemKH_AI @Username = 'admin', @MaKhachHang = 'KH001';
+/*
+EXEC dbo.API_ChamDiemKH_AI
+    @Username = 'QLBH013.MED',
+    @AsOfDate = '2026-08-03';
 */

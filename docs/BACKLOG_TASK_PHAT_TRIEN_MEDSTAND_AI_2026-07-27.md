@@ -142,6 +142,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: mỗi account có tối thiểu một bộ input chạy được các luồng thuộc quyền.
   - Đã chuẩn bị bộ input và script read-only kiểm tra khách, sản phẩm, đơn mẫu và kho chính: [UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md](UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md).
   - Kết quả: `13/13 PASS`; khách đại diện đúng scope, có dữ liệu giao dịch mẫu, 3 sản phẩm mẫu hoạt động và kho chính hiệu lực.
+  - **Cập nhật UATV2 03/08/2026:** đã deploy bộ dữ liệu hiện tại, cô lập bằng tiền tố `UATV2_`, cho đủ 13 tài khoản. Persisted: 28 khách, 91 đơn, 63 hóa đơn, 7 trả hàng, 7 công nợ và 3 sản phẩm trọng tâm; hậu kiểm runtime `13/13 PASS`, mỗi tài khoản thấy đúng 4 khách A/B/C/UNRATED và dữ liệu ngày 03/08. Seed đọc ngưỡng từ rule `APPROVED`, không hard-code và không sửa khách/đơn thật. Báo cáo: [UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md](UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md).
   - **[Quét toàn diện 31/07/2026] Gọi thật 27 API `READ` × 13 tài khoản = 351 lượt.** Kết quả: **23/27 API trả dữ liệu cho đủ 13/13 tài khoản.**
 
     Dữ liệu nền đã đủ chuẩn:
@@ -323,14 +324,20 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Cập nhật runtime 03/08/2026: SQL `medtest` PASS `23/23` gate; mutation rollback trực tiếp trên procedure đã deploy PASS ca mua `10` tặng `2`; gateway local đã restart và smoke PASS frontend `11.124` + order guard mới. Chưa đánh dấu `DONE`: còn mutation qua token/UI thật và UAT concurrency/double-click có bằng chứng request ID.
   - Kiểm tra lại `2026-08-03T05:04:01Z`: `23/23` gate vẫn PASS, gateway local PID `32384` hoạt động; audit sau deploy chưa có create/replay/failure của `API_DonHangChiTiet_Insert_AI`, nên chưa có bằng chứng end-to-end và `ConcurrencyProven = false`.
 
-- [ ] **CORE-006 — Chốt công thức phân nhóm A/B/C** · `P1` · `TODO`
+- [x] **CORE-006 — Chốt công thức phân nhóm A/B/C** · `P1` · `DONE`
   - Business owner chọn ngưỡng doanh số cố định, percentile hoặc mô hình kết hợp.
   - Ghi rõ khoảng dữ liệu, cách tính trung bình, trả hàng và khách không có lịch sử.
   - Nghiệm thu: có văn bản sign-off và bộ ví dụ chuẩn.
+  - Kết quả discovery 03/08/2026: xác nhận rule runtime `BR-TIER-V1-DRAFT` phụ thuộc scope người xem, chưa trừ trả hàng và loại khách không có hóa đơn 12 tháng. Trên `medtest`, `7.124/48.565` khách có dữ liệu chấm; `504` khách đủ điều kiện có trả hàng và `12` khách đổi tier khi chuyển gross sang net; cùng khách `NDB001`, `HUEA043`, `DL012` đã cho kết quả khác giữa manager/sale.
+  - Đã lập contract, ba phương án và bộ case `ABC-01..09`: [CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md](CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md).
+  - Sign-off 03/08/2026: người dùng/business owner chọn phương án C, yêu cầu không hard-code và hiệu lực ngay; định danh duyệt `USER_CONFIRMED_IN_CHAT`, rule chính thức `BR-TIER-005/2.0.0`, hiệu lực `13:34:26 +07`. Rule đã lưu thành `21` key `APPROVED` trong `AI_BusinessRuleConfigTbl` và deploy `medtest`.
 
-- [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `TODO`
+- [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `MEDTEST_API_RUNTIME_13_OF_13_VERIFIED_PENDING_UI_TOKEN_EVIDENCE`
   - Phụ thuộc: `CORE-006`.
   - Nghiệm thu: test case chuẩn của business pass 100%; risk vẫn được hiển thị độc lập với tier.
+  - Kết quả 03/08/2026: migration cấu hình + `API_ChamDiemKH_AI` đã deploy; procedure đọc duy nhất version `APPROVED`, không chứa literal ngưỡng `5/25 triệu`, không dùng percentile theo người xem và fail-closed khi config thiếu/sai. Preflight rollback PASS `9/9` case `ABC-01..09`; hậu kiểm read-only PASS no-hardcode `7/7`, scope `3/3`, `UNRATED/UNKNOWN` và UI static `5/5`. Bundle local `11.125` đã build. Báo cáo: [CORE-007_API_CHAM_DIEM_BR_TIER_V2_2026-08-03.md](CORE-007_API_CHAM_DIEM_BR_TIER_V2_2026-08-03.md).
+  - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope. Bằng chứng: [UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md](UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md).
+  - **Trạng thái cập nhật:** phần SQL, rule business và API runtime đã hoàn tất; task chỉ còn gate bằng chứng end-to-end qua UI/token thật cho bốn bộ lọc `A/B/C/UNRATED`, gồm ảnh và request ID. Vì gate này chưa chạy nên giữ checkbox mở, chưa đánh dấu `DONE`.
 
 - [ ] **STOCK-001 — Bắt buộc kiểm tra tồn thật trong tư vấn sản phẩm** · `P1` · `TODO`
   - Thay trạng thái `PHYSICAL_STOCK_NOT_QUERIED` bằng truy vấn tồn theo quyền khi nghiệp vụ yêu cầu hàng còn tồn.
@@ -577,7 +584,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 
 Các mục dưới đây có thể làm block task kỹ thuật nếu chưa được chốt:
 
-- [ ] **BIZ-001 — Công thức nhóm A/B/C** · Chốt ngưỡng tiền, percentile hoặc kết hợp.
+- [x] **BIZ-001 — Công thức nhóm A/B/C** · `DONE` · Đã duyệt phương án C, rule `BR-TIER-005/2.0.0`, hiệu lực `03/08/2026 13:34:26 +07`; sign-off và case chuẩn tại [CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md](CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md).
 - [ ] **BIZ-002 — Quy tắc khách giảm mua** · Chốt 45/90 ngày và ngoại lệ theo nhóm khách.
 - [ ] **BIZ-003 — Cách tính tích lũy** · Chốt VAT, trả hàng, đơn hủy, phạm vi sản phẩm và mốc quà.
 - [ ] **BIZ-004 — Sản phẩm trọng tâm** · Chốt file nguồn, thời gian hiệu lực và người cập nhật.

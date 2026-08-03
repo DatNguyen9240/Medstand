@@ -3852,10 +3852,12 @@
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="A" type="button">Nhóm A</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="B" type="button">Nhóm B</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="C" type="button">Nhóm C</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="UNRATED" type="button">Chưa đủ dữ liệu</button>';
             chipsHtml += '<button class="ai-sales-filter-chip active" data-server-risk="" type="button">Mọi rủi ro</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="LOW" type="button">Rủi ro thấp</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="MEDIUM" type="button">Rủi ro vừa</button>';
             chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="HIGH" type="button">Rủi ro cao</button>';
+            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="UNKNOWN" type="button">Chưa đủ dữ liệu rủi ro</button>';
         } else {
             chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">' + (String(apiCode || '').toLowerCase() === '@don_hang' ? 'Tất cả trạng thái' : 'Tất cả') + '</button>';
         }
@@ -4015,10 +4017,10 @@
         var customerId = row.ObjectID || row.CustomerID || row.MaKH || '';
         var customerName = row.TenCuaHang || row.CustomerName || row.ObjectName || 'Khách hàng';
         var tier = String(row.Nhom || row.ValueSegment || '').toUpperCase();
-        var tierName = tier === 'A' ? 'Khách VIP' : (tier === 'B' ? 'Khách hàng thường' : 'Khách giá trị thấp');
+        var tierName = row.PhanLoai || (tier === 'A' ? 'Khách giá trị cao' : (tier === 'B' ? 'Khách giá trị trung bình' : (tier === 'C' ? 'Khách giá trị thấp' : 'Chưa đủ dữ liệu trong kỳ')));
         var risk = String(row.RiskLevel || '').toUpperCase();
-        var riskLabel = risk === 'HIGH' ? 'Rủi ro cao' : (risk === 'MEDIUM' ? 'Rủi ro vừa' : 'Rủi ro thấp');
-        var riskClass = risk === 'HIGH' ? 'high' : (risk === 'MEDIUM' ? 'medium' : 'low');
+        var riskLabel = risk === 'HIGH' ? 'Rủi ro cao' : (risk === 'MEDIUM' ? 'Rủi ro vừa' : (risk === 'LOW' ? 'Rủi ro thấp' : 'Chưa đủ dữ liệu rủi ro'));
+        var riskClass = risk === 'HIGH' ? 'high' : (risk === 'MEDIUM' ? 'medium' : (risk === 'LOW' ? 'low' : 'unknown'));
         var reason = row.LyDoChinh || 'Chưa có lý do cảnh báo';
         var trend = row.XuHuong || 'Chưa xác định';
         var phone = _formatBusinessCell('Phone', row.Phone);
@@ -4035,8 +4037,8 @@
             if (!Number.isFinite(value)) return 'Chưa xác định';
             return value >= high ? 'Tốt' : (value >= middle ? 'Khá' : 'Cần chú ý');
         };
-        // Hiển thị nghiệp vụ dựa trên số ngày thực tế; không suy diễn ngược từ R_SCORE.
-        var rMeaning = Number.isFinite(daysValue) ? (daysValue >= 90 ? 'Cần chú ý' : (daysValue >= 45 ? 'Theo dõi' : 'Tốt')) : scoreMeaning(rScore, 70, 40);
+        // API đã áp dụng risk threshold từ rule APPROVED; UI không lặp lại ngưỡng nghiệp vụ.
+        var rMeaning = risk === 'HIGH' ? 'Cần chú ý' : (risk === 'MEDIUM' ? 'Theo dõi' : (risk === 'LOW' ? 'Tốt' : 'Chưa đủ dữ liệu'));
         var fMeaning = scoreMeaning(fScore, 70, 40);
         var mMeaning = scoreMeaning(mScore, 70, 40);
         var detail = '<div class="ai-tier-detail">';
