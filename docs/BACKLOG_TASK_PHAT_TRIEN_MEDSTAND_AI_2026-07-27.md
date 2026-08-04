@@ -1,7 +1,8 @@
 # Backlog task phát triển Medstand AI
 
 **Ngày lập:** 27/07/2026  
-**Nguồn:** `LO_TRINH_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md`  
+**Nguồn trạng thái tổng hợp:** [Baseline kỹ thuật và UAT hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md)
+
 **Mục đích:** Chuyển lộ trình phát triển thành danh sách công việc có thể phân công, thực hiện và nghiệm thu.  
 **Trạng thái ban đầu:** Tất cả task bên dưới là `TODO`, trừ khi có bằng chứng mới được cập nhật trực tiếp vào tài liệu này.
 
@@ -57,7 +58,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
     - Manifest được khóa trước khi thực hiện `UAT-002`, `UAT-003` và `UAT-004`.
   - Kết quả xử lý 27/07/2026: đã tạo và khóa source manifest `../release/UAT_MANIFEST_2026-07-27_11.110.md` cho candidate `hoangdang@bfbaf7e092a10d4839f434427527e4c862b61796`, frontend `11.110`, cache `medstand-11.110`, SQL và n8n kèm SHA-256, deploy order, smoke test và rollback set.
   - Phạm vi `DONE`: hoàn tất manifest source candidate. Bằng chứng môi trường UAT chạy đúng manifest vẫn thuộc `UAT-002`, `UAT-003` và `UAT-004`.
-  - Báo cáo nguyên nhân ban đầu: xem `UAT-001_MANIFEST_GAP_2026-07-27.md`.
+  - Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md); manifest gốc vẫn nằm trong `release/`.
 
 - [x] **UAT-002 — Deploy frontend UAT đồng bộ** · `P0` · `DONE`
   - Deploy bundle frontend theo manifest; kiểm tra cache/version và service worker.
@@ -68,7 +69,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Công cụ để lại: `scripts/verify_frontend_deploy.js` — chạy một lệnh là đối chiếu hash, marker conflict và version. Lưu ý phải gửi `Accept-Encoding: identity` khi so hash vì server có cache bản nén riêng có thể cũ hơn file thật.
   - Phạm vi `DONE`: chỉ xác nhận RC3 đã deploy đúng. Smoke test chức năng trên trình duyệt có đăng nhập vẫn là việc riêng.
   - ⚠️ Repo đã vượt qua RC3: `HEAD` chứa panel lập đơn nhanh trong khung chat (`chatbot.bundle.min.js` = `21ac0cd4…`) chưa deploy. Phần này cần khóa RC4 và **phải nâng `APP_VERSION` lên `11.112`** trước khi build/deploy, nếu không trình duyệt đã cache `11.111` sẽ không nhận được.
-  - Báo cáo chi tiết: `UAT-002_RUNTIME_DRIFT_2026-07-27.md`.
+  - Kết quả deploy và drift đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-003 — Import bộ SQL bắt buộc** · `P0` · `DONE`
   - Import đúng các stored procedure và metadata API thuộc bản UAT.
@@ -76,11 +77,11 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: script kiểm tra definition/hash hoặc ngày sửa xác nhận DB dùng đúng bản; không thiếu API bắt buộc.
   - Kết quả chuẩn bị 27/07/2026: đã tạo `scripts/deploy_uat_sql.ps1`, khóa 16 file theo manifest, bổ sung target guard, pre/post verification, backup definition, API metadata check và evidence output.
   - Cập nhật nghiệm thu 27/07/2026: ảnh kết quả `UAT_RC2_All_16_SQL_Verification.sql` cho thấy target `medtest`, procedure và API metadata đều `PASS`; hai smoke test “Xem đơn hàng tháng này” và “Xem hóa đơn tháng này” cũng chạy thành công, không lỗi HTTP 500.
-  - Đủ điều kiện chuyển `DONE` theo mục 6 của `docs/UAT-003_SQL_DEPLOYMENT_2026-07-27.md`.
+  - Đủ điều kiện chuyển `DONE` theo gate SQL được ghi trong baseline hiện hành.
   - Kiểm tra hai file vừa import bằng `sql/diagnostics/UAT_RC2_DonHang_HoaDon_Verification.sql`.
   - Kiểm tra toàn bộ 16 file bằng một lệnh read-only: `sql/diagnostics/UAT_RC2_All_16_SQL_Verification.sql`.
   - Đã xác minh hai file vừa import và toàn bộ bộ kiểm tra SQL; không còn thiếu procedure/metadata bắt buộc theo bằng chứng nghiệm thu.
-  - Hướng dẫn, lỗi ảnh hưởng và điều kiện nghiệm thu: xem `UAT-003_SQL_DEPLOYMENT_2026-07-27.md`.
+  - Script deploy và diagnostics vẫn được giữ trong `scripts/` và `sql/diagnostics/`.
 
 - [ ] **UAT-004 — Import và publish workflow n8n** · `P0` · `BLOCKED`
   - Import đúng workflow auth, intent parser, main chatbot và API service.
@@ -94,14 +95,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - `BLOCKED` vì sao: n8n không lộ ra Internet (`/webhook/*` bị `server.js` chặn bằng `GATEWAY_REQUIRED`; `/n8n/` chỉ trả SPA), nên vế "runtime khớp file nguồn" phải nghiệm thu tại nơi truy cập được n8n. Ảnh chụp runtime duy nhất còn lưu là 21/07, đã quá cũ để kết luận.
   - Việc cần làm: (1) tắt `ZQPz4sbzz9pqSO8W`, giữ `Gn7nDjDgGUFOWni5`; (2) import lại theo manifest phần 4, sau đó chọn lại node `Execute Shared Auth Guard` → `9UxECqxRaPGMF8EM`; (3) tạo export mới rồi chạy `node scripts/verify_n8n_runtime.js <export>` — thoát mã 0 là đạt.
   - ⚠️ File export chứa `staticData` kèm token thật — không commit; cần lưu thì lọc bằng `scripts/sanitize_n8n_export.js`.
-  - Báo cáo chi tiết: `UAT-004_N8N_WORKFLOW_VERIFICATION_2026-07-27.md`.
+  - Trạng thái n8n mới nhất và điều kiện đóng nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `REVIEW_REQUIRED`
   - Xác minh app, n8n và SQL đều trỏ đúng môi trường `medtest`.
   - Thay credential viết cứng trong workflow upload bằng cơ chế secret/xác thực chuẩn.
   - Nghiệm thu: không có credential UAT/production được viết trực tiếp trong file public hoặc source workflow xuất bản.
   - Kết quả xử lý 27/07/2026: kiến trúc chuẩn là UI `medtest.bms7.net` → API nội bộ `medtest.bms79.com` → DB `medtest`; đã sửa `API_BASE` local về API nội bộ. Giữ fallback admin key theo xác nhận của chủ dự án vì workflow upload hiện kiểm tra cùng giá trị; chuyển sang secret runtime trước production. Còn cần xác nhận environment trên server và smoke test runtime.
-  - Báo cáo chi tiết: `docs/UAT-005_ENDPOINT_SECRET_VERIFICATION_2026-07-27.md`; script kiểm tra: `scripts/verify_uat5_config.js`.
+  - Trạng thái endpoint/secret nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md); script kiểm tra: `scripts/verify_uat5_config.js`.
 
 ### Nhóm B — Phân quyền và dữ liệu
 
@@ -133,16 +134,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: mỗi tài khoản chỉ thấy tồn của các kho được cấp; có bảng mapping được business owner xác nhận.
   - Business Owner xác nhận ngày 2026-07-29: UAT chỉ hiển thị ba kho chính `CTY / DL02 / DL03`; các kho phụ `LOI`, `DL01`, `KG MT`, `LOIMT`, `KG MN`, `LOIMN` phải được ẩn.
   - Đã bổ sung bộ lọc allowlist trong các API sử dụng phạm vi kho; chờ triển khai lên DB `medtest` và chạy lại kiểm tra 13 tài khoản trước khi đánh dấu `DONE`.
-  - Bằng chứng và hướng xử lý: [UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md](UAT-008_WAREHOUSE_SCOPE_VERIFICATION_2026-07-29.md).
+  - Bằng chứng máy đọc: `scripts/verify_uat008_warehouse_scope.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Chạy lại 01/08/2026: `13/13 PASS`; mọi output tồn chỉ thuộc mapping hiệu lực trong allowlist `CTY/DL02/DL03`, không còn kho phụ.
 
 - [x] **UAT-009 — Chuẩn hóa dữ liệu mẫu theo tài khoản** · `P0` · `DONE`
   - Chọn khách hàng, sản phẩm, CTBH và tuyến mẫu có dữ liệu thật cho mỗi vùng/vai trò.
   - Không thay đổi dữ liệu khách hàng thật nếu chưa được phép.
   - Nghiệm thu: mỗi account có tối thiểu một bộ input chạy được các luồng thuộc quyền.
-  - Đã chuẩn bị bộ input và script read-only kiểm tra khách, sản phẩm, đơn mẫu và kho chính: [UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md](UAT-009_SAMPLE_DATA_VERIFICATION_2026-07-29.md).
+  - Đã chuẩn bị bộ input và script read-only kiểm tra khách, sản phẩm, đơn mẫu và kho chính; kết quả được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Kết quả: `13/13 PASS`; khách đại diện đúng scope, có dữ liệu giao dịch mẫu, 3 sản phẩm mẫu hoạt động và kho chính hiệu lực.
-  - **Cập nhật UATV2 03/08/2026:** đã deploy bộ dữ liệu hiện tại, cô lập bằng tiền tố `UATV2_`, cho đủ 13 tài khoản. Persisted: 28 khách, 91 đơn, 63 hóa đơn, 7 trả hàng, 7 công nợ và 3 sản phẩm trọng tâm; hậu kiểm runtime `13/13 PASS`, mỗi tài khoản thấy đúng 4 khách A/B/C/UNRATED và dữ liệu ngày 03/08. Seed đọc ngưỡng từ rule `APPROVED`, không hard-code và không sửa khách/đơn thật. Báo cáo: [UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md](UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md).
+  - **Cập nhật UATV2 03/08/2026:** đã deploy bộ dữ liệu hiện tại, cô lập bằng tiền tố `UATV2_`, cho đủ 13 tài khoản. Persisted: 28 khách, 91 đơn, 63 hóa đơn, 7 trả hàng, 7 công nợ và 3 sản phẩm trọng tâm; hậu kiểm runtime `13/13 PASS`, mỗi tài khoản thấy đúng 4 khách A/B/C/UNRATED và dữ liệu ngày 03/08. Seed đọc ngưỡng từ rule `APPROVED`, không hard-code và không sửa khách/đơn thật. Chi tiết ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - **[Quét toàn diện 31/07/2026] Gọi thật 27 API `READ` × 13 tài khoản = 351 lượt.** Kết quả: **23/27 API trả dữ liệu cho đủ 13/13 tài khoản.**
 
     Dữ liệu nền đã đủ chuẩn:
@@ -181,7 +182,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Xác định `AsOfDate`, múi giờ và quy tắc lấy ngày hệ thống cho dashboard/API.
   - Nghiệm thu: dữ liệu không tính vượt ngày truy vấn; UI hiển thị rõ ngày dữ liệu được chốt.
   - Kết quả: `13/13 PASS`; DB đúng `UTC+07:00`, không có bản ghi tương lai và không tài khoản nào trả dữ liệu sau ngày chốt `28/07/2026`.
-  - Bằng chứng: [UAT-010_DATA_FRESHNESS_VERIFICATION_2026-07-29.md](UAT-010_DATA_FRESHNESS_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat010_data_freshness.js`.
+  - Bằng chứng: script read-only `scripts/verify_uat010_data_freshness.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 ### Nhóm C — Kiểm thử runtime bắt buộc
 
@@ -189,38 +190,38 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Test lịch sử mua, chu kỳ, mùa vụ, khuyến mãi, sản phẩm trọng tâm và tồn kho.
   - Nghiệm thu: kết quả có lý do hợp lệ, không lỗi 500, không gợi ý hàng hết hạn hoặc ngoài kho được cấp.
   - Kết quả: `13/13 PASS`; mỗi tài khoản có 3 gợi ý, có lý do, không lỗi API, không hàng hết hạn và không kho ngoài allowlist.
-  - Bằng chứng: [UAT-011_ORDER_RECOMMENDATION_VERIFICATION_2026-07-29.md](UAT-011_ORDER_RECOMMENDATION_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat011_order_recommendations.js`.
+  - Bằng chứng: `scripts/verify_uat011_order_recommendations.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-012 — Test tuyến và khách giảm mua** · `P0` · `DONE`
   - Test Top 5–8, ngưỡng 45 ngày, ngày báo động và phạm vi khách hàng.
   - Nghiệm thu: kết quả đúng rule đã công bố và không lọt khách ngoài quyền.
   - Kết quả: `13/13 PASS`; Top 5/8 đúng thứ tự, 98 ca từ 45 ngày không mua, 13/13 ca báo động còn 3 ngày và `0` rò rỉ scope.
-  - Bằng chứng: [UAT-012_ROUTE_DECLINE_VERIFICATION_2026-07-29.md](UAT-012_ROUTE_DECLINE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat012_route_and_decline.js`.
+  - Bằng chứng: `scripts/verify_uat012_route_and_decline.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-013 — Test chấm điểm khách hàng** · `P0` · `DONE`
   - Test nhóm A/B/C, risk 45/90 ngày và xu hướng doanh số.
   - Nghiệm thu kỹ thuật: API/UI chạy ổn định và hiển thị đủ trường.
   - Kết quả: `13/13 PASS`; khách đại diện trả đúng, `0` rò rỉ scope, `0` sai nhóm/risk/xu hướng, bộ lọc nhóm và rủi ro hoạt động đúng.
   - Lưu ý: công thức cuối cùng được nghiệm thu tại `CORE-006`.
-  - Bằng chứng: [UAT-013_CUSTOMER_SCORING_VERIFICATION_2026-07-29.md](UAT-013_CUSTOMER_SCORING_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat013_customer_scoring.js`.
+  - Bằng chứng: `scripts/verify_uat013_customer_scoring.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-014 — Test tích lũy và upsell** · `P0` · `DONE`
   - Test mốc đã đạt, mốc tiếp theo, số còn thiếu, phần trăm tiến độ và đề xuất bán thêm.
   - Nghiệm thu: kết quả đối soát đúng với dữ liệu hóa đơn/trả hàng mẫu.
   - Kết quả: `13/13 PASS`; `0` scope leak, `0` sai mốc/còn thiếu/phần trăm, `0` lỗi API, upsell đủ lý do và tồn khả dụng.
-  - Bằng chứng: [UAT-014_LOYALTY_UPSELL_VERIFICATION_2026-07-29.md](UAT-014_LOYALTY_UPSELL_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat014_loyalty_upsell.js`.
+  - Bằng chứng: `scripts/verify_uat014_loyalty_upsell.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-015 — Test tồn kho theo quyền** · `P0` · `DONE`
   - Test tồn vật lý, tồn khả dụng, lô hết hạn và phạm vi kho.
   - Nghiệm thu: số liệu khớp DB tại cùng thời điểm chốt và không lộ kho ngoài quyền.
   - Kết quả sau cập nhật: `13/13 PASS`; `0` dòng ngoài scope, `0` dòng ngoài allowlist, công thức tồn và lô hết hạn đúng.
-  - Bằng chứng: [UAT-015_STOCK_SCOPE_VERIFICATION_2026-07-29.md](UAT-015_STOCK_SCOPE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat015_stock_scope.js`.
+  - Bằng chứng: `scripts/verify_uat015_stock_scope.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-016 — Test tra cứu sản phẩm và triệu chứng** · `P0` · `DONE`
   - Test tên, mã, giá, kiến thức sản phẩm, từ khóa/triệu chứng và disclaimer.
   - Nghiệm thu: không mô tả kết quả như chẩn đoán; trạng thái tồn kho phải được hiển thị trung thực.
   - Kết quả: `13/13 PASS`; `0` lỗi API, `0` thiếu giá/disclaimer/lý do, trạng thái tồn và cảnh báo tham khảo hiển thị đúng.
-  - Bằng chứng: [UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md](UAT-016_PRODUCT_SYMPTOM_LOOKUP_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat016_product_symptom_lookup.js`.
+  - Bằng chứng: `scripts/verify_uat016_product_symptom_lookup.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-017 — Test tạo khách hàng** · `P0` · `PASS`
   - Test validate, trùng số điện thoại/mã khách, phân quyền và kết quả trả về.
@@ -228,14 +229,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: tạo đúng một bản ghi sau xác nhận; có thể truy vết người tạo.
   - Kết quả cập nhật 31/07/2026: luồng dùng `API_KhachHang_Insert_AI` để tạo trực tiếp, không qua Admin duyệt. Đã chặn thông báo thành công giả: cả form trong chat và modal chỉ xác nhận thành công khi server trả `MsgType = 5` kèm `ObjectID`; phản hồi thiếu contract được hiển thị là lỗi và giữ form để thử lại. Tài khoản `demo` không có nhóm khách nên không dùng làm tài khoản nghiệm thu; chờ chạy lại bằng tài khoản sale/manager có scope.
   - Kết quả runtime được business xác nhận: `QLBH013.MED` tạo thành công khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`; truy vấn lại theo cả mã và tên đều trả đúng một bản ghi trong scope của tài khoản. Chấp nhận ca này làm bằng chứng chức năng dù tên không có tiền tố `UAT_`.
-  - Bằng chứng: [UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md](UAT-017_CUSTOMER_CREATE_VERIFICATION_2026-07-29.md), script read-only `scripts/verify_uat017_customer_create.js`.
+  - Bằng chứng: `scripts/verify_uat017_customer_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-018 — Test tạo đơn hàng** · `P0` · `PASS`
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
   - Chỉ sử dụng dữ liệu UAT được phép tạo.
   - Nghiệm thu: tạo đúng một đơn, chi tiết đúng và không tạo trùng khi gửi lại request.
   - Kết quả: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn, giá và retry theo `DocumentID`. Không sửa `API_DonHang_Insert`/`API_HangHoaList` gốc dùng chung. Chưa triển khai hai procedure AI và chưa tạo đơn UAT.
-  - Bằng chứng: [UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md](UAT-018_ORDER_CREATE_VERIFICATION_2026-07-30.md), script read-only `scripts/verify_uat018_order_create.js`.
+  - Bằng chứng: `scripts/verify_uat018_order_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Controlled mutation 01/08/2026: đơn `UAT21-260801145955-9CA2` có đúng 1 header, 1 detail, tổng `95.000`; hai request đồng thời không tạo trùng và payload khác dùng cùng ID bị từ chối.
 
 - [x] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `PASS`
@@ -243,14 +244,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Nghiệm thu: tối thiểu 95% test chính đạt; không có lỗi P0/P1 chưa được chấp nhận.
   - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Live có xác thực `28/31 PASS` (90,32%), chưa đạt ngưỡng 95%; lỗi `upsell` và `product-search` là `502 EMPTY_UPSTREAM_RESPONSE` do n8n trả HTTP 200 nhưng body rỗng, `catalog` là `422 VALIDATION_ERROR` vì workflow yêu cầu từ khóa tối thiểu dù câu hỏi chỉ định loại `khohang`.
   - Đã sửa source workflow: danh mục kho map `@Type=khohang` không cần từ khóa; upsell/product-search trả `NO_DATA` trực tiếp thay vì rơi vào RAG có thể trả rỗng; RAG lỗi luôn trả JSON. Static `159/159 PASS`, workflow guard `4/4 PASS`. Còn phải import/publish workflow và live retest bằng token còn hiệu lực trước khi đánh dấu PASS.
-  - Bằng chứng: [UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md](UAT-019_NATURAL_CONVERSATION_REGRESSION_2026-07-31.md), `reports/uat019-live-2026-07-31.json`, các JSON trong `reports/uat019-*`.
+  - Bằng chứng: `reports/uat019-*`, `reports/uat023-*`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Retest public 01/08/2026 bằng token manager tạm: smoke `8/8`, live `31/31`, p95 live `334 ms`; không còn lỗi 502/422 cũ. Bằng chứng: `reports/uat023-*-2026-08-01.json`.
 
 - [x] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `PASS`
   - Đo riêng API thường và truy vấn AI phức tạp, không chỉ đo cảm nhận trên UI.
   - Nghiệm thu mục tiêu: truy vấn thường dưới 3 giây; truy vấn AI phức tạp dưới 6 giây ở p95 hoặc có ngoại lệ được ghi rõ.
   - Kết quả 31/07/2026: HTTP local chạy 40 request/target, concurrency 4, đạt 100%; web p50/p95 `5/24 ms`, n8n health `1/4 ms`. AI qua gateway có xác thực chạy 40 request, concurrency 4, đạt 100%, p50/p95 `2.058/5.668 ms`; p95 đạt mục tiêu dưới 6 giây. Ghi nhận p99/max `9.785 ms` để theo dõi nhưng không làm trượt tiêu chí p95.
-  - Bằng chứng: [UAT-020_PERFORMANCE_P50_P95_2026-07-31.md](UAT-020_PERFORMANCE_P50_P95_2026-07-31.md), `reports/uat020-infrastructure-load-2026-07-31.json`, `reports/uat020-ai-load-2026-07-31.json`.
+  - Bằng chứng: `reports/uat020-infrastructure-load-2026-07-31.json`, `reports/uat020-ai-load-2026-07-31.json`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `PASS`
   - Test gửi lặp, double-click, retry, context cũ và response nhiều bảng.
@@ -262,17 +263,17 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 - [x] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `DONE_WITH_OPEN_BLOCKERS`
   - Mỗi lỗi phải có account, thời gian, input, kết quả thực tế, kết quả mong đợi, ảnh/log và request ID nếu có.
   - Nghiệm thu: không còn lỗi chỉ mô tả bằng câu “không chạy”.
-  - Báo cáo: [UAT-022_TONG_HOP_LOI_P0_P1_P2_2026-08-01.md](UAT-022_TONG_HOP_LOI_P0_P1_P2_2026-08-01.md). Còn 1 P0 cấu hình workflow và 2 P1 endpoint/secret có bằng chứng, owner action và điều kiện đóng rõ ràng.
+  - Lỗi mở và điều kiện đóng được duy trì tại [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `BLOCKED_RELEASE_REPORT_PUBLISHED`
   - Thay thế bằng chứng cũ bằng kết quả test sau deploy theo manifest.
   - Nghiệm thu: báo cáo ghi rõ tổng pass/fail/blocked, phiên bản, môi trường và ngày chạy.
-  - Báo cáo: [UAT-023_BAO_CAO_RUNTIME_MOI_2026-08-01.md](UAT-023_BAO_CAO_RUNTIME_MOI_2026-08-01.md). Công bố đúng trạng thái `BLOCKED_RELEASE`, không che P0 workflow trùng.
+  - Báo cáo runtime theo ngày đã được thay bằng [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md); trạng thái vẫn không che P0 workflow trùng.
 
 - [x] **UAT-024 — Cập nhật tài liệu khách hàng sau vòng UAT** · `P1` · `DONE`
   - Cập nhật ảnh, câu lệnh mẫu, giới hạn và chức năng đã thay đổi.
 - Nghiệm thu: tài liệu khớp đúng UI và runtime đang được khách sử dụng.
-  - Đã cập nhật [HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md) theo frontend `11.121`, kết quả live mới, mutation có xác nhận/idempotency và giới hạn UAT còn mở.
+  - Đã cập nhật [HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md](HUONG_DAN_SU_DUNG_MEDSTAND_AI_DOANH_NGHIEP.md); baseline kỹ thuật hiện dùng frontend `11.126`.
 
 ## 3. Giai đoạn 1 — Hoàn thiện nghiệp vụ bán hàng cốt lõi
 
@@ -296,14 +297,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Hiển thị khung nhập liệu ngay trong khung chat, điền sẵn các trường suy được từ tài khoản; cho phép sửa trước khi xác nhận.
   - Phụ thuộc: `CORE-001`.
   - Nghiệm thu: câu tự nhiên hợp lệ dẫn đến khung nhập liệu hiện trong chat với các trường suy được đã điền sẵn; người dùng sửa và xem lại trước khi xác nhận; chưa ghi DB.
-  - Kết quả 29/07/2026: Đã hoàn thành 100% renderer `chatbot-widget/js/chatbot-renderer-create-customer.js` (form 7 trường + cascade địa chỉ + validate + xem/sửa preview), đóng gói bundle `11.113` và n8n local 5678. Báo cáo chi tiết: [CORE-002_LUONG_THU_THAP_THONG_TIN_TAO_KHACH_2026-07-29.md](CORE-002_LUONG_THU_THAP_THONG_TIN_TAO_KHACH_2026-07-29.md).
+  - Kết quả 29/07/2026: Đã hoàn thành 100% renderer `chatbot-widget/js/chatbot-renderer-create-customer.js` (form 7 trường + cascade địa chỉ + validate + xem/sửa preview). Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **CORE-003 — Xây bước xác nhận và ghi khách hàng** · `P1` · `DONE`
   - Chỉ gọi endpoint tạo thật sau xác nhận rõ ràng.
   - Bổ sung kiểm tra trùng, idempotency, audit và mã kết quả.
   - Phụ thuộc: `CORE-002`.
   - Nghiệm thu: hủy hoặc chưa xác nhận không ghi dữ liệu; xác nhận chỉ tạo một bản ghi.
-  - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Báo cáo chi tiết: [CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md](CORE-003_LUONG_XAC_NHAN_VA_GHI_KHACH_HANG_2026-07-29.md).
+  - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Cập nhật 01/08/2026: frontend, ApiCode và endpoint đều thống nhất gọi `API_KhachHang_Insert_AI`; procedure ghi trực tiếp `CF_ObjectTbl` theo contract đã được business/UAT chấp nhận. UAT-017 đã PASS; frontend chỉ công nhận thành công khi `MsgType = 5` và có `ObjectID`.
 
 - [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `CONTRACT_LOCKED_CORE005_PATCH_PENDING_DEPLOY`
@@ -319,7 +320,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Bổ sung idempotency và audit.
   - Phụ thuộc: `CORE-004`, `STOCK-001`.
   - Nghiệm thu: trả về mã đơn; gửi lặp không tạo đơn thứ hai.
-  - Kết quả code 03/08/2026: frontend giao SQL sinh mã `D{BranchID}{MM}{YY}/{n}`; hàng tặng dùng `SoLuongTang`; SQL kiểm tra lại giá/CTBH/tồn, chọn và ghi một kho được cấp; gateway xác minh identity từ token; idempotency lưu fingerprint và kết quả cùng transaction với đơn. Báo cáo: [CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md](CORE-005_LUONG_CHAT_LAP_DON_2026-08-03.md).
+  - Kết quả code 03/08/2026: frontend giao SQL sinh mã `D{BranchID}{MM}{YY}/{n}`; hàng tặng dùng `SoLuongTang`; SQL kiểm tra lại giá/CTBH/tồn, chọn và ghi một kho được cấp; gateway xác minh identity từ token; idempotency lưu fingerprint và kết quả cùng transaction với đơn. Trạng thái và gate còn thiếu nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Kiểm chứng rollback trên `medtest`: ca `QLBH013.MED` / `DL011` / `A008`, mua `10` tặng `2`, lần đầu và replay cùng trả `DMB0826/1`, DB trong transaction chỉ có 1 header + 1 detail (`SoLuongTang = 2`, kho `CTY`); payload khác cùng key trả `IDEMPOTENCY_CONFLICT`; toàn bộ đã rollback, không lưu dữ liệu test.
   - Cập nhật runtime 03/08/2026: SQL `medtest` PASS `23/23` gate; mutation rollback trực tiếp trên procedure đã deploy PASS ca mua `10` tặng `2`; gateway local đã restart và smoke PASS frontend `11.124` + order guard mới. Chưa đánh dấu `DONE`: còn mutation qua token/UI thật và UAT concurrency/double-click có bằng chứng request ID.
   - Kiểm tra lại `2026-08-03T05:04:01Z`: `23/23` gate vẫn PASS, gateway local PID `32384` hoạt động; audit sau deploy chưa có create/replay/failure của `API_DonHangChiTiet_Insert_AI`, nên chưa có bằng chứng end-to-end và `ConcurrencyProven = false`.
@@ -335,14 +336,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 - [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `MEDTEST_API_RUNTIME_13_OF_13_VERIFIED_PENDING_UI_TOKEN_EVIDENCE`
   - Phụ thuộc: `CORE-006`.
   - Nghiệm thu: test case chuẩn của business pass 100%; risk vẫn được hiển thị độc lập với tier.
-  - Kết quả 03/08/2026: migration cấu hình + `API_ChamDiemKH_AI` đã deploy; procedure đọc duy nhất version `APPROVED`, không chứa literal ngưỡng `5/25 triệu`, không dùng percentile theo người xem và fail-closed khi config thiếu/sai. Preflight rollback PASS `9/9` case `ABC-01..09`; hậu kiểm read-only PASS no-hardcode `7/7`, scope `3/3`, `UNRATED/UNKNOWN` và UI static `5/5`. Bundle local `11.125` đã build. Báo cáo: [CORE-007_API_CHAM_DIEM_BR_TIER_V2_2026-08-03.md](CORE-007_API_CHAM_DIEM_BR_TIER_V2_2026-08-03.md).
-  - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope. Bằng chứng: [UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md](UATV2_CURRENT_DATA_13_ACCOUNTS_2026-08-03.md).
+  - Kết quả 03/08/2026: migration cấu hình + `API_ChamDiemKH_AI` đã deploy; procedure đọc duy nhất version `APPROVED`, không chứa literal ngưỡng `5/25 triệu`, không dùng percentile theo người xem và fail-closed khi config thiếu/sai. Preflight rollback PASS `9/9` case `ABC-01..09`; hậu kiểm read-only PASS no-hardcode `7/7`, scope `3/3`, `UNRATED/UNKNOWN` và UI static `5/5`. Trạng thái nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
+  - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope. Bằng chứng tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - **Trạng thái cập nhật:** phần SQL, rule business và API runtime đã hoàn tất; task chỉ còn gate bằng chứng end-to-end qua UI/token thật cho bốn bộ lọc `A/B/C/UNRATED`, gồm ảnh và request ID. Vì gate này chưa chạy nên giữ checkbox mở, chưa đánh dấu `DONE`.
 
 - [x] **STOCK-001 — Bắt buộc kiểm tra tồn thật trong tư vấn sản phẩm** · `P1` · `DONE`
   - Thay trạng thái `PHYSICAL_STOCK_NOT_QUERIED` bằng truy vấn tồn theo quyền khi nghiệp vụ yêu cầu hàng còn tồn.
   - Nghiệm thu: kết quả ghi rõ kho, thời điểm cập nhật và tồn khả dụng; không gợi ý hàng không bán được.
-  - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Báo cáo: [STOCK-001_TON_KHA_DUNG_THEO_QUYEN_2026-08-03.md](STOCK-001_TON_KHA_DUNG_THEO_QUYEN_2026-08-03.md).
+  - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS. Token UAT PASS ba gate: sản phẩm bán được `req-11760-msd0saxz`, chặn hàng `RESERVED_OUT` `req-11763-msd0semv`, tìm theo triệu chứng `req-11766-msd0sgq1` trả 8 dòng với kho/thời điểm/tồn khả dụng đầy đủ. Lỗi alias `@Keyword`/`@timkiem` phát hiện trong UAT đã sửa tại SQL theo contract tương thích ngược; deploy lại `12/12` và gate `13/13` tài khoản PASS.
 
 - [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `TODO`
