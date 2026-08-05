@@ -161,8 +161,22 @@ WHERE RuleCode = 'BR-TIER-005'
     }
 
     const unrated = await executeTier(transaction, 'NAMDINHB.MED', '', 'UNRATED');
-    if (!unrated || unrated.Nhom !== 'UNRATED' || unrated.RiskLevel !== 'UNKNOWN') {
+    if (!unrated
+      || unrated.Nhom !== 'UNRATED'
+      || unrated.RiskLevel !== 'UNKNOWN'
+      || unrated.DiemTongHop !== null
+      || String(unrated.XuHuong || '').includes('NEW_CUSTOMER')) {
       throw new Error(`UNRATED runtime case failed: ${JSON.stringify(unrated)}`);
+    }
+
+    const detailByName = await executeTier(transaction, 'QLBH013.MED', 'Quầy thuốc Thanh Hải', '');
+    if (!detailByName || detailByName.ObjectID !== 'TBA112' || Number(detailByName.TotalRows) !== 1) {
+      throw new Error(`Customer-name detail failed: ${JSON.stringify(detailByName)}`);
+    }
+
+    const unknownCustomer = await executeTier(transaction, 'QLBH013.MED', 'CORE007_KHONG_TON_TAI', '');
+    if (!unknownCustomer || unknownCustomer.Code !== 'NO_DATA' || unknownCustomer.TotalRows !== undefined) {
+      throw new Error(`Customer-name fail-closed failed: ${JSON.stringify(unknownCustomer)}`);
     }
 
     const procedureDefinition = (await new sql.Request(transaction).query(`
@@ -187,7 +201,18 @@ SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.API_ChamDiemKH_AI')) AS Definition;`)).
         ObjectID: unrated.ObjectID,
         Tier: unrated.Nhom,
         RiskLevel: unrated.RiskLevel,
+        CompositeScore: unrated.DiemTongHop,
+        Trend: unrated.XuHuong,
         RuleVersion: unrated.RuleVersion,
+      },
+      CustomerDetailCase: {
+        Query: 'Quầy thuốc Thanh Hải',
+        ObjectID: detailByName.ObjectID,
+        TotalRows: detailByName.TotalRows,
+      },
+      CustomerNotFoundCase: {
+        Code: unknownCustomer.Code,
+        Message: unknownCustomer.Msg,
       },
     }, null, 2));
   } finally {

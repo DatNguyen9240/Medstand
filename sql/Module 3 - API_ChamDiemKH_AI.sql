@@ -281,52 +281,80 @@ BEGIN
     BEGIN
         DECLARE @ResolvedID VARCHAR(50) = '';
         DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang);
+        DECLARE @MatchCount INT = 0;
 
-        SELECT TOP (1) @ResolvedID = O.ObjectID
+        SELECT
+            @MatchCount = COUNT(DISTINCT O.ObjectID),
+            @ResolvedID = MIN(O.ObjectID)
         FROM dbo.CF_ObjectTbl O
         JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
-        WHERE O.ObjectID LIKE '%' + @CleanSearch + '%'
-           OR O.ObjectName LIKE '%' + @CleanSearch + '%'
-        ORDER BY
-            CASE WHEN O.ObjectID = @CleanSearch THEN 1
-                 WHEN O.ObjectName = @CleanSearch THEN 2
-                 WHEN O.ObjectName LIKE @CleanSearch + '%' THEN 3
-                 ELSE 4 END,
-            LEN(O.ObjectName), O.ObjectID;
+        WHERE LTRIM(RTRIM(O.ObjectName)) = LTRIM(RTRIM(@MaKhachHang));
 
-        IF @ResolvedID = ''
+        IF @MatchCount = 0
         BEGIN
-            SELECT TOP (1) @ResolvedID = O.ObjectID
+            SELECT
+                @MatchCount = COUNT(DISTINCT O.ObjectID),
+                @ResolvedID = MIN(O.ObjectID)
             FROM dbo.CF_ObjectTbl O
             JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
-            WHERE dbo.ufn_clean_customer_name(O.ObjectName) LIKE '%' + @CleanSearch + '%'
-               OR O.ObjectID LIKE '%' + @CleanSearch + '%'
-            ORDER BY
-                CASE WHEN O.ObjectID = @CleanSearch THEN 1
-                     WHEN dbo.ufn_clean_customer_name(O.ObjectName) = @CleanSearch THEN 2
-                     ELSE 3 END,
-                LEN(O.ObjectName), O.ObjectID;
+            WHERE dbo.ufn_clean_customer_name(O.ObjectName) = @CleanSearch;
         END;
 
-        IF @ResolvedID <> '' SET @MaKhachHang = @ResolvedID;
+        IF @MatchCount = 0
+        BEGIN
+            SELECT
+                @MatchCount = COUNT(DISTINCT O.ObjectID),
+                @ResolvedID = MIN(O.ObjectID)
+            FROM dbo.CF_ObjectTbl O
+            JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
+            WHERE O.ObjectID LIKE '%' + @CleanSearch + '%'
+               OR O.ObjectName LIKE '%' + @MaKhachHang + '%'
+               OR dbo.ufn_clean_customer_name(O.ObjectName) LIKE '%' + @CleanSearch + '%';
+        END;
+
+        IF @MatchCount > 1
+        BEGIN
+            SELECT N'Tìm thấy nhiều khách hàng phù hợp. Vui lòng chọn đúng mã khách hàng.' AS Msg,
+                   1 AS MsgType, 'CUSTOMER_AMBIGUOUS' AS Code;
+            DROP TABLE #RecognizedStatus;
+            DROP TABLE #SalesStatus;
+            DROP TABLE #AllowedObjects;
+            RETURN;
+        END;
+
+        IF @MatchCount = 0 OR @ResolvedID = ''
+        BEGIN
+            SELECT N'Không tìm thấy khách hàng phù hợp trong phạm vi được phân quyền.' AS Msg,
+                   0 AS MsgType, 'NO_DATA' AS Code;
+            DROP TABLE #RecognizedStatus;
+            DROP TABLE #SalesStatus;
+            DROP TABLE #AllowedObjects;
+            RETURN;
+        END;
+
+        SET @MaKhachHang = @ResolvedID;
     END;
 
     CREATE TABLE #VisibleObjects (ObjectID VARCHAR(50) NOT NULL PRIMARY KEY);
     INSERT INTO #VisibleObjects (ObjectID)
     SELECT AO.ObjectID
     FROM #AllowedObjects AO
-    WHERE (@EmployeeID = '' AND @BranchID = '')
-       OR EXISTS
-       (
-           SELECT 1
-           FROM dbo.AR_OrderAndReturnView V
-           JOIN #SalesStatus SS ON SS.StatusID = V.StatusID
-           WHERE V.ObjectID = AO.ObjectID
-             AND V.DocumentDate >= @RevenueStart
-             AND V.DocumentDate < @EndExclusive
-             AND (@EmployeeID = '' OR V.EmployeeID = @EmployeeID)
-             AND (@BranchID = '' OR V.BranchID = @BranchID)
-       );
+    WHERE (@MaKhachHang = '' OR AO.ObjectID = @MaKhachHang)
+      AND
+      (
+          (@EmployeeID = '' AND @BranchID = '')
+          OR EXISTS
+          (
+              SELECT 1
+              FROM dbo.AR_OrderAndReturnView V
+              JOIN #SalesStatus SS ON SS.StatusID = V.StatusID
+              WHERE V.ObjectID = AO.ObjectID
+                AND V.DocumentDate >= @RevenueStart
+                AND V.DocumentDate < @EndExclusive
+                AND (@EmployeeID = '' OR V.EmployeeID = @EmployeeID)
+                AND (@BranchID = '' OR V.BranchID = @BranchID)
+          )
+      );
 
     ;WITH RecognizedTransactions AS
     (
@@ -337,6 +365,7 @@ BEGIN
         JOIN #RecognizedStatus RS ON RS.StatusID = V.StatusID
         WHERE V.DocumentDate >= @RevenueStart
           AND V.DocumentDate < @EndExclusive
+          AND EXISTS (SELECT 1 FROM #VisibleObjects VO WHERE VO.ObjectID = V.ObjectID)
     )
     SELECT
         KH.ObjectID,
@@ -385,7 +414,11 @@ BEGIN
 
     SELECT
         S.*,
-        CASE WHEN S.F_Score < S.M_Score THEN S.F_Score ELSE S.M_Score END AS TotalScore,
+        CASE
+            WHEN S.InvoiceCount_12M = 0 THEN NULL
+            WHEN S.F_Score < S.M_Score THEN S.F_Score
+            ELSE S.M_Score
+        END AS TotalScore,
         CASE
             WHEN S.InvoiceCount_12M = 0 THEN @NoHistorySegment
             WHEN S.Monetary_12M >= @TierAMinNetRevenue AND S.Frequency_6M >= @TierAMinFrequency THEN 'A'
@@ -434,7 +467,7 @@ BEGIN
             S.LanMuaCuoi,
             S.Recency_Days AS SoNgayKhongMua,
             CASE
-                WHEN S.InvoiceCount_12M = 0 THEN N'NEW_CUSTOMER: chưa đủ dữ liệu trong kỳ'
+                WHEN S.InvoiceCount_12M = 0 THEN N'Khách mới — chưa đủ dữ liệu trong kỳ'
                 WHEN S.DoanhSo3ThangTruoc = 0 THEN N'Khách mới hoặc chưa đủ chu kỳ'
                 WHEN S.DoanhSo3ThangGan > S.DoanhSo3ThangTruoc * @GrowthTrendRatio THEN N'Tăng trưởng'
                 WHEN S.DoanhSo3ThangGan < S.DoanhSo3ThangTruoc * @DeclineTrendRatio THEN N'Sụt giảm'

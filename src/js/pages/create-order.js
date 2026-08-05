@@ -607,6 +607,9 @@ $('#btnSubmitOrder').on('click', function () {
       return;
     }
     submitSucceeded = true;
+    if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.markCreated === 'function') {
+      window.MedstandOrderDraft.markCreated(responseDocumentId);
+    }
     Alert.success((msg || 'Tạo đơn hàng thành công!') + ' Mã đơn: ' + responseDocumentId);
     resetForm();
   }).catch(function (err) {

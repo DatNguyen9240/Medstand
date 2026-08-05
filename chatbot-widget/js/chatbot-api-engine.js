@@ -3524,20 +3524,31 @@
         var pre = pendingUpdate || {};
         var preParams = pre.params || {};
         var preCustomer = preParams['@MaKhachHang'] || preParams['@ObjectID'] || '';
+        var customerReady = Promise.resolve(selectedCustomer);
         if (pre.message || preCustomer) errorEl.textContent = '';
         if (preCustomer) {
             custInput.value = preCustomer;
-            loadCustomers().then(function (rows) {
+            customerReady = loadCustomers().then(function (rows) {
                 var key = fold(preCustomer);
                 var c = rows.find(function (x) { return fold(x.ObjectID) === key; })
                     || rows.find(function (x) { return fold(customerLabel(x)).indexOf(key) > -1; });
-                if (c) { custInput.value = customerLabel(c); renderMapped(c); }
-                else errorEl.textContent = 'Không tìm thấy khách hàng "' + preCustomer + '". Vui lòng chọn lại.';
+                if (c) {
+                    custInput.value = customerLabel(c);
+                    renderMapped(c);
+                    return c;
+                }
+                errorEl.textContent = 'Không tìm thấy khách hàng "' + preCustomer + '". Vui lòng chọn lại.';
+                return null;
             });
         }
         if (Array.isArray(pre.items) && pre.items.length) {
             itemsEl.innerHTML = '';
-            loadProducts().then(function (prods) {
+            // Chờ xác minh khách hàng xong rồi mới tải catalog giá/tồn theo
+            // khách. Chạy song song ở đây khiến selectedCustomer còn rỗng và
+            // mọi sản phẩm điền sẵn đều bị đánh dấu chưa xác minh.
+            customerReady.then(function (customer) {
+                return customer ? loadProducts() : [];
+            }).then(function (prods) {
                 pre.items.forEach(function (it) {
                     var key = fold(it.keyword || it.ItemID || it.ItemName || '');
                     var p = prods.find(function (x) { return fold(x.ItemID) === key; })
@@ -3611,6 +3622,9 @@
                 '@Description': panel.querySelector('#ae-order-memo').value.trim(),
                 '@ItemList': JSON.stringify(items)
             };
+            if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.markHandedOff === 'function') {
+                window.MedstandOrderDraft.markHandedOff();
+            }
             _closeFull(true);
             if (_cbMsg) {
                 _cbMsg('ai', 'Đã dựng đơn cho ' + (selectedCustomer.ObjectName || selectedCustomer.ObjectID)

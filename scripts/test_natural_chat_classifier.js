@@ -55,6 +55,9 @@ const cases = [
   ['chi tiết hóa đơn HD123', 'BUSINESS', 'INVOICE_DETAIL', 'EXECUTE'],
   ['doanh số tháng này', 'BUSINESS', 'SALES_REVENUE', 'EXECUTE'],
   ['cho tôi danh sách khách thuộc tuyến của tôi', 'BUSINESS', 'SALES_ROUTE', 'EXECUTE'],
+  ['chấm điểm khách hàng', 'BUSINESS', 'CUSTOMER_SCORING', 'EXECUTE'],
+  ['chấm điểm khách hàng NDB001', 'BUSINESS', 'CUSTOMER_SCORING', 'EXECUTE'],
+  ['chấm điểm của Quầy thuốc Thanh Hải', 'BUSINESS', 'CUSTOMER_SCORING', 'EXECUTE'],
 
   ['xem công nợ', 'BUSINESS', 'CUSTOMER_DEBT_DETAIL', 'ASK_FIELD'],
   ['kiểm tra tồn kho', 'BUSINESS', 'INVENTORY_LIST', 'ASK_FIELD'],
@@ -109,6 +112,18 @@ assert.strictEqual(classifyNaturalMessage('ý là tôi hỏi tôi là ai').respo
 const debt = classifyNaturalMessage('xem công nợ AG0031');
 assert.strictEqual(debt.entities.customerId, 'AG0031');
 assert.ok(debt.normalizedText.includes('AG0031'), 'ERP code must remain unchanged');
+
+const scoringList = classifyNaturalMessage('chấm điểm khách hàng');
+assert.strictEqual(scoringList.apiCode, '@cham_diem_kh');
+assert.deepStrictEqual(scoringList.entities, {});
+
+const scoringByCode = classifyNaturalMessage('chấm điểm khách hàng NDB001');
+assert.strictEqual(scoringByCode.apiCode, '@cham_diem_kh');
+assert.strictEqual(scoringByCode.entities.customerId, 'NDB001');
+
+const scoringByName = classifyNaturalMessage('chấm điểm của Quầy thuốc Thanh Hải');
+assert.strictEqual(scoringByName.apiCode, '@cham_diem_kh');
+assert.strictEqual(scoringByName.entities.customerId, 'Quầy thuốc Thanh Hải');
 
 const explicitSalesRange = classifyNaturalMessage(
   'Doanh số từ 09/07/2026 đến 20/07/2026 của tôi là bao nhiêu?',

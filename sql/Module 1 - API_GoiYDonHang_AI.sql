@@ -43,6 +43,7 @@ BEGIN
     IF OBJECT_ID('tempdb..#AllowedStores') IS NOT NULL DROP TABLE #AllowedStores;
     IF OBJECT_ID('tempdb..#StockByItem') IS NOT NULL DROP TABLE #StockByItem;
     IF OBJECT_ID('tempdb..#TopChiNhanh') IS NOT NULL DROP TABLE #TopChiNhanh;
+    IF OBJECT_ID('tempdb..#PurchaseEvent') IS NOT NULL DROP TABLE #PurchaseEvent;
     IF OBJECT_ID('tempdb..#LichSu') IS NOT NULL DROP TABLE #LichSu;
     IF OBJECT_ID('tempdb..#ChuKy') IS NOT NULL DROP TABLE #ChuKy;
     IF OBJECT_ID('tempdb..#MuaVu') IS NOT NULL DROP TABLE #MuaVu;
@@ -74,6 +75,69 @@ BEGIN
                1 AS MsgType;
         RETURN;
     END
+
+    -- CORE-008: chỉ dùng đúng một phiên bản rule APPROVED đang có hiệu lực.
+    DECLARE @RecommendationRuleCode VARCHAR(80) = 'BR-RECOMMENDATION-008';
+    DECLARE @RecommendationRuleVersion VARCHAR(30) = NULL;
+    DECLARE @RuleAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @ProductHistoryMonths INT = NULL;
+    DECLARE @MinimumPurchaseEventCount INT = NULL;
+    DECLARE @ReorderWarningDays INT = NULL;
+    DECLARE @SalesStatusIDs NVARCHAR(100) = NULL;
+    DECLARE @ReturnAdjustmentMode NVARCHAR(300) = NULL;
+    DECLARE @ActiveRuleVersionCount INT = 0;
+
+    ;WITH ActiveVersions AS
+    (
+        SELECT C.RuleVersion
+        FROM dbo.AI_BusinessRuleConfigTbl C WITH (NOLOCK)
+        WHERE C.RuleCode = @RecommendationRuleCode
+          AND C.Status = 'APPROVED'
+          AND C.EffectiveFrom <= @RuleAsOfUtc
+          AND (C.EffectiveTo IS NULL OR C.EffectiveTo > @RuleAsOfUtc)
+        GROUP BY C.RuleVersion
+    )
+    SELECT @ActiveRuleVersionCount = COUNT(*),
+           @RecommendationRuleVersion = MAX(RuleVersion)
+    FROM ActiveVersions;
+
+    IF @ActiveRuleVersionCount <> 1
+    BEGIN
+        SELECT N'Cấu hình gợi ý bán hàng đang thiếu hoặc có nhiều phiên bản cùng hiệu lực.' AS Msg,
+               1 AS MsgType,
+               N'SYSTEM_ERROR' AS Severity,
+               CASE WHEN @ActiveRuleVersionCount = 0 THEN N'RULE_CONFIGURATION_MISSING' ELSE N'RULE_CONFIGURATION_CONFLICT' END AS Code;
+        RETURN;
+    END
+
+    SELECT
+        @ProductHistoryMonths = MAX(CASE WHEN ConfigKey = 'ProductHistoryMonths' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @MinimumPurchaseEventCount = MAX(CASE WHEN ConfigKey = 'MinimumPurchaseEventCount' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ReorderWarningDays = MAX(CASE WHEN ConfigKey = 'ReorderWarningDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @SalesStatusIDs = MAX(CASE WHEN ConfigKey = 'SalesStatusIDs' THEN ConfigValue END),
+        @ReturnAdjustmentMode = MAX(CASE WHEN ConfigKey = 'ReturnAdjustmentMode' THEN ConfigValue END)
+    FROM dbo.AI_BusinessRuleConfigTbl WITH (NOLOCK)
+    WHERE RuleCode = @RecommendationRuleCode
+      AND RuleVersion = @RecommendationRuleVersion
+      AND Status = 'APPROVED'
+      AND EffectiveFrom <= @RuleAsOfUtc
+      AND (EffectiveTo IS NULL OR EffectiveTo > @RuleAsOfUtc);
+
+    IF COALESCE(@ProductHistoryMonths, 0) <= 0
+       OR COALESCE(@MinimumPurchaseEventCount, 0) < 2
+       OR COALESCE(@ReorderWarningDays, -1) < 0
+       OR NULLIF(@SalesStatusIDs, '') IS NULL
+       OR NULLIF(@ReturnAdjustmentMode, '') IS NULL
+    BEGIN
+        SELECT N'Cấu hình gợi ý bán hàng không đầy đủ hoặc không hợp lệ.' AS Msg,
+               1 AS MsgType,
+               N'SYSTEM_ERROR' AS Severity,
+               N'RULE_CONFIGURATION_INVALID' AS Code;
+        RETURN;
+    END
+
+    DECLARE @RecommendationAsOfDate DATE = CAST(GETDATE() AS DATE);
+    DECLARE @RecommendationDataFrom DATE = DATEADD(MONTH, -@ProductHistoryMonths, @RecommendationAsOfDate);
 
     -- ═══ 1. Lấy quyền user thực tế & Fallback ═══
     DECLARE @SYS_BranchID    VARCHAR(50) = ISNULL(@SYSBranchID, '')
@@ -275,102 +339,40 @@ BEGIN
     ) RankedStock
     WHERE StockRank = 1;
 
-    -- ═══════════════════════════════════════════════════
-    -- KHÔNG TRUYỀN khách hàng (khachhang) → Top sản phẩm bán chạy nhất
-    -- ═══════════════════════════════════════════════════
-    IF @MaKhachHang = ''
-    BEGIN
-        CREATE TABLE #TopChiNhanh
-        (
-            [Mã SP]     VARCHAR(50)   NOT NULL,
-            [Sản phẩm]  NVARCHAR(500) NULL,
-            [Số HĐ]     INT           NOT NULL,
-            [Doanh số]  BIGINT        NULL,
-            [Gợi ý]     NVARCHAR(500) NULL
-        );
-
-        INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
-        SELECT TOP (@TopN)
-            D.ItemID                                     AS [Mã SP],
-            CF.ItemName                                  AS [Sản phẩm],
-            COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
-            CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
-            N'Bán chạy trong chi nhánh'                  AS [Gợi ý]
-        FROM AR_InvoiceTbl I WITH (NOLOCK)
-        JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
-        JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
-        WHERE I.DocumentDate >= DATEADD(DAY, -30, GETDATE())
-          AND I.StatusID IN (3, 6, 7, 8)
-          AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
-          AND ISNULL(CF.ItemGroupID, '') = 'HH1'
-        GROUP BY D.ItemID, CF.ItemName;
-
-        -- Fallback if empty in UAT (take all time)
-        IF NOT EXISTS (SELECT 1 FROM #TopChiNhanh)
-        BEGIN
-            INSERT INTO #TopChiNhanh ([Mã SP], [Sản phẩm], [Số HĐ], [Doanh số], [Gợi ý])
-            SELECT TOP (@TopN)
-                D.ItemID                                     AS [Mã SP],
-                CF.ItemName                                  AS [Sản phẩm],
-                COUNT(DISTINCT I.DocumentID)                 AS [Số HĐ],
-                CAST(SUM(D.TotalAmount) AS BIGINT)           AS [Doanh số],
-                N'Bán chạy trong chi nhánh (Toàn thời gian)' AS [Gợi ý]
-            FROM AR_InvoiceTbl I WITH (NOLOCK)
-            JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-            JOIN CF_ItemTbl CF WITH (NOLOCK)         ON CF.ItemID    = D.ItemID
-            JOIN #AllowedObjects AO                  ON AO.ObjectID  = I.ObjectID
-            WHERE I.StatusID IN (3, 6, 7, 8)
-              AND (@SYS_BranchID  = '' OR I.BranchID  = @SYS_BranchID)
-              AND ISNULL(CF.ItemGroupID, '') = 'HH1'
-            GROUP BY D.ItemID, CF.ItemName;
-        END
-
-        SELECT * FROM #TopChiNhanh ORDER BY [Doanh số] DESC;
-        DROP TABLE #TopChiNhanh;
-        DROP TABLE #AllowedObjects;
-        DROP TABLE #AllowedStores;
-        DROP TABLE #StockByItem;
-        RETURN;
-    END
-
-    -- ═══════════════════════════════════════════════════
-    -- CÓ ObjectID → Gợi ý cá nhân hóa (Personalized)
-    -- ═══════════════════════════════════════════════════
-
-    -- TIÊU CHÍ 1: Lịch sử mua hàng (6 tháng gần nhất)
+    -- CORE-008: một purchase event sản phẩm = khách + sản phẩm + ngày mua.
+    -- Nhiều hóa đơn/dòng cùng ngày chỉ là một event; phiếu trả không tạo event mới.
     SELECT
         D.ItemID,
-        COUNT(DISTINCT I.DocumentID)                    AS SoLanMua,
-        SUM(D.TotalAmount)                              AS TongTien,
-        MAX(I.DocumentDate)                             AS LanMuaCuoi,
-        MIN(I.DocumentDate)                             AS LanMuaDau,
-        DATEDIFF(DAY, MAX(I.DocumentDate), GETDATE())   AS SoNgayTuLanCuoi
-    INTO #LichSu
-    FROM AR_InvoiceTbl I WITH (NOLOCK)
-    JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
+        CAST(I.DocumentDate AS DATE) AS PurchaseDate,
+        COUNT(DISTINCT I.DocumentID) AS InvoiceCount,
+        SUM(COALESCE(D.Quantity, 0)) AS PurchasedQuantity,
+        SUM(COALESCE(D.TotalAmount, 0)) AS TotalAmount
+    INTO #PurchaseEvent
+    FROM dbo.AR_InvoiceTbl I WITH (NOLOCK)
+    JOIN dbo.AR_InvoiceDetailTbl D WITH (NOLOCK) ON D.DocumentID = I.DocumentID
     WHERE I.ObjectID = @MaKhachHang
-      AND I.DocumentDate >= DATEADD(MONTH, -6, GETDATE())
-      AND I.StatusID IN (3, 6, 7, 8)
-    GROUP BY D.ItemID;
+      AND I.DocumentDate >= @RecommendationDataFrom
+      AND I.DocumentDate < DATEADD(DAY, 1, @RecommendationAsOfDate)
+      AND EXISTS
+      (
+          SELECT 1
+          FROM STRING_SPLIT(@SalesStatusIDs, ',') S
+          WHERE TRY_CONVERT(INT, LTRIM(RTRIM(S.value))) = I.StatusID
+      )
+    GROUP BY D.ItemID, CAST(I.DocumentDate AS DATE)
+    HAVING SUM(COALESCE(D.Quantity, 0)) > 0;
 
-    -- UAT FALLBACK: Nếu không có lịch sử mua trong 6 tháng, lấy tất cả lịch sử mua
-    IF NOT EXISTS (SELECT 1 FROM #LichSu)
-    BEGIN
-        INSERT INTO #LichSu (ItemID, SoLanMua, TongTien, LanMuaCuoi, LanMuaDau, SoNgayTuLanCuoi)
-        SELECT
-            D.ItemID,
-            COUNT(DISTINCT I.DocumentID)                    AS SoLanMua,
-            SUM(D.TotalAmount)                              AS TongTien,
-            MAX(I.DocumentDate)                             AS LanMuaCuoi,
-            MIN(I.DocumentDate)                             AS LanMuaDau,
-            DATEDIFF(DAY, MAX(I.DocumentDate), GETDATE())   AS SoNgayTuLanCuoi
-        FROM AR_InvoiceTbl I WITH (NOLOCK)
-        JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        WHERE I.ObjectID = @MaKhachHang
-          AND I.StatusID IN (3, 6, 7, 8)
-        GROUP BY D.ItemID;
-    END
+    SELECT
+        P.ItemID,
+        SUM(P.InvoiceCount) AS InvoiceCount,
+        COUNT(*) AS PurchaseEventCount,
+        SUM(P.TotalAmount) AS TongTien,
+        MAX(P.PurchaseDate) AS LanMuaCuoi,
+        MIN(P.PurchaseDate) AS LanMuaDau,
+        DATEDIFF(DAY, MAX(P.PurchaseDate), @RecommendationAsOfDate) AS SoNgayTuLanCuoi
+    INTO #LichSu
+    FROM #PurchaseEvent P
+    GROUP BY P.ItemID;
 
     -- TIÊU CHÍ 2: Chu kỳ mua hàng trung bình (Average Purchase Cycle)
     IF NOT EXISTS (SELECT 1 FROM #LichSu)
@@ -391,6 +393,7 @@ BEGIN
         DROP TABLE #AllowedObjects;
         DROP TABLE #AllowedStores;
         DROP TABLE #StockByItem;
+        DROP TABLE #PurchaseEvent;
         DROP TABLE #LichSu;
         RETURN;
     END
@@ -398,11 +401,13 @@ BEGIN
     SELECT
         L.ItemID,
         CASE
-            -- BR-SALES-006: chỉ coi chu kỳ cá nhân là đủ tin cậy từ 3 hóa đơn hợp lệ.
-            WHEN L.SoLanMua >= 3
-            THEN DATEDIFF(DAY, L.LanMuaDau, L.LanMuaCuoi) / (L.SoLanMua - 1)
-            ELSE CAST(NULL AS INT) -- Không đoán chu kỳ khi chưa đủ 3 hóa đơn hợp lệ.
-        END AS ChuKyTrungBinh
+            WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount
+            THEN CONVERT(INT, ROUND(
+                     DATEDIFF(DAY, L.LanMuaDau, L.LanMuaCuoi) * 1.0
+                     / NULLIF(L.PurchaseEventCount - 1, 0), 0))
+            ELSE CAST(NULL AS INT)
+        END AS ChuKyTrungBinh,
+        CASE WHEN L.PurchaseEventCount > 0 THEN L.PurchaseEventCount - 1 ELSE 0 END AS CycleObservationCount
     INTO #ChuKy
     FROM #LichSu L;
 
@@ -410,8 +415,10 @@ BEGIN
     SELECT D.ItemID INTO #MuaVu
     FROM AR_InvoiceTbl I WITH (NOLOCK)
     JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-    WHERE I.ObjectID = @MaKhachHang AND MONTH(I.DocumentDate) = MONTH(GETDATE()) AND YEAR(I.DocumentDate) = YEAR(GETDATE()) - 1
-      AND I.StatusID IN (3, 6, 7, 8)
+    WHERE I.ObjectID = @MaKhachHang
+      AND MONTH(I.DocumentDate) = MONTH(@RecommendationAsOfDate)
+      AND YEAR(I.DocumentDate) = YEAR(@RecommendationAsOfDate) - 1
+      AND EXISTS (SELECT 1 FROM STRING_SPLIT(@SalesStatusIDs, ',') S WHERE TRY_CONVERT(INT, LTRIM(RTRIM(S.value))) = I.StatusID)
     GROUP BY D.ItemID;
 
     -- TIÊU CHÍ 4: Khuyến mãi đang chạy
@@ -433,7 +440,9 @@ BEGIN
     SELECT DISTINCT ItemID INTO #DaMuaHomNay FROM (
         SELECT D.ItemID
         FROM AR_InvoiceTbl I WITH (NOLOCK) JOIN AR_InvoiceDetailTbl D WITH (NOLOCK) ON I.DocumentID = D.DocumentID
-        WHERE I.ObjectID = @MaKhachHang AND CAST(I.DocumentDate AS DATE) = CAST(GETDATE() AS DATE) AND I.StatusID IN (3, 6, 7, 8)
+        WHERE I.ObjectID = @MaKhachHang
+          AND CAST(I.DocumentDate AS DATE) = @RecommendationAsOfDate
+          AND EXISTS (SELECT 1 FROM STRING_SPLIT(@SalesStatusIDs, ',') S WHERE TRY_CONVERT(INT, LTRIM(RTRIM(S.value))) = I.StatusID)
     ) T;
 
     -- KẾT QUẢ CUỐI CÙNG: Tập trung vào "Thời điểm vàng"
@@ -442,13 +451,26 @@ BEGIN
         KH.ObjectName                                  AS [TenKhachHang],
         L.ItemID                                        AS [MaSanPham],
         CF.ItemName                                     AS [TenSanPham],
-        L.SoLanMua                                      AS [SoLanMua],
+        L.PurchaseEventCount                            AS [SoLanMua],
+        L.InvoiceCount                                  AS [InvoiceCount],
+        L.PurchaseEventCount                            AS [PurchaseEventCount],
+        CK.CycleObservationCount                        AS [CycleObservationCount],
         CAST(L.TongTien AS BIGINT)                      AS [TongDaMua],
-        FORMAT(L.LanMuaCuoi, 'MM/dd')                   AS [LanMuaCuoi],
+        CONVERT(DATE, L.LanMuaCuoi)                     AS [LanMuaCuoiDate],
+        CONVERT(VARCHAR(10), L.LanMuaCuoi, 103)         AS [LanMuaCuoi],
         CK.ChuKyTrungBinh                               AS [ChuKyNgay],
-        CASE WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN NULL
-             WHEN (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) < 0 THEN 0
-             ELSE CAST(CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi AS INT) END AS [ConLaiNgay],
+        Predicted.NgayDuKien                            AS [NgayDuKien],
+        Timing.ConLaiNgay                               AS [ConLaiNgay],
+        CASE
+            WHEN Predicted.NgayDuKien IS NULL THEN N'UNKNOWN'
+            WHEN Timing.ConLaiNgay > 0 THEN N'UPCOMING'
+            WHEN Timing.ConLaiNgay = 0 THEN N'DUE'
+            ELSE N'OVERDUE'
+        END                                             AS [CycleStatus],
+        CASE WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount
+             THEN N'SUFFICIENT_HISTORY' ELSE N'INSUFFICIENT_HISTORY' END AS [HistoryStatus],
+        CASE WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount
+             THEN N'PERSONAL_HISTORY' ELSE N'INSUFFICIENT_HISTORY' END AS [CycleComputationMode],
         ST.PhysicalStock                                AS [PhysicalStock],
         ST.ReservedStock                                AS [ReservedStock],
         ST.AvailableStock                               AS [AvailableStock],
@@ -462,20 +484,23 @@ BEGIN
         ST.StockDataSource                              AS [StockDataSource],
         ST.RuleVersion                                  AS [StockRuleVersion],
         CASE 
-            WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Khách mới cần chăm sóc'
-            WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm'
-            WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
-            ELSE N'Ổn định'
+            WHEN Predicted.NgayDuKien IS NULL THEN N'Chưa đủ lịch sử'
+            WHEN Timing.ConLaiNgay < 0 THEN N'Đã quá ngày dự kiến'
+            WHEN Timing.ConLaiNgay = 0 THEN N'Đến ngày dự kiến'
+            WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'Sắp đến ngày mua lại'
+            ELSE N'Chưa đến chu kỳ'
         END                                             AS [TrangThai],
-        CASE WHEN L.SoLanMua >= 3 THEN N'PERSONAL_CYCLE_ELIGIBLE' ELSE N'INSUFFICIENT_HISTORY' END AS [DoTinCay],
-        CASE WHEN L.SoLanMua >= 3 THEN N'PERSONAL_PURCHASE_HISTORY' ELSE N'INSUFFICIENT_HISTORY' END AS [RuleSource],
-        N'BR-SALES-V1-DRAFT'                              AS [RuleVersion],
+        CASE WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount THEN N'PERSONAL_CYCLE_ELIGIBLE' ELSE N'INSUFFICIENT_HISTORY' END AS [DoTinCay],
+        CASE WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount THEN N'CUSTOMER_PRODUCT_PURCHASE_HISTORY' ELSE N'INSUFFICIENT_HISTORY' END AS [RuleSource],
+        @RecommendationRuleCode                         AS [RuleCode],
+        @RecommendationRuleVersion                      AS [RuleVersion],
         CONCAT(
-            CASE 
-                WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'Chưa đủ 3 hóa đơn hợp lệ để ước tính chu kỳ mua lại'
-                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'Cần nhập thêm ' + CAST(L.SoNgayTuLanCuoi - CK.ChuKyTrungBinh AS VARCHAR) + N' ngày'
-                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'Thời điểm vàng'
-                ELSE N'Ổn định'
+            CASE
+                WHEN Predicted.NgayDuKien IS NULL THEN N'Mới có ' + CAST(L.PurchaseEventCount AS VARCHAR) + N' ngày mua; cần tối thiểu ' + CAST(@MinimumPurchaseEventCount AS VARCHAR) + N' ngày mua để ước tính chu kỳ'
+                WHEN Timing.ConLaiNgay < 0 THEN N'Đã quá ngày mua dự kiến ' + CAST(ABS(Timing.ConLaiNgay) AS VARCHAR) + N' ngày'
+                WHEN Timing.ConLaiNgay = 0 THEN N'Hôm nay là ngày dự kiến mua lại'
+                WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'Còn ' + CAST(Timing.ConLaiNgay AS VARCHAR) + N' ngày đến ngày dự kiến mua lại'
+                ELSE N'Chưa đến chu kỳ mua lại dự kiến'
             END,
             CASE WHEN TT.ItemID IS NOT NULL THEN N' | Trọng tâm' ELSE '' END,
             CASE WHEN MV.ItemID IS NOT NULL THEN N' | Mùa vụ' ELSE '' END,
@@ -483,16 +508,64 @@ BEGIN
         )                                               AS [ChiTiet],
         CONCAT(
             CASE
-                WHEN L.SoLanMua < 3 OR CK.ChuKyTrungBinh IS NULL THEN N'NEW_CUSTOMER|INSUFFICIENT_HISTORY'
-                WHEN L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN N'REORDER_OVERDUE'
-                WHEN CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi <= 7 THEN N'REORDER_WINDOW'
+                WHEN Predicted.NgayDuKien IS NULL THEN N'Mới có ' + CAST(L.PurchaseEventCount AS VARCHAR) + N' ngày mua; chưa đủ dữ liệu tính chu kỳ cá nhân.'
+                WHEN Timing.ConLaiNgay < 0 THEN N'Khách đã quá ngày mua dự kiến ' + CAST(ABS(Timing.ConLaiNgay) AS VARCHAR) + N' ngày.'
+                WHEN Timing.ConLaiNgay = 0 THEN N'Hôm nay là ngày khách thường mua lại sản phẩm này.'
+                WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'Khách còn ' + CAST(Timing.ConLaiNgay AS VARCHAR) + N' ngày đến ngày thường mua lại.'
+                ELSE N'Sản phẩm chưa đến chu kỳ mua lại dự kiến.'
+            END,
+            CASE WHEN TT.ItemID IS NOT NULL THEN N' Sản phẩm thuộc chương trình trọng tâm.' ELSE N'' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N' Khách từng mua sản phẩm này cùng kỳ năm trước.' ELSE N'' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N' Có chương trình khuyến mãi đang hiệu lực.' ELSE N'' END
+        )                                               AS [ReasonText],
+        CONCAT(
+            CASE
+                WHEN Predicted.NgayDuKien IS NULL THEN N'INSUFFICIENT_HISTORY'
+                WHEN Timing.ConLaiNgay < 0 THEN N'REORDER_OVERDUE'
+                WHEN Timing.ConLaiNgay = 0 THEN N'REORDER_DUE'
+                WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'REORDER_WINDOW'
                 ELSE N'CYCLE_STABLE'
             END,
             CASE WHEN TT.ItemID IS NOT NULL THEN N'|FOCUS_ITEM' ELSE '' END,
             CASE WHEN MV.ItemID IS NOT NULL THEN N'|SEASONAL' ELSE '' END,
             CASE WHEN KM.ItemID IS NOT NULL THEN N'|ACTIVE_PROMOTION_REFERENCE' ELSE '' END
         )                                               AS [RecommendationReason],
-        N'SIX_MONTH_WITH_ALL_HISTORY_FALLBACK'          AS [DataWindow]
+        CONCAT(
+            CASE
+                WHEN Predicted.NgayDuKien IS NULL THEN N'INSUFFICIENT_HISTORY'
+                WHEN Timing.ConLaiNgay < 0 THEN N'REORDER_OVERDUE'
+                WHEN Timing.ConLaiNgay = 0 THEN N'REORDER_DUE'
+                WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'REORDER_WINDOW'
+                ELSE N'CYCLE_STABLE'
+            END,
+            CASE WHEN TT.ItemID IS NOT NULL THEN N'|FOCUS_ITEM' ELSE '' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N'|SEASONAL' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N'|ACTIVE_PROMOTION_REFERENCE' ELSE '' END
+        )                                               AS [RecommendationReasonCodes],
+        CASE
+            WHEN Predicted.NgayDuKien IS NULL THEN N'INSUFFICIENT_HISTORY'
+            WHEN Timing.ConLaiNgay < 0 THEN N'REORDER_OVERDUE'
+            WHEN Timing.ConLaiNgay = 0 THEN N'REORDER_DUE'
+            WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN N'REORDER_WINDOW'
+            ELSE N'CYCLE_STABLE'
+        END                                             AS [PrimaryReasonCode],
+        CONCAT(
+            N'CUSTOMER_PRODUCT_PURCHASE_HISTORY',
+            CASE WHEN TT.ItemID IS NOT NULL THEN N'|FOCUS_PRODUCT_PROGRAM' ELSE '' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N'|SEASONAL_PURCHASE_HISTORY' ELSE '' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N'|ACTIVE_PROMOTION' ELSE '' END
+        )                                               AS [RuleSourceCodes],
+        CONCAT(
+            N'Lịch sử mua sản phẩm của khách trong ', CAST(@ProductHistoryMonths AS NVARCHAR(10)), N' tháng gần nhất',
+            CASE WHEN TT.ItemID IS NOT NULL THEN N' · Chương trình sản phẩm trọng tâm' ELSE N'' END,
+            CASE WHEN MV.ItemID IS NOT NULL THEN N' · Lịch sử mua cùng kỳ năm trước' ELSE N'' END,
+            CASE WHEN KM.ItemID IS NOT NULL THEN N' · Chương trình khuyến mãi đang hiệu lực' ELSE N'' END
+        )                                               AS [RuleSourceLabel],
+        N'ROLLING_CONFIGURED_MONTHS_NO_FALLBACK'        AS [DataWindow],
+        @RecommendationDataFrom                         AS [DataFrom],
+        @RecommendationAsOfDate                         AS [DataTo],
+        @RuleAsOfUtc                                    AS [CalculatedAt],
+        @ReturnAdjustmentMode                           AS [ReturnAdjustmentMode]
     FROM #LichSu L
     JOIN #ChuKy CK          ON L.ItemID = CK.ItemID
     LEFT JOIN #MuaVu MV     ON L.ItemID = MV.ItemID
@@ -502,6 +575,19 @@ BEGIN
     JOIN #StockByItem ST ON L.ItemID = ST.ItemID
     LEFT JOIN CF_ItemTbl CF WITH (NOLOCK) ON L.ItemID = CF.ItemID
     LEFT JOIN CF_ObjectTbl KH WITH (NOLOCK) ON KH.ObjectID = @MaKhachHang
+    OUTER APPLY
+    (
+        SELECT CASE
+            WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount AND CK.ChuKyTrungBinh IS NOT NULL
+            THEN CONVERT(DATE, DATEADD(DAY, CK.ChuKyTrungBinh, L.LanMuaCuoi))
+            ELSE NULL
+        END AS NgayDuKien
+    ) Predicted
+    OUTER APPLY
+    (
+        SELECT CASE WHEN Predicted.NgayDuKien IS NULL THEN NULL
+                    ELSE DATEDIFF(DAY, @RecommendationAsOfDate, Predicted.NgayDuKien) END AS ConLaiNgay
+    ) Timing
     WHERE ISNULL(CF.ItemGroupID, '') = 'HH1'
       AND CASE WHEN @SYS_BranchID = 'MB' THEN COALESCE(CF.IsDisableMB, 0)
                WHEN @SYS_BranchID = 'MN' THEN COALESCE(CF.IsDisableMN, 0)
@@ -510,12 +596,12 @@ BEGIN
       AND ST.AvailableStock > 0
       AND HN.ItemID IS NULL -- Lọc Real-time: Chưa mua hôm nay
     ORDER BY (CASE WHEN TT.ItemID IS NOT NULL THEN 1 ELSE 0 END) DESC, -- Ưu tiên hàng trọng tâm lên hàng đầu
-             (CASE WHEN L.SoLanMua >= 3 AND CK.ChuKyTrungBinh IS NOT NULL THEN 1 ELSE 0 END) DESC,
-             (CASE WHEN L.SoLanMua >= 3 AND L.SoNgayTuLanCuoi >= CK.ChuKyTrungBinh THEN 1 ELSE 0 END) DESC,
-             (CASE WHEN L.SoLanMua >= 3 AND (CK.ChuKyTrungBinh - L.SoNgayTuLanCuoi) <= 7 THEN 1 ELSE 0 END) DESC,
-             L.SoLanMua DESC;
+             (CASE WHEN L.PurchaseEventCount >= @MinimumPurchaseEventCount AND CK.ChuKyTrungBinh IS NOT NULL THEN 1 ELSE 0 END) DESC,
+             (CASE WHEN Timing.ConLaiNgay <= 0 THEN 1 ELSE 0 END) DESC,
+             (CASE WHEN Timing.ConLaiNgay <= @ReorderWarningDays THEN 1 ELSE 0 END) DESC,
+             L.PurchaseEventCount DESC;
 
-    DROP TABLE #AllowedObjects; DROP TABLE #AllowedStores; DROP TABLE #StockByItem; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
+    DROP TABLE #AllowedObjects; DROP TABLE #AllowedStores; DROP TABLE #StockByItem; DROP TABLE #PurchaseEvent; DROP TABLE #LichSu; DROP TABLE #ChuKy; DROP TABLE #MuaVu; DROP TABLE #KhuyenMai; DROP TABLE #TrongTam; DROP TABLE #DaMuaHomNay;
 END
 GO
 

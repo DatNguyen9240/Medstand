@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-11.126'; // Route all internal business requests through the gateway
+const CACHE_VERSION = 'medstand-11.128'; // Route all internal business requests through the gateway
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [

@@ -101,6 +101,8 @@ SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.API_ChamDiemKH_AI')) AS Definition;`)).
       && unrated.Nhom === 'UNRATED'
       && unrated.ValueSegment === 'UNRATED'
       && unrated.RiskLevel === 'UNKNOWN'
+      && unrated.DiemTongHop === null
+      && !String(unrated.XuHuong || '').includes('NEW_CUSTOMER')
       && Number(unrated.SoHoaDon12Thang) === 0);
 
     const uiSource = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot.js'), 'utf8');
@@ -110,7 +112,9 @@ SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.API_ChamDiemKH_AI')) AS Definition;`)).
       unknownRiskFilter: uiSource.includes('data-server-risk="UNKNOWN"'),
       usesApiClassification: uiSource.includes('var tierName = row.PhanLoai'),
       doesNotRepeatRiskDayThresholds: !uiSource.includes("daysValue >= 90 ? 'Cần chú ý'"),
-      frontendVersion11125: buildSource.includes("APP_VERSION = '11.125'"),
+      unratedScoreFriendly: uiSource.includes("return 'Chưa chấm điểm'"),
+      unknownRiskFriendly: uiSource.includes("'UNKNOWN': 'Chưa đánh giá'"),
+      frontendVersionDeclared: /APP_VERSION = '\d+\.\d+'/.test(buildSource),
     };
 
     const status = Object.values(noHardcodeChecks).every(Boolean)

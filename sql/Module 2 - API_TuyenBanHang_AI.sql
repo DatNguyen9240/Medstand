@@ -19,6 +19,7 @@ BEGIN
 
     -- ═══ GUARD: dọn temp table còn sót lại từ request lỗi trước trên cùng connection ═══
     IF OBJECT_ID('tempdb..#AllowedObjects') IS NOT NULL DROP TABLE #AllowedObjects;
+    IF OBJECT_ID('tempdb..#PurchaseEvent') IS NOT NULL DROP TABLE #PurchaseEvent;
     IF OBJECT_ID('tempdb..#LanMuaCuoi') IS NOT NULL DROP TABLE #LanMuaCuoi;
     IF OBJECT_ID('tempdb..#ChuKy') IS NOT NULL DROP TABLE #ChuKy;
     IF OBJECT_ID('tempdb..#Logic') IS NOT NULL DROP TABLE #Logic;
@@ -33,10 +34,101 @@ BEGIN
         RETURN
     END
 
+    -- CORE-008: rule gợi ý phải là một phiên bản APPROVED đang có hiệu lực.
+    DECLARE @RecommendationRuleCode VARCHAR(80) = 'BR-RECOMMENDATION-008';
+    DECLARE @RecommendationRuleVersion VARCHAR(30) = NULL;
+    DECLARE @RuleAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    DECLARE @RouteHistoryMonths INT = NULL;
+    DECLARE @MinimumPurchaseEventCount INT = NULL;
+    DECLARE @RoutePolicyDefaultCycleDays INT = NULL;
+    DECLARE @RouteRecentInactiveDays INT = NULL;
+    DECLARE @RouteMediumPriorityDays INT = NULL;
+    DECLARE @ScoreOverdue INT = NULL;
+    DECLARE @ScoreAlertWindow INT = NULL;
+    DECLARE @ScoreMediumWindow INT = NULL;
+    DECLARE @ScoreInactive INT = NULL;
+    DECLARE @ScoreRecentInactive INT = NULL;
+    DECLARE @ScoreScheduledRoute INT = NULL;
+    DECLARE @SalesStatusIDs NVARCHAR(100) = NULL;
+    DECLARE @ReturnAdjustmentMode NVARCHAR(300) = NULL;
+    DECLARE @ActiveRuleVersionCount INT = 0;
+
+    ;WITH ActiveVersions AS
+    (
+        SELECT C.RuleVersion
+        FROM dbo.AI_BusinessRuleConfigTbl C WITH (NOLOCK)
+        WHERE C.RuleCode = @RecommendationRuleCode
+          AND C.Status = 'APPROVED'
+          AND C.EffectiveFrom <= @RuleAsOfUtc
+          AND (C.EffectiveTo IS NULL OR C.EffectiveTo > @RuleAsOfUtc)
+        GROUP BY C.RuleVersion
+    )
+    SELECT @ActiveRuleVersionCount = COUNT(*),
+           @RecommendationRuleVersion = MAX(RuleVersion)
+    FROM ActiveVersions;
+
+    IF @ActiveRuleVersionCount <> 1
+    BEGIN
+        SELECT N'Cấu hình gợi ý bán hàng đang thiếu hoặc có nhiều phiên bản cùng hiệu lực.' AS Msg,
+               1 AS MsgType,
+               N'SYSTEM_ERROR' AS Severity,
+               CASE WHEN @ActiveRuleVersionCount = 0 THEN N'RULE_CONFIGURATION_MISSING' ELSE N'RULE_CONFIGURATION_CONFLICT' END AS Code;
+        RETURN;
+    END
+
+    SELECT
+        @RouteHistoryMonths = MAX(CASE WHEN ConfigKey = 'RouteHistoryMonths' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @MinimumPurchaseEventCount = MAX(CASE WHEN ConfigKey = 'MinimumPurchaseEventCount' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @RoutePolicyDefaultCycleDays = MAX(CASE WHEN ConfigKey = 'RoutePolicyDefaultCycleDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @SoNgayVangMat = MAX(CASE WHEN ConfigKey = 'RouteInactiveDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @RouteRecentInactiveDays = MAX(CASE WHEN ConfigKey = 'RouteRecentInactiveDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @NgayBaoDong = MAX(CASE WHEN ConfigKey = 'RouteAlertDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @RouteMediumPriorityDays = MAX(CASE WHEN ConfigKey = 'RouteMediumPriorityDays' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreOverdue = MAX(CASE WHEN ConfigKey = 'ScoreOverdue' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreAlertWindow = MAX(CASE WHEN ConfigKey = 'ScoreAlertWindow' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreMediumWindow = MAX(CASE WHEN ConfigKey = 'ScoreMediumWindow' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreInactive = MAX(CASE WHEN ConfigKey = 'ScoreInactive' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreRecentInactive = MAX(CASE WHEN ConfigKey = 'ScoreRecentInactive' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @ScoreScheduledRoute = MAX(CASE WHEN ConfigKey = 'ScoreScheduledRoute' THEN TRY_CONVERT(INT, ConfigValue) END),
+        @SalesStatusIDs = MAX(CASE WHEN ConfigKey = 'SalesStatusIDs' THEN ConfigValue END),
+        @ReturnAdjustmentMode = MAX(CASE WHEN ConfigKey = 'ReturnAdjustmentMode' THEN ConfigValue END)
+    FROM dbo.AI_BusinessRuleConfigTbl WITH (NOLOCK)
+    WHERE RuleCode = @RecommendationRuleCode
+      AND RuleVersion = @RecommendationRuleVersion
+      AND Status = 'APPROVED'
+      AND EffectiveFrom <= @RuleAsOfUtc
+      AND (EffectiveTo IS NULL OR EffectiveTo > @RuleAsOfUtc);
+
+    IF COALESCE(@RouteHistoryMonths, 0) <= 0
+       OR COALESCE(@MinimumPurchaseEventCount, 0) < 2
+       OR COALESCE(@RoutePolicyDefaultCycleDays, 0) <= 0
+       OR COALESCE(@SoNgayVangMat, 0) <= 0
+       OR COALESCE(@RouteRecentInactiveDays, 0) <= 0
+       OR @RouteRecentInactiveDays >= @SoNgayVangMat
+       OR COALESCE(@NgayBaoDong, -1) < 0
+       OR COALESCE(@RouteMediumPriorityDays, 0) <= @NgayBaoDong
+       OR COALESCE(@ScoreOverdue, -1) < 0
+       OR COALESCE(@ScoreAlertWindow, -1) < 0
+       OR COALESCE(@ScoreMediumWindow, -1) < 0
+       OR COALESCE(@ScoreInactive, -1) < 0
+       OR COALESCE(@ScoreRecentInactive, -1) < 0
+       OR COALESCE(@ScoreScheduledRoute, -1) < 0
+       OR NULLIF(@SalesStatusIDs, '') IS NULL
+       OR NULLIF(@ReturnAdjustmentMode, '') IS NULL
+    BEGIN
+        SELECT N'Cấu hình gợi ý bán hàng không đầy đủ hoặc không hợp lệ.' AS Msg,
+               1 AS MsgType,
+               N'SYSTEM_ERROR' AS Severity,
+               N'RULE_CONFIGURATION_INVALID' AS Code;
+        RETURN;
+    END
+
     -- 3. THIẾT LẬP THỜI GIAN & THỨ TRONG TUẦN
     SET DATEFIRST 7  -- Chủ nhật = 1, Thứ 2 = 2, ..., Thứ 7 = 7
     DECLARE @TuNgay DATETIME = CASE WHEN @NgayTarget = '' THEN GETDATE() ELSE TRY_CAST(@NgayTarget AS DATETIME) END
     IF @TuNgay IS NULL SET @TuNgay = GETDATE()
+    DECLARE @WorkDate DATE = CAST(@TuNgay AS DATE);
+    DECLARE @RouteDataFrom DATE = DATEADD(MONTH, -@RouteHistoryMonths, @WorkDate);
     
     DECLARE @ThuHomNay VARCHAR(1) = CAST(DATEPART(dw, @TuNgay) AS VARCHAR)
     DECLARE @TenThuHomNay NVARCHAR(20) = ''
@@ -136,16 +228,37 @@ BEGIN
         RETURN;
     END
 
-    -- 5. LẤY LỊCH SỬ HÓA ĐƠN CUỐI (BR-ROUTE-002).
-    -- Đơn hàng chưa giao không được coi là lần mua hợp lệ.
+    -- CORE-008: purchase event tuyến = khách + ngày mua; nhiều hóa đơn trong
+    -- cùng một ngày chỉ là một event. Phiếu trả không tạo event mới.
+    SELECT
+        I.ObjectID,
+        CAST(I.DocumentDate AS DATE) AS PurchaseDate,
+        COUNT(DISTINCT I.DocumentID) AS InvoiceCount
+    INTO #PurchaseEvent
+    FROM dbo.AR_InvoiceTbl I WITH (NOLOCK)
+    WHERE I.DocumentDate >= @RouteDataFrom
+      AND I.DocumentDate < DATEADD(DAY, 1, @WorkDate)
+      AND EXISTS (SELECT 1 FROM STRING_SPLIT(@SalesStatusIDs, ',') S WHERE TRY_CONVERT(INT, LTRIM(RTRIM(S.value))) = I.StatusID)
+      AND (@MaKhachHang = '' OR I.ObjectID = @MaKhachHang)
+      AND (
+          UPPER(@SYSUserGroupID) = 'ADMIN'
+          OR (
+              (ISNULL(@SYSBranchID, '') = '' OR I.BranchID = @SYSBranchID)
+              AND EXISTS (SELECT 1 FROM #AllowedObjects AO WHERE AO.ObjectID = I.ObjectID)
+          )
+      )
+    GROUP BY I.ObjectID, CAST(I.DocumentDate AS DATE);
+
+    -- Lần mua cuối lấy trên toàn bộ lịch sử hóa đơn hoàn tất, độc lập với cửa sổ tính chu kỳ.
     SELECT
         T.ObjectID,
         MAX(T.DocumentDate)                             AS LanMuaCuoi,
-        DATEDIFF(DAY, MAX(T.DocumentDate), @TuNgay)     AS SoNgayKhongMua
+        DATEDIFF(DAY, MAX(T.DocumentDate), @WorkDate)   AS SoNgayKhongMua
     INTO #LanMuaCuoi
     FROM (
         SELECT ObjectID, DocumentDate, BranchID, CeoID, ManagerID 
-        FROM AR_InvoiceTbl WHERE StatusID IN (3, 6, 7, 8)
+        FROM AR_InvoiceTbl I
+        WHERE EXISTS (SELECT 1 FROM STRING_SPLIT(@SalesStatusIDs, ',') S WHERE TRY_CONVERT(INT, LTRIM(RTRIM(S.value))) = I.StatusID)
     ) T
     WHERE (@MaKhachHang = '' OR T.ObjectID = @MaKhachHang)
       AND (
@@ -159,51 +272,83 @@ BEGIN
 
     -- 6. TÍNH CHU KÝ MUA TRUNG BÌNH (6 tháng gần nhất)
     SELECT
-        I.ObjectID,
+        P.ObjectID,
+        SUM(P.InvoiceCount) AS InvoiceCount,
+        COUNT(*) AS PurchaseEventCount,
+        CASE WHEN COUNT(*) > 0 THEN COUNT(*) - 1 ELSE 0 END AS CycleObservationCount,
         CASE
-            WHEN COUNT(DISTINCT I.DocumentID) >= 3
-            THEN DATEDIFF(DAY, MIN(I.DocumentDate), MAX(I.DocumentDate))
-                 / (COUNT(DISTINCT I.DocumentID) - 1)
-            ELSE 30 -- fallback tham khảo; chưa đủ 3 hóa đơn để tin cậy
+            WHEN COUNT(*) >= @MinimumPurchaseEventCount
+            THEN CONVERT(INT, ROUND(
+                     DATEDIFF(DAY, MIN(P.PurchaseDate), MAX(P.PurchaseDate)) * 1.0
+                     / NULLIF(COUNT(*) - 1, 0), 0))
+            ELSE CAST(NULL AS INT)
         END AS ChuKyTB
     INTO #ChuKy
-    FROM AR_InvoiceTbl I
-    WHERE I.DocumentDate >= DATEADD(MONTH, -6, @TuNgay) AND I.DocumentDate <= @TuNgay
-      AND I.StatusID IN (3, 6, 7, 8)
-      AND (@MaKhachHang = '' OR I.ObjectID = @MaKhachHang)
-      AND (
-          UPPER(@SYSUserGroupID) = 'ADMIN'
-          OR (
-              (ISNULL(@SYSBranchID, '') = '' OR I.BranchID = @SYSBranchID)
-              AND EXISTS (SELECT 1 FROM #AllowedObjects AO WHERE AO.ObjectID = I.ObjectID)
-          )
-      )
-    GROUP BY I.ObjectID
+    FROM #PurchaseEvent P
+    GROUP BY P.ObjectID
 
     -- 7. TÍNH ĐIỂM ƯU TIÊN VÀ GỢI Ý (LEFT JOIN để hỗ trợ cả khách hàng mới chưa mua hàng)
     SELECT
         KH.ObjectID,
         LMC.LanMuaCuoi,
         COALESCE(LMC.SoNgayKhongMua, 999) AS SoNgayKhongMua,
-        COALESCE(CK.ChuKyTB, 30) AS ChuKyMuaTB_Ngay,
-        DATEADD(DAY, COALESCE(CK.ChuKyTB, 30), COALESCE(LMC.LanMuaCuoi, @TuNgay)) AS NgayDuDoanHetHang,
-        DATEDIFF(DAY, @TuNgay, DATEADD(DAY, COALESCE(CK.ChuKyTB, 30), COALESCE(LMC.LanMuaCuoi, @TuNgay))) AS NgayConLaiHetHang,
+        COALESCE(CK.InvoiceCount, 0) AS InvoiceCount,
+        COALESCE(CK.PurchaseEventCount, 0) AS PurchaseEventCount,
+        COALESCE(CK.CycleObservationCount, 0) AS CycleObservationCount,
+        CycleRule.EffectiveCycleDays AS ChuKyMuaTB_Ngay,
+        CycleRule.CycleComputationMode,
+        CycleRule.HistoryStatus,
+        Expected.NgayDuDoanHetHang,
+        Expected.NgayConLaiHetHang,
+        CASE
+            WHEN Expected.NgayDuDoanHetHang IS NULL THEN N'UNKNOWN'
+            WHEN Expected.NgayConLaiHetHang > 0 THEN N'UPCOMING'
+            WHEN Expected.NgayConLaiHetHang = 0 THEN N'DUE'
+            ELSE N'OVERDUE'
+        END AS CycleStatus,
         CAST(
             (CASE
                 -- Sắp hết hàng hoặc quá hạn hết hàng
-                WHEN DATEDIFF(DAY, @TuNgay, DATEADD(DAY, COALESCE(CK.ChuKyTB, 30), COALESCE(LMC.LanMuaCuoi, @TuNgay))) <= 0 THEN 100
-                WHEN DATEDIFF(DAY, @TuNgay, DATEADD(DAY, COALESCE(CK.ChuKyTB, 30), COALESCE(LMC.LanMuaCuoi, @TuNgay))) <= @NgayBaoDong THEN 80
-                WHEN DATEDIFF(DAY, @TuNgay, DATEADD(DAY, COALESCE(CK.ChuKyTB, 30), COALESCE(LMC.LanMuaCuoi, @TuNgay))) <= 14 THEN 50
+                WHEN Expected.NgayConLaiHetHang <= 0 THEN @ScoreOverdue
+                WHEN Expected.NgayConLaiHetHang <= @NgayBaoDong THEN @ScoreAlertWindow
+                WHEN Expected.NgayConLaiHetHang <= @RouteMediumPriorityDays THEN @ScoreMediumWindow
                 ELSE 0 END)
             -- Lâu chưa mua
-            + (CASE WHEN COALESCE(LMC.SoNgayKhongMua, 999) >= @SoNgayVangMat THEN 40 WHEN COALESCE(LMC.SoNgayKhongMua, 999) >= 30 THEN 20 ELSE 0 END)
+            + (CASE WHEN COALESCE(LMC.SoNgayKhongMua, 999) >= @SoNgayVangMat THEN @ScoreInactive WHEN COALESCE(LMC.SoNgayKhongMua, 999) >= @RouteRecentInactiveDays THEN @ScoreRecentInactive ELSE 0 END)
             -- Đúng lịch ghé hôm nay (Cộng thêm điểm ưu tiên)
-            + (CASE WHEN KH.ThuTrongTuan LIKE '%' + @TenThuHomNay + '%' THEN 30 ELSE 0 END)
+            + (CASE WHEN KH.ThuTrongTuan LIKE '%' + @TenThuHomNay + '%' THEN @ScoreScheduledRoute ELSE 0 END)
         AS INT) AS DiemUuTien
     INTO #Logic
     FROM CF_ObjectTbl KH
     LEFT JOIN #LanMuaCuoi LMC ON KH.ObjectID = LMC.ObjectID
     LEFT JOIN #ChuKy CK       ON KH.ObjectID = CK.ObjectID
+    OUTER APPLY
+    (
+        SELECT
+            CASE
+                WHEN LMC.LanMuaCuoi IS NULL THEN NULL
+                WHEN COALESCE(CK.PurchaseEventCount, 0) >= @MinimumPurchaseEventCount AND CK.ChuKyTB IS NOT NULL THEN CK.ChuKyTB
+                ELSE @RoutePolicyDefaultCycleDays
+            END AS EffectiveCycleDays,
+            CASE
+                WHEN LMC.LanMuaCuoi IS NULL THEN N'NO_HISTORY'
+                WHEN COALESCE(CK.PurchaseEventCount, 0) >= @MinimumPurchaseEventCount AND CK.ChuKyTB IS NOT NULL THEN N'PERSONAL_HISTORY'
+                ELSE N'POLICY_DEFAULT'
+            END AS CycleComputationMode,
+            CASE
+                WHEN LMC.LanMuaCuoi IS NULL THEN N'NO_HISTORY'
+                WHEN COALESCE(CK.PurchaseEventCount, 0) >= @MinimumPurchaseEventCount THEN N'SUFFICIENT_HISTORY'
+                ELSE N'INSUFFICIENT_HISTORY'
+            END AS HistoryStatus
+    ) CycleRule
+    OUTER APPLY
+    (
+        SELECT
+            CASE WHEN CycleRule.EffectiveCycleDays IS NULL THEN NULL
+                 ELSE CONVERT(DATE, DATEADD(DAY, CycleRule.EffectiveCycleDays, LMC.LanMuaCuoi)) END AS NgayDuDoanHetHang,
+            CASE WHEN CycleRule.EffectiveCycleDays IS NULL THEN NULL
+                 ELSE DATEDIFF(DAY, @WorkDate, DATEADD(DAY, CycleRule.EffectiveCycleDays, LMC.LanMuaCuoi)) END AS NgayConLaiHetHang
+    ) Expected
     WHERE ISNULL(KH.isDisable, 0) = 0 
       AND ISNULL(KH.isCustomer, 0) = 1
       AND (
@@ -222,10 +367,19 @@ BEGIN
         KH.Address AS [Address],
         KH.ZoneID AS [Tuyen], 
         KH.ThuTrongTuan AS [LichGhe], 
+        CONVERT(DATE, L.LanMuaCuoi) AS [LanMuaCuoiDate],
         CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.LanMuaCuoi, 'dd/MM/yyyy') END AS [LanMuaCuoi], 
         CASE WHEN L.SoNgayKhongMua = 999 THEN NULL ELSE L.SoNgayKhongMua END AS [SoNgayKhongMua],
+        L.InvoiceCount AS [InvoiceCount],
+        L.PurchaseEventCount AS [PurchaseEventCount],
+        L.CycleObservationCount AS [CycleObservationCount],
         L.ChuKyMuaTB_Ngay AS [ChuKyTB], 
+        L.CycleComputationMode AS [CycleComputationMode],
+        L.HistoryStatus AS [HistoryStatus],
+        L.CycleStatus AS [CycleStatus],
+        CONVERT(DATE, L.NgayDuDoanHetHang) AS [NgayDuKien],
         CASE WHEN L.LanMuaCuoi IS NULL THEN 'N/A' ELSE FORMAT(L.NgayDuDoanHetHang, 'dd/MM/yyyy') END AS [NgayDuDoan],
+        L.NgayConLaiHetHang AS [ConLaiNgay],
         CASE WHEN L.NgayConLaiHetHang < 0 THEN 0 ELSE L.NgayConLaiHetHang END AS [ConLai],
         L.DiemUuTien AS [DiemUuTien],
         CONCAT(
@@ -237,13 +391,79 @@ BEGIN
             END,
             CASE WHEN KH.ZoneID IS NULL THEN N' | Ngoài tuyến' ELSE '' END
         ) AS [LyDoGhe],
-        CAST(@TuNgay AS DATE) AS [WorkDate],
+        CONCAT(
+            CASE
+                WHEN L.LanMuaCuoi IS NULL THEN N'Khách chưa có hóa đơn hoàn tất; ưu tiên liên hệ theo lịch tuyến để xác nhận nhu cầu.'
+                WHEN L.NgayConLaiHetHang < 0 THEN N'Khách đã quá ngày mua dự kiến ' + CAST(ABS(L.NgayConLaiHetHang) AS VARCHAR) + N' ngày.'
+                WHEN L.NgayConLaiHetHang = 0 THEN N'Hôm nay là ngày dự kiến khách mua lại.'
+                WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'Khách còn ' + CAST(L.NgayConLaiHetHang AS VARCHAR) + N' ngày đến ngày mua dự kiến.'
+                ELSE N'Khách nằm trong lịch tuyến hôm nay.'
+            END,
+            CASE WHEN L.CycleComputationMode = N'POLICY_DEFAULT' THEN N' Chu kỳ đang dùng là mốc chính sách, không phải chu kỳ cá nhân.' ELSE N'' END,
+            CASE WHEN KH.ZoneID IS NULL THEN N' Khách chưa được gán tuyến.' ELSE N'' END
+        ) AS [ReasonText],
+        CASE
+            WHEN L.LanMuaCuoi IS NULL THEN N'NEW_CUSTOMER'
+            WHEN L.NgayConLaiHetHang < 0 THEN N'REORDER_OVERDUE'
+            WHEN L.NgayConLaiHetHang = 0 THEN N'REORDER_DUE'
+            WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'REORDER_WINDOW'
+            ELSE N'ROUTE_SCHEDULE'
+        END AS [PrimaryReasonCode],
+        CONCAT(
+            CASE
+                WHEN L.LanMuaCuoi IS NULL THEN N'NEW_CUSTOMER'
+                WHEN L.NgayConLaiHetHang < 0 THEN N'REORDER_OVERDUE'
+                WHEN L.NgayConLaiHetHang = 0 THEN N'REORDER_DUE'
+                WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'REORDER_WINDOW'
+                ELSE N'ROUTE_SCHEDULE'
+            END,
+            CASE WHEN L.NgayConLaiHetHang > @NgayBaoDong THEN N'' ELSE N'|ROUTE_SCHEDULE' END,
+            CASE WHEN KH.ZoneID IS NULL THEN N'|OUTSIDE_ROUTE' ELSE N'' END
+        ) AS [RecommendationReasonCodes],
+        CONCAT(
+            CASE
+                WHEN L.LanMuaCuoi IS NULL THEN N'NEW_CUSTOMER'
+                WHEN L.NgayConLaiHetHang < 0 THEN N'REORDER_OVERDUE'
+                WHEN L.NgayConLaiHetHang = 0 THEN N'REORDER_DUE'
+                WHEN L.NgayConLaiHetHang <= @NgayBaoDong THEN N'REORDER_WINDOW'
+                ELSE N'ROUTE_SCHEDULE'
+            END,
+            CASE WHEN L.NgayConLaiHetHang > @NgayBaoDong THEN N'' ELSE N'|ROUTE_SCHEDULE' END,
+            CASE WHEN KH.ZoneID IS NULL THEN N'|OUTSIDE_ROUTE' ELSE N'' END
+        ) AS [RecommendationReason],
+        CONCAT(
+            CASE L.CycleComputationMode
+                WHEN N'PERSONAL_HISTORY' THEN N'CUSTOMER_PURCHASE_HISTORY'
+                WHEN N'POLICY_DEFAULT' THEN N'POLICY_DEFAULT_CYCLE'
+                ELSE N'NO_PURCHASE_HISTORY'
+            END,
+            N'|ROUTE_SCHEDULE'
+        ) AS [RuleSourceCodes],
+        CONCAT(
+            CASE L.CycleComputationMode
+                WHEN N'PERSONAL_HISTORY' THEN N'Lịch sử mua của khách trong ' + CAST(@RouteHistoryMonths AS NVARCHAR(10)) + N' tháng gần nhất'
+                WHEN N'POLICY_DEFAULT' THEN N'Mốc chăm sóc mặc định ' + CAST(@RoutePolicyDefaultCycleDays AS NVARCHAR(10)) + N' ngày theo chính sách'
+                ELSE N'Lịch chăm sóc khách mới'
+            END,
+            N' · Lịch tuyến bán hàng'
+        ) AS [RuleSourceLabel],
+        @WorkDate AS [WorkDate],
         @TenThuHomNay AS [AppliedWeekday],
         @SYSBranchID AS [ScopeBranchID],
         N'AR_InvoiceTbl' AS [LastPurchaseSource],
         N'CHECKIN_SOURCE_UNAVAILABLE' AS [LastVisitStatus],
-        N'LEGACY_DEFAULT' AS [RuleSource],
-        N'BR-ROUTE-V1' AS [RuleVersion],
+        CASE L.CycleComputationMode
+            WHEN N'PERSONAL_HISTORY' THEN N'CUSTOMER_PURCHASE_HISTORY'
+            WHEN N'POLICY_DEFAULT' THEN N'POLICY_DEFAULT_CYCLE'
+            ELSE N'NO_PURCHASE_HISTORY'
+        END AS [RuleSource],
+        @RecommendationRuleCode AS [RuleCode],
+        @RecommendationRuleVersion AS [RuleVersion],
+        N'ROLLING_CONFIGURED_MONTHS_NO_FALLBACK' AS [DataWindow],
+        @RouteDataFrom AS [DataFrom],
+        @WorkDate AS [DataTo],
+        @RuleAsOfUtc AS [CalculatedAt],
+        @ReturnAdjustmentMode AS [ReturnAdjustmentMode],
         M.Latitude AS [Latitude],
         M.Longitude AS [Longitude]
     FROM CF_ObjectTbl KH
@@ -263,7 +483,7 @@ BEGIN
       )
     ORDER BY DiemUuTien DESC, NgayConLaiHetHang ASC, KH.ObjectID ASC;
 
-    DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic; DROP TABLE #AllowedObjects;
+    DROP TABLE #PurchaseEvent; DROP TABLE #LanMuaCuoi; DROP TABLE #ChuKy; DROP TABLE #Logic; DROP TABLE #AllowedObjects;
 END
 GO
 

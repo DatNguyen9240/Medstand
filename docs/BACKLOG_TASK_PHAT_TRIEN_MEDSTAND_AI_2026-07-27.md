@@ -346,14 +346,22 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS. Token UAT PASS ba gate: sản phẩm bán được `req-11760-msd0saxz`, chặn hàng `RESERVED_OUT` `req-11763-msd0semv`, tìm theo triệu chứng `req-11766-msd0sgq1` trả 8 dòng với kho/thời điểm/tồn khả dụng đầy đủ. Lỗi alias `@Keyword`/`@timkiem` phát hiện trong UAT đã sửa tại SQL theo contract tương thích ngược; deploy lại `12/12` và gate `13/13` tài khoản PASS.
 
-- [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `TODO`
+- [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `MEDTEST_RUNTIME_TOKEN_UAT_VERIFIED_PENDING_VISUAL_UI_ACCEPTANCE`
   - Mỗi gợi ý hiển thị lần mua cuối, chu kỳ, ngày dự kiến, lý do và nguồn rule.
   - Nghiệm thu: người dùng hiểu được vì sao sản phẩm/khách được đề xuất.
+  - Kết quả code 04/08/2026: đã chuẩn hóa hai grain purchase event, chu kỳ trung bình làm tròn theo ngày, `CycleComputationMode`, `CycleStatus`, lý do và nguồn rule phẳng; SQL đọc duy nhất `BR-RECOMMENDATION-008/1.0.0` `APPROVED`, không fallback toàn bộ lịch sử và các ngưỡng/điểm tuyến nằm trong cấu hình. n8n đã bỏ nhãn draft cho hai API; frontend local `11.127` hiển thị lần mua cuối, chu kỳ, ngày dự kiến, chênh lệch ngày, lý do và nguồn dễ hiểu. Báo cáo: [CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md](CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md).
+  - Preflight rollback trên `medtest` PASS: compile 3/3 file, công thức 2/2, tuyến 13/13; gợi ý sản phẩm PASS contract ở 4 tài khoản có mặt hàng lịch sử còn bán được, 9 tài khoản còn lại trả rỗng đúng guard STOCK-001. SQL sau đó đã commit atomically 3/3 file, 9 batch; hậu kiểm read-only tiếp tục PASS 22 key `APPROVED`, đúng hai procedure runtime và cùng kết quả 13 tài khoản. Natural chat regression 159/159 PASS. Khảo sát 21.109 dòng trả hàng chỉ liên kết được 7.743 dòng về hóa đơn, nên rule công khai giới hạn: trả hàng không tạo event mới và chưa điều chỉnh event mua gốc.
+  - Runtime 04/08/2026: n8n workflow `fCJwiyAT9r6eh1ys` đã backup/import/publish/restart, active và khớp source; health PASS. Frontend `11.127` đang được gateway local phục vụ. Token/gateway UAT `QLMN2` PASS 4/4 ca: sản phẩm `PERSONAL_HISTORY` `req-11803-mse4rfgm`; tuyến `PERSONAL_HISTORY` `req-11805-mse4rhk6`; `POLICY_DEFAULT` `req-11807-mse4rir4`; `NO_HISTORY` `req-11809-mse4rk0v`. Không chạy mutation.
+  - **Chưa đánh dấu `DONE`:** chỉ còn mở UI xác nhận cách trình bày và lưu ảnh nghiệm thu gắn với request ID đã có.
 
-- [ ] **CORE-009 — Thêm thao tác đưa gợi ý vào giỏ hàng** · `P1` · `TODO`
-  - Cho phép chọn sản phẩm/số lượng và chuyển sang preview đơn.
-  - Phụ thuộc: `CORE-004`, `STOCK-001`.
-  - Nghiệm thu: dữ liệu sản phẩm và khách được truyền đúng, không tự tạo đơn.
+- [ ] **CORE-009 — Chọn gợi ý và quản lý đơn nháp bằng hội thoại** · `P1` · `LOCAL_BUNDLE_11.128_VERIFIED_PENDING_VISUAL_END_TO_END_UAT`
+  - Hội thoại là luồng chính: cho phép chọn một hoặc nhiều sản phẩm gợi ý, thêm, bỏ, đổi số lượng, xem lại, hủy và yêu cầu preview. Card/nút/số lượng chỉ là thao tác nhanh và dùng chung `DraftCommand` với câu tự nhiên.
+  - Đơn nháp Pilot là state có cấu trúc theo `UserId + ConversationId`, có `DraftId`, `DraftVersion`, TTL và snapshot vô hiệu sau mỗi lần sửa; không dùng trí nhớ tự do của AI làm nguồn sự thật.
+  - Draft chỉ giữ khách, mã sản phẩm và số lượng. Giá, CTBH, tồn và kho phải được tải lại từ nguồn nghiệp vụ khi preview; SQL CORE-005 vẫn kiểm tra lại và chọn kho khi tạo thật.
+  - Phụ thuộc: `CORE-004`, `CORE-008`, `STOCK-001` và guard giá/CTBH/quyền hiện hành của `CORE-005`.
+  - Nghiệm thu: truyền đúng khách/sản phẩm/số lượng; câu mơ hồ không đổi draft; context cũ không tác động tài khoản/khách hiện tại; double-click/retry không thêm trùng; thao tác trong CORE-009 không tự tạo đơn.
+  - Kết quả code 05/08/2026: thêm conversational reducer `CREATE/ADD/UPDATE/REMOVE/SHOW/CANCEL/PREVIEW`, state `sessionStorage` cách ly theo tài khoản/cuộc hội thoại và hết hạn 30 phút; card gợi ý có số lượng + nút thêm; sửa race condition phải chờ xác minh khách rồi mới tải giá/tồn sản phẩm; tạo đơn thành công xóa draft. Unit/static CORE-009 PASS `23/23`; natural-chat regression `159/159`; bundle local `11.128` build thành công. Báo cáo: [CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md](CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md).
+  - **Chưa đánh dấu `DONE`:** còn UAT trực quan qua tài khoản/token thật cho chuỗi nhiều lượt và lưu ảnh/request ID; CORE-009 chỉ bàn giao sang preview, mutation thật vẫn thuộc CORE-005.
 
 - [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `TODO`
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.

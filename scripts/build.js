@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
 
-const APP_VERSION = '11.126';
+const APP_VERSION = '11.128';
 
 function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5) {
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
@@ -343,6 +343,7 @@ var _dec = function(b64) {
     const chatbotUIScripts = [
         'src/js/utils/promotion.js',
         'chatbot-widget/js/chatbot-suggestions.js',
+        'chatbot-widget/js/chatbot-order-draft.js',
         'chatbot-widget/js/chatbot-api-engine.js',
         'chatbot-widget/js/chatbot.js',
         'chatbot-widget/js/chatbot-renderers-medstand.js',

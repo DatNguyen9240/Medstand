@@ -12,7 +12,8 @@
     "test:chat:smoke": "node scripts/test_natural_chat_system.js smoke",
     "test:chat:live": "node scripts/test_natural_chat_system.js live",
     "test:chat:load": "node scripts/test_natural_chat_system.js load",
-    "test:infra:load": "node scripts/test_natural_chat_system.js infra-load"
+    "test:infra:load": "node scripts/test_natural_chat_system.js infra-load",
+    "test:core009": "node scripts/test_core009_order_draft.js"
   },
   "dependencies": {
     "compression": "^1.8.1",

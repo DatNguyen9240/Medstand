@@ -103,6 +103,29 @@ function extractLastErpCode(originalText) {
   return [...tokens].reverse().find(isErpCode) || null;
 }
 
+function extractCustomerScoringTarget(originalText) {
+  const text = String(originalText || '').replace(/\s+/g, ' ').trim();
+  const customerCode = extractErpCode(text);
+  if (customerCode) return customerCode;
+
+  const match = text.match(/chấm\s*điểm\s+(.+)$/i);
+  if (!match) return null;
+
+  const target = match[1]
+    .replace(/^(?:của|cho)(?:\s+|$)/i, '')
+    .replace(/^(?:khách\s*hàng|khách)(?:\s+|$)/i, '')
+    .replace(/[?.!,;:]+$/g, '')
+    .trim();
+  if (!target) return null;
+
+  const genericTarget = foldForMatch(target);
+  if (/^(?:khach hang|khach|danh sach(?: khach hang)?|tat ca(?: khach hang)?|cua toi|trong pham vi(?: cua toi)?)$/.test(genericTarget)) {
+    return null;
+  }
+  if (/^nhom\s+(?:a|b|c|unrated)\b/.test(genericTarget)) return null;
+  return target;
+}
+
 function getRecentUserMessages(historyContext) {
   const lines = String(historyContext || '').split(/\r?\n/);
   const userMessages = lines
@@ -128,6 +151,7 @@ function inferContextRoute(historyContext, lastIntent = '') {
     SALES_ROUTE: ['SALES_ROUTE', '@tuyen_ban_hang', null],
     INVOICE_LIST: ['INVOICE_LIST', '@hoa_don', null],
     ORDER_LIST: ['ORDER_LIST', '@don_hang', null],
+    CUSTOMER_SCORING: ['CUSTOMER_SCORING', '@cham_diem_kh', 'customerId'],
     SURVEY_360: ['SURVEY_360', '@khao_sat360', 'customerId'],
     SURVEY_STATUS: ['SURVEY_STATUS', '@kiem_tra_khao_sat', 'customerId'],
   };
@@ -671,6 +695,8 @@ function classifyNaturalMessage(input, options = {}) {
     } else if (/\b(cham diem khach hang|cham diem)\b/.test(folded)) {
       internalIntent = 'CUSTOMER_SCORING';
       apiCode = '@cham_diem_kh';
+      const scoringCustomer = extractCustomerScoringTarget(normalized.originalText);
+      if (scoringCustomer) entities.customerId = scoringCustomer;
     } else if (/\b(tich luy)\b/.test(folded)) {
       internalIntent = 'LOYALTY_PROGRESS';
       apiCode = '@tich_luy';
@@ -766,6 +792,7 @@ function getN8nRuntimeSource() {
     normalizeNaturalText.toString(),
     extractErpCode.toString(),
     extractLastErpCode.toString(),
+    extractCustomerScoringTarget.toString(),
     getRecentUserMessages.toString(),
     inferContextRoute.toString(),
     toIsoLocalDate.toString(),

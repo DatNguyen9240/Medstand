@@ -32,6 +32,27 @@ addClassifierCases('debt-detail', [
   action: 'EXECUTE', entity: ['customerId', 'AG0031'],
 });
 
+addClassifierCases('customer-scoring-list', [
+  'chấm điểm khách hàng', 'xem chấm điểm khách hàng',
+], {
+  messageType: 'BUSINESS', intent: 'CUSTOMER_SCORING', apiCode: '@cham_diem_kh',
+  action: 'EXECUTE', releaseGate: true,
+});
+
+addClassifierCases('customer-scoring-detail-code', [
+  'chấm điểm khách hàng NDB001',
+], {
+  messageType: 'BUSINESS', intent: 'CUSTOMER_SCORING', apiCode: '@cham_diem_kh',
+  action: 'EXECUTE', entity: ['customerId', 'NDB001'], releaseGate: true,
+});
+
+addClassifierCases('customer-scoring-detail-name', [
+  'chấm điểm của Quầy thuốc Thanh Hải',
+], {
+  messageType: 'BUSINESS', intent: 'CUSTOMER_SCORING', apiCode: '@cham_diem_kh',
+  action: 'EXECUTE', entity: ['customerId', 'Quầy thuốc Thanh Hải'], releaseGate: true,
+});
+
 addClassifierCases('debt-missing-customer', [
   'xem công nợ', 'coi công nợ', 'kiểm tra công nợ', 'cn kh',
 ], {

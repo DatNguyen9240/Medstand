@@ -884,6 +884,64 @@
 .chat-bubble.ai .ai-order-suggestion-reason small,
 .chat-bubble.ai .ai-order-suggestion-window { color: #64748b; }
 
+.chat-bubble.ai .ai-order-draft-action {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) auto;
+  gap: 9px 12px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid #e6ebf2;
+}
+
+.chat-bubble.ai .ai-order-draft-action label {
+  display: grid;
+  gap: 5px;
+  color: #52627a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chat-bubble.ai .ai-order-draft-index {
+  grid-column: 1 / -1;
+  color: #4055e8;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.chat-bubble.ai .ai-order-draft-qty {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
+
+.chat-bubble.ai .ai-order-draft-add-btn {
+  min-height: 40px;
+  padding: 9px 14px;
+  border: 1px solid #3c50e0;
+  border-radius: 8px;
+  background: #3c50e0;
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.chat-bubble.ai .ai-order-draft-add-btn:hover:not(:disabled) { background: #3043c9; }
+.chat-bubble.ai .ai-order-draft-add-btn.is-added { border-color: #16875b; background: #16875b; }
+.chat-bubble.ai .ai-order-draft-add-btn:disabled,
+.chat-bubble.ai .ai-order-draft-qty:disabled { cursor: not-allowed; opacity: .55; }
+
+.chat-bubble.ai .ai-order-draft-action > small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 .chat-bubble.ai .ai-promotion-review-detail {
   display: grid;
   gap: 12px;
@@ -993,6 +1051,13 @@
 
 [data-theme="dark"] .chat-bubble.ai .ai-order-suggestion-reason { background: #202d4d; }
 
+[data-theme="dark"] .chat-bubble.ai .ai-order-draft-action { border-color: #34343a; }
+[data-theme="dark"] .chat-bubble.ai .ai-order-draft-qty {
+  border-color: #485366;
+  background: #27272a;
+  color: #f4f4f5;
+}
+
 [data-theme="dark"] .chat-bubble.ai .ai-promotion-review-detail {
   border-color: #34343a;
   background: #202024;
@@ -1048,6 +1113,12 @@
   .chat-bubble.ai .ai-tier-interpretations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chat-bubble.ai .ai-order-suggestion-metrics { grid-template-columns: 1fr; }
   .chat-bubble.ai .ai-promotion-review-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .chat-bubble.ai .ai-order-draft-action { grid-template-columns: 1fr; }
+  .chat-bubble.ai .ai-order-draft-action > small,
+  .chat-bubble.ai .ai-order-draft-index { grid-column: 1; }
 }
 
 @media (max-width: 640px) {

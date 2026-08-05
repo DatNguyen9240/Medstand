@@ -1148,6 +1148,19 @@
 
 
 
+    function _handleOrderDraftResult(draftResult) {
+        if (!draftResult || !draftResult.handled) return false;
+        if (draftResult.message) _addMessage('ai', draftResult.message);
+        if (draftResult.action === 'OPEN_PREVIEW' && draftResult.pendingUpdate) {
+            if (window.ApiEngine && typeof window.ApiEngine.selectApi === 'function') {
+                window.ApiEngine.selectApi('@lap_don_hang', draftResult.pendingUpdate);
+            } else {
+                _addMessage('ai', 'Không thể mở preview đơn lúc này. Dữ liệu đơn nháp vẫn được giữ trong phiên.');
+            }
+        }
+        return true;
+    }
+
     function _send() {
 
         if (isWaitingAI) { _stopAI(); return; }
@@ -1184,6 +1197,15 @@
         _autoResize();
 
         _updateSendBtn();
+
+        // CORE-009: khi đang có ngữ cảnh gợi ý/đơn nháp, xử lý command hội
+        // thoại bằng reducer có cấu trúc. Câu không phải DraftCommand vẫn đi
+        // qua NLP bình thường; AI không tự ý thay đổi draft từ nội dung mơ hồ.
+        if (text && selectedFiles.length === 0 && window.MedstandOrderDraft
+            && typeof window.MedstandOrderDraft.handleText === 'function') {
+            var draftResult = window.MedstandOrderDraft.handleText(text);
+            if (_handleOrderDraftResult(draftResult)) return;
+        }
 
 
 
@@ -2300,7 +2322,9 @@
         var normalizedKey = String(key || '').toLowerCase().replace(/[_\s]/g, '');
         var isOrder = String(apiCode || '').toLowerCase() === '@don_hang';
         var isInvoice = ['@hoa_don', '@hoa_don_chi_tiet'].indexOf(String(apiCode || '').toLowerCase()) !== -1;
+        var isTierScoring = String(apiCode || '').toLowerCase() === '@cham_diem_kh';
         if (value === null || value === undefined || String(value).trim() === '') {
+            if (isTierScoring && normalizedKey === 'diemtonghop') return 'Chưa chấm điểm';
             if (normalizedKey === 'physicalstock') return 'Chưa truy vấn kho';
             if (normalizedKey === 'availablestock') return 'Chưa kiểm tra kho';
             if (isOrder && normalizedKey === 'deliverdate') return 'Chưa xác định';
@@ -2312,7 +2336,7 @@
         if (normalizedKey === 'phone' || normalizedKey === 'customerphone') {
             return _formatPhoneNumber(value);
         }
-        if (['documentdate', 'deliverdate', 'datecreate', 'expiredate', 'handung', 'asofdate', 'ngay', 'ngaytao', 'stockupdatedat', 'stockasofat', 'lateststockmovementdate'].indexOf(normalizedKey) !== -1) {
+        if (['documentdate', 'deliverdate', 'datecreate', 'expiredate', 'handung', 'asofdate', 'ngay', 'ngaytao', 'stockupdatedat', 'stockasofat', 'lateststockmovementdate', 'lanmuacuoidate', 'ngaydukien', 'datafrom', 'datato', 'calculatedat'].indexOf(normalizedKey) !== -1) {
             return _formatVietnameseDate(value);
         }
         if (normalizedKey === 'documentid' && isOrder) return _formatOrderDocumentId(value);
@@ -2346,12 +2370,16 @@
             'INSUFFICIENT_HISTORY': 'Chưa đủ lịch sử giao dịch',
             'DUE_DATE_UNKNOWN': 'Chưa xác định hạn thanh toán',
             'NEW_CUSTOMER': 'Khách hàng mới',
+            'UNKNOWN': 'Chưa đánh giá',
             'HIGH': 'Cao',
             'MEDIUM': 'Vừa',
             'LOW': 'Thấp',
             'LARGE': 'Lớn',
             'SMALL': 'Nhỏ'
         };
+        if (normalizedValue.indexOf('NEW_CUSTOMER:') === 0) {
+            return 'Khách mới — chưa đủ dữ liệu trong kỳ';
+        }
         return statuses[normalizedValue] || _fmtCellVal(value);
     }
 
@@ -3758,6 +3786,10 @@
 
     function _buildInlineTable(rows, keys, apiCode, cacheRows) {
         if (typeof window !== 'undefined') window.__medstandFriendlyApiCode = apiCode || '';
+        if (String(apiCode || '').toLowerCase() === '@goi_ydon_hang'
+            && window.MedstandOrderDraft && typeof window.MedstandOrderDraft.setRecommendations === 'function') {
+            window.MedstandOrderDraft.setRecommendations(cacheRows || rows);
+        }
 
         // Ẩn các cột nội bộ không nên hiển thị cho user
         var HIDDEN_COLS = [
@@ -4040,7 +4072,9 @@
         var daysWithoutPurchase = row.SoNgayKhongMua === null || row.SoNgayKhongMua === undefined ? '—' : String(row.SoNgayKhongMua) + ' ngày';
         var revenue12 = row.DoanhSo12Thang === null || row.DoanhSo12Thang === undefined ? '—' : _formatCurrencyVnd(row.DoanhSo12Thang);
         var revenue3 = row.DoanhSo3ThangGan === null || row.DoanhSo3ThangGan === undefined ? '—' : _formatCurrencyVnd(row.DoanhSo3ThangGan);
-        var score = row.DiemTongHop === null || row.DiemTongHop === undefined ? '—' : String(row.DiemTongHop) + '/100';
+        var score = row.DiemTongHop === null || row.DiemTongHop === undefined
+            ? 'Chưa chấm điểm'
+            : String(row.DiemTongHop) + '/100';
         var daysValue = Number(row.SoNgayKhongMua);
         var rScore = Number(row.R_Score);
         var fScore = Number(row.F_Score);
@@ -4080,9 +4114,25 @@
 
     function _buildSalesRouteDetail(row) {
         var customerName = row.TenCuaHang || row.CustomerName || row.ObjectName || 'Khách hàng';
-        var reason = row.LyDoGhe || 'Theo lịch chăm sóc khách hàng';
+        var reason = row.ReasonText || row.LyDoGhe || 'Theo lịch chăm sóc khách hàng';
         var priority = Number(row.DiemUuTien);
         var daysWithoutPurchase = Number(row.SoNgayKhongMua);
+        var lastPurchase = row.LanMuaCuoiDate
+            ? _formatBusinessCell('LanMuaCuoiDate', row.LanMuaCuoiDate)
+            : (row.LanMuaCuoi || 'Chưa có đơn hoàn tất');
+        var cycle = Number(row.ChuKyTB);
+        var expectedDate = row.NgayDuKien ? _formatBusinessCell('NgayDuKien', row.NgayDuKien) : 'Chưa thể xác định';
+        var hasRemaining = row.ConLaiNgay !== null && row.ConLaiNgay !== undefined && row.ConLaiNgay !== '';
+        var remaining = hasRemaining ? Number(row.ConLaiNgay) : null;
+        var cycleMode = String(row.CycleComputationMode || '').toUpperCase();
+        var cycleLabel = !Number.isFinite(cycle) || cycle <= 0
+            ? 'Chưa đủ dữ liệu'
+            : (cycleMode === 'POLICY_DEFAULT' ? cycle + ' ngày · mốc chính sách' : cycle + ' ngày · lịch sử cá nhân');
+        var timingLabel = !Number.isFinite(remaining)
+            ? 'Chưa thể xác định'
+            : (remaining < 0 ? 'Đã quá ' + Math.abs(remaining) + ' ngày' : (remaining === 0 ? 'Đến hạn hôm nay' : 'Còn ' + remaining + ' ngày'));
+        var sourceLabel = row.RuleSourceLabel || 'Lịch sử mua hàng và lịch tuyến bán hàng';
+        var recommendationReasons = _translateRecommendationReasons(row.RecommendationReasonCodes || row.RecommendationReason || row.PrimaryReasonCode);
         var nextAction = row.LanMuaCuoi === 'N/A' || !row.LanMuaCuoi
             ? 'Liên hệ làm quen, xác nhận nhu cầu và cập nhật thông tin khách hàng.'
             : (Number.isFinite(daysWithoutPurchase) && daysWithoutPurchase >= 30
@@ -4098,11 +4148,15 @@
             + '<span class="ai-route-priority">' + _esc(priorityLabel) + '</span></div>';
         html += '<div class="ai-route-reason"><strong>Lý do cần chăm sóc</strong><span>' + _esc(reason) + '</span></div>';
         html += '<div class="ai-route-metrics">'
-            + '<div><span>Lần mua gần nhất</span><strong>' + _esc(row.LanMuaCuoi || 'Chưa có đơn hoàn tất') + '</strong></div>'
+            + '<div><span>Lần mua gần nhất</span><strong>' + _esc(lastPurchase) + '</strong></div>'
             + '<div><span>Số ngày chưa mua</span><strong>' + _esc(Number.isFinite(daysWithoutPurchase) ? daysWithoutPurchase + ' ngày' : 'Khách hàng mới') + '</strong></div>'
+            + '<div><span>Chu kỳ tham khảo</span><strong>' + _esc(cycleLabel) + '</strong></div>'
+            + '<div><span>Ngày dự kiến</span><strong>' + _esc(expectedDate) + '</strong></div>'
+            + '<div><span>So với ngày dự kiến</span><strong>' + _esc(timingLabel) + '</strong></div>'
             + '<div><span>Lịch tuyến</span><strong>' + _esc(row.LichGhe || 'Chưa có lịch') + '</strong></div>'
             + '<div><span>Tuyến phụ trách</span><strong>' + _esc(row.Tuyen || 'Chưa xác định') + '</strong></div>'
             + '</div>';
+        html += '<div class="ai-route-reason"><strong>Căn cứ đề xuất</strong><span>' + _esc(recommendationReasons) + '</span><small>' + _esc(sourceLabel) + '</small></div>';
         html += '<div class="ai-route-next-action"><strong>Việc nên làm tiếp theo</strong><span>' + _esc(nextAction) + '</span></div>';
         if (row.Address) {
             html += '<div class="ai-route-address"><strong>Địa chỉ:</strong> ' + _esc(row.Address) + '</div>';
@@ -4116,8 +4170,11 @@
             'NEW_CUSTOMER': 'Khách hàng mới',
             'INSUFFICIENT_HISTORY': 'Chưa đủ lịch sử mua hàng',
             'REORDER_OVERDUE': 'Đã đến hoặc quá thời điểm thường mua lại',
+            'REORDER_DUE': 'Hôm nay là ngày dự kiến mua lại',
             'REORDER_WINDOW': 'Sắp đến thời điểm thường mua lại',
             'CYCLE_STABLE': 'Chu kỳ mua đang ổn định',
+            'ROUTE_SCHEDULE': 'Đúng lịch chăm sóc khách hàng',
+            'OUTSIDE_ROUTE': 'Khách chưa được gán tuyến',
             'FOCUS_ITEM': 'Sản phẩm trọng tâm',
             'SEASONAL': 'Phù hợp mùa vụ',
             'ACTIVE_PROMOTION_REFERENCE': 'Có chương trình khuyến mãi đang áp dụng'
@@ -4133,16 +4190,32 @@
         var product = row.TenSanPham || row.ItemName || 'Sản phẩm';
         var status = row.TrangThai || 'Chưa xác định';
         var confidence = _formatBusinessCell('DoTinCay', row.DoTinCay, '@goi_ydon_hang');
-        var purchaseCount = Number(row.SoLanMua || 0);
+        var purchaseCount = Number(row.PurchaseEventCount ?? row.SoLanMua ?? 0);
         var totalPurchased = row.TongDaMua === null || row.TongDaMua === undefined ? '—' : _formatCurrencyVnd(row.TongDaMua);
-        var lastPurchase = row.LanMuaCuoi || '—';
+        var lastPurchase = _formatBusinessCell('LanMuaCuoiDate', row.LanMuaCuoiDate || row.LanMuaCuoi);
         var cycle = Number(row.ChuKyNgay);
-        var remaining = Number(row.ConLaiNgay);
+        var hasRemaining = row.ConLaiNgay !== null && row.ConLaiNgay !== undefined && row.ConLaiNgay !== '';
+        var remaining = hasRemaining ? Number(row.ConLaiNgay) : null;
+        var expectedDate = row.NgayDuKien ? _formatBusinessCell('NgayDuKien', row.NgayDuKien) : 'Chưa thể xác định';
+        var historyStatus = String(row.HistoryStatus || '').toUpperCase();
+        var cycleMode = String(row.CycleComputationMode || '').toUpperCase();
         var cycleText = Number.isFinite(cycle) && cycle > 0
-            ? 'Thường mua lại sau khoảng ' + cycle + ' ngày' + (Number.isFinite(remaining) ? ' · Còn khoảng ' + remaining + ' ngày' : '')
+            ? 'Thường mua lại sau khoảng ' + cycle + ' ngày'
             : 'Chưa đủ dữ liệu để dự kiến thời điểm mua lại';
-        var explanation = String(row.ChiTiet || '').replace(/\s*\|\s*/g, ' · ') || 'Chưa có giải thích bổ sung';
-        var reasons = _translateRecommendationReasons(row.RecommendationReason || row.LyDoDeXuat);
+        var timingText = !Number.isFinite(remaining)
+            ? 'Chưa thể xác định'
+            : (remaining < 0 ? 'Đã quá ' + Math.abs(remaining) + ' ngày' : (remaining === 0 ? 'Đến hạn hôm nay' : 'Còn ' + remaining + ' ngày'));
+        var explanation = String(row.ReasonText || row.ChiTiet || '').replace(/\s*\|\s*/g, ' · ') || 'Chưa có giải thích bổ sung';
+        var reasons = _translateRecommendationReasons(row.RecommendationReasonCodes || row.RecommendationReason || row.LyDoDeXuat);
+        var sourceLabel = row.RuleSourceLabel || (historyStatus === 'INSUFFICIENT_HISTORY'
+            ? 'Lịch sử mua sản phẩm của khách · Chưa đủ dữ liệu tính chu kỳ'
+            : 'Lịch sử mua sản phẩm của khách');
+        var dataFrom = row.DataFrom ? _formatBusinessCell('DataFrom', row.DataFrom) : '';
+        var dataTo = row.DataTo ? _formatBusinessCell('DataTo', row.DataTo) : '';
+        var dataRange = dataFrom && dataTo ? dataFrom + ' – ' + dataTo : 'Theo khoảng dữ liệu của rule đang áp dụng';
+        var modeNotice = cycleMode === 'POLICY_DEFAULT'
+            ? 'Mốc này theo chính sách chăm sóc, không phải chu kỳ cá nhân.'
+            : '';
         var html = '<div class="ai-order-suggestion-detail">';
         html += '<div class="ai-order-suggestion-head"><div><strong>' + _esc(product) + '</strong><span>Khách hàng: ' + _esc(customer) + '</span></div>'
             + '<div><span class="ai-suggestion-badge">' + _esc(status) + '</span><span class="ai-suggestion-badge neutral">' + _esc(confidence) + '</span></div></div>';
@@ -4150,8 +4223,14 @@
             + '<div><span>Tổng giá trị đã mua</span><strong>' + _esc(totalPurchased) + '</strong></div>'
             + '<div><span>Lần mua gần nhất</span><strong>' + _esc(lastPurchase) + '</strong></div></div>';
         html += '<div class="ai-order-suggestion-reason"><strong>Vì sao hệ thống gợi ý?</strong><span>' + _esc(reasons) + '</span><small>' + _esc(explanation) + '</small></div>';
-        html += '<div class="ai-order-suggestion-cycle"><strong>Dự kiến mua lại</strong><span>' + _esc(cycleText) + '</span></div>';
-        html += '<small class="ai-order-suggestion-window">Dữ liệu tham khảo: 6 tháng gần nhất; nếu chưa đủ, hệ thống sử dụng thêm lịch sử mua trước đó.</small></div>';
+        html += '<div class="ai-order-suggestion-cycle"><strong>Dự kiến mua lại</strong><span>' + _esc(cycleText) + ' · Ngày dự kiến: ' + _esc(expectedDate) + ' · ' + _esc(timingText) + '</span>'
+            + (modeNotice ? '<small>' + _esc(modeNotice) + '</small>' : '') + '</div>';
+        html += '<div class="ai-order-suggestion-reason"><strong>Nguồn gợi ý</strong><span>' + _esc(sourceLabel) + '</span></div>';
+        html += '<small class="ai-order-suggestion-window">Khoảng dữ liệu: ' + _esc(dataRange) + '. Không tự mở rộng sang toàn bộ lịch sử.</small>';
+        if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.renderSuggestionAction === 'function') {
+            html += window.MedstandOrderDraft.renderSuggestionAction(row);
+        }
+        html += '</div>';
         return html;
     }
 
@@ -4433,6 +4512,10 @@
 
         cached.visibleRows = filtered;
         cached.currentTablePage = 1;
+        if (String(cached.apiCode || '').toLowerCase() === '@goi_ydon_hang'
+            && window.MedstandOrderDraft && typeof window.MedstandOrderDraft.setRecommendations === 'function') {
+            window.MedstandOrderDraft.setRecommendations(filtered);
+        }
         tbody.innerHTML = _renderTableBody(filtered, cached.keys, cached.forceShowAll, cached.apiCode, 1, cached.tablePageSize);
 
         var count = container.querySelector('.ai-sales-filter-count');
@@ -4549,6 +4632,33 @@
     }
 
     $messages.addEventListener('click', function (e) {
+        var draftAddButton = e.target.closest('.ai-order-draft-add-btn');
+        if (draftAddButton) {
+            e.preventDefault();
+            e.stopPropagation();
+            var draftAction = draftAddButton.closest('.ai-order-draft-action');
+            var quantityInput = draftAction ? draftAction.querySelector('.ai-order-draft-qty') : null;
+            if (!draftAction || !quantityInput || !window.MedstandOrderDraft
+                || typeof window.MedstandOrderDraft.addSuggestion !== 'function') return;
+            var availableRaw = draftAction.getAttribute('data-available-stock');
+            var draftResult = window.MedstandOrderDraft.addSuggestion({
+                customerId: draftAction.getAttribute('data-customer-id') || '',
+                customerName: draftAction.getAttribute('data-customer-name') || '',
+                itemId: draftAction.getAttribute('data-item-id') || '',
+                itemName: draftAction.getAttribute('data-item-name') || '',
+                unit: draftAction.getAttribute('data-unit') || '',
+                availableStock: availableRaw === '' ? null : Number(availableRaw),
+                storeHouseId: draftAction.getAttribute('data-store-house-id') || '',
+                quantity: Number(quantityInput.value)
+            });
+            if (draftResult && draftResult.ok) {
+                draftAddButton.textContent = 'Đã thêm vào đơn nháp';
+                draftAddButton.classList.add('is-added');
+            }
+            _handleOrderDraftResult(draftResult);
+            return;
+        }
+
         var inlineFilterChip = e.target.closest('.ai-sales-filter-chip:not([data-server-tier]):not([data-server-risk])');
         if (inlineFilterChip) {
             e.preventDefault();
@@ -6638,6 +6748,14 @@
 
 
     // ── Init ──
+
+    if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.configure === 'function') {
+        window.MedstandOrderDraft.configure({
+            getUserId: _user,
+            getConversationId: _getConversationId,
+            ttlMs: 30 * 60 * 1000
+        });
+    }
 
     _ghostCreate();
 
