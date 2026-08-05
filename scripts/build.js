@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { minify } = require('terser');
 
-const APP_VERSION = '11.136';
+const APP_VERSION = '11.137';
 
 function writeFileWithRetry(filePath, content, encoding = 'utf-8', attempts = 5) {
     for (let attempt = 1; attempt <= attempts; attempt += 1) {

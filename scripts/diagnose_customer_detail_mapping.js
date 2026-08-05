@@ -45,6 +45,23 @@ async function main() {
         @User='QLBH013.MED', @SearchText=N'', @ManagerID='', @EmployeeID='',
         @ObjectID=@ObjectID, @LoaiKhachHang=N'', @KenhBan='',
         @SYSManagerID='', @SYSEmployeeID='';
+
+      SELECT C.name AS ColumnName
+      FROM sys.columns C
+      WHERE C.object_id = OBJECT_ID('dbo.vKhachHangList')
+      ORDER BY C.column_id;
+
+      SELECT TOP (1) ObjectGroupID, ObjectGroupName
+      FROM dbo.CF_ObjectGroupTbl
+      WHERE ObjectGroupID = 'NDB';
+
+      SELECT P.parameter_id, P.name AS ParameterName, TYPE_NAME(P.user_type_id) AS DataType,
+             P.max_length, P.has_default_value
+      FROM sys.parameters P
+      WHERE P.object_id = OBJECT_ID('dbo.API_KhachHang_Update')
+      ORDER BY P.parameter_id;
+
+      SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.API_KhachHang_Update')) AS ProcedureDefinition;
     `);
     console.log(JSON.stringify({
       Task: 'CUSTOMER-DETAIL-MAPPING-DIAGNOSIS',
@@ -53,6 +70,10 @@ async function main() {
       ListApiRow: result.recordsets[1][0] || null,
       StoredColumns: result.recordsets[0][0] ? Object.keys(result.recordsets[0][0]) : [],
       ApiColumns: result.recordsets[1][0] ? Object.keys(result.recordsets[1][0]) : [],
+      ViewColumns: result.recordsets[2],
+      ObjectGroup: result.recordsets[3][0] || null,
+      UpdateParameters: result.recordsets[4],
+      UpdateProcedureDefinition: result.recordsets[5][0] && result.recordsets[5][0].ProcedureDefinition,
     }, null, 2));
   } finally {
     await pool.close();

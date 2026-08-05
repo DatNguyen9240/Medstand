@@ -35,12 +35,31 @@ BEGIN
         A.ObjectName,
         A.Address,
         A.Phone,
+        A.TaxCode,
+        A.Birthday,
+        A.ObjectGroupID,
+        G.ObjectGroupName,
+        A.LoaiKhachHang,
+        A.KenhBan,
+        A.AccountNoHD,
+        A.AccountNameHD,
+        A.ChuTaiKhoan,
+        A.BranchID,
+        A.Latitude,
+        A.Longitude,
         A.LocationID,
+        A.QuanHuyen,
         A.XaPhuong,
+        A.ThuDiTuyen,
+        A.StatusID,
+        A.StatusName,
+        A.BackColor,
         A.ObjectID + ' - ' + A.ObjectName AS DisplayName
     FROM dbo.vKhachHangList A
     INNER JOIN dbo.AR_GetObjectByUserFnc(@User) Scope
         ON Scope.ObjectID = A.ObjectID
+    LEFT JOIN dbo.CF_ObjectGroupTbl G
+        ON G.ObjectGroupID = A.ObjectGroupID
     WHERE (ISNULL(@ObjectID, '') = '' OR A.ObjectID = @ObjectID)
       AND (
           ISNULL(@SearchText, '') = ''

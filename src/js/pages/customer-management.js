@@ -14,6 +14,12 @@
 
   function escAttr(s) { return String(s || '').replace(/"/g, '&quot;'); }
 
+  function displayDate(value) {
+    if (!value) return '-';
+    var match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return match ? match[3] + '/' + match[2] + '/' + match[1] : value;
+  }
+
   function renderCustomer(c) {
     var phone = c.Phone || c.phone || '';
     return '<div class="customer-card" style="cursor:pointer" ' +
@@ -26,6 +32,12 @@
       'data-loaikhachhang="' + escAttr(c.LoaiKhachHang) + '" ' +
       'data-kenhban="' + escAttr(c.KenhBan) + '" ' +
       'data-thudituyien="' + escAttr(c.ThuDiTuyen) + '" ' +
+      'data-objectgroupid="' + escAttr(c.ObjectGroupID) + '" ' +
+      'data-objectgroupname="' + escAttr(c.ObjectGroupName) + '" ' +
+      'data-bankacc="' + escAttr(c.AccountNoHD) + '" ' +
+      'data-bank="' + escAttr(c.AccountNameHD) + '" ' +
+      'data-bankowner="' + escAttr(c.ChuTaiKhoan) + '" ' +
+      'data-branchid="' + escAttr(c.BranchID) + '" ' +
       'data-locationid="' + escAttr(c.LocationID) + '" ' +
       'data-quanhuyen="' + escAttr(c.QuanHuyen) + '" ' +
       'data-xaphuong="' + escAttr(c.XaPhuong) + '" ' +
@@ -35,7 +47,7 @@
       '<div class="name">' + (c.ObjectName || c.name || '-') + '</div>' +
       '<div class="row">Địa chỉ: ' + (c.Address || c.address || '-') + '</div>' +
       '<div class="row">SĐT: ' + (phone || '-') + '</div>' +
-      '<div class="row">Sinh nhật: ' + (c.Birthday || c.birthday || '-') + '</div>' +
+      '<div class="row">Sinh nhật: ' + displayDate(c.Birthday || c.birthday) + '</div>' +
       '<div class="row">Tuyến thứ: ' + (c.ThuDiTuyen || '-') + '</div>' +
       '<div class="row">Trạng thái: ' + (c.StatusName || c.status || '-') + '</div>' +
       (phone ? '<a href="tel:' + phone + '" class="btn-call" onclick="event.stopPropagation()">📞</a>' : '') +
@@ -226,15 +238,21 @@ $gpsInput.after(
 );
 
 var _branchName = ''; // Lưu tên chi nhánh để điền lại sau reset
+var _branchNames = {};
 Http.get(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { q: JSON.stringify({ BranchID: user.BranchID || '', SearchText: '' }) })
   .then(function (res) {
     var records = (res.data || res).records || res.data || res || [];
+    records.forEach(function (r) { if (r.BranchID) _branchNames[r.BranchID] = r.BranchName || r.BranchID; });
     var match = records.find(function (r) { return r.BranchID === user.BranchID; });
     if (match) _branchName = match.BranchName || match.BranchID;
   });
 
 function openModal(editData) {
   custForm.reset();
+  custForm.setLocked('group', false);
+  custForm.setLocked('bankAcc', false);
+  custForm.setLocked('bankOwner', false);
+  custForm.setLocked('bank', false);
   // Sau reset, nếu user có BranchID thì điền lại name và lock
   if (user.BranchID) {
     custForm.setListValue('branch', user.BranchID, _branchName);
@@ -248,6 +266,9 @@ function openModal(editData) {
     custForm.setValue('phone', editData.phone || '');
     custForm.setValue('address', editData.address || '');
     custForm.setValue('tax', editData.tax || '');
+    custForm.setValue('bankAcc', editData.bankAcc || '');
+    custForm.setValue('bankOwner', editData.bankOwner || '');
+    custForm.setValue('bank', editData.bank || '');
     if (editData.birthday) {
       var bd = editData.birthday;
       if (bd.indexOf('-') !== -1 || bd.indexOf('T') !== -1) {
@@ -264,6 +285,15 @@ function openModal(editData) {
     custForm.setListValue('province', editData.locationId, editData.locationId);
     custForm.setListValue('district', editData.quanHuyen, editData.quanHuyen);
     custForm.setListValue('ward', editData.xaPhuong, editData.xaPhuong);
+    custForm.setListValue('group', editData.objectGroupId, editData.objectGroupName || editData.objectGroupId);
+    if (editData.branchId) {
+      custForm.setListValue('branch', editData.branchId, _branchNames[editData.branchId] || editData.branchId);
+    }
+    // The current update contract cannot change customer scope or bank fields.
+    custForm.setLocked('group', true);
+    custForm.setLocked('bankAcc', true);
+    custForm.setLocked('bankOwner', true);
+    custForm.setLocked('bank', true);
   } else {
     _editingObjectID = '';
     $('#modal-add-customer .modal-header h2').text('Thêm khách hàng');
@@ -289,6 +319,9 @@ $(document).on('click', '.customer-card', function (e) {
     loaiKhachHang: $c.data('loaikhachhang'), kenhBan: $c.data('kenhban'),
     thuDiTuyen: $c.data('thudituyien'), locationId: $c.data('locationid'),
     quanHuyen: $c.data('quanhuyen'), xaPhuong: $c.data('xaphuong'),
+    objectGroupId: $c.data('objectgroupid'), objectGroupName: $c.data('objectgroupname'),
+    bankAcc: $c.attr('data-bankacc'), bank: $c.attr('data-bank'), bankOwner: $c.attr('data-bankowner'),
+    branchId: $c.data('branchid'),
     lat: $c.data('lat'), lng: $c.data('lng'),
   });
 });
