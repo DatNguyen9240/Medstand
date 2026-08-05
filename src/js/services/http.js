@@ -258,10 +258,6 @@ const Http = (() => {
         const tid = setTimeout(() => controller.abort(), requestTimeout);
         const res = await fetch(targetUrl, { ...targetOptions, signal: controller.signal || targetOptions.signal });
         clearTimeout(tid);
-        if (!res.ok && res.status >= 500) {
-          throw new Error('Server error: ' + res.status);
-        }
-        
         // 3. Giải mã kết quả trả về từ Gateway
         if (!isGatewayCall && !isExternalMap && !isLocalHtml && !bypassGateway) {
           const resJson = await res.json();
@@ -275,6 +271,10 @@ const Http = (() => {
              statusText: res.statusText,
              headers: res.headers
           });
+        }
+
+        if (!res.ok && res.status >= 500) {
+          throw new Error('Server error: ' + res.status);
         }
 
         return res;

@@ -23,16 +23,18 @@ function check(name, fn) {
 
 check('GATEWAY_POLICY_COVERS_BOTH_MUTATIONS', () => {
   assert(server.includes("'/api/API_KhachHang_Insert_AI'"));
-  assert(server.includes("requiredCapability: 'customers.write'"));
   assert(server.includes("'/api/API_DonHangChiTiet_Insert_AI'"));
-  assert(server.includes("requiredCapability: 'orders.write'"));
 });
 
-check('GATEWAY_USES_VERIFIED_IDENTITY_AND_FAILS_CLOSED', () => {
+check('GATEWAY_USES_VERIFIED_IDENTITY_WITH_EXISTING_SQL_SCOPE', () => {
   assert(server.includes('resolveVerifiedGatewayIdentity(authorization)'));
-  assert(server.includes('hasGatewayCapability(verifiedIdentity, mutationPolicy.requiredCapability)'));
-  assert(server.includes("'CAPABILITY_REQUIRED'"));
   assert(server.includes('body[mutationPolicy.identityField] = verifiedIdentity.username'));
+  assert(!server.includes('/api/API_UserCapabilityByUser_AI'));
+  assert(!server.includes("'CAPABILITY_REQUIRED'"));
+  assert(customerSql.includes('AR_OpListEmployeeTbl'));
+  assert(customerSql.includes('AR_OpListDetailTbl'));
+  assert(orderSql.includes('AR_GetObjectByUserFnc(@Username)'));
+  assert(orderSql.includes('AI_WarehouseByUserFnc(@Username'));
 });
 
 check('GATEWAY_REQUIRES_MUTATION_CONTEXT', () => {

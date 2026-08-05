@@ -247,47 +247,19 @@ const resolveVerifiedGatewayIdentity = async (authorization) => {
     const username = String(record.UserName || record.Username || record.username || record.User || record.userId || '').trim();
     if (!username) return null;
 
-    let capabilities = record.capabilities
-        || record.Capabilities
-        || record.permissions
-        || record.Permissions
-        || record.scopes
-        || [];
-    if (!Array.isArray(capabilities)) {
-        const serializedCapabilities = String(capabilities).trim();
-        try {
-            const parsedCapabilities = JSON.parse(serializedCapabilities);
-            capabilities = Array.isArray(parsedCapabilities) ? parsedCapabilities : [serializedCapabilities];
-        } catch (_) {
-            capabilities = serializedCapabilities.split(',').map((value) => value.trim()).filter(Boolean);
-        }
-    }
-    return {
-        username,
-        capabilities: capabilities.map((value) => String(value).trim().toLowerCase()).filter(Boolean)
-    };
+    return { username };
 };
 
 const DIRECT_MUTATION_POLICY = Object.freeze({
     '/api/API_KhachHang_Insert_AI': Object.freeze({
-        requiredCapability: 'customers.write',
         identityField: 'User',
         operationCode: 'API_KhachHang_Insert_AI'
     }),
     '/api/API_DonHangChiTiet_Insert_AI': Object.freeze({
-        requiredCapability: 'orders.write',
         identityField: 'Username',
         operationCode: 'API_DonHangChiTiet_Insert_AI'
     })
 });
-
-const hasGatewayCapability = (identity, requiredCapability) => {
-    const granted = new Set((identity && identity.capabilities || []).map((value) => String(value).toLowerCase()));
-    return granted.has(requiredCapability)
-        || granted.has(`${requiredCapability}.*`)
-        || granted.has('*')
-        || granted.has('api:*');
-};
 
 const authRequiredPayload = (requestId) => ({
     success: false,
@@ -450,7 +422,8 @@ app.post('/api/gateway', async (req, res) => {
 
         // Mutation không được tin identity do trình duyệt gửi. Xác minh lại token
         // bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
-        // idempotency vào body để procedure SQL xử lý nguyên tử.
+        // idempotency. Quyền/phạm vi nghiệp vụ được các procedure SQL hiện hữu
+        // kiểm tra theo user, nhóm khách, khách hàng và kho được phép.
         const mutationPolicy = DIRECT_MUTATION_POLICY[endpointPath];
         if (mutationPolicy) {
             if (method !== 'POST' || !body || typeof body !== 'object' || Array.isArray(body)) {
@@ -468,13 +441,6 @@ app.post('/api/gateway', async (req, res) => {
             }
             if (!verifiedIdentity || !verifiedIdentity.username) {
                 return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản đăng nhập. Vui lòng đăng nhập lại.');
-            }
-            if (!hasGatewayCapability(verifiedIdentity, mutationPolicy.requiredCapability)) {
-                console.warn(
-                    `[Mutation Denied] requestId=${requestId}; operation=${mutationPolicy.operationCode}; `
-                    + `requiredCapability=${mutationPolicy.requiredCapability}; principal=${verifiedIdentity.username}`
-                );
-                return sendGatewayError(res, 403, requestId, 'CAPABILITY_REQUIRED', 'Tài khoản chưa có quyền thực hiện thao tác ghi dữ liệu này.');
             }
             body = {
                 ...body,

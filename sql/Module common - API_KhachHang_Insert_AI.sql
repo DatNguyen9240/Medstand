@@ -273,17 +273,46 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
-    IF NOT EXISTS (SELECT 1 FROM dbo.CF_LocationDetailTbl WHERE QuanHuyen = @QuanHuyen)
+    IF OBJECT_ID('dbo.AI_GetTinhThanhByUserFnc', 'IF') IS NULL
     BEGIN
-        SET @ResultCode = 'INVALID_DISTRICT';
-        SET @ResultMsg = N'Quận huyện không hợp lệ: ' + COALESCE(@QuanHuyen, '');
+        SET @ResultCode = 'LOCATION_SCOPE_UNAVAILABLE';
+        SET @ResultMsg = N'Hệ thống kiểm tra phạm vi tỉnh/thành chưa sẵn sàng.';
         GOTO ReturnFailure;
     END;
 
-    IF NOT EXISTS (SELECT 1 FROM dbo.CF_LocationDetail2Tbl WHERE XaPhuong = @XaPhuong)
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.AI_GetTinhThanhByUserFnc(@User)
+        WHERE LocationID = @LocationID
+    )
     BEGIN
-        SET @ResultCode = 'INVALID_WARD';
-        SET @ResultMsg = N'Xã phường không hợp lệ: ' + COALESCE(@XaPhuong, '');
+        SET @ResultCode = 'LOCATION_OUT_OF_SCOPE';
+        SET @ResultMsg = N'Tỉnh/thành không thuộc phạm vi nhóm khách hàng của tài khoản.';
+        GOTO ReturnFailure;
+    END;
+
+    /*
+      Dùng cùng nguồn địa giới hiện hành với dropdown. Sau thay đổi địa giới,
+      nhiều tỉnh dùng mô hình hai cấp nên QuanHuyen của phường/xã để NULL;
+      Hà Nội vẫn còn dữ liệu ba cấp. Không ép các tỉnh hai cấp chọn một huyện
+      legacy không liên quan và luôn kiểm tra phường/xã thuộc đúng tỉnh.
+    */
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM dbo.CF_XaPhuongTbl W
+        WHERE W.TinhThanh = @LocationID
+          AND W.XaPhuong = @XaPhuong
+          AND
+          (
+              (NULLIF(LTRIM(RTRIM(COALESCE(W.QuanHuyen, N''))), N'') IS NULL AND @QuanHuyen = N'')
+              OR W.QuanHuyen = @QuanHuyen
+          )
+    )
+    BEGIN
+        SET @ResultCode = 'INVALID_ADMIN_AREA';
+        SET @ResultMsg = N'Tỉnh/thành, quận/huyện và phường/xã không cùng một địa giới hợp lệ.';
         GOTO ReturnFailure;
     END;
 

@@ -78,9 +78,9 @@ async function main() {
         res.end(JSON.stringify({ code: 2, msg: 'expired' }));
         return;
       }
-      let record = { UserName: 'READONLY.USER', Disable: 0, capabilities: ['api.read'] };
-      if (authorization.includes('order-token')) record = { UserName: 'VERIFIED.ORDER', Disable: 0, capabilities: ['orders.write'] };
-      if (authorization.includes('customer-token')) record = { UserName: 'VERIFIED.CUSTOMER', Disable: 0, capabilities: '["customers.write"]' };
+      let record = { UserName: 'VERIFIED.MANAGER', Disable: 0, Manager: 1 };
+      if (authorization.includes('order-token')) record = { UserName: 'VERIFIED.ORDER', Disable: 0 };
+      if (authorization.includes('customer-token')) record = { UserName: 'VERIFIED.CUSTOMER', Disable: 0 };
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ records: [record] }));
       return;
@@ -121,48 +121,48 @@ async function main() {
   try {
     await waitForServer(gatewayPort);
 
-    const deniedOrder = await gatewayCall(
-      gatewayPort, '/api/API_DonHangChiTiet_Insert_AI', 'read-only-token', 'core010-order-denied', { Username: 'SPOOFED' }
+    const managerCustomer = await gatewayCall(
+      gatewayPort, '/api/API_KhachHang_Insert_AI', 'manager-token', 'core010-manager-customer', { User: 'SPOOFED' }
     );
-    assert.strictEqual(deniedOrder.status, 403);
-    assert.strictEqual(deniedOrder.body.code, 'CAPABILITY_REQUIRED');
-    assert.strictEqual(mutationCalls.length, 0);
+    assert.strictEqual(managerCustomer.status, 200);
+    assert.strictEqual(managerCustomer.body[0].Code, 'CREATED');
+    assert.strictEqual(mutationCalls[0].body.User, 'VERIFIED.MANAGER');
 
-    const deniedCustomer = await gatewayCall(
-      gatewayPort, '/api/API_KhachHang_Insert_AI', 'read-only-token', 'core010-customer-denied', { User: 'SPOOFED' }
+    const missingKey = await gatewayCall(
+      gatewayPort, '/api/API_KhachHang_Insert_AI', 'manager-token', '', { User: 'SPOOFED' }
     );
-    assert.strictEqual(deniedCustomer.status, 403);
-    assert.strictEqual(deniedCustomer.body.code, 'CAPABILITY_REQUIRED');
-    assert.strictEqual(mutationCalls.length, 0);
+    assert.strictEqual(missingKey.status, 422);
+    assert.strictEqual(missingKey.body.code, 'IDEMPOTENCY_KEY_REQUIRED');
+    assert.strictEqual(mutationCalls.length, 1);
 
     const expired = await gatewayCall(
       gatewayPort, '/api/API_KhachHang_Insert_AI', 'expired-token', 'core010-customer-expired', { User: 'SPOOFED' }
     );
     assert.strictEqual(expired.status, 401);
     assert.strictEqual(expired.body.code, 'AUTH_IDENTITY_VERIFICATION_FAILED');
-    assert.strictEqual(mutationCalls.length, 0);
+    assert.strictEqual(mutationCalls.length, 1);
 
     const orderConflict = await gatewayCall(
       gatewayPort, '/api/API_DonHangChiTiet_Insert_AI', 'order-token', 'core010-order-conflict', { Username: 'SPOOFED' }
     );
     assert.strictEqual(orderConflict.status, 409);
     assert.strictEqual(orderConflict.body[0].Code, 'IDEMPOTENCY_CONFLICT');
-    assert.strictEqual(mutationCalls[0].body.Username, 'VERIFIED.ORDER');
-    assert.strictEqual(mutationCalls[0].body.IdempotencyKey, 'core010-order-conflict');
-    assert(/^req-/.test(mutationCalls[0].body.RequestID));
+    assert.strictEqual(mutationCalls[1].body.Username, 'VERIFIED.ORDER');
+    assert.strictEqual(mutationCalls[1].body.IdempotencyKey, 'core010-order-conflict');
+    assert(/^req-/.test(mutationCalls[1].body.RequestID));
 
     const customerCreated = await gatewayCall(
       gatewayPort, '/api/API_KhachHang_Insert_AI', 'customer-token', 'core010-customer-created', { User: 'SPOOFED' }
     );
     assert.strictEqual(customerCreated.status, 200);
     assert.strictEqual(customerCreated.body[0].Code, 'CREATED');
-    assert.strictEqual(mutationCalls[1].body.User, 'VERIFIED.CUSTOMER');
-    assert.strictEqual(mutationCalls[1].body.IdempotencyKey, 'core010-customer-created');
-    assert(/^req-/.test(mutationCalls[1].body.RequestID));
+    assert.strictEqual(mutationCalls[2].body.User, 'VERIFIED.CUSTOMER');
+    assert.strictEqual(mutationCalls[2].body.IdempotencyKey, 'core010-customer-created');
+    assert(/^req-/.test(mutationCalls[2].body.RequestID));
 
     console.log('CORE-010 gateway mutation policy: PASS 5/5');
-    console.log('  ✓ orders.write negative guard prevents upstream mutation');
-    console.log('  ✓ customers.write negative guard prevents upstream mutation');
+    console.log('  ✓ verified manager reaches existing SQL scope checks without a new capability contract');
+    console.log('  ✓ missing idempotency key prevents upstream mutation');
     console.log('  ✓ expired identity prevents replay/upstream mutation');
     console.log('  ✓ verified order identity is overwritten and conflict maps to HTTP 409');
     console.log('  ✓ verified customer identity and mutation context are forwarded');

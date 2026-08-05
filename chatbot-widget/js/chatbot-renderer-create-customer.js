@@ -90,7 +90,7 @@
     function _loadProvinces(cb) {
         if (_provincesCache) { cb(_provincesCache); return; }
         var user = _getUser();
-        _apiGet(_filterEp.PROVINCES || '/api/API_TinhThanh', {
+        _apiGet(_aiEp.PROVINCES_BY_USER || '/api/API_TinhThanhByUser_AI', {
             q: JSON.stringify({ User: user.UserName || '', LocationID: '', SearchText: '' })
         }).then(function (res) {
             var records = (res.data || res).records || res.data || res || [];
@@ -122,11 +122,11 @@
         if (_wardsCache[key]) { cb(_wardsCache[key]); return; }
         var user = _getUser();
         _apiGet(_filterEp.WARDS || '/api/API_PhuongXa', {
-            q: JSON.stringify({ User: user.UserName || '', LocationID: provinceId, QuanHuyen: districtId || '', XaPhuong: '', SearchText: '' })
+            q: JSON.stringify({ User: user.UserName || '', LocationID: provinceId, QuanHuyen: districtId || '', SearchText: '' })
         }).then(function (res) {
             var records = (res.data || res).records || res.data || res || [];
             _wardsCache[key] = Array.isArray(records) ? records.map(function (r) {
-                return { value: r.XaPhuong || '', label: r.XaPhuong || '' };
+                return { value: r.XaPhuong || '', label: r.XaPhuong || '', district: r.QuanHuyen || '' };
             }) : [];
             cb(_wardsCache[key]);
         }).catch(function () { cb([]); });
@@ -388,12 +388,30 @@
                 if (provinceInput) {
                     provinceInput.addEventListener('change', function () {
                         var provinceId = this.getAttribute('data-value') || '';
-                        // Reset quận và phường
+                        // Reset quận và phường, sau đó tự nhận biết địa giới hai/ba cấp.
                         _clearDropdown(formEl, formId, 'district');
                         _clearDropdown(formEl, formId, 'ward');
                         if (provinceId) {
-                            _loadDistricts(provinceId, function (options) {
-                                _initDropdown(formEl, formId, 'district', options);
+                            _loadWards(provinceId, '', function (wardOptions) {
+                                var districtField = districtDd && districtDd.closest('.ccf-field');
+                                var hasDistrictLevel = wardOptions.some(function (option) {
+                                    return String(option.district || '').trim() !== '';
+                                });
+                                if (!hasDistrictLevel) {
+                                    if (districtField) {
+                                        districtField.style.display = 'none';
+                                        districtField.setAttribute('data-optional', 'true');
+                                    }
+                                    _initDropdown(formEl, formId, 'ward', wardOptions);
+                                    return;
+                                }
+                                if (districtField) {
+                                    districtField.style.display = '';
+                                    districtField.setAttribute('data-optional', 'false');
+                                }
+                                _loadDistricts(provinceId, function (options) {
+                                    _initDropdown(formEl, formId, 'district', options);
+                                });
                             });
                         }
                     });
@@ -529,6 +547,9 @@
                     if (!_activeForms[formId] || confirm('Bạn có muốn đóng khung tạo khách hàng này?')) {
                         formEl.style.display = 'none';
                         _activeForms[formId] = false;
+                        if (window.ApiEngine && typeof window.ApiEngine.clearState === 'function') {
+                            window.ApiEngine.clearState();
+                        }
                     }
                 });
             }
@@ -557,7 +578,9 @@
         if (!province) errors.push({ field: 'province', msg: 'Vui lòng chọn tỉnh/thành phố' });
 
         var district = _getDropdownValue(formEl, formId, 'district');
-        if (!district) errors.push({ field: 'district', msg: 'Vui lòng chọn quận/huyện' });
+        var districtField = formEl.querySelector('.ccf-field[data-field="district"]');
+        var districtRequired = !districtField || districtField.getAttribute('data-optional') !== 'true';
+        if (districtRequired && !district) errors.push({ field: 'district', msg: 'Vui lòng chọn quận/huyện' });
 
         var ward = _getDropdownValue(formEl, formId, 'ward');
         if (!ward) errors.push({ field: 'ward', msg: 'Vui lòng chọn phường/xã' });
@@ -658,7 +681,10 @@
         previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Tên khách hàng</span><span class="ccf-preview-value">' + _esc(name) + '</span></div>';
         previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Số điện thoại</span><span class="ccf-preview-value">' + _esc(phone) + '</span></div>';
         previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Mã số thuế</span><span class="ccf-preview-value">' + _esc(tax) + '</span></div>';
-        previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Địa chỉ</span><span class="ccf-preview-value">' + _esc(address) + ', ' + _esc(wardLabel) + ', ' + _esc(districtLabel) + ', ' + _esc(provinceLabel) + '</span></div>';
+        var fullAddress = [address, wardLabel, districtLabel, provinceLabel].filter(function (part) {
+            return String(part || '').trim() !== '';
+        }).join(', ');
+        previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Địa chỉ</span><span class="ccf-preview-value">' + _esc(fullAddress) + '</span></div>';
         if (birthday) {
             previewHtml += '<div class="ccf-preview-row"><span class="ccf-preview-label">Ngày sinh</span><span class="ccf-preview-value">' + _esc(birthday) + '</span></div>';
         }
@@ -771,6 +797,9 @@
                     _showResult(formEl, formId, 'success', successMsg, objectId);
                     // Khoá form vĩnh viễn
                     _activeForms[formId] = false;
+                    if (window.ApiEngine && typeof window.ApiEngine.clearState === 'function') {
+                        window.ApiEngine.clearState();
+                    }
                 }
             })
             .catch(function (err) {

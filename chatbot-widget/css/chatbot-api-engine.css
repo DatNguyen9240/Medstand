@@ -69,6 +69,13 @@ body.ae-panel-open::before {
     animation: aeFadeIn 0.2s ease;
 }
 
+/* Panel/form nghiệp vụ là một màn hình làm việc riêng. Topbar trong template
+   đang được ghim z-index 9999 nên phải ẩn theo state mở panel; khi đóng hoặc
+   thu nhỏ, JS gỡ ae-panel-open và topbar tự hiện lại. */
+body.ae-panel-open .chatbot-topbar {
+    display: none !important;
+}
+
 @keyframes aeFadeIn {
     from {
         opacity: 0;
@@ -751,7 +758,7 @@ body.ae-panel-open::before {
 .ae-customer-back-btn { flex:0 0 auto; min-height:42px; padding:0 18px; border:1px solid var(--ae-border); border-radius:9px; background:var(--ae-bg); color:var(--ae-text); cursor:pointer; }
 @media (max-width:640px) {
     .ae-customer-create-panel {
-        top: var(--header-height, 64px);
+        top: max(0px, env(safe-area-inset-top, 0px));
         bottom: 0;
         left: 0;
         width: 100%;

@@ -2,10 +2,10 @@
 
 **Ngày kiểm tra:** 05/08/2026  
 **Môi trường kiểm tra SQL:** `medtest`, mọi mutation thử nghiệm nằm trong transaction và đã `ROLLBACK`  
-**Trạng thái:** `READY_FOR_END_TO_END_UAT`  
+**Trạng thái:** `SQL_DEPLOYED_MEDTEST_VERIFIED_UAT_REPORTED_PENDING_AUDIT_EVIDENCE`
 **Phạm vi:** tạo khách hàng và tạo đơn hàng qua direct gateway  
 **Git base SHA:** `4d25f58a913d5e477f11e686ce11c204ab48c8ee`  
-**Commit triển khai:** chưa có; thay đổi hiện ở working tree và chưa được deploy
+**Commit triển khai:** chưa có SHA; SQL `medtest` đã được user deploy từ working tree
 
 ## 1. Kết luận
 
@@ -13,8 +13,8 @@ Phần code và SQL local đã được harden theo một pipeline thống nhấ
 
 ```text
 token đã xác minh
-→ capability bắt buộc
-→ identity/scope phía server
+→ identity do gateway xác minh và ghi đè
+→ scope nghiệp vụ do SQL hiện hữu kiểm tra
 → validate payload
 → request ID + idempotency key
 → transaction + khóa ledger
@@ -22,12 +22,12 @@ token đã xác minh
 → commit
 ```
 
-CORE-010 chưa được đánh dấu `DONE`. Còn thiếu UAT qua token/UI thật, kiểm thử đồng thời thật và bằng chứng lỗi DB trên runtime đã deploy. Không có thay đổi nào được deploy lên production trong đợt này.
+CORE-010 chưa được đánh dấu `DONE`. User xác nhận đã deploy và chạy UAT thật; hậu kiểm read-only xác nhận hai procedure mới đang có trên `medtest`. Tuy nhiên chưa có audit lưu bền để đối chiếu UAT: toàn bộ nhóm event CORE-010 trong `AI_AuditLog` hiện có số lượng `0`. Không có bằng chứng production deploy trong đợt này.
 
 ## 2. Root cause và lỗ hổng trước khi sửa
 
 - Gateway chỉ bảo vệ riêng endpoint tạo đơn; endpoint tạo khách vẫn có thể nhận identity do trình duyệt gửi.
-- Gateway chưa bắt buộc capability riêng cho hai mutation.
+- Gateway từng được bổ sung capability riêng cho hai mutation nhưng `API_UserInfo` không có contract trả capability, làm manager hợp lệ bị chặn trước SQL. Guard chưa có nguồn quyền này đã được loại bỏ; không tạo schema/quyền mới trong DB.
 - Tạo khách chỉ có chống double-click phía frontend, chưa có ledger idempotency ở server nên retry hoặc hai request đồng thời vẫn có thể tạo lặp.
 - Audit trong SQL tạo đơn là tùy chọn: thiếu procedure audit vẫn có thể commit nghiệp vụ.
 - Replay và lỗi chưa có contract audit thống nhất; correlation giữa request, fingerprint và kết quả chưa đầy đủ.
@@ -35,7 +35,7 @@ CORE-010 chưa được đánh dấu `DONE`. Còn thiếu UAT qua token/UI thậ
 
 ## 3. Các file thay đổi
 
-- `server.js`: guard mutation dùng chung, verified identity, capability, request ID, idempotency context và HTTP `409` cho conflict/in-progress.
+- `server.js`: guard mutation dùng chung, verified identity, request ID, idempotency context và HTTP `409` cho conflict/in-progress; quyền/phạm vi tiếp tục dùng SQL nghiệp vụ hiện hữu.
 - `sql/Module common - API_KhachHang_Insert_AI.sql`: idempotency, deterministic replay, conflict, transaction và audit bắt buộc cho tạo khách.
 - `sql/Module common - API_DonHangChiTiet_Insert_AI.sql`: audit bắt buộc/fail-closed cho create, replay và failure; bổ sung evidence capability/fingerprint/branch.
 - `scripts/verify_uat017_customer_create.js`: thêm gate idempotency, replay, audit và gateway cho tạo khách.
@@ -44,6 +44,7 @@ CORE-010 chưa được đánh dấu `DONE`. Còn thiếu UAT qua token/UI thậ
 - `scripts/test_core010_gateway_mutation_policy.js`: integration test gateway với backend giả lập.
 - `scripts/preflight_core010_sql.js`: compile/preflight SQL trong transaction rồi rollback.
 - `scripts/verify_core010_customer_mutation_rollback.js`: mutation test có kiểm tra replay/conflict/audit/fail-closed rồi rollback.
+- `scripts/verify_core010_deployed_audit.js`: hậu kiểm read-only event audit CORE-010 đang lưu trên `medtest`.
 
 ## 4. Schema và contract idempotency
 
@@ -81,33 +82,33 @@ Các event hiện hành:
 - Khách hàng: `CREATE_CUSTOMER`, `REPLAY_CUSTOMER`, `CREATE_CUSTOMER_FAILED`, `IDEMPOTENCY_CONFLICT_CUSTOMER`.
 - Đơn hàng: `CREATE_DONHANG`, `REPLAY_DONHANG`, `CREATE_DONHANG_FAILED`.
 
-`ExtraInfo` chứa request ID, SHA-256 idempotency key, payload fingerprint, capability bắt buộc, branch và result code/outcome. Không ghi access token, password hoặc raw idempotency key.
+`ExtraInfo` chứa request ID, SHA-256 idempotency key, payload fingerprint, mã thao tác, branch và result code/outcome. Hai chuỗi `customers.write`/`orders.write` trong audit chỉ là nhãn thao tác hiện hành, không phải nguồn cấp quyền mới. Không ghi access token, password hoặc raw idempotency key.
 
-## 6. Identity, capability và scope
+## 6. Identity và scope
 
 Gateway không tin `User`/`Username` từ client. Nó gọi `API_UserInfo` bằng token hiện tại, từ chối user bị disable hoặc identity không xác minh được, rồi ghi đè identity trong body.
 
-- Tạo khách bắt buộc `customers.write`.
-- Tạo đơn bắt buộc `orders.write`.
-- Chấp nhận capability chính xác hoặc wildcard đã được nguồn identity cấp; không suy đoán quyền từ tên vai trò.
-- SQL tiếp tục kiểm tra branch, nhóm khách, nhân viên được quản lý, khách hàng và kho theo scope nghiệp vụ.
-
-Điểm chặn trước deploy: phải xác nhận `API_UserInfo` runtime thực sự trả hai capability trên cho đúng 13 tài khoản UAT. Nếu nguồn identity chưa cấp capability, phải sửa authority/capability contract trước; không thêm fallback hard-code theo role.
+- Gateway không yêu cầu capability mới vì ERP hiện không có contract capability theo tài khoản và trước đây không yêu cầu cấu hình này.
+- Tạo khách được SQL kiểm tra tài khoản còn hiệu lực, loại tài khoản, branch, nhóm khách, nhân viên quản lý và địa chỉ thuộc scope.
+- Tạo đơn được SQL kiểm tra tài khoản còn hiệu lực, khách hàng nhìn thấy và kho được phép.
+- Không tin `User`, `Username`, branch, nhóm khách, khách hàng hoặc kho do client tự khai để mở rộng phạm vi.
+- Không có migration cấp quyền và không thay đổi schema/dữ liệu phân quyền hiện hữu của `medtest` trong bản sửa regression này.
 
 ## 7. Kết quả kiểm tra
 
 | Nhóm kiểm tra | Kết quả | Ghi chú |
 | --- | --- | --- |
 | Static hardening | PASS `10/10` | Hai mutation, idempotency, audit, transaction, client defence-in-depth, confirm/cancel |
-| Gateway policy | PASS `5/5` | Deny order/customer thiếu quyền; token hết hạn; identity overwrite; conflict → HTTP 409 |
+| Gateway policy | PASS `5/5` | Manager hợp lệ đi tới SQL scope; thiếu idempotency và token hết hạn bị chặn; identity overwrite; conflict → HTTP 409 |
 | SQL compile preflight | PASS | Áp migration + audit + hai procedure trong transaction, không gọi mutation, đã rollback |
 | Customer mutation rollback | PASS | Create → replay cùng ObjectID → conflict; đủ 3 audit event; audit unavailable fail-closed cho khách và đơn |
 | Cleanup sau rollback | PASS | `CustomerCount = 0`, `AuditCount = 0`, `PersistedChanges = false` |
 | CORE-009 regression | PASS `23/23` | Draft/preview không tự tạo đơn |
 | Natural chat static | PASS `163/163` | Không phát hiện regression tĩnh |
 | Natural chat resilience | PASS `5/5` | Các guard resilience hiện hành giữ nguyên |
-| UAT-017 read-only trên procedure đang deploy | BLOCKED | `medtest` vẫn là procedure tạo khách cũ, thiếu 3 gate mới |
-| UAT-018 read-only trên procedure đang deploy | BLOCKED | `medtest` vẫn thiếu mandatory-audit mới; gate STOCK-001 đã khớp |
+| UAT-017 read-only trên procedure đang deploy | PASS | Procedure tạo khách mới đã có idempotency, replay và mandatory audit |
+| UAT-018 read-only trên procedure đang deploy | PASS contract | Procedure tạo đơn mới đã có mandatory audit; trạng thái gate `READY_FOR_CONTROLLED_MUTATION` |
+| Audit runtime sau UAT được báo cáo | BLOCKED EVIDENCE | `RelevantEventCount = 0`, chưa có request ID/event lưu bền để đối chiếu |
 
 Request ID của lần mutation rollback thành công có dạng:
 
@@ -119,12 +120,14 @@ Request ID của lần mutation rollback thành công có dạng:
 
 Các ObjectID/request ID trên chỉ là bằng chứng trong transaction đã rollback; không phải dữ liệu còn tồn tại trên `medtest`.
 
-## 8. Những ca UAT còn phải chạy sau deploy
+## 8. Đối chiếu UAT sau deploy
+
+User xác nhận đã chạy UAT thật. Bảng dưới đây giữ trạng thái “chưa đối chiếu” cho các ca chưa có ảnh/log/request ID hoặc audit lưu bền trong workspace/DB; điều này không phủ nhận thao tác đã chạy, nhưng chưa đủ bằng chứng để đóng P0.
 
 | Ca | Tạo khách | Tạo đơn | Điều kiện pass |
 | --- | --- | --- | --- |
-| Chưa xác nhận | Còn thiếu UI/token | Còn thiếu UI/token | Không có row nghiệp vụ/audit create |
-| Hủy | Còn thiếu UI/token | Còn thiếu UI/token | Không mutation |
+| Chưa xác nhận | User báo đã chạy; chưa có evidence | User báo đã chạy; chưa có evidence | Không có row nghiệp vụ/audit create |
+| Hủy | User báo đã chạy; chưa có evidence | User báo đã chạy; chưa có evidence | Không mutation |
 | Hết phiên | Gateway mock PASS | Gateway mock PASS | HTTP 401, không gọi upstream |
 | Double-click/concurrency | SQL locking đã có, còn thiếu tải đồng thời thật | SQL locking đã có, còn thiếu tải đồng thời thật | Chỉ một entity, request sau replay/in-progress |
 | Retry cùng payload | SQL rollback PASS | Cần token/runtime thật | Trả cùng ObjectID/DocumentID |
@@ -132,18 +135,13 @@ Các ObjectID/request ID trên chỉ là bằng chứng trong transaction đã r
 | Thiếu quyền | Gateway mock PASS | Gateway mock PASS | HTTP 403, upstream mutation không được gọi |
 | Lỗi DB/audit | Audit unavailable rollback PASS | Audit unavailable rollback PASS | Không commit nghiệp vụ; có mã lỗi/request ID |
 
-## 9. Trình tự deploy đề xuất
+## 9. Hậu kiểm deploy và bước đóng task
 
-1. Sao lưu definition hiện hành của hai procedure và `server.js` đang chạy.
-2. Read-only preflight 13 tài khoản: xác nhận identity và capability `customers.write`/`orders.write`. Dừng deploy nếu authority chưa trả đúng.
-3. Trong maintenance transaction, chạy theo thứ tự:
-   - `sql/Migrate_API_Mutation_Idempotency_AI.sql`;
-   - `sql/System - AI_AuditLog_AI.sql` nếu audit system chưa có hoặc cần đồng bộ procedure;
-   - `sql/Module common - API_KhachHang_Insert_AI.sql`;
-   - `sql/Module common - API_DonHangChiTiet_Insert_AI.sql`.
-4. Deploy/restart gateway chứa `server.js` mới.
-5. Chạy lại UAT-017/UAT-018 read-only; sau đó chạy ma trận UAT qua token/UI thật và lưu request ID, ảnh, log.
-6. Chỉ đổi CORE-010 thành `DONE` khi tất cả ca ở mục 8 pass và không có mutation ngoài ý muốn.
+1. SQL deploy đã được xác nhận bằng UAT-017/UAT-018 read-only.
+2. Lấy request ID/log/ảnh từ lần UAT đã chạy và đối chiếu `AI_AuditLog`.
+3. Nếu lần UAT được chạy trong outer transaction rồi rollback, chạy lại đúng một mutation thật có kiểm soát, giữ audit và dọn riêng dữ liệu nghiệp vụ theo ID sau khi chụp evidence; không xóa audit.
+4. Nếu mutation thật đã commit nhưng audit vẫn bằng `0`, dừng nghiệm thu và điều tra đường gọi/runtime/DB target vì vi phạm tiêu chí P0.
+5. Chỉ đổi CORE-010 thành `DONE` khi tất cả ca ở mục 8 có bằng chứng và không có mutation ngoài ý muốn.
 
 ## 10. Rollback
 
@@ -154,7 +152,7 @@ Các ObjectID/request ID trên chỉ là bằng chứng trong transaction đã r
 
 ## 11. Rủi ro còn lại
 
-- Authority runtime có thể chưa trả capability write, khiến mutation fail-closed sau deploy. Đây là rủi ro cần xử lý ở nguồn quyền, không phải mở bypass.
-- Chưa có bằng chứng hai request thật chạy đồng thời qua gateway/SQL đã deploy.
-- Chưa có ảnh UI, request ID và log runtime cho đủ 13 tài khoản.
+- Chưa có audit lưu bền từ lần UAT được báo cáo; chưa phân biệt được UAT đã rollback, chưa tới mutation hay đang đi sai runtime/DB.
+- Chưa có bằng chứng lưu trong workspace cho hai request thật chạy đồng thời qua gateway/SQL đã deploy.
+- Chưa có ảnh UI, request ID và log runtime được lưu trong workspace cho ma trận UAT.
 - Audit table hiện là thiết kế dùng chung hiện hữu; cần theo dõi retention/dung lượng vận hành riêng sau khi lưu lượng thật tăng.

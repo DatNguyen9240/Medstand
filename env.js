@@ -108,6 +108,7 @@ window.API_CONFIG = {
             // do client gửi lên, và truyền rỗng thì trả về toàn bộ nhóm của hệ thống.
             OBJECT_GROUP_BY_USER: '/api/API_ObjectGroupByUser_AI',  // nhóm mà người đăng nhập được gán
             EMPLOYEE_BY_MANAGER: '/api/API_EmployeeByManager_AI',    // nhân viên dưới quyền, để manager chỉ định người phụ trách
+            PROVINCES_BY_USER: '/api/API_TinhThanhByUser_AI',        // tỉnh/thành trong phạm vi ObjectGroupID của tài khoản
             CREATE_CUSTOMER: '/api/API_KhachHang_Insert_AI'          // endpoint tạo khách riêng của Chatbot AI
         }
     },
