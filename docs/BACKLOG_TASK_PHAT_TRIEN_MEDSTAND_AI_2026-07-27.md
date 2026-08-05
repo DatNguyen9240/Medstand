@@ -363,9 +363,11 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả code 05/08/2026: thêm conversational reducer `CREATE/ADD/UPDATE/REMOVE/SHOW/CANCEL/PREVIEW`, state `sessionStorage` cách ly theo tài khoản/cuộc hội thoại và hết hạn 30 phút; card gợi ý có số lượng + nút thêm; sửa race condition phải chờ xác minh khách rồi mới tải giá/tồn sản phẩm; tạo đơn thành công xóa draft. Unit/static CORE-009 PASS `23/23`; natural-chat regression `159/159`; bundle local `11.128` build thành công. Báo cáo: [CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md](CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md).
   - **Chưa đánh dấu `DONE`:** còn UAT trực quan qua tài khoản/token thật cho chuỗi nhiều lượt và lưu ảnh/request ID; CORE-009 chỉ bàn giao sang preview, mutation thật vẫn thuộc CORE-005.
 
-- [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `TODO`
+- [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `READY_FOR_END_TO_END_UAT`
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.
   - Nghiệm thu: không có mutation ngoài ý muốn; mọi thao tác ghi đều có audit.
+  - Kết quả code 05/08/2026: thống nhất direct gateway cho tạo khách/tạo đơn theo pipeline verified identity → capability `customers.write`/`orders.write` → request ID/idempotency → SQL transaction → audit bắt buộc; bổ sung server-side idempotency và deterministic replay cho tạo khách; audit fail-closed cho cả hai mutation; cập nhật gate UAT-018 theo contract STOCK-001 `AvailableStock`. Static PASS `10/10`, gateway policy PASS `5/5`, SQL compile preflight PASS và mutation rollback tạo khách PASS create/replay/conflict/audit-unavailable; hậu kiểm `CustomerCount = 0`, `AuditCount = 0`. Báo cáo: [CORE-010_MUTATION_HARDENING_2026-08-05.md](CORE-010_MUTATION_HARDENING_2026-08-05.md).
+  - **Chưa đánh dấu `DONE`:** SQL/gateway mới chưa deploy; còn xác minh capability thật cho 13 tài khoản, UAT token/UI cho xác nhận/hủy/hết phiên/double-click/retry/thiếu quyền/lỗi DB và lưu ảnh/log/request ID.
 
 - [x] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `DECISION_B_DIRECT_CREATE_ACCEPTED` · *đóng 01/08/2026*
   - Quyết định nghiệp vụ: chấp nhận phương án B. Chat gọi `API_KhachHang_Insert_AI`, ghi trực tiếp `CF_ObjectTbl`; khách dùng được ngay và không qua `AR_ObjectNewRequireTbl`.

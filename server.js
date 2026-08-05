@@ -228,7 +228,7 @@ const unwrapUserInfoRecord = (payload) => {
     return data || null;
 };
 
-const resolveVerifiedGatewayUsername = async (authorization) => {
+const resolveVerifiedGatewayIdentity = async (authorization) => {
     const response = await fetchWithTimeout(`${API_INTERNAL_URL}/api/API_UserInfo`, {
         method: 'POST',
         headers: {
@@ -243,8 +243,50 @@ const resolveVerifiedGatewayUsername = async (authorization) => {
     let payload;
     try { payload = JSON.parse(text); } catch (_) { return ''; }
     const record = unwrapUserInfoRecord(payload);
-    if (!record || Number(record.Disable ?? record.disable ?? 0) !== 0) return '';
-    return String(record.UserName || record.Username || record.username || record.User || record.userId || '').trim();
+    if (!record || Number(record.Disable ?? record.disable ?? 0) !== 0) return null;
+    const username = String(record.UserName || record.Username || record.username || record.User || record.userId || '').trim();
+    if (!username) return null;
+
+    let capabilities = record.capabilities
+        || record.Capabilities
+        || record.permissions
+        || record.Permissions
+        || record.scopes
+        || [];
+    if (!Array.isArray(capabilities)) {
+        const serializedCapabilities = String(capabilities).trim();
+        try {
+            const parsedCapabilities = JSON.parse(serializedCapabilities);
+            capabilities = Array.isArray(parsedCapabilities) ? parsedCapabilities : [serializedCapabilities];
+        } catch (_) {
+            capabilities = serializedCapabilities.split(',').map((value) => value.trim()).filter(Boolean);
+        }
+    }
+    return {
+        username,
+        capabilities: capabilities.map((value) => String(value).trim().toLowerCase()).filter(Boolean)
+    };
+};
+
+const DIRECT_MUTATION_POLICY = Object.freeze({
+    '/api/API_KhachHang_Insert_AI': Object.freeze({
+        requiredCapability: 'customers.write',
+        identityField: 'User',
+        operationCode: 'API_KhachHang_Insert_AI'
+    }),
+    '/api/API_DonHangChiTiet_Insert_AI': Object.freeze({
+        requiredCapability: 'orders.write',
+        identityField: 'Username',
+        operationCode: 'API_DonHangChiTiet_Insert_AI'
+    })
+});
+
+const hasGatewayCapability = (identity, requiredCapability) => {
+    const granted = new Set((identity && identity.capabilities || []).map((value) => String(value).toLowerCase()));
+    return granted.has(requiredCapability)
+        || granted.has(`${requiredCapability}.*`)
+        || granted.has('*')
+        || granted.has('api:*');
 };
 
 const authRequiredPayload = (requestId) => ({
@@ -406,32 +448,40 @@ app.post('/api/gateway', async (req, res) => {
             );
         }
 
-        // Mutation tạo đơn không được tin Username do trình duyệt gửi. Xác minh lại
-        // token bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
+        // Mutation không được tin identity do trình duyệt gửi. Xác minh lại token
+        // bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
         // idempotency vào body để procedure SQL xử lý nguyên tử.
-        if (endpointPath === '/api/API_DonHangChiTiet_Insert_AI') {
+        const mutationPolicy = DIRECT_MUTATION_POLICY[endpointPath];
+        if (mutationPolicy) {
             if (method !== 'POST' || !body || typeof body !== 'object' || Array.isArray(body)) {
-                return sendGatewayError(res, 400, requestId, 'INVALID_ORDER_MUTATION', 'Yêu cầu tạo đơn không hợp lệ.');
+                return sendGatewayError(res, 400, requestId, 'INVALID_MUTATION_REQUEST', 'Yêu cầu ghi dữ liệu không hợp lệ.');
             }
             const idempotencyKey = String(req.headers['idempotency-key'] || '').trim();
             if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(idempotencyKey)) {
-                return sendGatewayError(res, 422, requestId, 'IDEMPOTENCY_KEY_REQUIRED', 'Yêu cầu tạo đơn thiếu khóa chống gửi lặp hợp lệ.');
+                return sendGatewayError(res, 422, requestId, 'IDEMPOTENCY_KEY_REQUIRED', 'Yêu cầu ghi dữ liệu thiếu khóa chống gửi lặp hợp lệ.');
             }
-            let verifiedUsername = '';
+            let verifiedIdentity = null;
             try {
-                verifiedUsername = await resolveVerifiedGatewayUsername(authorization);
+                verifiedIdentity = await resolveVerifiedGatewayIdentity(authorization);
             } catch (identityError) {
                 console.error(`[Proxy Gateway Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
             }
-            if (!verifiedUsername) {
+            if (!verifiedIdentity || !verifiedIdentity.username) {
                 return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản đăng nhập. Vui lòng đăng nhập lại.');
+            }
+            if (!hasGatewayCapability(verifiedIdentity, mutationPolicy.requiredCapability)) {
+                console.warn(
+                    `[Mutation Denied] requestId=${requestId}; operation=${mutationPolicy.operationCode}; `
+                    + `requiredCapability=${mutationPolicy.requiredCapability}; principal=${verifiedIdentity.username}`
+                );
+                return sendGatewayError(res, 403, requestId, 'CAPABILITY_REQUIRED', 'Tài khoản chưa có quyền thực hiện thao tác ghi dữ liệu này.');
             }
             body = {
                 ...body,
-                Username: verifiedUsername,
                 IdempotencyKey: idempotencyKey,
                 RequestID: requestId
             };
+            body[mutationPolicy.identityField] = verifiedIdentity.username;
         }
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);
@@ -504,7 +554,23 @@ app.post('/api/gateway', async (req, res) => {
             resDataText = text;
         }
 
-        console.log(`[Proxy Gateway] Response metadata: requestId=${requestId}; status=${response.status}; durationMs=${Date.now() - startedAt}`);
+        let downstreamStatus = response.status;
+        if (mutationPolicy && response.ok && resDataText.trim()) {
+            try {
+                let mutationPayload = JSON.parse(resDataText);
+                if (mutationPayload && mutationPayload.data !== undefined) mutationPayload = mutationPayload.data;
+                if (mutationPayload && Array.isArray(mutationPayload.records)) mutationPayload = mutationPayload.records[0] || {};
+                if (Array.isArray(mutationPayload)) mutationPayload = mutationPayload[0] || {};
+                const mutationCode = String(mutationPayload && (mutationPayload.Code || mutationPayload.code) || '').toUpperCase();
+                if (mutationCode === 'IDEMPOTENCY_CONFLICT' || mutationCode === 'IDEMPOTENCY_IN_PROGRESS') {
+                    downstreamStatus = 409;
+                }
+            } catch (_) {
+                // Preserve the upstream status when the business API does not return JSON.
+            }
+        }
+
+        console.log(`[Proxy Gateway] Response metadata: requestId=${requestId}; status=${downstreamStatus}; durationMs=${Date.now() - startedAt}`);
         // Login response có thể chứa access/refresh token, vì vậy chỉ log kích thước.
         console.log(`[Proxy Gateway] Response bytes: ${Buffer.byteLength(resDataText, 'utf8')}`);
 
@@ -520,7 +586,7 @@ app.post('/api/gateway', async (req, res) => {
 
         // 3. Mã hóa kết quả trả về cho Client
         const encryptedRes = Cipher.encrypt(resDataText);
-        res.status(response.status).json({ data: encryptedRes });
+        res.status(downstreamStatus).json({ data: encryptedRes });
 
     } catch (error) {
         const classified = classifyUpstreamError(error);

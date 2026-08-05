@@ -3088,6 +3088,47 @@ tr.expanded .ai-row-toggle::before {
   flex-wrap: wrap;
 }
 
+.ai-tier-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.ai-tier-filter-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: #58677d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ai-tier-filter-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 6px 30px 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #fff;
+  color: #26344a;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ai-tier-filter-select:focus-visible {
+  border-color: var(--color-primary, #3c50e0);
+  outline: 2px solid color-mix(in srgb, var(--color-primary, #3c50e0) 18%, transparent);
+  outline-offset: 1px;
+}
+
+.ai-tier-filter-select:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
 .ai-sales-filter-chip {
   min-height: 28px;
   padding: 0 12px;
@@ -3234,6 +3275,16 @@ tr.expanded .ai-row-toggle::before {
   .ai-tier-page-label,
   .ai-tier-empty {
     color: #a1a1aa;
+  }
+
+  .ai-tier-filter-field {
+    color: #a1a1aa;
+  }
+
+  .ai-tier-filter-select {
+    border-color: #3f3f46;
+    background: #202024;
+    color: #f4f4f5;
   }
 }
 
@@ -7339,6 +7390,94 @@ tr.expanded .ai-row-toggle::before {
   }
 
   .ai-route-metrics {
+    grid-template-columns: 1fr;
+  }
+
+}
+
+/* CORE-007: keep the customer scoring list inside the mobile chat viewport. */
+@media (max-width: 640px) {
+  .chat-bubble.ai .ai-tier-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    table-layout: fixed !important;
+    font-size: 0.84em;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table th,
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table td {
+    min-width: 0;
+    max-width: none;
+    padding: 8px 7px;
+    overflow-wrap: anywhere;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table th {
+    white-space: normal;
+    font-size: 10px;
+    letter-spacing: 0.25px;
+    line-height: 1.25;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table th.ai-row-toggle-head,
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table td.ai-row-toggle {
+    width: 32px;
+    padding-inline: 4px;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table thead th:last-child,
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table tbody tr:not(.ai-table-page-row):not(.ai-table-detail-row) > td:last-child {
+    width: 76px;
+    white-space: normal;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-page-row td,
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-detail-row td {
+    width: auto !important;
+    max-width: 100%;
+    padding: 12px 8px;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-pagination {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-pagination-range {
+    width: 100%;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-page-size-label {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .chat-bubble.ai .ai-tier-scoring-table .ai-table-page-controls {
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    padding-bottom: 2px;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 340px) {
+  .chat-bubble.ai .ai-tier-filter-grid {
     grid-template-columns: 1fr;
   }
 }

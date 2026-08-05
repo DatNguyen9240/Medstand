@@ -7,41 +7,48 @@ SET QUOTED_IDENTIFIER ON;
 GO
 
 /*
-  API_KhachHang_Insert_AI
-
-  UAT temporary rule (2026-07-29): create the customer directly in
-  CF_ObjectTbl.  The approval step through AR_ObjectNewRequireTbl is deferred,
-  but the ERP input contract remains intact: active user, branch/group scope,
-  address catalogues, normalized phone, duplicate check, and audit fields.
+  CORE-010 hardened customer mutation.
+  - Identity is verified and overwritten by the gateway before this procedure is called.
+  - Idempotency key + canonical payload fingerprint are committed atomically with the customer.
+  - Success/replay/conflict audits are mandatory and share the ledger transaction.
+  - A missing audit dependency fails closed before business data can be committed.
 */
 CREATE OR ALTER PROCEDURE dbo.API_KhachHang_Insert_AI
-    @User              VARCHAR(50)   = '',
-    @ObjectID          VARCHAR(50)   = '',
-    @ObjectName        NVARCHAR(150) = '',
-    @Address           NVARCHAR(250) = '',
-    @Phone             VARCHAR(50)   = '',
-    @TaxCode           VARCHAR(50)   = '',
-    @Birthday          DATETIME      = NULL,
-    @LoaiKhachHang     NVARCHAR(50)  = '',
-    @KenhBan           VARCHAR(50)   = '',
-    @AccountNoHD       VARCHAR(50)   = '',
-    @AccountNameHD     NVARCHAR(150) = '',
-    @ChuTaiKhoan       NVARCHAR(100) = '',
-    @BranchID          VARCHAR(50)   = '',
-    @ObjectGroupID     VARCHAR(50)   = '',
-    @LocationID        NVARCHAR(50)  = '',
-    @QuanHuyen         NVARCHAR(50)  = '',
-    @XaPhuong          NVARCHAR(50)  = '',
-    @ThuDiTuyen        NVARCHAR(10)  = '',
-    @Latitude          FLOAT         = 0,
-    @Longitude         FLOAT         = 0,
-    @AssignedEmployeeID VARCHAR(50) = ''
+    @User               VARCHAR(50)   = '',
+    @ObjectID           VARCHAR(50)   = '',
+    @ObjectName         NVARCHAR(150) = '',
+    @Address            NVARCHAR(250) = '',
+    @Phone              VARCHAR(50)   = '',
+    @TaxCode            VARCHAR(50)   = '',
+    @Birthday           DATETIME      = NULL,
+    @LoaiKhachHang      NVARCHAR(50)  = '',
+    @KenhBan            VARCHAR(50)   = '',
+    @AccountNoHD        VARCHAR(50)   = '',
+    @AccountNameHD      NVARCHAR(150) = '',
+    @ChuTaiKhoan        NVARCHAR(100) = '',
+    @BranchID           VARCHAR(50)   = '',
+    @ObjectGroupID      VARCHAR(50)   = '',
+    @LocationID         NVARCHAR(50)  = '',
+    @QuanHuyen          NVARCHAR(50)  = '',
+    @XaPhuong           NVARCHAR(50)  = '',
+    @ThuDiTuyen         NVARCHAR(10)  = '',
+    @Latitude           FLOAT         = 0,
+    @Longitude          FLOAT         = 0,
+    @AssignedEmployeeID VARCHAR(50)   = '',
+    @IdempotencyKey     VARCHAR(128)  = '',
+    @RequestID          VARCHAR(100)  = ''
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @EmployeeID VARCHAR(50) = '',
+    DECLARE @ApiCode VARCHAR(100) = 'API_KhachHang_Insert_AI',
+            @RequiredCapability VARCHAR(100) = 'customers.write',
+            @ResultCode VARCHAR(60) = '',
+            @ResultMsg NVARCHAR(500) = N'',
+            @InternalError NVARCHAR(2000) = N'',
+            @AuditInfo NVARCHAR(MAX) = N'',
+            @EmployeeID VARCHAR(50) = '',
             @ManagerID VARCHAR(50) = '',
             @CeoID VARCHAR(50) = '',
             @UserObjectID VARCHAR(50) = '',
@@ -49,7 +56,44 @@ BEGIN
             @UserGroupID VARCHAR(50) = '',
             @EffectiveEmployeeID VARCHAR(50) = '',
             @SaleEmployeeID VARCHAR(50) = '',
-            @LevelSub BIT = NULL;
+            @LevelSub BIT = NULL,
+            @IdempotencyKeyHash CHAR(64) = NULL,
+            @VerifiedUserHash CHAR(64) = NULL,
+            @RequestFingerprintHash CHAR(64) = NULL,
+            @StoredStatus VARCHAR(20) = NULL,
+            @StoredFingerprintHash CHAR(64) = NULL,
+            @StoredObjectID VARCHAR(100) = NULL,
+            @StoredMsg NVARCHAR(500) = NULL;
+
+    SET @User = LTRIM(RTRIM(COALESCE(@User, '')));
+    SET @ObjectID = LTRIM(RTRIM(COALESCE(@ObjectID, '')));
+    SET @ObjectName = LTRIM(RTRIM(COALESCE(@ObjectName, N'')));
+    SET @Address = LTRIM(RTRIM(COALESCE(@Address, N'')));
+    SET @Phone = LTRIM(RTRIM(COALESCE(@Phone, '')));
+    SET @TaxCode = LTRIM(RTRIM(COALESCE(@TaxCode, '')));
+    SET @ObjectGroupID = LTRIM(RTRIM(COALESCE(@ObjectGroupID, '')));
+    SET @LocationID = LTRIM(RTRIM(COALESCE(@LocationID, N'')));
+    SET @QuanHuyen = LTRIM(RTRIM(COALESCE(@QuanHuyen, N'')));
+    SET @XaPhuong = LTRIM(RTRIM(COALESCE(@XaPhuong, N'')));
+    SET @AssignedEmployeeID = LTRIM(RTRIM(COALESCE(@AssignedEmployeeID, '')));
+    SET @IdempotencyKey = LTRIM(RTRIM(COALESCE(@IdempotencyKey, '')));
+    SET @RequestID = LTRIM(RTRIM(COALESCE(@RequestID, '')));
+
+    IF LEN(@IdempotencyKey) < 8 OR LEN(@IdempotencyKey) > 128
+       OR @IdempotencyKey LIKE '%[^A-Za-z0-9._:-]%'
+    BEGIN
+        SET @ResultCode = 'IDEMPOTENCY_KEY_REQUIRED';
+        SET @ResultMsg = N'Yêu cầu tạo khách thiếu khóa chống gửi lặp hợp lệ.';
+        GOTO ReturnFailure;
+    END;
+
+    IF LEN(@RequestID) < 8 OR LEN(@RequestID) > 100
+       OR @RequestID LIKE '%[^A-Za-z0-9._:-]%'
+    BEGIN
+        SET @ResultCode = 'REQUEST_ID_REQUIRED';
+        SET @ResultMsg = N'Yêu cầu tạo khách thiếu mã request hợp lệ.';
+        GOTO ReturnFailure;
+    END;
 
     SELECT @EmployeeID = COALESCE(EmployeeID, ''),
            @ManagerID = COALESCE(ManagerID, ''),
@@ -63,24 +107,37 @@ BEGIN
 
     IF @@ROWCOUNT = 0
     BEGIN
-        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_USER';
+        SET @ResultMsg = N'Tài khoản không hợp lệ hoặc đã bị khóa.';
+        GOTO ReturnFailure;
+    END;
 
     IF @UserObjectID <> ''
     BEGIN
-        SELECT N'Tài khoản này không có quyền tạo khách hàng.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'CUSTOMER_ACCOUNT_FORBIDDEN';
+        SET @ResultMsg = N'Tài khoản này không có quyền tạo khách hàng.';
+        GOTO ReturnFailure;
+    END;
 
-    -- Sale mặc định là người tạo. Chỉ người quản lý trực tiếp trong sơ đồ
-    -- bán hàng mới được giao khách cho một sale khác.
+    IF OBJECT_ID('dbo.AI_API_MutationIdempotency', 'U') IS NULL
+    BEGIN
+        SET @ResultCode = 'IDEMPOTENCY_LEDGER_UNAVAILABLE';
+        SET @ResultMsg = N'Hệ thống chống gửi lặp chưa sẵn sàng. Mã đối soát: ' + @RequestID;
+        GOTO ReturnFailure;
+    END;
+
+    IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NULL
+    BEGIN
+        SET @ResultCode = 'AUDIT_UNAVAILABLE';
+        SET @ResultMsg = N'Hệ thống audit chưa sẵn sàng. Không tạo khách hàng. Mã đối soát: ' + @RequestID;
+        GOTO ReturnFailure;
+    END;
+
     SET @EffectiveEmployeeID = @EmployeeID;
     IF @EffectiveEmployeeID = '' AND @ManagerID = '' SET @EffectiveEmployeeID = @CeoID;
     IF @EffectiveEmployeeID = '' AND @CeoID = '' SET @EffectiveEmployeeID = @ManagerID;
     SET @SaleEmployeeID = @EffectiveEmployeeID;
 
-    SET @AssignedEmployeeID = LTRIM(RTRIM(COALESCE(@AssignedEmployeeID, '')));
     IF @AssignedEmployeeID <> '' AND @AssignedEmployeeID <> @EffectiveEmployeeID
     BEGIN
         IF NOT EXISTS (
@@ -91,66 +148,64 @@ BEGIN
               AND COALESCE(isDisable, 0) = 0
         )
         BEGIN
-            SELECT N'Bạn không có quyền giao khách hàng cho nhân viên này.' AS Msg, 1 AS MsgType;
-            RETURN;
-        END
+            SET @ResultCode = 'ASSIGNEE_OUT_OF_SCOPE';
+            SET @ResultMsg = N'Bạn không có quyền giao khách hàng cho nhân viên này.';
+            GOTO ReturnFailure;
+        END;
         SET @SaleEmployeeID = @AssignedEmployeeID;
-    END
+    END;
 
-    -- Chi nhánh của sale luôn lấy từ tài khoản đã đăng nhập. Admin không có
-    -- chi nhánh riêng có thể dùng chi nhánh đã chọn trên form.
     IF @UserBranchID <> '' SET @BranchID = @UserBranchID;
     IF COALESCE(@BranchID, '') = ''
     BEGIN
-        SELECT N'Tài khoản chưa được gán chi nhánh.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
-
-    SET @ObjectName = LTRIM(RTRIM(COALESCE(@ObjectName, '')));
-    SET @Address = LTRIM(RTRIM(COALESCE(@Address, '')));
-    SET @TaxCode = LTRIM(RTRIM(COALESCE(@TaxCode, '')));
-    SET @Phone = LTRIM(RTRIM(COALESCE(@Phone, '')));
+        SET @ResultCode = 'BRANCH_REQUIRED';
+        SET @ResultMsg = N'Tài khoản chưa được gán chi nhánh.';
+        GOTO ReturnFailure;
+    END;
 
     IF @ObjectName = ''
     BEGIN
-        SELECT N'Bạn chưa nhập tên khách hàng.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'CUSTOMER_NAME_REQUIRED';
+        SET @ResultMsg = N'Bạn chưa nhập tên khách hàng.';
+        GOTO ReturnFailure;
+    END;
 
     IF @Address = ''
     BEGIN
-        SELECT N'Bạn chưa nhập địa chỉ khách hàng.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'CUSTOMER_ADDRESS_REQUIRED';
+        SET @ResultMsg = N'Bạn chưa nhập địa chỉ khách hàng.';
+        GOTO ReturnFailure;
+    END;
 
     IF @Birthday IS NULL OR @Birthday > GETDATE()
     BEGIN
-        SELECT N'Ngày sinh không hợp lệ.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_BIRTHDAY';
+        SET @ResultMsg = N'Ngày sinh không hợp lệ.';
+        GOTO ReturnFailure;
+    END;
 
-    -- Giữ cách chuẩn hóa của ERP, sau đó chỉ chấp nhận chữ số.
     SET @Phone = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@Phone, '.', ''), ' ', ''), '-', ''), '_', ''), ',', '');
     IF LEN(@Phone) < 8 OR @Phone LIKE '%[^0-9]%'
     BEGIN
-        SELECT N'Số điện thoại phải có ít nhất 8 chữ số và không được có chữ.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_PHONE';
+        SET @ResultMsg = N'Số điện thoại phải có ít nhất 8 chữ số và không được có chữ.';
+        GOTO ReturnFailure;
+    END;
 
     IF @TaxCode = '' OR @TaxCode LIKE '%[^0-9]%' OR LEN(@TaxCode) NOT BETWEEN 10 AND 13
     BEGIN
-        SELECT N'Mã số thuế phải gồm 10–13 chữ số.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_TAX_CODE';
+        SET @ResultMsg = N'Mã số thuế phải gồm 10–13 chữ số.';
+        GOTO ReturnFailure;
+    END;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.CF_ObjectGroupTbl WHERE ObjectGroupID = @ObjectGroupID)
     BEGIN
-        SELECT N'Nhóm khách hàng không hợp lệ: ' + COALESCE(@ObjectGroupID, '') AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_OBJECT_GROUP';
+        SET @ResultMsg = N'Nhóm khách hàng không hợp lệ: ' + COALESCE(@ObjectGroupID, '');
+        GOTO ReturnFailure;
+    END;
 
-    -- ObjectGroupID quyết định phạm vi nhìn thấy khách. Ngoài Admin, chỉ cho
-    -- phép chọn nhóm mà tài khoản hiện tại thực sự quản lý.
     IF UPPER(@UserGroupID) <> 'ADMIN'
     BEGIN
         SELECT TOP 1 @LevelSub = O.LevelSub
@@ -163,17 +218,17 @@ BEGIN
         IF @SaleEmployeeID <> @EffectiveEmployeeID
         BEGIN
             IF NOT EXISTS (
-                SELECT 1
-                FROM dbo.AR_OpListEmployeeTbl
+                SELECT 1 FROM dbo.AR_OpListEmployeeTbl
                 WHERE ManagerID = @EffectiveEmployeeID
                   AND EmployeeID = @SaleEmployeeID
                   AND ObjectGroupID = @ObjectGroupID
                   AND COALESCE(isDisable, 0) = 0
             )
             BEGIN
-                SELECT N'Nhóm khách hàng không thuộc nhân viên được giao.' AS Msg, 1 AS MsgType;
-                RETURN;
-            END
+                SET @ResultCode = 'OBJECT_GROUP_OUT_OF_SCOPE';
+                SET @ResultMsg = N'Nhóm khách hàng không thuộc nhân viên được giao.';
+                GOTO ReturnFailure;
+            END;
         END
         ELSE IF @LevelSub = 1
         BEGIN
@@ -184,9 +239,10 @@ BEGIN
                   AND COALESCE(isDisable, 0) = 0
             )
             BEGIN
-                SELECT N'Bạn không có quyền tạo khách hàng trong nhóm này.' AS Msg, 1 AS MsgType;
-                RETURN;
-            END
+                SET @ResultCode = 'OBJECT_GROUP_OUT_OF_SCOPE';
+                SET @ResultMsg = N'Bạn không có quyền tạo khách hàng trong nhóm này.';
+                GOTO ReturnFailure;
+            END;
         END
         ELSE IF @LevelSub IS NOT NULL
         BEGIN
@@ -197,39 +253,132 @@ BEGIN
                   AND COALESCE(isDisable, 0) = 0
             )
             BEGIN
-                SELECT N'Bạn không có quyền tạo khách hàng trong nhóm này.' AS Msg, 1 AS MsgType;
-                RETURN;
-            END
+                SET @ResultCode = 'OBJECT_GROUP_OUT_OF_SCOPE';
+                SET @ResultMsg = N'Bạn không có quyền tạo khách hàng trong nhóm này.';
+                GOTO ReturnFailure;
+            END;
         END
         ELSE
         BEGIN
-            SELECT N'Tài khoản chưa được gán nhóm đối tượng.' AS Msg, 1 AS MsgType;
-            RETURN;
-        END
-    END
+            SET @ResultCode = 'OBJECT_GROUP_SCOPE_REQUIRED';
+            SET @ResultMsg = N'Tài khoản chưa được gán nhóm đối tượng.';
+            GOTO ReturnFailure;
+        END;
+    END;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.CF_LocationTbl WHERE LocationID = @LocationID)
     BEGIN
-        SELECT N'Tỉnh thành không hợp lệ: ' + COALESCE(@LocationID, '') AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_LOCATION';
+        SET @ResultMsg = N'Tỉnh thành không hợp lệ: ' + COALESCE(@LocationID, '');
+        GOTO ReturnFailure;
+    END;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.CF_LocationDetailTbl WHERE QuanHuyen = @QuanHuyen)
     BEGIN
-        SELECT N'Quận huyện không hợp lệ: ' + COALESCE(@QuanHuyen, '') AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_DISTRICT';
+        SET @ResultMsg = N'Quận huyện không hợp lệ: ' + COALESCE(@QuanHuyen, '');
+        GOTO ReturnFailure;
+    END;
 
     IF NOT EXISTS (SELECT 1 FROM dbo.CF_LocationDetail2Tbl WHERE XaPhuong = @XaPhuong)
     BEGIN
-        SELECT N'Xã phường không hợp lệ: ' + COALESCE(@XaPhuong, '') AS Msg, 1 AS MsgType;
-        RETURN;
-    END
+        SET @ResultCode = 'INVALID_WARD';
+        SET @ResultMsg = N'Xã phường không hợp lệ: ' + COALESCE(@XaPhuong, '');
+        GOTO ReturnFailure;
+    END;
+
+    SET @IdempotencyKeyHash = LOWER(CONVERT(CHAR(64), HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), @IdempotencyKey)), 2));
+    SET @VerifiedUserHash = LOWER(CONVERT(CHAR(64), HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), LOWER(@User))), 2));
+    SET @RequestFingerprintHash = LOWER(CONVERT(CHAR(64), HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX), CONCAT(
+        LOWER(@User), '|', CASE WHEN @ObjectID = '' THEN 'AUTO_GEN' ELSE @ObjectID END, '|',
+        @ObjectName, '|', @Address, '|', @Phone, '|', @TaxCode, '|', CONVERT(CHAR(10), CAST(@Birthday AS DATE), 23), '|',
+        COALESCE(@LoaiKhachHang, N''), '|', COALESCE(@KenhBan, ''), '|', COALESCE(@AccountNoHD, ''), '|',
+        COALESCE(@AccountNameHD, N''), '|', COALESCE(@ChuTaiKhoan, N''), '|', @BranchID, '|', @ObjectGroupID, '|',
+        @LocationID, '|', @QuanHuyen, '|', @XaPhuong, '|', COALESCE(@ThuDiTuyen, N''), '|',
+        CONVERT(VARCHAR(64), COALESCE(@Latitude, 0), 2), '|', CONVERT(VARCHAR(64), COALESCE(@Longitude, 0), 2), '|', @SaleEmployeeID
+    ))), 2));
 
     BEGIN TRY
         BEGIN TRANSACTION;
 
-        -- Vẫn quét cả yêu cầu cũ đang chờ duyệt để không tạo trùng số.
+        SELECT @StoredStatus = Status,
+               @StoredFingerprintHash = RequestFingerprintHash,
+               @StoredObjectID = ResultEntityID,
+               @StoredMsg = ResultMsg
+        FROM dbo.AI_API_MutationIdempotency WITH (UPDLOCK, HOLDLOCK)
+        WHERE IdempotencyKeyHash = @IdempotencyKeyHash
+          AND VerifiedUserHash = @VerifiedUserHash
+          AND ApiCode = @ApiCode;
+
+        IF @StoredStatus IS NOT NULL
+        BEGIN
+            IF @StoredFingerprintHash IS NULL OR @StoredFingerprintHash <> @RequestFingerprintHash
+            BEGIN
+                UPDATE dbo.AI_API_MutationIdempotency
+                SET LastRequestID = @RequestID, UpdatedAt = SYSUTCDATETIME()
+                WHERE IdempotencyKeyHash = @IdempotencyKeyHash
+                  AND VerifiedUserHash = @VerifiedUserHash
+                  AND ApiCode = @ApiCode;
+
+                SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
+                    + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+                    + N'","payloadFingerprint":"' + @RequestFingerprintHash
+                    + N'","capability":"' + @RequiredCapability
+                    + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
+                    + N'","resultCode":"IDEMPOTENCY_CONFLICT","outcome":"REJECTED"}';
+                EXEC dbo.AI_WriteAuditLog @Username=@User, @ActionType='IDEMPOTENCY_CONFLICT_CUSTOMER',
+                     @TargetEntity=@ApiCode, @TargetID=@StoredObjectID, @ExtraInfo=@AuditInfo;
+                COMMIT TRANSACTION;
+
+                SELECT NULL AS ObjectID,
+                       N'Khóa gửi lặp đã được dùng cho nội dung tạo khách khác.' AS Msg,
+                       1 AS MsgType,
+                       @RequestID AS RequestID,
+                       'IDEMPOTENCY_CONFLICT' AS Code,
+                       CAST(0 AS BIT) AS IsReplay;
+                RETURN;
+            END;
+
+            IF @StoredStatus = 'COMPLETED' AND COALESCE(@StoredObjectID, '') <> ''
+            BEGIN
+                UPDATE dbo.AI_API_MutationIdempotency
+                SET LastRequestID = @RequestID, UpdatedAt = SYSUTCDATETIME()
+                WHERE IdempotencyKeyHash = @IdempotencyKeyHash
+                  AND VerifiedUserHash = @VerifiedUserHash
+                  AND ApiCode = @ApiCode;
+
+                SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
+                    + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+                    + N'","payloadFingerprint":"' + @RequestFingerprintHash
+                    + N'","capability":"' + @RequiredCapability
+                    + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
+                    + N'","resultCode":"IDEMPOTENCY_REPLAY","outcome":"REPLAY"}';
+                EXEC dbo.AI_WriteAuditLog @Username=@User, @ActionType='REPLAY_CUSTOMER',
+                     @TargetEntity=@ApiCode, @TargetID=@StoredObjectID, @ExtraInfo=@AuditInfo;
+                COMMIT TRANSACTION;
+
+                SELECT @StoredObjectID AS ObjectID,
+                       COALESCE(NULLIF(@StoredMsg, N''), N'Khách hàng đã được tạo trước đó.') AS Msg,
+                       5 AS MsgType,
+                       @RequestID AS RequestID,
+                       'IDEMPOTENCY_REPLAY' AS Code,
+                       CAST(1 AS BIT) AS IsReplay;
+                RETURN;
+            END;
+
+            SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS';
+            SET @ResultMsg = N'Yêu cầu trùng đang được xử lý.';
+            THROW 51101, @ResultMsg, 1;
+        END;
+
+        INSERT dbo.AI_API_MutationIdempotency (
+            IdempotencyKeyHash, VerifiedUserHash, ApiCode, RequestFingerprintHash,
+            Status, FirstRequestID, LastRequestID
+        ) VALUES (
+            @IdempotencyKeyHash, @VerifiedUserHash, @ApiCode, @RequestFingerprintHash,
+            'PENDING', @RequestID, @RequestID
+        );
+
         IF EXISTS (
             SELECT 1 FROM dbo.CF_ObjectTbl WITH (UPDLOCK, HOLDLOCK)
             WHERE Phone = @Phone AND ObjectID <> COALESCE(@ObjectID, '')
@@ -238,20 +387,19 @@ BEGIN
             WHERE Phone = @Phone AND ObjectID <> COALESCE(@ObjectID, '')
         )
         BEGIN
-            ROLLBACK TRANSACTION;
-            SELECT N'Số điện thoại này đã tồn tại.' AS Msg, 1 AS MsgType;
-            RETURN;
-        END
+            SET @ResultCode = 'DUPLICATE_PHONE';
+            SET @ResultMsg = N'Số điện thoại này đã tồn tại.';
+            THROW 51102, @ResultMsg, 1;
+        END;
 
-        IF COALESCE(@ObjectID, '') = ''
-            SET @ObjectID = CONVERT(VARCHAR(50), NEWID());
+        IF @ObjectID = '' SET @ObjectID = CONVERT(VARCHAR(50), NEWID());
 
         IF EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WITH (UPDLOCK, HOLDLOCK) WHERE ObjectID = @ObjectID)
         BEGIN
-            ROLLBACK TRANSACTION;
-            SELECT N'Mã khách hàng đã tồn tại.' AS Msg, 1 AS MsgType;
-            RETURN;
-        END
+            SET @ResultCode = 'DUPLICATE_OBJECT_ID';
+            SET @ResultMsg = N'Mã khách hàng đã tồn tại.';
+            THROW 51103, @ResultMsg, 1;
+        END;
 
         INSERT INTO dbo.CF_ObjectTbl (
             ObjectID, BranchID, ObjectName, Address, TaxCode, Phone,
@@ -261,8 +409,7 @@ BEGIN
             RevAccID, PayAccID,
             isCustomer, isEmployee, isManager, isVendor, isAgency, isDefault, isDisable,
             CongNoDonHang, IsForeign, SaleID, UserCreate, DateCreate
-        )
-        VALUES (
+        ) VALUES (
             @ObjectID, @BranchID, @ObjectName, @Address, @TaxCode, @Phone,
             @ObjectGroupID, @LocationID, @QuanHuyen, @XaPhuong, @Birthday,
             @LoaiKhachHang, @KenhBan, @ThuDiTuyen,
@@ -276,18 +423,73 @@ BEGIN
         BEGIN
             INSERT INTO dbo.CF_ObjectMapTbl (UserAutoID, ObjectID, Latitude, Longitude, MapDate)
             VALUES (NEWID(), @ObjectID, @Latitude, @Longitude, GETDATE());
-        END
+        END;
+
+        UPDATE dbo.AI_API_MutationIdempotency
+        SET Status = 'COMPLETED',
+            ResultEntityID = @ObjectID,
+            ResultMsg = N'Thêm khách hàng thành công.',
+            ResultMsgType = 5,
+            LastRequestID = @RequestID,
+            UpdatedAt = SYSUTCDATETIME(),
+            CompletedAt = SYSUTCDATETIME()
+        WHERE IdempotencyKeyHash = @IdempotencyKeyHash
+          AND VerifiedUserHash = @VerifiedUserHash
+          AND ApiCode = @ApiCode;
+
+        SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
+            + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+            + N'","payloadFingerprint":"' + @RequestFingerprintHash
+            + N'","capability":"' + @RequiredCapability
+            + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
+            + N'","resultCode":"CREATED","outcome":"CREATED"}';
+        EXEC dbo.AI_WriteAuditLog @Username=@User, @ActionType='CREATE_CUSTOMER',
+             @TargetEntity=@ApiCode, @TargetID=@ObjectID, @TargetName=@ObjectName, @ExtraInfo=@AuditInfo;
 
         COMMIT TRANSACTION;
 
-        SELECT N'Thêm khách hàng thành công.' AS Msg,
+        SELECT @ObjectID AS ObjectID,
+               N'Thêm khách hàng thành công.' AS Msg,
                5 AS MsgType,
-               @ObjectID AS ObjectID;
+               @RequestID AS RequestID,
+               'CREATED' AS Code,
+               CAST(0 AS BIT) AS IsReplay;
+        RETURN;
     END TRY
     BEGIN CATCH
+        SET @InternalError = ERROR_MESSAGE();
         IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-        SELECT N'Hệ thống chưa thể tạo khách hàng. Vui lòng thử lại.' AS Msg,
-               1 AS MsgType;
-    END CATCH
-END
+        IF @ResultCode = '' SET @ResultCode = 'SYSTEM_ERROR';
+        IF @ResultMsg = '' SET @ResultMsg = N'Hệ thống chưa thể tạo khách hàng. Mã đối soát: ' + @RequestID;
+    END CATCH;
+
+ReturnFailure:
+    IF @ResultCode <> 'AUDIT_UNAVAILABLE'
+       AND @User <> ''
+       AND @RequestID LIKE 'req-%'
+    BEGIN
+        BEGIN TRY
+            SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
+                + N'","idempotencyKeyHash":' + CASE WHEN @IdempotencyKeyHash IS NULL THEN N'null' ELSE N'"' + @IdempotencyKeyHash + N'"' END
+                + N',"payloadFingerprint":' + CASE WHEN @RequestFingerprintHash IS NULL THEN N'null' ELSE N'"' + @RequestFingerprintHash + N'"' END
+                + N',"capability":"' + @RequiredCapability
+                + N'","branchId":"' + STRING_ESCAPE(COALESCE(@BranchID, ''), 'json')
+                + N'","resultCode":"' + STRING_ESCAPE(COALESCE(NULLIF(@ResultCode, ''), 'UNKNOWN'), 'json')
+                + N'","outcome":"FAILED"}';
+            EXEC dbo.AI_WriteAuditLog @Username=@User, @ActionType='CREATE_CUSTOMER_FAILED',
+                 @TargetEntity=@ApiCode, @TargetID=NULL, @ExtraInfo=@AuditInfo;
+        END TRY
+        BEGIN CATCH
+            SET @ResultCode = 'AUDIT_WRITE_FAILED';
+            SET @ResultMsg = N'Không thể ghi audit mutation. Không có dữ liệu khách hàng nào được commit. Mã đối soát: ' + @RequestID;
+        END CATCH;
+    END;
+
+    SELECT NULL AS ObjectID,
+           @ResultMsg AS Msg,
+           1 AS MsgType,
+           NULLIF(@RequestID, '') AS RequestID,
+           COALESCE(NULLIF(@ResultCode, ''), 'SYSTEM_ERROR') AS Code,
+           CAST(0 AS BIT) AS IsReplay;
+END;
 GO

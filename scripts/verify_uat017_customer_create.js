@@ -60,6 +60,7 @@ SELECT
     const renderer = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot-renderer-create-customer.js'), 'utf8');
     const engine = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot-api-engine.js'), 'utf8');
     const envSource = fs.readFileSync(path.join(ROOT, 'env.js'), 'utf8');
+    const serverSource = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     const execute = JSON.parse(fs.readFileSync(path.join(ROOT, 'n8n', 'API_Services', 'API_Execute.json'), 'utf8'));
     const enforcement = execute.nodes.find((node) => node.name === 'Enforce API Capability')?.parameters?.jsCode || '';
 
@@ -71,11 +72,15 @@ SELECT
       check('AI_PROC_DUPLICATE_PHONE_COVERS_BOTH_TABLES', /CF_ObjectTbl/i.test(procedure) && /AR_ObjectNewRequireTbl/i.test(procedure) && /Phone/i.test(procedure), 'khách sống + yêu cầu cũ'),
       check('AI_PROC_MANAGER_ASSIGNMENT_GUARD', /@AssignedEmployeeID/i.test(procedure) && /AR_OpListEmployeeTbl/i.test(procedure) && /@SaleEmployeeID/i.test(procedure), 'Manager → Sale server-verified'),
       check('AI_PROC_RETURNS_OBJECT_ID', /AS\s+ObjectID/i.test(procedure), 'ObjectID'),
+      check('AI_PROC_SERVER_IDEMPOTENCY', /@IdempotencyKey/i.test(procedure) && /@RequestID/i.test(procedure) && /RequestFingerprintHash/i.test(procedure) && /AI_API_MutationIdempotency/i.test(procedure), 'key + request ID + fingerprint + ledger'),
+      check('AI_PROC_DETERMINISTIC_REPLAY', /REPLAY_CUSTOMER/i.test(procedure) && /IDEMPOTENCY_CONFLICT_CUSTOMER/i.test(procedure) && /IsReplay/i.test(procedure), 'replay/conflict có response xác định'),
+      check('AI_PROC_MANDATORY_AUDIT', /AUDIT_UNAVAILABLE/i.test(procedure) && /CREATE_CUSTOMER/i.test(procedure) && !/IF\s+OBJECT_ID\('dbo\.AI_WriteAuditLog',[\s\S]{0,80}EXEC\s+dbo\.AI_WriteAuditLog/i.test(procedure), 'audit success/replay fail-closed'),
       check('FRONTEND_ENDPOINT_IS_AI', /CREATE_CUSTOMER:\s*['"]\/api\/API_KhachHang_Insert_AI['"]/.test(envSource), '/api/API_KhachHang_Insert_AI'),
       check('FRONTEND_HAS_PREVIEW_AND_EDIT', renderer.includes('ccf-preview-section') && renderer.includes('btn-edit'), 'preview/sửa lại'),
       check('FRONTEND_NUMERIC_PHONE_TAX', /phone.*tax/s.test(renderer) && /replace\(\/\[\^0-9\]\/g, ''\)/.test(renderer), 'SĐT/MST chỉ số'),
       check('FRONTEND_MANAGER_SENDS_ASSIGNEE', renderer.includes('AssignedEmployeeID') && engine.includes('AssignedEmployeeID'), 'modal + renderer'),
       check('FRONTEND_REQUIRES_CONFIRMED_OBJECT_ID', renderer.includes("msgType !== 5 && msgType !== '5'") && renderer.includes('|| !objectId') && engine.includes("record.MsgType != 5 && record.MsgType !== '5'") && engine.includes('|| !id'), 'không báo thành công nếu thiếu MsgType=5/ObjectID'),
+      check('GATEWAY_UNIFIED_CUSTOMER_GUARD', serverSource.includes("'/api/API_KhachHang_Insert_AI'") && serverSource.includes("requiredCapability: 'customers.write'") && serverSource.includes('body[mutationPolicy.identityField] = verifiedIdentity.username'), 'identity + customers.write + mutation context từ gateway'),
       check('METADATA_IS_AI_CODE', metadata.some((row) => row.ApiCode === '@khach_hang_insert_ai' && row.StoredProcedure === 'API_KhachHang_Insert_AI'), '@khach_hang_insert_ai → API_KhachHang_Insert_AI'),
       check('EXECUTE_POLICY_ONLY_OPENS_AI_CUSTOMER_MUTATION', enforcement.includes("enabledMutationApis = new Set(['@khach_hang_insert_ai'])") && !enforcement.includes("'@san_pham_trong_tam_import': 'products.import'\n};\nconst enabledMutationApis = new Set(['@khach_hang_insert_ai', '@san_pham_trong_tam_import'])"), 'customer mutation only'),
     ];

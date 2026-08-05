@@ -3892,16 +3892,22 @@
         var chipsHtml = '';
 
         if (isTierScoringTable) {
-            chipsHtml += '<button class="ai-sales-filter-chip active" data-server-tier="" type="button">Tất cả</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="A" type="button">Nhóm A</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="B" type="button">Nhóm B</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="C" type="button">Nhóm C</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-tier="UNRATED" type="button">Chưa đủ dữ liệu</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip active" data-server-risk="" type="button">Mọi rủi ro</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="LOW" type="button">Rủi ro thấp</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="MEDIUM" type="button">Rủi ro vừa</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="HIGH" type="button">Rủi ro cao</button>';
-            chipsHtml += '<button class="ai-sales-filter-chip" data-server-risk="UNKNOWN" type="button">Chưa đủ dữ liệu rủi ro</button>';
+            chipsHtml += '<label class="ai-tier-filter-field"><span>Nhóm giá trị</span>';
+            chipsHtml += '<select class="ai-tier-filter-select" data-tier-filter="tier" aria-label="Lọc theo nhóm giá trị">';
+            chipsHtml += '<option value="">Tất cả nhóm</option>';
+            chipsHtml += '<option value="A">Nhóm A</option>';
+            chipsHtml += '<option value="B">Nhóm B</option>';
+            chipsHtml += '<option value="C">Nhóm C</option>';
+            chipsHtml += '<option value="UNRATED">Chưa đủ dữ liệu</option>';
+            chipsHtml += '</select></label>';
+            chipsHtml += '<label class="ai-tier-filter-field"><span>Mức rủi ro</span>';
+            chipsHtml += '<select class="ai-tier-filter-select" data-tier-filter="risk" aria-label="Lọc theo mức rủi ro">';
+            chipsHtml += '<option value="">Mọi mức rủi ro</option>';
+            chipsHtml += '<option value="LOW">Thấp</option>';
+            chipsHtml += '<option value="MEDIUM">Vừa</option>';
+            chipsHtml += '<option value="HIGH">Cao</option>';
+            chipsHtml += '<option value="UNKNOWN">Chưa đủ dữ liệu</option>';
+            chipsHtml += '</select></label>';
         } else {
             chipsHtml = '<button class="ai-sales-filter-chip active" data-filter="all" type="button">' + (String(apiCode || '').toLowerCase() === '@don_hang' ? 'Tất cả trạng thái' : 'Tất cả') + '</button>';
         }
@@ -3948,9 +3954,10 @@
 
         var filterRowCount = cacheRows ? cacheRows.length : rows.length;
         if (filterRowCount > 12 || isTierScoringTable) {
+            var filterControlsClass = isTierScoringTable ? 'ai-tier-filter-grid' : 'ai-sales-filter-chips';
             html += '<div class="ai-sales-filter-bar ai-inline-filter">'
                 + '<input class="ai-sales-filter-input" type="search" placeholder="Tìm nhanh trong kết quả..." autocomplete="off" />'
-                + '<div class="ai-sales-filter-chips"' + (isTierScoringTable ? ' data-tier-controls="true"' : '') + '>' + chipsHtml + '</div>'
+                + '<div class="' + filterControlsClass + '">' + chipsHtml + '</div>'
                 + '</div>';
         }
 
@@ -3959,6 +3966,7 @@
         // ── Table ──
 
         var tableWrapClass = 'ai-inline-table-wrap';
+        if (isTierScoringTable) tableWrapClass += ' ai-tier-scoring-table';
         if (String(apiCode || '').toLowerCase() === '@doanh_so' && filterRowCount > 10) tableWrapClass += ' ai-inline-table-scroll';
         html += '<div class="' + tableWrapClass + '">';
 
@@ -3970,7 +3978,7 @@
         var hasDetails = secondaryKeys.length > 0;
 
         if (hasDetails) {
-            html += '<th style="width: 32px; text-align: center;"></th>'; // Cột toggle
+            html += '<th class="ai-row-toggle-head" style="width: 32px; text-align: center;"></th>'; // Cột toggle
         }
         primaryKeys.forEach(function (k) {
             var thClass = _isNumCol(k) ? ' class="ai-num-col"' : '';
@@ -4552,6 +4560,16 @@
     function _syncTierScoringControls(container, cache) {
         if (!container || !cache) return;
         var pageCount = Math.max(1, Math.ceil(Number(cache.totalRows || 0) / Number(cache.pageSize || 10)));
+        var tierSelect = container.querySelector('[data-tier-filter="tier"]');
+        if (tierSelect) {
+            tierSelect.value = String(cache.currentTier || '');
+            tierSelect.disabled = Boolean(cache.loading);
+        }
+        var riskSelect = container.querySelector('[data-tier-filter="risk"]');
+        if (riskSelect) {
+            riskSelect.value = String(cache.currentRisk || '');
+            riskSelect.disabled = Boolean(cache.loading);
+        }
         container.querySelectorAll('[data-server-tier]').forEach(function (button) {
             button.classList.toggle('active', String(button.getAttribute('data-server-tier') || '') === String(cache.currentTier || ''));
             button.disabled = Boolean(cache.loading);
@@ -5034,6 +5052,22 @@
     });
 
     $messages.addEventListener('change', function (e) {
+        var tierFilterControl = e.target.closest('.ai-tier-filter-select');
+        if (tierFilterControl) {
+            var filterContainer = tierFilterControl.closest('.ai-view-table');
+            var filterTbody = filterContainer ? filterContainer.querySelector('tbody') : null;
+            var filterCache = filterTbody ? _modalDataCache[filterTbody.id] : null;
+            if (!filterCache) return;
+            var filterType = tierFilterControl.getAttribute('data-tier-filter');
+            var filterValue = String(tierFilterControl.value || '').toUpperCase();
+            _loadTierScoringPage(
+                tierFilterControl,
+                filterType === 'tier' ? filterValue : filterCache.currentTier,
+                filterType === 'risk' ? filterValue : filterCache.currentRisk,
+                1
+            );
+            return;
+        }
         var tierPageSizeControl = e.target.closest('.ai-tier-page-size');
         if (tierPageSizeControl) {
             var tierContainer = tierPageSizeControl.closest('.ai-view-table');

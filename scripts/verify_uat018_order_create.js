@@ -102,15 +102,16 @@ SELECT
       check('FRONTEND_NO_BUSINESS_ID_GENERATOR', !source.includes('UATORD-') && !source.includes('function genUUID()'), 'frontend không tự sinh mã đơn'),
       check('FRONTEND_GIFT_IN_SO_LUONG_TANG', source.includes('SoLuongTang: p.giftQty || 0') && chatSource.includes('SoLuongTang: promotion.giftQuantity'), 'hàng tặng nằm trên dòng bán'),
       check('CHAT_NO_ZERO_PRICE_GIFT_LINE', !/LineType:\s*['"]promotion['"]/.test(chatSource), 'chat không tạo dòng tặng giá 0 riêng'),
-      check('GATEWAY_VERIFIES_ORDER_IDENTITY', serverSource.includes('resolveVerifiedGatewayUsername(authorization)') && serverSource.includes('Username: verifiedUsername'), 'Username lấy từ token đã xác minh'),
+      check('GATEWAY_VERIFIES_ORDER_IDENTITY', serverSource.includes('resolveVerifiedGatewayIdentity(authorization)') && serverSource.includes("requiredCapability: 'orders.write'") && serverSource.includes('body[mutationPolicy.identityField] = verifiedIdentity.username'), 'Username + orders.write lấy từ identity đã xác minh'),
       check('SERVER_MUTATION_CONTEXT_PARAMETERS', ['@DocumentDate', '@BranchID', '@IdempotencyKey', '@RequestID'].every((name) => orderParameters.includes(name)), orderParameters.join(', ')),
       check('SERVER_TRANSACTION_EVIDENCE', /BEGIN\s+TRAN/i.test(aiProc), 'transaction trong AI order procedure'),
       check('SERVER_DUPLICATE_GUARD_EVIDENCE', /AI_API_MutationIdempotency/i.test(aiProc) && /RequestFingerprintHash/i.test(aiProc) && /UPDLOCK|HOLDLOCK/i.test(aiProc), 'idempotency key + fingerprint khóa trong transaction'),
       check('SERVER_RESULT_CACHE_EVIDENCE', /ResultEntityID/i.test(aiProc) && /IsReplay/i.test(aiProc), 'retry trả mã đơn đã cache'),
+      check('SERVER_MANDATORY_AUDIT', /AUDIT_UNAVAILABLE/i.test(aiProc) && /CREATE_DONHANG/i.test(aiProc) && /REPLAY_DONHANG/i.test(aiProc) && !/IF\s+OBJECT_ID\('dbo\.AI_WriteAuditLog',[\s\S]{0,80}EXEC\s+dbo\.AI_WriteAuditLog/i.test(aiProc), 'audit create/replay fail-closed'),
       check('SERVER_STOCK_GUARD_EVIDENCE', /IV_StockTransactionTbl/i.test(aiProc) && /ReservedQuantity/i.test(aiProc) && /StoreHouseID/i.test(aiProc), 'tồn khả dụng và kho cụ thể phía server'),
       check('SERVER_PRICE_GUARD_EVIDENCE', /AR_LayGiaSanPhamFnc/i.test(aiProc) && /UnitPrice/i.test(aiProc), 'đối chiếu giá nguồn ERP phía server'),
       check('SERVER_PROMOTION_GUARD_EVIDENCE', /ExpectedGiftQuantity/i.test(aiProc) && /ExpectedDiscountPercent/i.test(aiProc), 'đối chiếu SoLuongTang/chiết khấu phía server'),
-      check('PRODUCT_SELECTED_STORE_EVIDENCE', /ReservedQuantity/i.test(productProc) && /SELECTED_AUTHORIZED_STORE/i.test(productProc), 'catalog trả một kho và tồn khả dụng'),
+      check('PRODUCT_SELECTED_STORE_EVIDENCE', /AI_StockAvailableByUserFnc/i.test(productProc) && /AvailableStock/i.test(productProc) && /StoreHouseID/i.test(productProc), 'catalog dùng contract STOCK-001: AvailableStock tại một kho được cấp quyền'),
       check('LEGACY_PROCS_UNTOUCHED_BY_AI_SOURCES', !/CREATE\s+OR\s+ALTER\s+PROCEDURE\s+dbo\.API_DonHang_Insert\b/i.test(aiProc + productProc) && !/CREATE\s+OR\s+ALTER\s+PROCEDURE\s+dbo\.API_HangHoaList\b/i.test(aiProc + productProc), 'không sửa procedure gốc'),
     ];
 

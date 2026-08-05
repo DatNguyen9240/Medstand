@@ -40,6 +40,7 @@ BEGIN
     DECLARE @IsGlobal BIT = 0;
     DECLARE @IsManager BIT = 0;
     DECLARE @ApiCode VARCHAR(100) = 'API_DonHangChiTiet_Insert_AI';
+    DECLARE @RequiredCapability VARCHAR(100) = 'orders.write';
     DECLARE @IdempotencyKeyHash CHAR(64) = NULL;
     DECLARE @VerifiedUserHash CHAR(64) = NULL;
     DECLARE @RequestFingerprintHash CHAR(64) = NULL;
@@ -123,6 +124,20 @@ BEGIN
     BEGIN
         SET @ResultCode = 'REQUEST_ID_REQUIRED';
         SET @ResultMsg = N'Yêu cầu tạo đơn thiếu mã request hợp lệ';
+        GOTO ReturnFailure;
+    END;
+
+    IF OBJECT_ID('dbo.AI_API_MutationIdempotency', 'U') IS NULL
+    BEGIN
+        SET @ResultCode = 'IDEMPOTENCY_LEDGER_UNAVAILABLE';
+        SET @ResultMsg = N'Hệ thống chống gửi lặp chưa sẵn sàng. Không tạo đơn hàng. Mã đối soát: ' + @RequestID;
+        GOTO ReturnFailure;
+    END;
+
+    IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NULL
+    BEGIN
+        SET @ResultCode = 'AUDIT_UNAVAILABLE';
+        SET @ResultMsg = N'Hệ thống audit chưa sẵn sàng. Không tạo đơn hàng. Mã đối soát: ' + @RequestID;
         GOTO ReturnFailure;
     END;
 
@@ -270,6 +285,7 @@ BEGIN
     IF @StoredStatus = 'COMPLETED' AND COALESCE(@StoredDocumentID, '') <> ''
     BEGIN
         BEGIN TRY
+            BEGIN TRANSACTION;
             UPDATE dbo.AI_API_MutationIdempotency
             SET LastRequestID = @RequestID, UpdatedAt = SYSUTCDATETIME()
             WHERE IdempotencyKeyHash = @IdempotencyKeyHash
@@ -278,12 +294,19 @@ BEGIN
 
             SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
                 + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+                + N'","payloadFingerprint":"' + @RequestFingerprintHash
+                + N'","capability":"' + @RequiredCapability
+                + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
                 + N'","outcome":"REPLAY"}';
-            IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NOT NULL
-                EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
-                     @TargetEntity=@ApiCode, @TargetID=@StoredDocumentID, @ExtraInfo=@AuditInfo;
+            EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
+                 @TargetEntity=@ApiCode, @TargetID=@StoredDocumentID, @ExtraInfo=@AuditInfo;
+            COMMIT TRANSACTION;
         END TRY
         BEGIN CATCH
+            IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+            SET @ResultCode = 'AUDIT_WRITE_FAILED';
+            SET @ResultMsg = N'Không thể ghi audit replay. Mã đối soát: ' + @RequestID;
+            GOTO ReturnFailure;
         END CATCH;
 
         SELECT @StoredDocumentID AS DocumentID,
@@ -500,10 +523,12 @@ BEGIN
 
                 SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
                     + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+                    + N'","payloadFingerprint":"' + @RequestFingerprintHash
+                    + N'","capability":"' + @RequiredCapability
+                    + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
                     + N'","outcome":"REPLAY"}';
-                IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NOT NULL
-                    EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
-                         @TargetEntity=@ApiCode, @TargetID=@StoredDocumentID, @ExtraInfo=@AuditInfo;
+                EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
+                     @TargetEntity=@ApiCode, @TargetID=@StoredDocumentID, @ExtraInfo=@AuditInfo;
 
                 COMMIT TRANSACTION;
                 SELECT @StoredDocumentID AS DocumentID,
@@ -567,10 +592,12 @@ BEGIN
 
                 SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
                     + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+                    + N'","payloadFingerprint":"' + @RequestFingerprintHash
+                    + N'","capability":"' + @RequiredCapability
+                    + N'","branchId":"' + STRING_ESCAPE(@BranchID, 'json')
                     + N'","outcome":"REPLAY_BY_DOCUMENT_ID"}';
-                IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NOT NULL
-                    EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
-                         @TargetEntity=@ApiCode, @TargetID=@DocumentID, @ExtraInfo=@AuditInfo;
+                EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='REPLAY_DONHANG',
+                     @TargetEntity=@ApiCode, @TargetID=@DocumentID, @ExtraInfo=@AuditInfo;
 
                 COMMIT TRANSACTION;
                 SELECT @DocumentID AS DocumentID, N'Đơn hàng đã được tạo trước đó' AS Msg, 5 AS MsgType,
@@ -693,10 +720,11 @@ BEGIN
 
         SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(@RequestID, 'json')
             + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
+            + N'","payloadFingerprint":"' + @RequestFingerprintHash
+            + N'","capability":"' + @RequiredCapability
             + N'","outcome":"CREATED","branchId":"' + STRING_ESCAPE(@BranchID, 'json') + N'"}';
-        IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NOT NULL
-            EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='CREATE_DONHANG',
-                 @TargetEntity=@ApiCode, @TargetID=@DocumentID, @ExtraInfo=@AuditInfo;
+        EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='CREATE_DONHANG',
+             @TargetEntity=@ApiCode, @TargetID=@DocumentID, @ExtraInfo=@AuditInfo;
 
         COMMIT TRANSACTION;
     END TRY
@@ -722,16 +750,22 @@ BEGIN
 
 ReturnFailure:
     SET @AuditInfo = N'{"requestId":"' + STRING_ESCAPE(COALESCE(@RequestID, ''), 'json')
+        + N'","idempotencyKeyHash":' + CASE WHEN @IdempotencyKeyHash IS NULL THEN N'null' ELSE N'"' + @IdempotencyKeyHash + N'"' END
+        + N',"payloadFingerprint":' + CASE WHEN @RequestFingerprintHash IS NULL THEN N'null' ELSE N'"' + @RequestFingerprintHash + N'"' END
+        + N',"capability":"' + @RequiredCapability
+        + N'","branchId":"' + STRING_ESCAPE(COALESCE(@BranchID, ''), 'json')
         + N'","resultCode":"' + STRING_ESCAPE(COALESCE(@ResultCode, 'UNKNOWN'), 'json')
         + N'","outcome":"FAILED"'
         + CASE WHEN @InternalError <> N'' THEN N',"internalError":"' + STRING_ESCAPE(LEFT(@InternalError, 1000), 'json') + N'"' ELSE N'' END
         + N'}';
     BEGIN TRY
-        IF OBJECT_ID('dbo.AI_WriteAuditLog', 'P') IS NOT NULL AND @Username <> ''
+        IF @ResultCode <> 'AUDIT_UNAVAILABLE' AND @Username <> '' AND @RequestID LIKE 'req-%'
             EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='CREATE_DONHANG_FAILED',
                  @TargetEntity=@ApiCode, @TargetID=NULL, @ExtraInfo=@AuditInfo;
     END TRY
     BEGIN CATCH
+        SET @ResultCode = 'AUDIT_WRITE_FAILED';
+        SET @ResultMsg = N'Không thể ghi audit mutation. Không có dữ liệu đơn hàng nào được commit. Mã đối soát: ' + COALESCE(@RequestID, '');
     END CATCH;
     SELECT NULL AS DocumentID, @ResultMsg AS Msg, 1 AS MsgType,
            NULLIF(@RequestID, '') AS RequestID, @ResultCode AS Code;
