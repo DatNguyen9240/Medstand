@@ -14,7 +14,7 @@ Phần chức năng chính, phân quyền, tồn kho, dữ liệu mẫu và regr
 | Đăng nhập và smoke | 13/13 tài khoản; smoke 8/8 | PASS |
 | Phạm vi khách hàng | 13/13, không rò rỉ chéo vùng | PASS |
 | Phạm vi kho | 13/13, chỉ `CTY/DL02/DL03` | PASS |
-| Hội thoại tự nhiên | static 159/159; live 31/31 | PASS |
+| Hội thoại tự nhiên | static 163/163; live 31/31 | PASS |
 | Hiệu năng AI | p95 5.668 giây, đạt ngưỡng dưới 6 giây | PASS |
 | Idempotency đơn hàng | replay trả mã cũ; payload khác cùng key bị từ chối | PASS ở SQL/gateway; còn UAT UI cho CORE-005 |
 | Phân nhóm khách hàng | 52/52 ca A/B/C/UNRATED | PASS ở SQL/API; còn ảnh/token UI cho CORE-007 |

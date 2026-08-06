@@ -238,25 +238,57 @@ orderForm.onListChange('customer', function(val) {
   }
 });
 
-// Auto-fill và lock Chi nhánh nếu có trong localStorage
-// -- Load sản phẩm (cache) ----------------------------------------------------
-function loadProducts(cb) {
-  if (_productsCache) return cb(_productsCache);
-  Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+// Danh mục chỉ dùng để tìm nhanh mã/tên. Giá, tồn, kho và CTBH luôn được
+// đối chiếu riêng bằng API_HangHoaList_AI sau khi người dùng chọn đúng ItemID.
+function responseRows(res) {
+  var body = res && res.data !== undefined ? res.data : res;
+  return (body && body.records) || body || [];
+}
+
+function searchProductCatalog(keyword) {
+  return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
     q: JSON.stringify({
       Username: user.UserName || '',
-      ObjectID: orderForm.getValue('customer') || '',
-      ItemID: '',
-      SearchText: '',
-      DocumentDate: orderForm.getValue('orderDate') || todayStr()
+      Type: 'sanpham',
+      timkiem: keyword || ''
     })
   }).then(function (res) {
-    _productsCache = (res.data || res).records || res.data || res || [];
+    return responseRows(res).map(function (item) {
+      return {
+        value: item.MaDanhMuc || item.ItemID || '',
+        name: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
+      };
+    }).filter(function (item) { return item.value && item.name; });
+  });
+}
+
+function loadProductDetail(itemId) {
+  var customerId = orderForm.getValue('customer') || '';
+  var documentDate = orderForm.getValue('orderDate') || todayStr();
+  var cacheKey = [customerId, documentDate, itemId].join('|');
+  if (!_productsCache) _productsCache = {};
+  if (_productsCache[cacheKey]) return Promise.resolve(_productsCache[cacheKey]);
+
+  return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+    q: JSON.stringify({
+      Username: user.UserName || '',
+      ObjectID: customerId,
+      ItemID: itemId || '',
+      SearchText: '',
+      DocumentDate: documentDate
+    })
+  }).then(function (res) {
+    var rows = responseRows(res);
+    var detail = rows.find(function (item) {
+      return String(item.ItemID || '').toLowerCase() === String(itemId || '').toLowerCase();
+    }) || null;
+    if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
+    _productsCache[cacheKey] = detail;
     _productsLoadError = false;
-    cb(_productsCache);
-  }).catch(function () {
+    return detail;
+  }).catch(function (error) {
     _productsLoadError = true;
-    cb([]);
+    throw error;
   });
 }
 
@@ -279,69 +311,75 @@ function openProductPicker(rowId) {
   destroyProductPicker();
   var $pickerContainer = $('#productPickerContainer_' + rowId);
   var $pickerText = $pickerContainer.find('.filter-value-text');
-  var origText = $pickerText.text();
+  var html = '<div class="filter-modal-header">' +
+    '<button type="button" class="filter-modal-close" aria-label="Đóng" id="pp-close">&times;</button>' +
+    '<h3>Chọn sản phẩm</h3></div>' +
+    '<div style="padding:12px">' +
+    Input.renderSearch({ id: 'pp-search', placeholder: 'Nhập ít nhất 2 ký tự tên hoặc mã' }) +
+    '</div>' +
+    '<ul class="select-modal-list product-picker-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
+    '<li class="product-picker-message">Nhập ít nhất 2 ký tự để tìm sản phẩm.</li></ul>';
 
-  $pickerText.text('Đang tải...');
-  loadProducts(function (items) {
-    if (!_createOrderActive || document.body.getAttribute('data-page') !== 'create-order') return;
-    $pickerText.text(origText);
+  var $overlay = $('<div class="picker-overlay"></div>');
+  var $sheet = $('<div class="picker-sheet"></div>').html(html);
+  var searchTimer = null;
+  var searchSeq = 0;
+  $overlay.append($sheet).appendTo('body');
+  $('body').css('overflow', 'hidden');
 
-    var options = buildProductOptions(items);
-    var currentVal = $pickerContainer.attr('data-value') || '';
-    var html = '<div class="filter-modal-header">' +
-      '<button type="button" class="filter-modal-close" aria-label="Đóng" id="pp-close">&times;</button>' +
-      '<h3>Chọn sản phẩm</h3></div>' +
-      '<div style="padding:12px">' +
-      Input.renderSearch({ id: 'pp-search', placeholder: 'Tìm kiếm sản phẩm' }) +
-      '</div>' +
-      '<ul class="select-modal-list product-picker-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
-      options.map(function (o, optionIndex) {
-        var sel = currentVal === o.value ? ' class="selected"' : '';
-        return '<li data-value="' + escapeAttribute(o.value) + '" data-price="' + escapeAttribute(o.price) + '" data-stock="' + escapeAttribute(o.stock) + '" data-store="' + escapeAttribute(o.store) + '" data-note="' + encodeURIComponent(o.note || '') + '" data-name="' + escapeAttribute(o.name) + '"' + sel + (optionIndex >= 30 ? ' style="display:none"' : '') + ' title="' + escapeAttribute(o.name) + '">' +
-          '<span class="product-option-main"><strong>' + o.value + '</strong><span class="product-option-name">' + o.name + '</span></span>' +
-          '<span class="product-option-meta"><span>' + Format.currency(o.price) + '</span>' +
-          (o.stock !== '' ? '<span>Tồn: ' + o.stock + '</span>' : '') +
-          (o.store ? '<span>Kho: ' + o.store + '</span>' : '') +
-          (o.unit ? '<span>ĐVT: ' + o.unit + '</span>' : '') + '</span></li>';
-      }).join('') + '</ul>';
+  function renderCatalog(options) {
+    var listHtml = options.length ? options.map(function (o) {
+      return '<li data-value="' + escapeAttribute(o.value) + '" data-name="' + escapeAttribute(o.name) + '" title="' + escapeAttribute(o.name) + '">' +
+        '<span class="product-option-main"><strong>' + escapeAttribute(o.value) + '</strong><span class="product-option-name">' + escapeAttribute(o.name) + '</span></span>' +
+        '<span class="product-option-meta"><span>Chọn để tải giá và tồn</span></span></li>';
+    }).join('') : '<li class="product-picker-message">Không tìm thấy sản phẩm phù hợp.</li>';
+    $overlay.find('#pp-list').html(listHtml);
+  }
 
-    var $overlay = $('<div class="picker-overlay"></div>');
-    var $sheet = $('<div class="picker-sheet"></div>').html(html);
-    $overlay.append($sheet).appendTo('body');
-    $('body').css('overflow', 'hidden');
-    
-    // Trigger animation
-    setTimeout(function() {
-      $overlay.addClass('active');
-      $sheet.addClass('active');
-    }, 10);
-    $overlay.find('#pp-close').on('click', destroyProductPicker);
-    $overlay.on('click', function (e) { if (e.target === $overlay[0]) destroyProductPicker(); });
-    $overlay.find('#pp-search').on('input', function () {
-      var kw = Format.removeAccents($(this).val());
-      var matches = options.filter(function (o) {
-        return Format.removeAccents(o.value + ' ' + o.name).indexOf(kw) !== -1;
-      }).slice(0, 30);
-      var allowed = {};
-      matches.forEach(function (o) { allowed[o.value] = true; });
-      $overlay.find('#pp-list li').each(function () { $(this).toggle(!!allowed[$(this).attr('data-value')]); });
-    });
-    $overlay.find('#pp-list li').on('click', function () {
-      var val = $(this).attr('data-value');
-      var price = $(this).attr('data-price');
-      var stock = $(this).attr('data-stock');
-      var store = $(this).attr('data-store');
-      var note = decodeURIComponent($(this).attr('data-note') || '');
-      var name = $(this).attr('data-name');
-      $pickerContainer.attr('data-value', val).attr('data-price', price).attr('data-stock', stock).attr('data-store', store).attr('data-note', encodeURIComponent(note)).attr('data-name', name).attr('data-verified', '1');
-      $pickerText.text(name);
+  setTimeout(function () {
+    $overlay.addClass('active');
+    $sheet.addClass('active');
+    $overlay.find('#pp-search').trigger('focus');
+  }, 10);
+  $overlay.find('#pp-close').on('click', destroyProductPicker);
+  $overlay.on('click', function (e) { if (e.target === $overlay[0]) destroyProductPicker(); });
+  $overlay.find('#pp-search').on('input', function () {
+    var keyword = String($(this).val() || '').trim();
+    clearTimeout(searchTimer);
+    if (keyword.length < 2) {
+      searchSeq++;
+      $overlay.find('#pp-list').html('<li class="product-picker-message">Nhập ít nhất 2 ký tự để tìm sản phẩm.</li>');
+      return;
+    }
+    var requestSeq = ++searchSeq;
+    $overlay.find('#pp-list').html('<li class="product-picker-message">Đang tìm sản phẩm...</li>');
+    searchTimer = setTimeout(function () {
+      searchProductCatalog(keyword).then(function (options) {
+        if (requestSeq !== searchSeq || !$overlay.closest('body').length) return;
+        renderCatalog(options);
+      }).catch(function () {
+        if (requestSeq !== searchSeq) return;
+        $overlay.find('#pp-list').html('<li class="product-picker-message">Không thể tải danh mục sản phẩm. Vui lòng thử lại.</li>');
+      });
+    }, 300);
+  });
+  $overlay.on('click', '#pp-list li[data-value]', function () {
+    var $selected = $(this);
+    var itemId = $selected.attr('data-value') || '';
+    $selected.addClass('selected').find('.product-option-meta').html('<span>Đang đối chiếu giá và tồn...</span>');
+    loadProductDetail(itemId).then(function (detail) {
+      if (!$overlay.closest('body').length) return;
+      var option = buildProductOptions([detail])[0];
+      $pickerContainer.attr('data-value', option.value).attr('data-price', option.price).attr('data-stock', option.stock).attr('data-store', option.store).attr('data-note', encodeURIComponent(option.note || '')).attr('data-name', option.name).attr('data-verified', '1');
+      $pickerText.text(option.name);
       $pickerContainer.addClass('has-value');
-      $('#price_' + rowId).val(price);
-
+      $('#price_' + rowId).val(option.price);
       $('#discount_' + rowId).val(0);
-
       destroyProductPicker();
       calculateRowTotal(rowId);
+    }).catch(function (error) {
+      $selected.removeClass('selected').find('.product-option-meta').html('<span>Không thể lấy giá/tồn</span>');
+      Alert.error(error.message || 'Không thể đối chiếu sản phẩm đã chọn.');
     });
   });
 }
@@ -707,19 +745,14 @@ setTimeout(function() {
                   $('#price_' + currentRId).val(it.Price || 0);
               });
               
-              // Load full list
+              // Chỉ đối chiếu các ItemID có trong payload; không tải toàn bộ catalog nặng.
               _productsCache = null;
               _productsHydrating = true;
-              loadProducts(function(prods) {
+              Promise.all(items.map(function (it) {
+                  return loadProductDetail(it.ItemID).catch(function () { return null; });
+              })).then(function (details) {
                   items.forEach(function(it, idx) {
-                     var match = prods.find(function(x) { return (x.ItemID||'').toLowerCase() === (it.ItemID||'').toLowerCase(); });
-                     if (!match) {
-                         var pLow = (it.ItemID||it.ItemName||'').toLowerCase().trim();
-                         match = prods.find(function(x) {
-                             return (x.ItemName||'').toLowerCase().indexOf(pLow) > -1 || (x.ItemID||'').toLowerCase().indexOf(pLow) > -1;
-                         });
-                     }
-                     
+                     var match = details[idx];
                      if (match) {
                         var realName = match.ItemName || match.ItemID;
                         var realPrice = match.UnitPrice || match.Price || 0;
@@ -734,6 +767,7 @@ setTimeout(function() {
                          calculateRowTotal(targetRId);
                      }
                   });
+              }).finally(function () {
                   _productsHydrating = false;
               });
           }

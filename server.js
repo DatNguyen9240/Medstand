@@ -255,6 +255,10 @@ const DIRECT_MUTATION_POLICY = Object.freeze({
         identityField: 'User',
         operationCode: 'API_KhachHang_Insert_AI'
     }),
+    '/api/API_KhachHang_Update': Object.freeze({
+        identityField: 'User',
+        operationCode: 'API_KhachHang_Update'
+    }),
     '/api/API_DonHangChiTiet_Insert_AI': Object.freeze({
         identityField: 'Username',
         operationCode: 'API_DonHangChiTiet_Insert_AI'

@@ -98,6 +98,20 @@
 var _editingObjectID = '';
 var _districtsCache = {};
 var _wardsCache = {};
+var _updateSubmitKey = '';
+var _updateSubmitFingerprint = '';
+
+function customerUpdateIdempotencyKey(payload) {
+  var fingerprint = JSON.stringify(payload || {});
+  if (!_updateSubmitKey || _updateSubmitFingerprint !== fingerprint) {
+    var randomPart = (window.crypto && typeof window.crypto.randomUUID === 'function')
+      ? window.crypto.randomUUID()
+      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+    _updateSubmitKey = 'customer-update-' + randomPart;
+    _updateSubmitFingerprint = fingerprint;
+  }
+  return _updateSubmitKey;
+}
 
 // -- Build form using FormSelect component -----------------------------------
 var custForm = new FormSelect({ container: '#customerFormContainer' });
@@ -380,7 +394,8 @@ $('#btn-confirm-customer').on('click', function () {
     };
   }
 
-  Http.post(endpoint, payload).then(function (res) {
+  var requestOptions = isEdit ? { idempotencyKey: customerUpdateIdempotencyKey(payload) } : {};
+  Http.post(endpoint, payload, requestOptions).then(function (res) {
     var data = res.data || res;
     // SP trả về: Msg, MsgType (5 = thành công, 1 = lỗi)
     var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
@@ -392,6 +407,10 @@ $('#btn-confirm-customer').on('click', function () {
       return;
     }
 
+    if (isEdit) {
+      _updateSubmitKey = '';
+      _updateSubmitFingerprint = '';
+    }
     closeModal();
     custForm.reset();
     Http.clearCache();

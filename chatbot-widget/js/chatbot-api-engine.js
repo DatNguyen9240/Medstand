@@ -3244,11 +3244,10 @@
         return String(_activeApi.apiCode || '').toLowerCase() === '@lap_don_hang';
     }
 
-    // Cache dùng chung cho panel lập đơn. Danh sách khách/sản phẩm đổi rất chậm
-    // nên tải một lần cho cả phiên, tránh gọi lại mỗi lần mở panel.
+    // Cache dùng chung cho panel lập đơn. Danh sách khách được tải một lần;
+    // chi tiết sản phẩm chỉ cache theo đúng khách + ItemID sau khi đã đối chiếu.
     var _orderCustomers = null;
     var _orderProducts = null;
-    var _orderProductsKey = '';
 
     function _orderRows(res) {
         var data = (res && (res.data || res)) || [];
@@ -3324,24 +3323,50 @@
                 .catch(function () { errorEl.textContent = 'Không tải được danh sách khách hàng.'; return []; });
         }
 
-        function loadProducts() {
+        function searchProducts(keyword) {
             var username = user.UserName || user.Username || '';
             var objectId = selectedCustomer && selectedCustomer.ObjectID || '';
             if (!objectId) {
                 errorEl.textContent = 'Vui lòng chọn khách hàng trước khi chọn sản phẩm.';
                 return Promise.resolve([]);
             }
-            var productsKey = username + '|' + objectId;
-            if (_orderProducts && _orderProductsKey === productsKey) return Promise.resolve(_orderProducts);
-            return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
-                q: JSON.stringify({ Username: username, ObjectID: objectId, ItemID: '', SearchText: '' })
+            return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
+                q: JSON.stringify({ Username: username, Type: 'sanpham', timkiem: keyword || '' })
             }).then(function (res) {
-                _orderProducts = _orderRows(res);
-                _orderProductsKey = productsKey;
+                return _orderRows(res).map(function (item) {
+                    return {
+                        ItemID: item.MaDanhMuc || item.ItemID || '',
+                        ItemName: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
+                    };
+                }).filter(function (item) { return item.ItemID && item.ItemName; });
+            }).catch(function () {
+                errorEl.textContent = 'Không tải được danh mục sản phẩm.';
+                return [];
+            });
+        }
+
+        function loadProductDetail(itemId) {
+            var username = user.UserName || user.Username || '';
+            var objectId = selectedCustomer && selectedCustomer.ObjectID || '';
+            if (!objectId || !itemId) return Promise.resolve(null);
+            var productsKey = username + '|' + objectId + '|' + itemId;
+            if (!_orderProducts) _orderProducts = {};
+            if (_orderProducts[productsKey]) return Promise.resolve(_orderProducts[productsKey]);
+            return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+                q: JSON.stringify({ Username: username, ObjectID: objectId, ItemID: itemId, SearchText: '' })
+            }).then(function (res) {
+                var detail = _orderRows(res).find(function (item) {
+                    return String(item.ItemID || '').toLowerCase() === String(itemId).toLowerCase();
+                }) || null;
+                if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
+                _orderProducts[productsKey] = detail;
                 errorEl.textContent = '';
-                return _orderProducts;
+                return detail;
             })
-                .catch(function () { errorEl.textContent = 'Không tải được danh sách sản phẩm.'; return []; });
+                .catch(function (error) {
+                    errorEl.textContent = error.message || 'Không đối chiếu được giá và tồn sản phẩm.';
+                    return null;
+                });
         }
 
         function fold(s) {
@@ -3398,6 +3423,65 @@
             return { close: close, filter: filter };
         }
 
+        function attachProductCombo(input, drop, onPick) {
+            var searchTimer = null;
+            var requestSeq = 0;
+            function close() { drop.hidden = true; }
+            function render(rows, message) {
+                if (message) {
+                    drop.innerHTML = '<span class="ae-order-drop-empty">' + _esc(message) + '</span>';
+                    drop._list = [];
+                } else {
+                    drop.innerHTML = rows.map(function (row, index) {
+                        return '<span class="ae-order-drop-item" data-i="' + index + '">' + _esc(productLabel(row)) + '</span>';
+                    }).join('') || '<span class="ae-order-drop-empty">Không tìm thấy</span>';
+                    drop._list = rows;
+                }
+                drop.hidden = false;
+            }
+            function search() {
+                var keyword = input.value.trim();
+                clearTimeout(searchTimer);
+                if (keyword.length < 2) {
+                    requestSeq++;
+                    render([], 'Nhập ít nhất 2 ký tự để tìm sản phẩm.');
+                    return;
+                }
+                var currentSeq = ++requestSeq;
+                render([], 'Đang tìm sản phẩm...');
+                searchTimer = setTimeout(function () {
+                    searchProducts(keyword).then(function (rows) {
+                        if (currentSeq !== requestSeq) return;
+                        render(rows.slice(0, 20));
+                    });
+                }, 300);
+            }
+            input.addEventListener('focus', search);
+            input.addEventListener('input', function () { onPick(null); search(); });
+            drop.addEventListener('pointerdown', function (event) {
+                if (!event.target.closest('.ae-order-drop-item')) return;
+                event.preventDefault();
+                event.stopPropagation();
+            });
+            drop.addEventListener('click', function (event) {
+                var item = event.target.closest('.ae-order-drop-item');
+                if (!item) return;
+                event.preventDefault();
+                event.stopPropagation();
+                var candidate = (drop._list || [])[Number(item.getAttribute('data-i'))];
+                if (!candidate) return;
+                input.value = productLabel(candidate);
+                render([], 'Đang đối chiếu giá và tồn...');
+                loadProductDetail(candidate.ItemID).then(function (detail) {
+                    if (!detail) return;
+                    input.value = productLabel(detail);
+                    onPick(detail);
+                    close();
+                });
+            });
+            input.addEventListener('blur', function () { setTimeout(close, 150); });
+        }
+
         // ── Khách hàng ──────────────────────────────────────────────────
         function customerLabel(c) {
             var id = c.ObjectID || '';
@@ -3413,7 +3497,6 @@
             selectedCustomer = c;
             if (previousObjectId && (!c || previousObjectId !== c.ObjectID)) {
                 _orderProducts = null;
-                _orderProductsKey = '';
                 itemsEl.querySelectorAll('.ae-order-row').forEach(function (row) {
                     row._product = null;
                     row.classList.remove('has-product');
@@ -3547,7 +3630,7 @@
 
             var pin = row.querySelector('.ae-order-prod');
             var pdrop = row.querySelector('.ae-order-drop');
-            attachCombo(pin, pdrop, loadProducts, productLabel, function (p) {
+            attachProductCombo(pin, pdrop, function (p) {
                 row._product = p;
                 row.classList.toggle('has-product', !!p);
                 recalc();
@@ -3599,16 +3682,17 @@
         }
         if (Array.isArray(pre.items) && pre.items.length) {
             itemsEl.innerHTML = '';
-            // Chờ xác minh khách hàng xong rồi mới tải catalog giá/tồn theo
-            // khách. Chạy song song ở đây khiến selectedCustomer còn rỗng và
-            // mọi sản phẩm điền sẵn đều bị đánh dấu chưa xác minh.
+            // Chờ xác minh khách hàng rồi chỉ tải chi tiết đúng các ItemID có
+            // trong draft; không tải toàn bộ catalog giá/tồn theo khách.
             customerReady.then(function (customer) {
-                return customer ? loadProducts() : [];
-            }).then(function (prods) {
-                pre.items.forEach(function (it) {
-                    var key = fold(it.keyword || it.ItemID || it.ItemName || '');
-                    var p = prods.find(function (x) { return fold(x.ItemID) === key; })
-                        || prods.find(function (x) { return fold(productLabel(x)).indexOf(key) > -1; });
+                if (!customer) return [];
+                return Promise.all(pre.items.map(function (item) {
+                    var itemId = item.ItemID || item.itemId || item.keyword || '';
+                    return loadProductDetail(itemId);
+                }));
+            }).then(function (details) {
+                pre.items.forEach(function (it, index) {
+                    var p = details[index] || null;
                     addRow({
                         label: p ? productLabel(p) : (it.keyword || ''),
                         product: p || null,

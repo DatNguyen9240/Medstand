@@ -39,18 +39,31 @@ async function main() {
 
       SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.AR_GetObjectByUserFnc')) AS ScopeDefinition;
 
+      SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.vKhachHangList')) AS CustomerViewDefinition;
+
       SELECT UserName, EmployeeID, ManagerID, BranchID, UserGroupID, Manager, Disable
       FROM dbo.SY_User WHERE UserName = 'QLBH013.MED';
+
+      SELECT TOP (10) ObjectID, ObjectName, ObjectGroupID, BranchID, EmployeeID, UserCreate, StatusID
+      FROM dbo.AR_ObjectNewRequireTbl
+      ORDER BY DateCreate DESC;
 
       SELECT COUNT_BIG(*) AS OfficialVisible
       FROM dbo.AR_GetObjectByUserFnc('QLBH013.MED')
       WHERE ObjectID = '4E7E28AF-70A8-4AB8-B594-6DC1E3104E2B';
+
+      SELECT
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.CF_ObjectTbl WHERE ObjectID='4E7E28AF-70A8-4AB8-B594-6DC1E3104E2B') THEN 1 ELSE 0 END AS InOfficial,
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.AR_ObjectNewRequireTbl WHERE ObjectID='4E7E28AF-70A8-4AB8-B594-6DC1E3104E2B') THEN 1 ELSE 0 END AS InPending;
     `);
     console.log(JSON.stringify({
       Task: 'CUSTOMER-UPDATE-CONTRACT-DIAGNOSIS', Status: 'PASS_READ_ONLY',
       Columns: result.recordsets[0], ScopeDefinition: result.recordsets[1][0]?.ScopeDefinition,
-      User: result.recordsets[2][0] || null,
-      OfficialVisible: Number(result.recordsets[3][0]?.OfficialVisible || 0),
+      CustomerViewDefinition: result.recordsets[2][0]?.CustomerViewDefinition,
+      User: result.recordsets[3][0] || null,
+      PendingSamples: result.recordsets[4],
+      OfficialVisible: Number(result.recordsets[5][0]?.OfficialVisible || 0),
+      TargetSources: result.recordsets[6][0],
     }, null, 2));
   } finally { await pool.close(); }
 }

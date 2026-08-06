@@ -3,6 +3,7 @@
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
     var rowCounter = 0;
     var _productsCache = null;
+    var _orderContext = {};
 
     // -- Promotion Helpers ----------------------------------------------------
     function parsePromotions(productName) {
@@ -85,6 +86,7 @@
             XaPhuong:     customer.XaPhuong   || p0.XaPhuong   || '',
             ThuTrongTuan: p0.ThuDiTuyen   || ''
           };
+          _orderContext = summary;
 
           $('#loading-state').hide();
           $('#edit-form-wrap').prop('hidden', false);
@@ -233,77 +235,113 @@
     }
 
     // ── Product helpers ───────────────────────────────────────────────────────────
-    function loadProducts(cb) {
-      if (_productsCache) return cb(_productsCache);
-      Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
-        q: JSON.stringify({ User: user.UserName || '', ItemID: '', SearchText: '' })
+    function escapeProductText(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function searchProducts(keyword) {
+      return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
+        q: JSON.stringify({ Username: user.UserName || '', Type: 'sanpham', timkiem: keyword || '' })
       }).then(function (res) {
-        _productsCache = (res.data || res).records || res.data || res || [];
-        cb(_productsCache);
-      }).catch(function () { cb([]); });
+        var data = res && res.data !== undefined ? res.data : res;
+        var rows = (data && data.records) || data || [];
+        return rows.map(function (item) {
+          return {
+            value: item.MaDanhMuc || item.ItemID || '',
+            name: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
+          };
+        }).filter(function (item) { return item.value && item.name; });
+      });
+    }
+
+    function loadProductDetail(itemId) {
+      var customerId = (window._orderForm && window._orderForm.getValue('customer')) || _orderContext.ObjectID || '';
+      var documentDate = _orderContext.DocumentDate || '';
+      var cacheKey = [customerId, documentDate, itemId].join('|');
+      if (!_productsCache) _productsCache = {};
+      if (_productsCache[cacheKey]) return Promise.resolve(_productsCache[cacheKey]);
+      return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+        q: JSON.stringify({
+          Username: user.UserName || '', ObjectID: customerId,
+          ItemID: itemId || '', SearchText: '', DocumentDate: documentDate
+        })
+      }).then(function (res) {
+        var data = res && res.data !== undefined ? res.data : res;
+        var rows = (data && data.records) || data || [];
+        var detail = rows.find(function (item) {
+          return String(item.ItemID || '').toLowerCase() === String(itemId || '').toLowerCase();
+        }) || null;
+        if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
+        _productsCache[cacheKey] = detail;
+        return detail;
+      });
     }
 
     function openProductPicker(rowId) {
       var $pickerContainer = $('#productPickerContainer_' + rowId);
       var $pickerText = $pickerContainer.find('.filter-value-text');
-      var origText = $pickerText.text();
+      var html = '<div class="filter-modal-header">' +
+        '<button type="button" class="filter-modal-close" id="pp-close">&times;</button>' +
+        '<h3>Chọn sản phẩm</h3></div>' +
+        '<div style="padding:12px">' +
+        Input.renderSearch({ id: 'pp-search', placeholder: 'Nhập ít nhất 2 ký tự tên hoặc mã' }) +
+        '</div>' +
+        '<ul class="select-modal-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
+        '<li class="product-picker-message">Nhập ít nhất 2 ký tự để tìm sản phẩm.</li></ul>';
+      var $overlay = $('<div class="picker-overlay"></div>');
+      var $sheet = $('<div class="picker-sheet"></div>').html(html);
+      var searchTimer = null;
+      var searchSeq = 0;
+      $overlay.append($sheet).appendTo('body');
 
-      $pickerText.text('Đang tải...');
-      loadProducts(function (items) {
-        $pickerText.text(origText);
-        var options = items.map(function (item) {
-          return { value: item.ItemID || '', label: (item.ItemName || item.ItemID || '') + ' - ' + Format.currency(item.UnitPrice || 0), price: item.UnitPrice || 0, name: item.ItemName || item.ItemID || '' };
-        });
-        var currentVal = $pickerContainer.attr('data-value') || '';
-        var html = '<div class="filter-modal-header">' +
-          '<button type="button" class="filter-modal-close" id="pp-close">&times;</button>' +
-          '<h3>Chọn sản phẩm</h3></div>' +
-          '<div style="padding:12px">' +
-          Input.renderSearch({ id: 'pp-search', placeholder: 'Tìm kiếm sản phẩm' }) +
-          '</div>' +
-          '<ul class="select-modal-list" id="pp-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
-          options.map(function (o) {
-            var sel = currentVal === o.value ? ' class="selected"' : '';
-            return '<li data-value="' + o.value + '" data-price="' + o.price + '" data-name="' + o.name + '"' + sel + '>' + o.label + '</li>';
-          }).join('') + '</ul>';
-
-        var $overlay = $('<div class="picker-overlay"></div>');
-        var $sheet = $('<div class="picker-sheet"></div>').html(html);
-        $overlay.append($sheet).appendTo('body');
-        
-        // Trigger animation
-        setTimeout(function() {
-          $overlay.addClass('active');
-          $sheet.addClass('active');
-        }, 10);
-        $overlay.find('#pp-close').on('click', function () { $overlay.remove(); });
-        $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
-        $overlay.find('#pp-search').on('input', function () {
-          var kw = Format.removeAccents($(this).val());
-          $overlay.find('#pp-list li').each(function () {
-            var text = Format.removeAccents($(this).text());
-            $(this).toggle(text.indexOf(kw) !== -1);
+      setTimeout(function () {
+        $overlay.addClass('active');
+        $sheet.addClass('active');
+        $overlay.find('#pp-search').trigger('focus');
+      }, 10);
+      $overlay.find('#pp-close').on('click', function () { $overlay.remove(); });
+      $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
+      $overlay.find('#pp-search').on('input', function () {
+        var keyword = String($(this).val() || '').trim();
+        clearTimeout(searchTimer);
+        if (keyword.length < 2) {
+          searchSeq++;
+          $overlay.find('#pp-list').html('<li class="product-picker-message">Nhập ít nhất 2 ký tự để tìm sản phẩm.</li>');
+          return;
+        }
+        var requestSeq = ++searchSeq;
+        $overlay.find('#pp-list').html('<li class="product-picker-message">Đang tìm sản phẩm...</li>');
+        searchTimer = setTimeout(function () {
+          searchProducts(keyword).then(function (options) {
+            if (requestSeq !== searchSeq) return;
+            var listHtml = options.length ? options.map(function (option) {
+              return '<li data-value="' + escapeProductText(option.value) + '" data-name="' + escapeProductText(option.name) + '"><strong>' + escapeProductText(option.value) + '</strong> - ' + escapeProductText(option.name) + '</li>';
+            }).join('') : '<li class="product-picker-message">Không tìm thấy sản phẩm phù hợp.</li>';
+            $overlay.find('#pp-list').html(listHtml);
+          }).catch(function () {
+            if (requestSeq !== searchSeq) return;
+            $overlay.find('#pp-list').html('<li class="product-picker-message">Không thể tải danh mục sản phẩm.</li>');
           });
-        });
-        $overlay.find('#pp-list li').on('click', function () {
-          var val = $(this).attr('data-value');
-          var price = $(this).attr('data-price');
-          var name = $(this).attr('data-name');
-          $pickerContainer.attr('data-value', val).attr('data-price', price).attr('data-name', name);
+        }, 300);
+      });
+      $overlay.on('click', '#pp-list li[data-value]', function () {
+        var $selected = $(this);
+        var itemId = $selected.attr('data-value') || '';
+        $selected.text('Đang đối chiếu giá và tồn...');
+        loadProductDetail(itemId).then(function (detail) {
+          var price = detail.UnitPrice || detail.Price || 0;
+          var name = detail.ItemName || detail.ItemID || itemId;
+          $pickerContainer.attr('data-value', detail.ItemID || itemId).attr('data-price', price).attr('data-name', name);
           $pickerText.text(name);
           $pickerContainer.addClass('has-value');
           $('#price_' + rowId).val(price);
-
-          // Auto extract discount from product name
-          var autoDiscount = 0;
-          var ckMatch = name.match(/(?:ck|chiết khấu|chiet khau)\s*(\d+(\.\d+)?)%/i);
-          if (ckMatch) {
-              autoDiscount = parseFloat(ckMatch[1]);
-          }
-          $('#discount_' + rowId).val(autoDiscount);
-
+          $('#discount_' + rowId).val(0);
           $overlay.remove();
           calculateRowTotal(rowId);
+        }).catch(function (error) {
+          $selected.text(error.message || 'Không thể đối chiếu sản phẩm.');
         });
       });
     }

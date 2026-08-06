@@ -82,6 +82,7 @@ SELECT
     const envSource = fs.readFileSync(path.join(ROOT, 'env.js'), 'utf8');
     const serverSource = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     const chatSource = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot-api-engine.js'), 'utf8');
+    const editSource = fs.readFileSync(path.join(ROOT, 'src', 'js', 'pages', 'edit-order.js'), 'utf8');
     const orderParameters = parameters.filter((row) => row.ProcName === 'API_DonHangChiTiet_Insert_AI')
       .map((row) => row.ParameterName);
     const checks = [
@@ -102,7 +103,10 @@ SELECT
       check('FRONTEND_NO_BUSINESS_ID_GENERATOR', !source.includes('UATORD-') && !source.includes('function genUUID()'), 'frontend không tự sinh mã đơn'),
       check('FRONTEND_GIFT_IN_SO_LUONG_TANG', source.includes('SoLuongTang: p.giftQty || 0') && chatSource.includes('SoLuongTang: promotion.giftQuantity'), 'hàng tặng nằm trên dòng bán'),
       check('CHAT_NO_ZERO_PRICE_GIFT_LINE', !/LineType:\s*['"]promotion['"]/.test(chatSource), 'chat không tạo dòng tặng giá 0 riêng'),
-      check('GATEWAY_VERIFIES_ORDER_IDENTITY', serverSource.includes('resolveVerifiedGatewayIdentity(authorization)') && serverSource.includes("requiredCapability: 'orders.write'") && serverSource.includes('body[mutationPolicy.identityField] = verifiedIdentity.username'), 'Username + orders.write lấy từ identity đã xác minh'),
+      check('GATEWAY_VERIFIES_ORDER_IDENTITY', serverSource.includes('resolveVerifiedGatewayIdentity(authorization)') && serverSource.includes("'/api/API_DonHangChiTiet_Insert_AI'") && serverSource.includes("identityField: 'Username'") && serverSource.includes('body[mutationPolicy.identityField] = verifiedIdentity.username'), 'ORDER_MUTATION_AUTHORIZATION_V1: identity đã xác minh được ghi đè vào Username'),
+      check('ORDER_SQL_ENFORCES_EXISTING_SCOPE', /AR_GetObjectByUserFnc/i.test(aiProc) && /AI_WarehouseByUserFnc/i.test(aiProc) && /BranchID/i.test(aiProc), 'SQL kiểm tra phạm vi khách, chi nhánh và kho hiện hữu'),
+      check('PRODUCT_LOOKUP_USES_METADATA_CATALOG', source.includes('searchProductCatalog(keyword)') && source.includes('API_CONFIG.ENDPOINTS.AI.CATALOG') && source.includes("Type: 'sanpham'") && chatSource.includes('searchProducts(keyword)') && editSource.includes('searchProducts(keyword)'), 'ba picker lập/sửa đơn và chat tìm mã/tên qua metadata; không tải catalog giá/tồn'),
+      check('PRODUCT_CONTEXT_LOADS_SELECTED_ITEM_ONLY', source.includes('loadProductDetail(itemId)') && source.includes('ItemID: itemId') && chatSource.includes('loadProductDetail(itemId)') && editSource.includes('loadProductDetail(itemId)'), 'ba picker chỉ tải giá/tồn/kho/CTBH theo ItemID đã chọn'),
       check('SERVER_MUTATION_CONTEXT_PARAMETERS', ['@DocumentDate', '@BranchID', '@IdempotencyKey', '@RequestID'].every((name) => orderParameters.includes(name)), orderParameters.join(', ')),
       check('SERVER_TRANSACTION_EVIDENCE', /BEGIN\s+TRAN/i.test(aiProc), 'transaction trong AI order procedure'),
       check('SERVER_DUPLICATE_GUARD_EVIDENCE', /AI_API_MutationIdempotency/i.test(aiProc) && /RequestFingerprintHash/i.test(aiProc) && /UPDLOCK|HOLDLOCK/i.test(aiProc), 'idempotency key + fingerprint khóa trong transaction'),

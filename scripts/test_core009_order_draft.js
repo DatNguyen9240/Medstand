@@ -195,11 +195,12 @@ check('CHAT_TEXT_AND_BUTTON_SHARE_REDUCER', () => {
   assert.ok(source.includes('_handleOrderDraftResult'));
 });
 
-check('ORDER_PREFILL_WAITS_FOR_CUSTOMER', () => {
+check('ORDER_PREFILL_WAITS_FOR_CUSTOMER_AND_LOADS_SELECTED_ITEMS', () => {
   const source = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-api-engine.js'), 'utf8');
   const customerReady = source.indexOf('customerReady.then(function (customer)');
-  const productLoad = source.indexOf('return customer ? loadProducts() : [];', customerReady);
-  assert.ok(customerReady > -1 && productLoad > customerReady);
+  const selectedItems = source.indexOf('return Promise.all(pre.items.map(function (item)', customerReady);
+  const detailLoad = source.indexOf('return loadProductDetail(itemId);', selectedItems);
+  assert.ok(customerReady > -1 && selectedItems > customerReady && detailLoad > selectedItems);
 });
 
 check('CREATE_SUCCESS_INVALIDATES_SESSION_DRAFT', () => {
