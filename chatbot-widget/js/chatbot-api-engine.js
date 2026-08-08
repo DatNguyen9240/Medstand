@@ -3324,13 +3324,19 @@
         var custDrop = panel.querySelector('#ae-order-customer-drop');
         var selectedCustomer = null;
 
-        panel.querySelector('#ae-panel-min').onclick = function () {
+        var orderMinButton = panel.querySelector('#ae-panel-min');
+        orderMinButton.onclick = function () {
             panel.classList.remove('active');
             document.body.classList.remove('ae-panel-open');
             setTimeout(function () { panel.style.display = 'none'; }, 200);
 
             var triggerBtn = document.getElementById('ae-panel-trigger');
             if (triggerBtn) triggerBtn.style.display = 'flex';
+        };
+        var nativeOrderMinClick = orderMinButton.click.bind(orderMinButton);
+        orderMinButton.click = function () {
+            if (Date.now() < Number(panel._orderKeepOpenUntil || 0)) return;
+            nativeOrderMinClick();
         };
         panel.querySelector('#ae-panel-close').onclick = function () { _closeFull(); };
 
@@ -3478,6 +3484,14 @@
         function attachProductCombo(input, drop, onPick) {
             var searchTimer = null;
             var requestSeq = 0;
+            function markProductInteraction() {
+                panel.dataset.orderProductInteraction = '1';
+                panel._orderKeepOpenUntil = Date.now() + 1200;
+                clearTimeout(panel._orderProductInteractionTimer);
+                panel._orderProductInteractionTimer = setTimeout(function () {
+                    delete panel.dataset.orderProductInteraction;
+                }, 750);
+            }
             function close() { drop.hidden = true; }
             function render(rows, message) {
                 if (message) {
@@ -3515,12 +3529,14 @@
             input.addEventListener('input', function () { onPick(null); search(); });
             drop.addEventListener('pointerdown', function (event) {
                 if (!event.target.closest('.ae-order-drop-item')) return;
+                markProductInteraction();
                 event.preventDefault();
                 event.stopPropagation();
             });
             drop.addEventListener('click', function (event) {
                 var item = event.target.closest('.ae-order-drop-item');
                 if (!item) return;
+                markProductInteraction();
                 event.preventDefault();
                 event.stopPropagation();
                 var candidate = (drop._list || [])[Number(item.getAttribute('data-i'))];
@@ -6384,6 +6400,11 @@
     document.addEventListener('click', function (e) {
 
         if (_panelEl && _panelEl.classList.contains('active')) {
+
+            if (_panelEl.classList.contains('ae-order-create-panel')
+                && _panelEl.dataset.orderProductInteraction === '1') {
+                return;
+            }
 
             var minBtn = document.getElementById('ae-panel-min');
 

@@ -3,6 +3,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 const { createManager } = require('../chatbot-widget/js/chatbot-order-draft.js');
 
 function createStorage() {
@@ -237,11 +238,99 @@ check('ORDER_PRODUCT_PICKER_LOADS_SELLABLE_PRODUCTS', () => {
   assert.ok(searchSource.includes('Promise.race([productRequest, productTimeout])'));
 });
 
+check('ORDER_PRODUCT_PICKER_STAYS_INSIDE_CHAT_PANEL', () => {
+  const source = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-api-engine.js'), 'utf8');
+  const css = fs.readFileSync(path.join(workspace, 'chatbot-widget/css/chatbot-api-engine.css'), 'utf8');
+  const runtimeFix = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-order-panel-fix.min.js'), 'utf8');
+  const productionIndex = fs.readFileSync(path.join(workspace, 'index.html'), 'utf8');
+  const comboStart = source.indexOf('function attachProductCombo');
+  const comboEnd = source.indexOf('// ── Khách hàng', comboStart);
+  const comboSource = source.slice(comboStart, comboEnd);
+  const outsideClickStart = source.lastIndexOf("document.addEventListener('click', function (e)");
+  const outsideClickSource = source.slice(outsideClickStart, outsideClickStart + 1200);
+
+  assert.ok(comboSource.includes("panel.dataset.orderProductInteraction = '1'"));
+  assert.ok(comboSource.includes('panel._orderKeepOpenUntil = Date.now() + 1200'));
+  assert.ok(comboSource.includes('markProductInteraction();'));
+  assert.ok(outsideClickSource.includes("_panelEl.classList.contains('ae-order-create-panel')"));
+  assert.ok(outsideClickSource.includes("_panelEl.dataset.orderProductInteraction === '1'"));
+  assert.match(css, /\.ae-order-drop\s*\{[^}]*position:static;[^}]*max-height:min\(230px,34vh\)/);
+  assert.ok(runtimeFix.includes('orderProductInteraction'));
+  assert.ok(runtimeFix.includes('_orderKeepOpenUntil'));
+  assert.ok(runtimeFix.includes('n.click=function()'));
+  assert.ok(productionIndex.includes('chatbot-order-panel-fix.min.js?v=2'));
+});
+
 check('CREATE_SUCCESS_INVALIDATES_SESSION_DRAFT', () => {
   const source = fs.readFileSync(path.join(workspace, 'src/js/pages/create-order.js'), 'utf8');
   const successGuard = source.indexOf('submitSucceeded = true;');
   const invalidate = source.indexOf('MedstandOrderDraft.markCreated(responseDocumentId)', successGuard);
   assert.ok(successGuard > -1 && invalidate > successGuard);
+});
+
+check('CHAT_ORDER_SUCCESS_RETURNS_RECEIPT_ONCE', () => {
+  const createOrder = fs.readFileSync(path.join(workspace, 'src/js/pages/create-order.js'), 'utf8');
+  const bridge = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-order-result-bridge.js'), 'utf8');
+  const productionIndex = fs.readFileSync(path.join(workspace, 'index.html'), 'utf8');
+  const queueStart = createOrder.indexOf('function queueChatOrderCreatedNotice');
+  const successStart = createOrder.indexOf('submitSucceeded = true;');
+  const queueCall = createOrder.indexOf('queueChatOrderCreatedNotice(responseDocumentId, data.payload)', successStart);
+  const navigateCall = createOrder.indexOf("navigate('chatbot')", queueCall);
+
+  assert.ok(queueStart > -1 && successStart > -1 && queueCall > successStart && navigateCall > queueCall);
+  assert.ok(createOrder.includes("var _openedFromChatbot = /#\\/?create-order\\?data=/"));
+  assert.ok(bridge.includes("addMessage('ai', buildMessage(notice), null, true)"));
+  assert.ok(bridge.includes('sessionStorage.removeItem(STORAGE_KEY)'));
+  assert.ok(bridge.includes('notice.documentId'));
+  assert.ok(bridge.includes('Đã lên đơn thành công.'));
+  assert.ok(productionIndex.includes('chatbot-order-result-bridge.min.js?v=2'));
+});
+
+check('CHAT_ORDER_RECEIPT_RUNTIME_DELIVERS_ONCE', () => {
+  const bridge = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-order-result-bridge.js'), 'utf8');
+  const noticeKey = 'medstand_chat_order_created_notice_v1';
+  const runtimeStorage = createStorage();
+  const delivered = [];
+  runtimeStorage.setItem(noticeKey, JSON.stringify({
+    documentId: 'DMB0826/2',
+    customerName: 'Techcombank',
+    itemCount: 1,
+    username: 'demo',
+    createdAt: Date.now()
+  }));
+
+  const context = {
+    window: {
+      location: { hash: '#/chatbot' },
+      ApiChatbot: { __internal: { addMessage: (...args) => delivered.push(args) } },
+      addEventListener: () => {}
+    },
+    document: {
+      documentElement: {},
+      querySelector: (selector) => selector === '.chatbot-page' ? {} : null
+    },
+    localStorage: {
+      getItem: (key) => key === 'auth_user' ? JSON.stringify({ UserName: 'demo' }) : null
+    },
+    sessionStorage: runtimeStorage,
+    MutationObserver: function () { this.observe = () => {}; },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    console,
+    Date,
+    JSON,
+    Number,
+    String,
+    Array,
+    Promise
+  };
+
+  vm.runInNewContext(bridge, context);
+  assert.strictEqual(delivered.length, 1);
+  assert.strictEqual(delivered[0][0], 'ai');
+  assert.ok(delivered[0][1].includes('Đã lên đơn thành công.'));
+  assert.ok(delivered[0][1].includes('DMB0826/2'));
+  assert.strictEqual(runtimeStorage.getItem(noticeKey), null);
 });
 
 check('PRODUCTION_BUILD_INCLUDES_CORE009_MODULE', () => {

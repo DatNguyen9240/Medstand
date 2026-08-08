@@ -47,8 +47,42 @@ var _productsHydrating = false;
 var _branchLoadError = false;
 var _createOrderActive = true;
 var _chatbotOrderPrefillActive = false;
+var _openedFromChatbot = /#\/?create-order\?data=/.test(window.location.hash || '');
 var _orderSubmitIdempotencyKey = '';
 var _orderSubmitFingerprint = '';
+var CHAT_ORDER_CREATED_NOTICE_KEY = 'medstand_chat_order_created_notice_v1';
+
+function queueChatOrderCreatedNotice(documentId, payload) {
+  if (!_openedFromChatbot) return false;
+
+  var customerId = payload && payload.ObjectID ? String(payload.ObjectID) : '';
+  var customer = _customersCache.find(function (item) {
+    return String(item.ObjectID || '') === customerId;
+  });
+  var items = [];
+  try {
+    items = JSON.parse(payload && payload.ItemList ? payload.ItemList : '[]');
+  } catch (e) {
+    items = [];
+  }
+
+  try {
+    sessionStorage.setItem(CHAT_ORDER_CREATED_NOTICE_KEY, JSON.stringify({
+      documentId: String(documentId || ''),
+      customerId: customerId,
+      customerName: customer ? (customer.ObjectName || customer.DisplayName || customerId) : customerId,
+      itemCount: items.filter(function (item) {
+        return Number(item.Quantity || 0) > 0;
+      }).length,
+      username: user.UserName || user.Username || '',
+      createdAt: Date.now()
+    }));
+    return true;
+  } catch (e) {
+    console.warn('[CreateOrder] Không thể lưu thông báo kết quả cho chatbot.', e);
+    return false;
+  }
+}
 
 function newIdempotencyKey(prefix) {
   var randomPart = (window.crypto && window.crypto.randomUUID)
@@ -651,7 +685,14 @@ $('#btnSubmitOrder').on('click', function () {
     if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.markCreated === 'function') {
       window.MedstandOrderDraft.markCreated(responseDocumentId);
     }
-    Alert.success((msg || 'Tạo đơn hàng thành công!') + ' Mã đơn: ' + responseDocumentId);
+    var chatNoticeQueued = queueChatOrderCreatedNotice(responseDocumentId, data.payload);
+    var successAlert = Alert.success((msg || 'Tạo đơn hàng thành công!') + ' Mã đơn: ' + responseDocumentId);
+    if (chatNoticeQueued) {
+      var returnToChat = function () {
+        if (_createOrderActive) navigate('chatbot');
+      };
+      Promise.resolve(successAlert).then(returnToChat, returnToChat);
+    }
     resetForm();
   }).catch(function (err) {
     Alert.error(err.message || 'Có lỗi xảy ra.');
