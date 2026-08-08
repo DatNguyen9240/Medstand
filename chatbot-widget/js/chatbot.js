@@ -4279,13 +4279,16 @@
     function _renderTableBody(filteredRows, keys, forceShowAll, apiCode, pageNumber, pageSize) {
 
         var DEFAULT_PAGE_SIZE = 25;
-        var isTierScoringTable = String(apiCode || '').toLowerCase() === '@cham_diem_kh';
+        var normalizedApiCode = String(apiCode || '').toLowerCase();
+        var isTierScoringTable = normalizedApiCode === '@cham_diem_kh';
+        var isInvoiceList = normalizedApiCode === '@hoa_don';
         // Tương thích với call cũ truyền boolean showAllRows.
         if (typeof pageNumber === 'boolean') pageNumber = 1;
         pageNumber = Number(pageNumber);
         pageSize = Number(pageSize);
         if (!Number.isFinite(pageNumber) || pageNumber < 1) pageNumber = 1;
         if (!Number.isFinite(pageSize) || pageSize < 1) pageSize = DEFAULT_PAGE_SIZE;
+        if (isInvoiceList) pageSize = DEFAULT_PAGE_SIZE;
 
         var tierTotalRows = isTierScoringTable && filteredRows.length
             ? Number(filteredRows[0].TotalRows || filteredRows[0].totalRows || filteredRows.length)
@@ -4306,7 +4309,6 @@
         var primaryKeys = split.primary;
         var secondaryKeys = split.secondary;
         var hasDetails = secondaryKeys.length > 0;
-        var isInvoiceList = apiCode === '@hoa_don';
         var isOrderList = String(apiCode || '').toLowerCase() === '@don_hang';
         var isOrderSuggestionTable = String(apiCode || '').toLowerCase() === '@goi_ydon_hang';
         var isPromotionReviewTable = String(apiCode || '').toLowerCase() === '@de_xuat_khuyen_mai';
@@ -4412,15 +4414,16 @@
             var paginationUnit = keys.some(function (key) {
                 return String(key || '').toLowerCase().replace(/[_\s]/g, '') === 'availablestock';
             }) ? 'sản phẩm' : 'dòng';
-            var pagination = '<div class="ai-table-pagination">'
-                + '<span class="ai-table-pagination-range">Hiển thị ' + (startIndex + 1) + ' - ' + endIndex + ' / ' + filteredRows.length + ' ' + paginationUnit + '</span>'
-                + '<label class="ai-table-page-size-label">'
+            var pageSizeSelector = isInvoiceList ? '' : '<label class="ai-table-page-size-label">'
                 + '<span>Dòng/trang</span>'
                 + '<select class="ai-table-page-size" aria-label="Số dòng mỗi trang">'
                 + '<option value="10"' + (pageSize === 10 ? ' selected' : '') + '>10</option>'
                 + '<option value="25"' + (pageSize === 25 ? ' selected' : '') + '>25</option>'
                 + '<option value="50"' + (pageSize === 50 ? ' selected' : '') + '>50</option>'
-                + '</select></label>'
+                + '</select></label>';
+            var pagination = '<div class="ai-table-pagination">'
+                + '<span class="ai-table-pagination-range">Hiển thị ' + (startIndex + 1) + ' - ' + endIndex + ' / ' + filteredRows.length + ' ' + paginationUnit + '</span>'
+                + pageSizeSelector
                 + '<div class="ai-table-page-controls" aria-label="Phân trang">'
                 + '<button type="button" class="ai-table-page-btn ai-table-page-arrow" data-table-page-action="prev"' + (pageNumber <= 1 ? ' disabled' : '') + ' aria-label="Trang trước">‹</button>';
 
@@ -4767,7 +4770,9 @@
             var pageCache = pageTbody ? _modalDataCache[pageTbody.id] : null;
             if (!pageTbody || !pageCache) return;
             var pageRows = pageCache.visibleRows || pageCache.rows || [];
-            var pageSize = pageCache.tablePageSize || 25;
+            var pageSize = String(pageCache.apiCode || '').toLowerCase() === '@hoa_don'
+                ? 25
+                : (pageCache.tablePageSize || 25);
             var currentPage = pageCache.currentTablePage || 1;
             if (tablePageControl.classList.contains('ai-table-page-size')) {
                 pageSize = Number(tablePageControl.value) || 25;

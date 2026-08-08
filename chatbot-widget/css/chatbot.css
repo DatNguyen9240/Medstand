@@ -623,6 +623,11 @@
   white-space: nowrap;
 }
 
+/* Danh sách hóa đơn luôn dùng 25 dòng/trang, không cần bộ chọn kích thước trang. */
+.chat-bubble.ai .ai-table:has(.ai-invoice-detail-btn) .ai-table-page-size-label {
+  display: none;
+}
+
 .chat-bubble.ai .ai-table-page-size,
 .chat-bubble.ai .ai-tier-page-size {
   min-height: 36px;
