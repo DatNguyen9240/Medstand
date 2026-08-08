@@ -56,6 +56,10 @@ BEGIN
             @UserGroupID VARCHAR(50) = '',
             @EffectiveEmployeeID VARCHAR(50) = '',
             @SaleEmployeeID VARCHAR(50) = '',
+            @SelfAssignEmployeeID VARCHAR(50) = '',
+            @SelfAssignObjectGroupID VARCHAR(50) = '',
+            @SelfAssignLocationID NVARCHAR(100) = N'',
+            @IsSelfAssign BIT = 0,
             @LevelSub BIT = NULL,
             @IdempotencyKeyHash CHAR(64) = NULL,
             @VerifiedUserHash CHAR(64) = NULL,
@@ -119,6 +123,21 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
+    IF OBJECT_ID(N'dbo.AI_CustomerSelfAssignConfig', N'U') IS NOT NULL
+    BEGIN
+        SELECT TOP (1)
+               @SelfAssignEmployeeID = LTRIM(RTRIM(COALESCE(C.EmployeeID, ''))),
+               @SelfAssignObjectGroupID = LTRIM(RTRIM(COALESCE(C.ObjectGroupID, ''))),
+               @SelfAssignLocationID = LTRIM(RTRIM(COALESCE(C.LocationID, N''))),
+               @IsSelfAssign = 1
+        FROM dbo.AI_CustomerSelfAssignConfig C
+        INNER JOIN dbo.CF_ObjectGroupTbl G
+                ON G.ObjectGroupID = C.ObjectGroupID
+               AND COALESCE(G.isCustomer, 0) = 1
+        WHERE C.Username = @User
+          AND C.IsActive = 1;
+    END;
+
     IF OBJECT_ID('dbo.AI_API_MutationIdempotency', 'U') IS NULL
     BEGIN
         SET @ResultCode = 'IDEMPOTENCY_LEDGER_UNAVAILABLE';
@@ -133,12 +152,23 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
-    SET @EffectiveEmployeeID = @EmployeeID;
-    IF @EffectiveEmployeeID = '' AND @ManagerID = '' SET @EffectiveEmployeeID = @CeoID;
-    IF @EffectiveEmployeeID = '' AND @CeoID = '' SET @EffectiveEmployeeID = @ManagerID;
-    SET @SaleEmployeeID = @EffectiveEmployeeID;
+    IF @IsSelfAssign = 1
+    BEGIN
+        SET @EffectiveEmployeeID = @SelfAssignEmployeeID;
+        SET @SaleEmployeeID = @SelfAssignEmployeeID;
+        SET @AssignedEmployeeID = @SelfAssignEmployeeID;
+        SET @ObjectGroupID = @SelfAssignObjectGroupID;
+        SET @LocationID = @SelfAssignLocationID;
+    END
+    ELSE
+    BEGIN
+        SET @EffectiveEmployeeID = @EmployeeID;
+        IF @EffectiveEmployeeID = '' AND @ManagerID = '' SET @EffectiveEmployeeID = @CeoID;
+        IF @EffectiveEmployeeID = '' AND @CeoID = '' SET @EffectiveEmployeeID = @ManagerID;
+        SET @SaleEmployeeID = @EffectiveEmployeeID;
+    END;
 
-    IF @AssignedEmployeeID <> '' AND @AssignedEmployeeID <> @EffectiveEmployeeID
+    IF @IsSelfAssign = 0 AND @AssignedEmployeeID <> '' AND @AssignedEmployeeID <> @EffectiveEmployeeID
     BEGIN
         IF NOT EXISTS (
             SELECT 1

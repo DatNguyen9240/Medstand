@@ -33,12 +33,19 @@ RETURN
     (
         SELECT
             EffectiveEmployeeID = CASE
+                WHEN C.Username IS NOT NULL THEN C.EmployeeID
                 WHEN COALESCE(U.EmployeeID, '') <> '' THEN U.EmployeeID
                 WHEN COALESCE(U.ManagerID, '') = '' THEN U.CeoID
                 ELSE U.ManagerID
             END,
-            IsAdmin = CONVERT(BIT, CASE WHEN UPPER(COALESCE(U.UserGroupID, '')) = 'ADMIN' THEN 1 ELSE 0 END)
+            IsAdmin = CONVERT(BIT, CASE WHEN UPPER(COALESCE(U.UserGroupID, '')) = 'ADMIN' THEN 1 ELSE 0 END),
+            IsSelfAssign = CONVERT(BIT, CASE WHEN C.Username IS NOT NULL THEN 1 ELSE 0 END),
+            SelfAssignObjectGroupID = C.ObjectGroupID,
+            SelfAssignLocationID = C.LocationID
         FROM dbo.SY_User U
+        LEFT JOIN dbo.AI_CustomerSelfAssignConfig C
+               ON C.Username = U.UserName
+              AND C.IsActive = 1
         WHERE U.UserName = @User
           AND COALESCE(U.Disable, 0) = 0
           AND COALESCE(U.ObjectID, '') = ''
@@ -47,6 +54,9 @@ RETURN
     (
         SELECT I.EffectiveEmployeeID,
                I.IsAdmin,
+               I.IsSelfAssign,
+               I.SelfAssignObjectGroupID,
+               I.SelfAssignLocationID,
                H.LevelSub
         FROM IdentityScope I
         OUTER APPLY
@@ -61,9 +71,16 @@ RETURN
     ),
     AllowedGroups AS
     (
+        SELECT S.SelfAssignObjectGroupID AS ObjectGroupID
+        FROM HierarchyScope S
+        WHERE S.IsSelfAssign = 1
+          AND NULLIF(LTRIM(RTRIM(S.SelfAssignObjectGroupID)), '') IS NOT NULL
+
+        UNION
+
         SELECT DISTINCT G.ObjectGroupID
         FROM HierarchyScope S
-        INNER JOIN dbo.CF_ObjectGroupTbl G ON S.IsAdmin = 1
+        INNER JOIN dbo.CF_ObjectGroupTbl G ON S.IsAdmin = 1 AND S.IsSelfAssign = 0
 
         UNION
 
@@ -73,6 +90,7 @@ RETURN
             ON D.EmployeeID = S.EffectiveEmployeeID
            AND COALESCE(D.isDisable, 0) = 0
         WHERE S.IsAdmin = 0
+          AND S.IsSelfAssign = 0
           AND S.LevelSub = 1
           AND NULLIF(LTRIM(RTRIM(D.ObjectGroupID)), '') IS NOT NULL
 
@@ -84,15 +102,24 @@ RETURN
             ON E.ManagerID = S.EffectiveEmployeeID
            AND COALESCE(E.isDisable, 0) = 0
         WHERE S.IsAdmin = 0
+          AND S.IsSelfAssign = 0
           AND S.LevelSub = 0
           AND NULLIF(LTRIM(RTRIM(E.ObjectGroupID)), '') IS NOT NULL
     ),
     AllowedLocations AS
     (
         SELECT P.TinhThanh
+        FROM HierarchyScope S
+        INNER JOIN dbo.CF_TinhThanhTbl P ON P.TinhThanh = S.SelfAssignLocationID
+        WHERE S.IsSelfAssign = 1
+
+        UNION
+
+        SELECT P.TinhThanh
         FROM dbo.CF_TinhThanhTbl P
         CROSS JOIN HierarchyScope S
         WHERE S.IsAdmin = 1
+          AND S.IsSelfAssign = 0
 
         UNION
 
@@ -155,4 +182,3 @@ BEGIN
     ORDER BY LocationName;
 END;
 GO
-

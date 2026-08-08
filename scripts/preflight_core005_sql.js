@@ -13,6 +13,7 @@ const sql = require('mssql');
 const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'sql/Migrate_API_Mutation_Idempotency_AI.sql',
+  'sql/Migrate_Demo_Order_Actor_AI.sql',
   'sql/Module common - API_HangHoaList_AI.sql',
   'sql/Module common - API_DonHangChiTiet_Insert_AI.sql',
 ];
@@ -82,6 +83,48 @@ WHERE OBJECT_NAME(c.object_id) IN ('AR_OrderTbl', 'AR_OrderDetailTbl')
   AND c.name IN ('DocumentID', 'Memo', 'Notes', 'XaPhuong', 'ThuTrongTuan', 'Phone', 'UserCreate', 'StoreHouseID')
 ORDER BY TableName, c.column_id;`)).recordset;
 
+    const browseStartedAt = Date.now();
+    const browseRequest = new sql.Request(transaction);
+    browseRequest.input('Username', sql.VarChar(50), 'QLBH013.MED');
+    browseRequest.input('ObjectID', sql.VarChar(50), 'DL011');
+    browseRequest.input('ItemID', sql.VarChar(50), '');
+    browseRequest.input('SearchText', sql.NVarChar(50), '');
+    const browseRows = (await browseRequest.execute('dbo.API_HangHoaList_AI')).recordset || [];
+    const browseElapsedMs = Date.now() - browseStartedAt;
+    const warmBrowseStartedAt = Date.now();
+    const warmBrowseRequest = new sql.Request(transaction);
+    warmBrowseRequest.input('Username', sql.VarChar(50), 'QLBH013.MED');
+    warmBrowseRequest.input('ObjectID', sql.VarChar(50), 'DL011');
+    warmBrowseRequest.input('ItemID', sql.VarChar(50), '');
+    warmBrowseRequest.input('SearchText', sql.NVarChar(50), '');
+    const warmBrowseRows = (await warmBrowseRequest.execute('dbo.API_HangHoaList_AI')).recordset || [];
+    const warmBrowseElapsedMs = Date.now() - warmBrowseStartedAt;
+    if (browseRows.length > 20 || browseRows.some((row) => Number(row.UnitPrice) <= 0
+        || Number(row.AvailableStock) <= 0 || row.StockDataStatus !== 'AVAILABLE_FOR_SALE')) {
+      throw new Error(`Danh sách sản phẩm bán được không đúng contract: ${browseRows.length} dòng.`);
+    }
+
+    if (warmBrowseRows.length !== browseRows.length) {
+      throw new Error(`Warm-run row count mismatch: ${browseRows.length}/${warmBrowseRows.length}.`);
+    }
+
+    let priceParityPassed = 0;
+    for (const row of browseRows) {
+      const parityRequest = new sql.Request(transaction);
+      parityRequest.input('ObjectID', sql.VarChar(50), 'DL011');
+      parityRequest.input('ItemID', sql.VarChar(50), row.ItemID);
+      const expected = (await parityRequest.query(`
+        SELECT TOP (1) UnitPrice, DiemSanPham, GhiChu
+        FROM dbo.AR_LayGiaSanPhamFnc(CAST(GETDATE() AS DATE), @ObjectID, @ItemID);`)).recordset[0];
+      const samePrice = expected && Number(expected.UnitPrice) === Number(row.UnitPrice);
+      const samePoints = Number(expected && expected.DiemSanPham || 0) === Number(row.DiemSanPham || 0);
+      const sameNote = String(expected && expected.GhiChu || '') === String(row.GhiChu || '');
+      if (!samePrice || !samePoints || !sameNote) {
+        throw new Error(`Price parity mismatch for ${row.ItemID}.`);
+      }
+      priceParityPassed += 1;
+    }
+
     await transaction.rollback();
     began = false;
     process.stdout.write(`${JSON.stringify({
@@ -91,6 +134,19 @@ ORDER BY TableName, c.column_id;`)).recordset;
       Compiled: compiled,
       Parameters: parameters,
       TargetColumns: targetColumns,
+      SellableProductBrowse: {
+        rows: browseRows.length,
+        elapsedMs: browseElapsedMs,
+        warmElapsedMs: warmBrowseElapsedMs,
+        priceParity: `${priceParityPassed}/${browseRows.length}`,
+        sample: browseRows.slice(0, 3).map((row) => ({
+          itemId: row.ItemID,
+          unitPrice: row.UnitPrice,
+          availableStock: row.AvailableStock,
+          storeHouseId: row.StoreHouseID,
+          status: row.StockDataStatus,
+        })),
+      },
       PersistedChanges: false,
     }, null, 2)}\n`);
   } finally {

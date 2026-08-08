@@ -7315,7 +7315,9 @@
 
             handleReply: _handleReply,
 
-            renderCardView: _renderCardView
+            renderCardView: _renderCardView,
+
+            renderCatalogView: _renderCatalog
 
         }
 

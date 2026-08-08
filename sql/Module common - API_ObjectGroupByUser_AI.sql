@@ -82,6 +82,30 @@ BEGIN
         RETURN;
     END
 
+    -- Tài khoản được cấu hình SELF_ASSIGN chỉ nhận đúng nhóm kỹ thuật của mình.
+    -- Không suy quyền từ cờ Admin/Manager và không cho client chọn nhóm khác.
+    IF OBJECT_ID(N'dbo.AI_CustomerSelfAssignConfig', N'U') IS NOT NULL
+       AND EXISTS
+       (
+           SELECT 1
+           FROM dbo.AI_CustomerSelfAssignConfig C
+           INNER JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = C.ObjectGroupID
+           WHERE C.Username = @User
+             AND C.IsActive = 1
+             AND COALESCE(G.isCustomer, 0) = 1
+       )
+    BEGIN
+        SELECT G.ObjectGroupID,
+               G.ObjectGroupName,
+               CAST(1 AS BIT) AS IsSelfAssign
+        FROM dbo.AI_CustomerSelfAssignConfig C
+        INNER JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = C.ObjectGroupID
+        WHERE C.Username = @User
+          AND C.IsActive = 1
+          AND COALESCE(G.isCustomer, 0) = 1;
+        RETURN;
+    END
+
     -- Suy EmployeeID theo đúng thứ tự ưu tiên của AR_GetObjectByUserFnc.
     IF COALESCE(@EmployeeID, '') = '' AND COALESCE(@ManagerID, '') = '' SET @EmployeeID = @CeoID;     -- Ceo login
     IF COALESCE(@EmployeeID, '') = '' AND COALESCE(@CeoID, '')    = '' SET @EmployeeID = @ManagerID;  -- Manager login
@@ -115,7 +139,8 @@ BEGIN
         -- Cấp cuối (nhân viên bán hàng): lấy các nhóm được gán trực tiếp.
         SELECT DISTINCT
                D.ObjectGroupID,
-               G.ObjectGroupName
+               G.ObjectGroupName,
+               CAST(0 AS BIT) AS IsSelfAssign
         FROM dbo.AR_OpListDetailTbl D
             LEFT JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = D.ObjectGroupID
         WHERE ISNULL(D.isDisable, 0) = 0
@@ -127,7 +152,8 @@ BEGIN
         -- Cấp quản lý: lấy các nhóm của toàn bộ nhân viên dưới quyền.
         SELECT DISTINCT
                E.ObjectGroupID,
-               G.ObjectGroupName
+               G.ObjectGroupName,
+               CAST(0 AS BIT) AS IsSelfAssign
         FROM dbo.AR_OpListEmployeeTbl E
             LEFT JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = E.ObjectGroupID
         WHERE ISNULL(E.isDisable, 0) = 0
@@ -136,4 +162,3 @@ BEGIN
     END
 END
 GO
-

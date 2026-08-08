@@ -1,8 +1,9 @@
 # CORE-010 — Regression và hardening toàn bộ luồng mutation
 
-**Ngày kiểm tra:** 05/08/2026  
+**Ngày kiểm tra:** 05/08/2026 · **Cập nhật bằng chứng audit:** 06/08/2026  
 **Môi trường kiểm tra SQL:** `medtest`, mọi mutation thử nghiệm nằm trong transaction và đã `ROLLBACK`  
-**Trạng thái:** `SQL_DEPLOYED_MEDTEST_VERIFIED_UAT_REPORTED_PENDING_AUDIT_EVIDENCE`
+**Trạng thái:** `CUSTOMER_AUDIT_EVIDENCE_CONFIRMED_PENDING_ORDER_AND_CONCURRENCY`
+**Trạng thái trước đó:** `SQL_DEPLOYED_MEDTEST_VERIFIED_UAT_REPORTED_PENDING_AUDIT_EVIDENCE` — được nâng sau khi audit runtime của luồng tạo khách được xác nhận, xem mục 7.1.
 **Phạm vi:** tạo khách hàng và tạo đơn hàng qua direct gateway  
 **Git base SHA:** `4d25f58a913d5e477f11e686ce11c204ab48c8ee`  
 **Commit triển khai:** chưa có SHA; SQL `medtest` đã được user deploy từ working tree

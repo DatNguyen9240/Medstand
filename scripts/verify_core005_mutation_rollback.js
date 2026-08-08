@@ -12,8 +12,10 @@ const promotion = require('../src/js/utils/promotion.js');
 
 const ROOT = path.resolve(__dirname, '..');
 const USE_DEPLOYED_RUNTIME = process.argv.includes('--runtime');
+const USE_DEMO_ACTOR = process.argv.includes('--demo');
 const SQL_FILES = [
   'sql/Migrate_API_Mutation_Idempotency_AI.sql',
+  'sql/Migrate_Demo_Order_Actor_AI.sql',
   'sql/Module common - API_HangHoaList_AI.sql',
   'sql/Module common - API_DonHangChiTiet_Insert_AI.sql',
 ];
@@ -93,13 +95,17 @@ async function main() {
       }
     }
 
-    const users = (await new sql.Request(transaction).query(`
+    const userRequest = new sql.Request(transaction);
+    userRequest.input('UseDemoActor', sql.Bit, USE_DEMO_ACTOR);
+    const users = (await userRequest.query(`
 SELECT TOP (40) UserName, BranchID
 FROM dbo.SY_User
 WHERE COALESCE(Disable, 0) = 0
-  AND COALESCE(EmployeeID, '') <> ''
   AND COALESCE(BranchID, '') <> ''
-ORDER BY CASE WHEN UserName = 'QLBH013.MED' THEN 0 ELSE 1 END, UserName;`)).recordset;
+  AND (COALESCE(EmployeeID, '') <> '' OR (@UseDemoActor = 1 AND LOWER(UserName) = 'demo'))
+ORDER BY CASE WHEN @UseDemoActor = 1 AND LOWER(UserName) = 'demo' THEN 0
+              WHEN UserName = 'QLBH013.MED' THEN 1 ELSE 2 END,
+         UserName;`)).recordset;
 
     let candidate = null;
     for (const user of users) {
@@ -200,12 +206,18 @@ SELECT
   (SELECT COUNT_BIG(*) FROM dbo.AR_OrderTbl WHERE DocumentID = @DocumentID) AS HeaderCount,
   (SELECT COUNT_BIG(*) FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID) AS DetailCount,
   (SELECT TOP (1) SoLuongTang FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID) AS GiftQuantity,
-  (SELECT TOP (1) StoreHouseID FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID) AS StoreHouseID;`)).recordset[0];
+  (SELECT TOP (1) StoreHouseID FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID) AS StoreHouseID,
+  (SELECT TOP (1) EmployeeID FROM dbo.AR_OrderTbl WHERE DocumentID = @DocumentID) AS EmployeeID,
+  (SELECT TOP (1) UserCreate FROM dbo.AR_OrderTbl WHERE DocumentID = @DocumentID) AS UserCreate;`)).recordset[0];
 
     if (Number(evidence.HeaderCount) !== 1 || Number(evidence.DetailCount) !== 1
         || Number(evidence.GiftQuantity) !== Number(promo.giftQuantity)
         || !evidence.StoreHouseID) {
       throw new Error(`Bằng chứng DB không đúng: ${JSON.stringify(evidence)}`);
+    }
+    if (USE_DEMO_ACTOR && (String(candidate.user.UserName).toLowerCase() !== 'demo'
+        || evidence.EmployeeID !== 'DEMO' || String(evidence.UserCreate).toLowerCase() !== 'demo')) {
+      throw new Error(`Demo actor không được map đúng: ${JSON.stringify(evidence)}`);
     }
 
     await transaction.rollback();

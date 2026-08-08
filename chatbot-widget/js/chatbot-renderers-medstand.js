@@ -765,6 +765,13 @@
         }, 900);
     }
     window.MedstandCatalogAction = _catalogInlineAction;
+
+    function _cleanCatalogKeyword(value) {
+        return String(value || '').trim()
+            .replace(/^(?:tim\s*kiem|tìm\s*kiếm)\s*[:=]?\s+/i, '')
+            .trim();
+    }
+
     window.MedstandCatalogSearch = function (button) {
         var root = button && button.closest('.ai-catalog-menu');
         if (!root) return;
@@ -848,7 +855,8 @@
             });
             keywordForm.addEventListener('submit', function (event) {
                 event.preventDefault();
-                var keyword = input.value.trim();
+                var keyword = _cleanCatalogKeyword(input.value);
+                input.value = keyword;
                 if (!keyword) { validation.hidden = false; input.focus(); return; }
                 validation.hidden = true; _catalogState.pendingSearch = false; execute(_catalogState.currentCatalogType, keyword);
             });
@@ -883,7 +891,8 @@
             });
             form.addEventListener('submit', function (event) {
                 event.preventDefault();
-                var keyword = input.value.trim();
+                var keyword = _cleanCatalogKeyword(input.value);
+                input.value = keyword;
                 if (!keyword) { validation.hidden = false; input.focus(); return; }
                 validation.hidden = true;
                 if (_catalogState.isRequestInProgress) return;

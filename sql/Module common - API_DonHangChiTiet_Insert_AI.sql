@@ -50,6 +50,7 @@ BEGIN
     DECLARE @StoredDocumentID VARCHAR(100) = NULL;
     DECLARE @StoredMsg NVARCHAR(500) = NULL;
     DECLARE @StoredMsgType INT = NULL;
+    DECLARE @OrderActorConfig NVARCHAR(200) = NULL;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @DocumentID = LTRIM(RTRIM(COALESCE(@DocumentID, '')));
@@ -74,6 +75,40 @@ BEGIN
            @IsManager = COALESCE(Manager, 0)
     FROM dbo.SY_User
     WHERE UserName = @Username;
+
+    /*
+      Tài khoản trình diễn có thể không liên kết nhân viên ERP thật. Chỉ manager
+      thuộc nhóm global mới được dùng actor override đã APPROVED; không suy actor
+      từ dữ liệu client và không nới lỏng các kiểm tra khách hàng/kho/chi nhánh.
+    */
+    IF @EmployeeID = '' AND @IsManager = 1 AND @IsGlobal = 1
+       AND OBJECT_ID(N'dbo.AI_BusinessRuleConfigTbl', N'U') IS NOT NULL
+    BEGIN
+        SELECT TOP (1) @OrderActorConfig = C.ConfigValue
+        FROM dbo.AI_BusinessRuleConfigTbl C
+        WHERE C.RuleCode = 'BR-ORDER-ACTOR-001'
+          AND C.ConfigKey = LOWER(@Username)
+          AND C.ValueType = 'JSON'
+          AND C.Status = 'APPROVED'
+          AND (C.EffectiveFrom IS NULL OR C.EffectiveFrom <= SYSUTCDATETIME())
+          AND (C.EffectiveTo IS NULL OR C.EffectiveTo > SYSUTCDATETIME())
+        ORDER BY C.EffectiveFrom DESC, C.RuleConfigID DESC;
+
+        IF @OrderActorConfig IS NOT NULL
+        BEGIN
+            IF ISJSON(@OrderActorConfig) <> 1
+               OR COALESCE(JSON_VALUE(@OrderActorConfig, '$.EmployeeID'), '') = ''
+            BEGIN
+                SET @ResultCode = 'ORDER_ACTOR_CONFIG_INVALID';
+                SET @ResultMsg = N'Cấu hình người lập đơn không hợp lệ';
+                GOTO ReturnFailure;
+            END;
+
+            SET @EmployeeID = LTRIM(RTRIM(JSON_VALUE(@OrderActorConfig, '$.EmployeeID')));
+            IF @UserBranchID = ''
+                SET @UserBranchID = LTRIM(RTRIM(COALESCE(JSON_VALUE(@OrderActorConfig, '$.BranchID'), '')));
+        END;
+    END;
 
     IF @UserBranchID = '' OR @EmployeeID = ''
     BEGIN

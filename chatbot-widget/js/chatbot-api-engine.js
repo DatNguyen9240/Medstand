@@ -3151,6 +3151,7 @@
         }
         var currentUsername = user.UserName || user.Username || '';
         var userBranch = user.BranchID || user.branchId || '';
+        var selfAssignCustomer = false;
         load(API_CONFIG.ENDPOINTS.FILTER.BRANCHES, { BranchID: userBranch }, '#ae-customer-branch', 'BranchID', 'BranchName', true).then(function (rows) {
             var el = panel.querySelector('#ae-customer-branch');
             if (!el || !userBranch) return;
@@ -3162,13 +3163,32 @@
         var provinceEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.PROVINCES_BY_USER) || '/api/API_TinhThanhByUser_AI';
         load(provinceEndpoint, { User: currentUsername, LocationID: '', SearchText: '' }, '#ae-customer-province', 'LocationID', 'LocationName', false);
         var groupEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.OBJECT_GROUP_BY_USER) || '/api/API_ObjectGroupByUser_AI';
-        load(groupEndpoint, { User: currentUsername }, '#ae-customer-group', 'ObjectGroupID', 'ObjectGroupName', true);
+        var groupLoad = load(groupEndpoint, { User: currentUsername }, '#ae-customer-group', 'ObjectGroupID', 'ObjectGroupName', true)
+            .then(function (groups) {
+                var group = panel.querySelector('#ae-customer-group');
+                if (group && groups.length === 1) group.value = groups[0].ObjectGroupID || '';
+                return groups;
+            });
         if (userScope.isManager) {
             var employeeEndpoint = (API_CONFIG.ENDPOINTS.AI && API_CONFIG.ENDPOINTS.AI.EMPLOYEE_BY_MANAGER) || '/api/API_EmployeeByManager_AI';
             load(employeeEndpoint, { User: currentUsername }, '#ae-customer-assignee', 'EmployeeID', 'DisplayName', false)
                 .then(function (employees) {
                     var assignee = panel.querySelector('#ae-customer-assignee');
                     if (!assignee) return;
+                    var selfAssign = employees.find(function (row) {
+                        return Number(row.IsSelfAssign || row.isSelfAssign || 0) === 1;
+                    });
+                    if (selfAssign) {
+                        selfAssignCustomer = true;
+                        assignee.value = selfAssign.EmployeeID || '';
+                        var assigneeField = assignee.closest('.ae-customer-field');
+                        if (assigneeField) assigneeField.hidden = true;
+                        groupLoad.then(function () {
+                            var group = panel.querySelector('#ae-customer-group');
+                            if (group && selfAssign.ObjectGroupID) group.value = selfAssign.ObjectGroupID;
+                        });
+                        return;
+                    }
                     assignee.onchange = function () {
                         var selected = employees.find(function (row) { return String(row.EmployeeID || '') === String(assignee.value || ''); });
                         if (selected && selected.ObjectGroupID) panel.querySelector('#ae-customer-group').value = selected.ObjectGroupID;
@@ -3219,7 +3239,7 @@
             var v = { name: val('#ae-customer-name'), phone: val('#ae-customer-phone'), address: val('#ae-customer-address'), type: val('#ae-customer-type'), branch: val('#ae-customer-branch'), province: val('#ae-customer-province'), district: val('#ae-customer-district'), ward: val('#ae-customer-ward'), tax: val('#ae-customer-tax'), birthday: val('#ae-customer-birthday'), group: val('#ae-customer-group'), assignee: userScope.isManager ? val('#ae-customer-assignee') : '', channel: val('#ae-customer-channel'), route: val('#ae-customer-route') };
             var districtRequired = panel.querySelector('#ae-customer-district').dataset.optional !== 'true';
             if (!v.name || !v.phone || !v.tax || !v.birthday || !v.address || !v.type || !v.branch || !v.province || (districtRequired && !v.district) || !v.ward || !v.group) { errorEl.textContent = 'Vui lòng nhập đủ các trường bắt buộc theo địa giới đang áp dụng.'; return; }
-            if (userScope.isManager && !v.assignee) { errorEl.textContent = 'Vui lòng chọn nhân viên phụ trách.'; return; }
+            if (userScope.isManager && !selfAssignCustomer && !v.assignee) { errorEl.textContent = 'Vui lòng chọn nhân viên phụ trách.'; return; }
             if (!/^\d{10,11}$/.test(v.phone)) { errorEl.textContent = 'Số điện thoại phải gồm 10–11 chữ số và không được có chữ.'; return; }
             if (!/^\d{10,13}$/.test(v.tax)) { errorEl.textContent = 'Mã số thuế phải gồm 10–13 chữ số và không được có chữ.'; return; }
             var birthdayDate = new Date(v.birthday + 'T00:00:00');
@@ -3274,7 +3294,8 @@
         _panelEl.className = 'ae-panel ae-order-create-panel';
         _panelEl.innerHTML = [
             '<div class="ae-panel-header"><span class="ae-panel-title">' + _esc(dispName || 'Lập đơn hàng nhanh') + '</span>',
-            '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-close" title="Đóng" aria-label="Đóng">✕</button></div></div>',
+            '<div class="ae-panel-actions"><button class="ae-panel-btn" id="ae-panel-min" title="Thu gọn" aria-label="Thu gọn">−</button>',
+            '<button class="ae-panel-btn" id="ae-panel-close" title="Đóng" aria-label="Đóng">✕</button></div></div>',
             '<div class="ae-order-form">',
             '<label class="ae-order-field ae-order-full"><span>Khách hàng *</span>',
             '<span class="ae-order-combo"><input id="ae-order-customer" autocomplete="off" placeholder="Gõ tên hoặc mã khách hàng...">',
@@ -3303,6 +3324,14 @@
         var custDrop = panel.querySelector('#ae-order-customer-drop');
         var selectedCustomer = null;
 
+        panel.querySelector('#ae-panel-min').onclick = function () {
+            panel.classList.remove('active');
+            document.body.classList.remove('ae-panel-open');
+            setTimeout(function () { panel.style.display = 'none'; }, 200);
+
+            var triggerBtn = document.getElementById('ae-panel-trigger');
+            if (triggerBtn) triggerBtn.style.display = 'flex';
+        };
         panel.querySelector('#ae-panel-close').onclick = function () { _closeFull(); };
 
         function money(n) {
@@ -3330,18 +3359,41 @@
                 errorEl.textContent = 'Vui lòng chọn khách hàng trước khi chọn sản phẩm.';
                 return Promise.resolve([]);
             }
-            return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
-                q: JSON.stringify({ Username: username, Type: 'sanpham', timkiem: keyword || '' })
-            }).then(function (res) {
-                return _orderRows(res).map(function (item) {
-                    return {
-                        ItemID: item.MaDanhMuc || item.ItemID || '',
-                        ItemName: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
-                    };
-                }).filter(function (item) { return item.ItemID && item.ItemName; });
-            }).catch(function () {
-                errorEl.textContent = 'Không tải được danh mục sản phẩm.';
-                return [];
+            var timeoutId;
+            var productRequest = Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
+                q: JSON.stringify({
+                    Username: username,
+                    ObjectID: objectId,
+                    ItemID: '',
+                    SearchText: String(keyword || '').slice(0, 50)
+                })
+            });
+            var productTimeout = new Promise(function (_, reject) {
+                timeoutId = setTimeout(function () {
+                    reject(new Error('Tải sản phẩm quá thời gian. Vui lòng nhập tên hoặc mã để tìm hẹp hơn.'));
+                }, 12000);
+            });
+            return Promise.race([productRequest, productTimeout]).then(function (res) {
+                var rows = _orderRows(res);
+                if (rows[0] && Number(rows[0].MsgType || 0) === 1) {
+                    throw new Error(rows[0].Msg || 'Không thể kiểm tra giá và tồn sản phẩm.');
+                }
+                if (!_orderProducts) _orderProducts = {};
+                return rows.filter(function (item) {
+                    var stock = productStock(item);
+                    return item.ItemID && item.ItemName
+                        && productPrice(item) > 0
+                        && stock !== null && stock > 0
+                        && String(item.StockDataStatus || '') === 'AVAILABLE_FOR_SALE';
+                }).map(function (item) {
+                    _orderProducts[username + '|' + objectId + '|' + item.ItemID] = item;
+                    return item;
+                });
+            }).catch(function (error) {
+                errorEl.textContent = error.message || 'Không tải được danh sách giá và tồn sản phẩm.';
+                throw error;
+            }).finally(function () {
+                clearTimeout(timeoutId);
             });
         }
 
@@ -3442,19 +3494,22 @@
             function search() {
                 var keyword = input.value.trim();
                 clearTimeout(searchTimer);
-                if (keyword.length < 2) {
+                if (!selectedCustomer) {
                     requestSeq++;
-                    render([], 'Nhập ít nhất 2 ký tự để tìm sản phẩm.');
+                    render([], 'Vui lòng chọn khách hàng trước.');
                     return;
                 }
                 var currentSeq = ++requestSeq;
-                render([], 'Đang tìm sản phẩm...');
+                render([], keyword ? 'Đang tìm sản phẩm...' : 'Đang tải danh sách sản phẩm...');
                 searchTimer = setTimeout(function () {
                     searchProducts(keyword).then(function (rows) {
                         if (currentSeq !== requestSeq) return;
                         render(rows.slice(0, 20));
+                    }).catch(function () {
+                        if (currentSeq !== requestSeq) return;
+                        render([], 'Không thể tải danh sách sản phẩm.');
                     });
-                }, 300);
+                }, keyword ? 250 : 0);
             }
             input.addEventListener('focus', search);
             input.addEventListener('input', function () { onPick(null); search(); });
@@ -5588,6 +5643,20 @@
             else if (normalizedReport.indexOf('nhanvien') >= 0 || normalizedReport.indexOf('nhan vien') >= 0) params['@LoaiBaoCao'] = 'NhanVien';
             else if (normalizedReport.indexOf('sanpham') >= 0 || normalizedReport.indexOf('san pham') >= 0) params['@LoaiBaoCao'] = 'SanPham';
             else if (normalizedReport.indexOf('tatca') >= 0 || normalizedReport.indexOf('tat ca') >= 0) params['@LoaiBaoCao'] = 'TatCa';
+        }
+
+        // Người dùng thường nhập "timkiem A008" sau khi chọn Tra cứu sản phẩm.
+        // "timkiem" là tên trường, không phải một phần của mã/tên sản phẩm.
+        var lookupApiCode = String(apiCode || '').toLowerCase();
+        var lookupType = String(params['@Type'] || params['@type'] || '').toLowerCase();
+        if (lookupApiCode === '@tra_cuu_san_pham'
+            || (lookupApiCode === '@danh_muc' && lookupType === 'sanpham')) {
+            ['@timkiem', '@TimKiem'].forEach(function (key) {
+                if (params[key] === undefined || params[key] === null) return;
+                params[key] = String(params[key]).trim()
+                    .replace(/^(?:tim\s*kiem|tìm\s*kiếm)\s*[:=]?\s+/i, '')
+                    .trim();
+            });
         }
 
         var cfgFilters = (config && config.filters && Array.isArray(config.filters)) ? config.filters : [];

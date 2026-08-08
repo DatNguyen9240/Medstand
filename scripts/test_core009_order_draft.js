@@ -203,6 +203,40 @@ check('ORDER_PREFILL_WAITS_FOR_CUSTOMER_AND_LOADS_SELECTED_ITEMS', () => {
   assert.ok(customerReady > -1 && selectedItems > customerReady && detailLoad > selectedItems);
 });
 
+check('CREATE_ORDER_PREFILL_DOES_NOT_CLEAR_HYDRATED_PRODUCTS', () => {
+  const source = fs.readFileSync(path.join(workspace, 'src/js/pages/create-order.js'), 'utf8');
+  const customerChange = source.indexOf("orderForm.onListChange('customer'");
+  const guardedReset = source.indexOf('if (!_chatbotOrderPrefillActive)', customerChange);
+  const rowReset = source.indexOf("$('#dynamicProductRowsContainer').html('');", guardedReset);
+  const prefillStart = source.indexOf('_chatbotOrderPrefillActive = true;');
+  const customerPromise = source.indexOf('customerReady = Http.get', prefillStart);
+  const productPromise = source.indexOf('productsReady = customerReady.then', customerPromise);
+  const detailPromise = source.indexOf('return Promise.all(items.map', productPromise);
+  const releaseGuard = source.indexOf('Promise.allSettled([customerReady, productsReady])', detailPromise);
+  assert.ok(customerChange > -1 && guardedReset > customerChange && rowReset > guardedReset);
+  assert.ok(prefillStart > -1 && customerPromise > prefillStart
+    && productPromise > customerPromise && detailPromise > productPromise
+    && releaseGuard > detailPromise);
+});
+
+check('ORDER_PRODUCT_PICKER_LOADS_SELLABLE_PRODUCTS', () => {
+  const source = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-api-engine.js'), 'utf8');
+  const comboStart = source.indexOf('function attachProductCombo');
+  const comboEnd = source.indexOf('// ── Khách hàng', comboStart);
+  const comboSource = source.slice(comboStart, comboEnd);
+  assert.ok(comboStart > -1 && comboEnd > comboStart);
+  assert.ok(comboSource.includes("'Đang tải danh sách sản phẩm...'"));
+  assert.ok(!comboSource.includes('keyword.length < 2'));
+  assert.ok(comboSource.includes('searchProducts(keyword)'));
+  const searchStart = source.indexOf('function searchProducts(keyword)');
+  const searchEnd = source.indexOf('function loadProductDetail', searchStart);
+  const searchSource = source.slice(searchStart, searchEnd);
+  assert.ok(searchSource.includes('API_CONFIG.ENDPOINTS.FILTER.PRODUCTS'));
+  assert.ok(searchSource.includes("StockDataStatus || '') === 'AVAILABLE_FOR_SALE'"));
+  assert.ok(!searchSource.includes('API_CONFIG.ENDPOINTS.AI.CATALOG'));
+  assert.ok(searchSource.includes('Promise.race([productRequest, productTimeout])'));
+});
+
 check('CREATE_SUCCESS_INVALIDATES_SESSION_DRAFT', () => {
   const source = fs.readFileSync(path.join(workspace, 'src/js/pages/create-order.js'), 'utf8');
   const successGuard = source.indexOf('submitSucceeded = true;');

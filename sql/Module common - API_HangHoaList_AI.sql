@@ -31,60 +31,58 @@ BEGIN
         RETURN;
     END;
 
-    DECLARE @ToDate DATE = CAST(COALESCE(@DocumentDate, GETDATE()) AS DATE);
+    -- Preserve AR_LayGiaSanPhamFnc semantics: ERP prices by the current date.
+    DECLARE @ToDate DATE = CAST(GETDATE() AS DATE);
     DECLARE @BranchID VARCHAR(50) = '';
+    DECLARE @ObjectGroupID VARCHAR(50) = '';
     DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
-    DECLARE @AllowedStores TABLE (StoreHouseID VARCHAR(50) PRIMARY KEY);
 
     SELECT @BranchID = COALESCE(BranchID, '')
     FROM dbo.SY_User
     WHERE UserName = @Username;
 
-    INSERT @AllowedStores (StoreHouseID)
-    SELECT StoreHouseID
-    FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc);
-
-    IF NOT EXISTS (SELECT 1 FROM @AllowedStores)
-    BEGIN
-        SELECT N'Tài khoản chưa được phân quyền kho' AS Msg, 1 AS MsgType;
-        RETURN;
-    END;
+    SELECT @ObjectGroupID = COALESCE(ObjectGroupID, '')
+    FROM dbo.CF_ObjectTbl
+    WHERE ObjectID = @ObjectID;
 
     IF @SeachText <> '' SET @SearchText = @SeachText;
 
-    SELECT I.ItemID,
-           I.ItemName + COALESCE(' (' + P.GhiChu + ')', '') AS ItemName,
+    ;WITH RankedStock AS
+    (
+        SELECT Stock.*,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY Stock.ItemID
+                   ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
+               ) AS StockRank
+        FROM dbo.AI_StockAvailableByUserFnc(@Username, @ItemID, @StockAsOfUtc) Stock
+        WHERE Stock.AvailableStock > 0
+          AND Stock.StockDataStatus = N'AVAILABLE_FOR_SALE'
+    )
+    SELECT TOP (30)
+           I.ItemID,
+           I.ItemName,
            I.Unit,
            I.ItemGroupID,
            I.CategoryID,
            I.HangSX,
-           P.UnitPrice,
-           P.DiemSanPham,
-           P.GhiChu,
-           CAST(COALESCE(S.AvailableStock, 0) AS DECIMAL(18,2)) AS QuantityinStock,
-           CAST(COALESCE(S.AvailableStock, 0) AS DECIMAL(18,2)) AS TonKho,
            S.StoreHouseID,
            S.StoreHouseName,
-           COALESCE(S.PhysicalStock, 0) AS PhysicalStock,
-           COALESCE(S.ReservedStock, 0) AS ReservedStock,
-           COALESCE(S.AvailableStock, 0) AS AvailableStock,
-           COALESCE(S.WarehouseScope, N'AUTHORIZED_WAREHOUSE_NO_STOCK') AS WarehouseScope,
-           COALESCE(S.StockDataStatus, N'NO_SELLABLE_STOCK') AS StockDataStatus,
-           COALESCE(S.StockUpdatedAt, @StockAsOfUtc) AS StockUpdatedAt,
-           COALESCE(S.StockAsOfAt, @StockAsOfUtc) AS StockAsOfAt,
+           S.PhysicalStock,
+           S.ReservedStock,
+           S.AvailableStock,
+           S.WarehouseScope,
+           S.StockDataStatus,
+           S.StockUpdatedAt,
+           S.StockAsOfAt,
            S.LatestStockMovementDate,
-           COALESCE(S.StockDataSource, N'IV_StockTransactionTbl-AR_OrderOpenReservation') AS StockDataSource,
-           S.RuleVersion AS StockRuleVersion
+           S.StockDataSource,
+           S.RuleVersion
+    INTO #CandidateItems
     FROM dbo.CF_ItemTbl I
-    OUTER APPLY (
-        SELECT TOP (1) UnitPrice, DiemSanPham, GhiChu
-        FROM dbo.AR_LayGiaSanPhamFnc(@ToDate, @ObjectID, I.ItemID)
-    ) P
-    OUTER APPLY (
-        SELECT TOP (1) Stock.*
-        FROM dbo.AI_StockAvailableByUserFnc(@Username, I.ItemID, @StockAsOfUtc) Stock
-        ORDER BY Stock.AvailableStock DESC, Stock.StoreHouseID
-    ) S
+    INNER JOIN RankedStock S
+            ON S.ItemID = I.ItemID
+           AND S.StockRank = 1
     WHERE EXISTS
           (
               SELECT 1
@@ -101,7 +99,112 @@ BEGIN
                WHEN @BranchID = 'MT' THEN COALESCE(I.IsDisableMT, 0)
                ELSE COALESCE(I.IsDisable, 0) END = 0
       AND (I.ItemID LIKE '%' + @SearchText + '%' OR I.ItemName LIKE '%' + @SearchText + '%')
-      AND P.UnitPrice IS NOT NULL
+    ORDER BY I.ItemName;
+
+    IF NOT EXISTS (SELECT 1 FROM #CandidateItems)
+       AND NOT EXISTS
+           (
+               SELECT 1
+               FROM dbo.AI_WarehouseByUserFnc(@Username, @StockAsOfUtc)
+           )
+    BEGIN
+        SELECT N'Tài khoản chưa được phân quyền kho' AS Msg, 1 AS MsgType;
+        RETURN;
+    END;
+
+    ;WITH PriceCandidates AS
+    (
+        SELECT Y.ItemID,
+               Y.UnitPrice,
+               Y.DiemSanPham,
+               Y.Notes AS GhiChu,
+               Y.UserAutoID,
+               1 AS PricePriority
+        FROM dbo.AR_PriceObjectTbl X
+        INNER JOIN dbo.AR_PriceDetailTbl Y ON Y.DocumentID = X.DocumentID
+        INNER JOIN dbo.AR_PriceTbl M
+                ON M.DocumentID = X.DocumentID
+               AND COALESCE(M.isDisable, 0) = 0
+               AND COALESCE(M.FromDate, '20000101') <= @ToDate
+               AND COALESCE(M.ToDate, '20990101') >= @ToDate
+        INNER JOIN #CandidateItems I ON I.ItemID = Y.ItemID
+        WHERE X.ObjectID = @ObjectID
+          AND COALESCE(M.isObjectPrice, 0) = 1
+
+        UNION ALL
+
+        SELECT Y.ItemID,
+               Y.UnitPrice,
+               Y.DiemSanPham,
+               Y.Notes AS GhiChu,
+               Y.UserAutoID,
+               2 AS PricePriority
+        FROM dbo.AR_PriceObjectGroupTbl X
+        INNER JOIN dbo.AR_PriceDetailTbl Y ON Y.DocumentID = X.DocumentID
+        INNER JOIN dbo.AR_PriceTbl M
+                ON M.DocumentID = X.DocumentID
+               AND COALESCE(M.isDisable, 0) = 0
+               AND COALESCE(M.FromDate, '20000101') <= @ToDate
+               AND COALESCE(M.ToDate, '20990101') >= @ToDate
+        INNER JOIN #CandidateItems I ON I.ItemID = Y.ItemID
+        WHERE X.ObjectGroupID = @ObjectGroupID
+          AND COALESCE(M.isObjectPrice, 0) = 1
+
+        UNION ALL
+
+        SELECT Y.ItemID,
+               Y.UnitPrice,
+               Y.DiemSanPham,
+               Y.Notes AS GhiChu,
+               Y.UserAutoID,
+               3 AS PricePriority
+        FROM dbo.AR_PriceTbl X
+        INNER JOIN dbo.AR_PriceDetailTbl Y
+                ON Y.DocumentID = X.DocumentID
+        INNER JOIN #CandidateItems I ON I.ItemID = Y.ItemID
+        WHERE COALESCE(X.isDisable, 0) = 0
+          AND COALESCE(X.FromDate, '20000101') <= @ToDate
+          AND COALESCE(X.ToDate, '20990101') >= @ToDate
+          AND COALESCE(X.isObjectPrice, 0) = 0
+    ),
+    RankedPrice AS
+    (
+        SELECT P.*,
+               ROW_NUMBER() OVER
+               (
+                   PARTITION BY P.ItemID
+                   ORDER BY P.PricePriority, P.UserAutoID DESC
+               ) AS PriceRank
+        FROM PriceCandidates P
+    )
+    SELECT TOP (20) I.ItemID,
+           I.ItemName + COALESCE(' (' + P.GhiChu + ')', '') AS ItemName,
+           I.Unit,
+           I.ItemGroupID,
+           I.CategoryID,
+           I.HangSX,
+           P.UnitPrice,
+           P.DiemSanPham,
+           P.GhiChu,
+           CAST(COALESCE(I.AvailableStock, 0) AS DECIMAL(18,2)) AS QuantityinStock,
+           CAST(COALESCE(I.AvailableStock, 0) AS DECIMAL(18,2)) AS TonKho,
+           I.StoreHouseID,
+           I.StoreHouseName,
+           COALESCE(I.PhysicalStock, 0) AS PhysicalStock,
+           COALESCE(I.ReservedStock, 0) AS ReservedStock,
+           COALESCE(I.AvailableStock, 0) AS AvailableStock,
+           COALESCE(I.WarehouseScope, N'AUTHORIZED_WAREHOUSE_NO_STOCK') AS WarehouseScope,
+           COALESCE(I.StockDataStatus, N'NO_SELLABLE_STOCK') AS StockDataStatus,
+           COALESCE(I.StockUpdatedAt, @StockAsOfUtc) AS StockUpdatedAt,
+           COALESCE(I.StockAsOfAt, @StockAsOfUtc) AS StockAsOfAt,
+           I.LatestStockMovementDate,
+           COALESCE(I.StockDataSource, N'IV_StockTransactionTbl-AR_OrderOpenReservation') AS StockDataSource,
+           I.RuleVersion AS StockRuleVersion
+    FROM #CandidateItems I
+    INNER JOIN RankedPrice P
+            ON P.ItemID = I.ItemID
+           AND P.PriceRank = 1
+    WHERE P.UnitPrice IS NOT NULL
     ORDER BY I.ItemName;
 END;
 GO

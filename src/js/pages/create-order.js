@@ -46,6 +46,7 @@ var _productsLoadError = false;
 var _productsHydrating = false;
 var _branchLoadError = false;
 var _createOrderActive = true;
+var _chatbotOrderPrefillActive = false;
 var _orderSubmitIdempotencyKey = '';
 var _orderSubmitFingerprint = '';
 
@@ -212,12 +213,14 @@ $(document).on('change', '#fs-orderDate', function() {
 
 // -- Sự kiện khi chọn khách hàng -> Auto-fill ---------------------------------
 orderForm.onListChange('customer', function(val) {
-  _productsCache = null;
-  _productsLoadError = false;
-  $('#dynamicProductRowsContainer').html('');
-  rowCounter = 0;
-  appendProductRow();
-  updateLiveTotal();
+  if (!_chatbotOrderPrefillActive) {
+    _productsCache = null;
+    _productsLoadError = false;
+    $('#dynamicProductRowsContainer').html('');
+    rowCounter = 0;
+    appendProductRow();
+    updateLiveTotal();
+  }
   var cust = _customersCache.find(function(r) { return r.ObjectID === val; });
   if (cust) {
     _selectedLocationID = cust.LocationID || '';
@@ -678,6 +681,9 @@ setTimeout(function() {
     try {
       var dataStr = decodeURIComponent(window.location.hash.split('?data=')[1]);
       var params = JSON.parse(dataStr);
+      _chatbotOrderPrefillActive = true;
+      var customerReady = Promise.resolve();
+      var productsReady = Promise.resolve();
       // alert('DEBUG FOUND HASH DATA: ' + Object.keys(params).join(', '));
       
       // Khôi phục khách hàng
@@ -685,7 +691,7 @@ setTimeout(function() {
           var cusId = params['@ObjectID'];
           orderForm.setListValue('customer', cusId, cusId + ' (Đang tải...)');
           
-          Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
+          customerReady = Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
             q: JSON.stringify({ User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: '', SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || '' })
           }).then(function (res) {
             var records = (res.data || res).records || res.data || res || [];
@@ -748,9 +754,11 @@ setTimeout(function() {
               // Chỉ đối chiếu các ItemID có trong payload; không tải toàn bộ catalog nặng.
               _productsCache = null;
               _productsHydrating = true;
-              Promise.all(items.map(function (it) {
-                  return loadProductDetail(it.ItemID).catch(function () { return null; });
-              })).then(function (details) {
+              productsReady = customerReady.then(function () {
+                  return Promise.all(items.map(function (it) {
+                      return loadProductDetail(it.ItemID).catch(function () { return null; });
+                  }));
+              }).then(function (details) {
                   items.forEach(function(it, idx) {
                      var match = details[idx];
                      if (match) {
@@ -772,12 +780,17 @@ setTimeout(function() {
               });
           }
       }
+
+      Promise.allSettled([customerReady, productsReady]).then(function () {
+          _chatbotOrderPrefillActive = false;
+      });
       
       // Xóa trên URL
       history.replaceState(null, null, '#/create-order');
       setTimeout(function() { Alert.success('Đã tải dữ liệu Đơn hàng từ Chatbot!'); }, 500);
       
     } catch(e) { 
+       _chatbotOrderPrefillActive = false;
        alert('Parse chatbot payload failed: ' + e.message); 
        console.error('Parse chatbot payload failed:', e); 
     }

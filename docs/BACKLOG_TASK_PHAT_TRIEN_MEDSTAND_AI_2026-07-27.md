@@ -97,7 +97,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - ⚠️ File export chứa `staticData` kèm token thật — không commit; cần lưu thì lọc bằng `scripts/sanitize_n8n_export.js`.
   - Trạng thái n8n mới nhất và điều kiện đóng nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `REVIEW_REQUIRED`
+- [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `BLOCKED`
+  - *Reason:* tiêu chí "không có credential viết trực tiếp trong file public/source workflow" đang **FAIL**. `.env` không có `ADMIN_UPLOAD_KEY` nên fallback `server.js`:464 chính là khóa đang chạy thật; cùng khóa hard-code trong `n8n/AI_Core/AI_Upload_Reader.json` (file được git theo dõi). Chi tiết: `docs/audit-2026-08-07/UAT-005_VA_CHECKBOX_AUDIT_2026-08-07.md`.
   - Xác minh app, n8n và SQL đều trỏ đúng môi trường `medtest`.
   - Thay credential viết cứng trong workflow upload bằng cơ chế secret/xác thực chuẩn.
   - Nghiệm thu: không có credential UAT/production được viết trực tiếp trong file public hoặc source workflow xuất bản.
@@ -129,7 +130,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
     Sau khi vá: 13/13 tài khoản có phạm vi bị chặn (9 → 11.571 khách), 13/13 vẫn nhìn thấy khách đại diện, 11 tài khoản còn lại không đổi một dòng nào. Hai API CORE-001 trước đây trả `FORBIDDEN` cho hai tài khoản này giờ trả đúng nhóm và đúng nhân viên dưới quyền.
   - **Cảnh báo cho lần chạy lại UAT-007**: phải bổ sung tiêu chí *"không tài khoản nào nhìn thấy 100% khách hàng"*, nếu không lỗi loại này sẽ lại lọt lưới. Ngoài 13 tài khoản UAT, `TRUNGBM` (`NVVP003`) hiện vẫn thấy đủ 49.559 khách vì cùng lỗi — cố ý chưa xử vì nằm ngoài phạm vi UAT và cần khách xác nhận anh ta quản khu vực nào.
 
-- [x] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `PASS`
+- [x] **UAT-008 — Đối soát mapping kho CTY/DL02/DL03** · `P0` · `DONE`
   - Kiểm tra dữ liệu `SY_UserStoreHouseTbl` cho từng tài khoản và vai trò.
   - Nghiệm thu: mỗi tài khoản chỉ thấy tồn của các kho được cấp; có bảng mapping được business owner xác nhận.
   - Business Owner xác nhận ngày 2026-07-29: UAT chỉ hiển thị ba kho chính `CTY / DL02 / DL03`; các kho phụ `LOI`, `DL01`, `KG MT`, `LOIMT`, `KG MN`, `LOIMN` phải được ẩn.
@@ -223,7 +224,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả: `13/13 PASS`; `0` lỗi API, `0` thiếu giá/disclaimer/lý do, trạng thái tồn và cảnh báo tham khảo hiển thị đúng.
   - Bằng chứng: `scripts/verify_uat016_product_symptom_lookup.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [x] **UAT-017 — Test tạo khách hàng** · `P0` · `PASS`
+- [x] **UAT-017 — Test tạo khách hàng** · `P0` · `DONE`
   - Test validate, trùng số điện thoại/mã khách, phân quyền và kết quả trả về.
   - Chỉ sử dụng dữ liệu có tiền tố UAT được phép tạo.
   - Nghiệm thu: tạo đúng một bản ghi sau xác nhận; có thể truy vết người tạo.
@@ -231,7 +232,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả runtime được business xác nhận: `QLBH013.MED` tạo thành công khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`; truy vấn lại theo cả mã và tên đều trả đúng một bản ghi trong scope của tài khoản. Chấp nhận ca này làm bằng chứng chức năng dù tên không có tiền tố `UAT_`.
   - Bằng chứng: `scripts/verify_uat017_customer_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [x] **UAT-018 — Test tạo đơn hàng** · `P0` · `PASS`
+- [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `REOPENED`
+  - *Reason:* mâu thuẫn nội bộ chưa hòa giải. Dòng "Kết quả" ghi *"chưa triển khai hai procedure AI và chưa tạo đơn UAT"*, dòng bổ sung 01/08 lại ghi đã có controlled mutation, còn CORE-010 ghi `CREATE_DONHANG = 0`. Ba tuyên bố không thể cùng đúng. Ngoài ra bằng chứng 01/08 dùng mã tự đặt `UAT21-*` trong khi CORE-004 sau đó đã chuyển sang `AUTO_GEN` do SQL sinh mã ⇒ có thể đã lỗi thời so với contract hiện hành. Đóng bằng: một đơn thật qua UI có token, ghi request ID, rồi truy vấn `AI_AuditLog`.
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
   - Chỉ sử dụng dữ liệu UAT được phép tạo.
   - Nghiệm thu: tạo đúng một đơn, chi tiết đúng và không tạo trùng khi gửi lại request.
@@ -239,7 +241,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Bằng chứng: `scripts/verify_uat018_order_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Controlled mutation 01/08/2026: đơn `UAT21-260801145955-9CA2` có đúng 1 header, 1 detail, tổng `95.000`; hai request đồng thời không tạo trùng và payload khác dùng cùng ID bị từ chối.
 
-- [x] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `PASS`
+- [x] **UAT-019 — Chạy regression hội thoại tự nhiên** · `P0` · `DONE`
   - Chạy bộ câu hỏi theo intent, tham số, hội thoại tiếp nối và các trường hợp thiếu dữ liệu.
   - Nghiệm thu: tối thiểu 95% test chính đạt; không có lỗi P0/P1 chưa được chấp nhận.
   - Kết quả 31/07/2026: classifier/intent/tham số/thiếu dữ liệu/follow-up `159/159 PASS` (100%), resilience `5/5 PASS`, cổng auth Pilot PASS (`401 AUTH_REQUIRED` khi không token). Live có xác thực `28/31 PASS` (90,32%), chưa đạt ngưỡng 95%; lỗi `upsell` và `product-search` là `502 EMPTY_UPSTREAM_RESPONSE` do n8n trả HTTP 200 nhưng body rỗng, `catalog` là `422 VALIDATION_ERROR` vì workflow yêu cầu từ khóa tối thiểu dù câu hỏi chỉ định loại `khohang`.
@@ -247,25 +249,27 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Bằng chứng: `reports/uat019-*`, `reports/uat023-*`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Retest public 01/08/2026 bằng token manager tạm: smoke `8/8`, live `31/31`, p95 live `334 ms`; không còn lỗi 502/422 cũ. Bằng chứng: `reports/uat023-*-2026-08-01.json`.
 
-- [x] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `PASS`
+- [x] **UAT-020 — Kiểm tra hiệu năng p50/p95** · `P0` · `DONE`
   - Đo riêng API thường và truy vấn AI phức tạp, không chỉ đo cảm nhận trên UI.
   - Nghiệm thu mục tiêu: truy vấn thường dưới 3 giây; truy vấn AI phức tạp dưới 6 giây ở p95 hoặc có ngoại lệ được ghi rõ.
   - Kết quả 31/07/2026: HTTP local chạy 40 request/target, concurrency 4, đạt 100%; web p50/p95 `5/24 ms`, n8n health `1/4 ms`. AI qua gateway có xác thực chạy 40 request, concurrency 4, đạt 100%, p50/p95 `2.058/5.668 ms`; p95 đạt mục tiêu dưới 6 giây. Ghi nhận p99/max `9.785 ms` để theo dõi nhưng không làm trượt tiêu chí p95.
   - Bằng chứng: `reports/uat020-infrastructure-load-2026-07-31.json`, `reports/uat020-ai-load-2026-07-31.json`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [x] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `PASS`
+- [x] **UAT-021 — Kiểm tra lỗi trùng và kết quả không đồng nhất** · `P0` · `DONE`
   - Test gửi lặp, double-click, retry, context cũ và response nhiều bảng.
   - Nghiệm thu: mutation có idempotency; truy vấn lặp cùng input/cùng mốc dữ liệu cho kết quả nhất quán.
   - Kết quả 01/08/2026: resilience `5/5`; 5 truy vấn lặp trả cùng 117 dòng và cùng SHA-256; response nhiều bảng giữ đủ metadata + dữ liệu; hai mutation đồng thời tạo đúng một đơn.
 
 ### Nhóm D — Báo cáo và bàn giao UAT
 
-- [x] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `DONE_WITH_OPEN_BLOCKERS`
+- [ ] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `IN_PROGRESS`
+  - *Reason:* trạng thái cũ `DONE_WITH_OPEN_BLOCKERS` tự mâu thuẫn — task vẫn còn blocker mở nên không được tick `[x]`. Giữ `IN_PROGRESS` cho tới khi mọi lỗi P0 trong bảng tổng hợp được đóng bằng bằng chứng runtime.
   - Mỗi lỗi phải có account, thời gian, input, kết quả thực tế, kết quả mong đợi, ảnh/log và request ID nếu có.
   - Nghiệm thu: không còn lỗi chỉ mô tả bằng câu “không chạy”.
   - Lỗi mở và điều kiện đóng được duy trì tại [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [x] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `BLOCKED_RELEASE_REPORT_PUBLISHED`
+- [ ] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `BLOCKED`
+  - *Reason:* trạng thái cũ `BLOCKED_RELEASE_REPORT_PUBLISHED` gộp hai nghĩa trái ngược. Báo cáo đã được phát hành nhưng việc phát hành bản runtime *mới* vẫn bị chặn bởi UAT-018/UAT-022. Không được tick `[x]` khi còn `BLOCKED`.
   - Thay thế bằng chứng cũ bằng kết quả test sau deploy theo manifest.
   - Nghiệm thu: báo cáo ghi rõ tổng pass/fail/blocked, phiên bản, môi trường và ngày chạy.
   - Báo cáo runtime theo ngày đã được thay bằng [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md); trạng thái vẫn không che P0 workflow trùng.
@@ -280,7 +284,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 **Thời gian mục tiêu:** 11/08–15/09/2026  
 **Gate hoàn thành:** `CORE_SALES_FLOW_READY`
 
-- [x] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `CONTRACT_LOCKED_DIRECT_CREATE_UAT`
+- [x] **CORE-001 — Thiết kế contract chat tạo khách hàng** · `P1` · `DONE`
+  - *Reason:* trạng thái cũ `CONTRACT_LOCKED_DIRECT_CREATE_UAT` là mô tả kết quả, không phải trạng thái hợp lệ. Contract đã chốt và UAT-017 đã chấp nhận ⇒ trạng thái kết thúc đúng là `DONE`; nội dung "direct create, khóa contract" giữ nguyên ở các dòng kết quả bên dưới.
   - Chốt trường bắt buộc, trường tùy chọn, validate, scope và response.
   - Nghiệm thu: có contract được frontend, n8n, SQL và business cùng sử dụng.
   - Kết quả cập nhật 01/08/2026: contract đã chốt theo luồng `Chatbot → API_KhachHang_Insert_AI → CF_ObjectTbl`; khách được tạo trực tiếp và dùng ngay, không qua `AR_ObjectNewRequireTbl`. Đây là quyết định nghiệp vụ đã được UAT-017 chấp nhận, không còn là lỗi bỏ qua duyệt. Tài liệu: [CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md).
@@ -307,7 +312,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả 29/07/2026: Đã hoàn thành 100% luồng xác nhận Preview ➔ Submit, Idempotency-Key UUID v4 chống gửi lặp và Audit log. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Cập nhật 01/08/2026: frontend, ApiCode và endpoint đều thống nhất gọi `API_KhachHang_Insert_AI`; procedure ghi trực tiếp `CF_ObjectTbl` theo contract đã được business/UAT chấp nhận. UAT-017 đã PASS; frontend chỉ công nhận thành công khi `MsgType = 5` và có `ObjectID`.
 
-- [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `CONTRACT_LOCKED_CORE005_PATCH_PENDING_DEPLOY`
+- [x] **CORE-004 — Thiết kế contract chat lập đơn hàng** · `P1` · `DONE`
+  - *Reason:* phần thiết kế contract đã hoàn tất và khóa 03/08/2026. Vế `CORE005_PATCH_PENDING_DEPLOY` thuộc phạm vi CORE-005 (deploy), không phải điều kiện chưa xong của CORE-004 ⇒ tách ra để trạng thái không tự mâu thuẫn với dấu tick.
   - Chốt customer, item list, số lượng, kho, bảng giá, CTBH và response giỏ hàng.
   - Nghiệm thu: phân biệt rõ `preview`, `confirmed`, `created`, `failed`.
   - Kết quả 03/08/2026: đã khóa contract theo runtime hiện tại tại [CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md](CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md). Chat chỉ tạo `preview`; xác nhận mới gọi `API_DonHangChiTiet_Insert_AI`; chỉ `MsgType = 5` kèm `DocumentID` là `created`; mọi kết quả khác là `failed` hoặc cần đối soát khi timeout.
@@ -315,13 +321,13 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Cập nhật 03/08/2026: frontend không còn tự sinh `UATORD-*`; khi bỏ trống mã đơn, frontend truyền `AUTO_GEN` và SQL sinh `D{BranchID}{MM}{YY}/{n}`. `Idempotency-Key` HTTP được giữ riêng để chống double-click/retry.
   - Contract sau bản vá CORE-005 đã cập nhật cơ chế kho, idempotency, audit và identity; giới hạn còn lại là ERP chưa có `PromotionID`/`RuleVersion`. Chưa coi là runtime mới trước khi deploy đồng bộ.
 
-- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `SQL_DEPLOYED_LOCAL_GATEWAY_11.139_VERIFIED_PENDING_END_TO_END_UAT`
+- [ ] **CORE-005 — Hoàn thiện luồng chat lập đơn** · `P1` · `RUNTIME_PARTIAL`
+  - *Reason:* chi tiết cũ `SQL_DEPLOYED_LOCAL_GATEWAY_11.124_VERIFIED_PENDING_END_TO_END_UAT` — SQL đã deploy, gateway local 11.124 đã kiểm chứng, còn thiếu UAT end-to-end trên môi trường thật.
   - Thu thập thông tin, kiểm tra tồn/giá, hiển thị preview, xác nhận và tạo đơn thật.
   - Bổ sung idempotency và audit.
   - Phụ thuộc: `CORE-004`, `STOCK-001`.
   - Nghiệm thu: trả về mã đơn; gửi lặp không tạo đơn thứ hai.
   - Kết quả code 03/08/2026: frontend giao SQL sinh mã `D{BranchID}{MM}{YY}/{n}`; hàng tặng dùng `SoLuongTang`; SQL kiểm tra lại giá/CTBH/tồn, chọn và ghi một kho được cấp; gateway xác minh identity từ token; idempotency lưu fingerprint và kết quả cùng transaction với đơn. Trạng thái và gate còn thiếu nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
-  - Cập nhật 05/08/2026: ba picker lập/sửa đơn và preview từ chat dùng chung luồng hai bước, không tạo API mới: tìm mã/tên qua metadata `API_DanhMuc_Core_AI`, sau khi chọn mới gọi `API_HangHoaList_AI` với đúng `ItemID` để lấy giá, CTBH, tồn khả dụng và kho theo khách. Smoke read-only `medtest` PASS (`Aqua`: 1 dòng/289 ms; `A008`: 1 dòng/450 ms); gate UAT-018 PASS `27/27`; bundle local `11.139` trả HTTP 200. Không sửa procedure hay dữ liệu DB.
   - Kiểm chứng rollback trên `medtest`: ca `QLBH013.MED` / `DL011` / `A008`, mua `10` tặng `2`, lần đầu và replay cùng trả `DMB0826/1`, DB trong transaction chỉ có 1 header + 1 detail (`SoLuongTang = 2`, kho `CTY`); payload khác cùng key trả `IDEMPOTENCY_CONFLICT`; toàn bộ đã rollback, không lưu dữ liệu test.
   - Cập nhật runtime 03/08/2026: SQL `medtest` PASS `23/23` gate; mutation rollback trực tiếp trên procedure đã deploy PASS ca mua `10` tặng `2`; gateway local đã restart và smoke PASS frontend `11.124` + order guard mới. Chưa đánh dấu `DONE`: còn mutation qua token/UI thật và UAT concurrency/double-click có bằng chứng request ID.
   - Kiểm tra lại `2026-08-03T05:04:01Z`: `23/23` gate vẫn PASS, gateway local PID `32384` hoạt động; audit sau deploy chưa có create/replay/failure của `API_DonHangChiTiet_Insert_AI`, nên chưa có bằng chứng end-to-end và `ConcurrencyProven = false`.
@@ -334,7 +340,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Đã lập contract, ba phương án và bộ case `ABC-01..09`: [CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md](CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md).
   - Sign-off 03/08/2026: người dùng/business owner chọn phương án C, yêu cầu không hard-code và hiệu lực ngay; định danh duyệt `USER_CONFIRMED_IN_CHAT`, rule chính thức `BR-TIER-005/2.0.0`, hiệu lực `13:34:26 +07`. Rule đã lưu thành `21` key `APPROVED` trong `AI_BusinessRuleConfigTbl` và deploy `medtest`.
 
-- [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `MEDTEST_API_RUNTIME_13_OF_13_VERIFIED_PENDING_UI_TOKEN_EVIDENCE`
+- [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `RUNTIME_PARTIAL`
+  - *Reason:* chi tiết cũ `MEDTEST_API_RUNTIME_13_OF_13_VERIFIED_PENDING_UI_TOKEN_EVIDENCE` — API đã chạy đúng 13/13 tài khoản trên medtest, còn thiếu bằng chứng UI có token.
   - Phụ thuộc: `CORE-006`.
   - Nghiệm thu: test case chuẩn của business pass 100%; risk vẫn được hiển thị độc lập với tier.
   - Kết quả 03/08/2026: migration cấu hình + `API_ChamDiemKH_AI` đã deploy; procedure đọc duy nhất version `APPROVED`, không chứa literal ngưỡng `5/25 triệu`, không dùng percentile theo người xem và fail-closed khi config thiếu/sai. Preflight rollback PASS `9/9` case `ABC-01..09`; hậu kiểm read-only PASS no-hardcode `7/7`, scope `3/3`, `UNRATED/UNKNOWN` và UI static `5/5`. Trạng thái nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
@@ -347,7 +354,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS. Token UAT PASS ba gate: sản phẩm bán được `req-11760-msd0saxz`, chặn hàng `RESERVED_OUT` `req-11763-msd0semv`, tìm theo triệu chứng `req-11766-msd0sgq1` trả 8 dòng với kho/thời điểm/tồn khả dụng đầy đủ. Lỗi alias `@Keyword`/`@timkiem` phát hiện trong UAT đã sửa tại SQL theo contract tương thích ngược; deploy lại `12/12` và gate `13/13` tài khoản PASS.
 
-- [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `MEDTEST_RUNTIME_TOKEN_UAT_VERIFIED_PENDING_VISUAL_UI_ACCEPTANCE`
+- [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `RUNTIME_PARTIAL`
+  - *Reason:* chi tiết cũ `MEDTEST_RUNTIME_TOKEN_UAT_VERIFIED_PENDING_VISUAL_UI_ACCEPTANCE` — runtime medtest có token đã kiểm chứng, còn thiếu nghiệm thu giao diện.
   - Mỗi gợi ý hiển thị lần mua cuối, chu kỳ, ngày dự kiến, lý do và nguồn rule.
   - Nghiệm thu: người dùng hiểu được vì sao sản phẩm/khách được đề xuất.
   - Kết quả code 04/08/2026: đã chuẩn hóa hai grain purchase event, chu kỳ trung bình làm tròn theo ngày, `CycleComputationMode`, `CycleStatus`, lý do và nguồn rule phẳng; SQL đọc duy nhất `BR-RECOMMENDATION-008/1.0.0` `APPROVED`, không fallback toàn bộ lịch sử và các ngưỡng/điểm tuyến nằm trong cấu hình. n8n đã bỏ nhãn draft cho hai API; frontend local `11.127` hiển thị lần mua cuối, chu kỳ, ngày dự kiến, chênh lệch ngày, lý do và nguồn dễ hiểu. Báo cáo: [CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md](CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md).
@@ -355,23 +363,33 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Runtime 04/08/2026: n8n workflow `fCJwiyAT9r6eh1ys` đã backup/import/publish/restart, active và khớp source; health PASS. Frontend `11.127` đang được gateway local phục vụ. Token/gateway UAT `QLMN2` PASS 4/4 ca: sản phẩm `PERSONAL_HISTORY` `req-11803-mse4rfgm`; tuyến `PERSONAL_HISTORY` `req-11805-mse4rhk6`; `POLICY_DEFAULT` `req-11807-mse4rir4`; `NO_HISTORY` `req-11809-mse4rk0v`. Không chạy mutation.
   - **Chưa đánh dấu `DONE`:** chỉ còn mở UI xác nhận cách trình bày và lưu ảnh nghiệm thu gắn với request ID đã có.
 
-- [ ] **CORE-009 — Chọn gợi ý và quản lý đơn nháp bằng hội thoại** · `P1` · `LOCAL_BUNDLE_11.128_VERIFIED_PENDING_VISUAL_END_TO_END_UAT`
-  - Hội thoại là luồng chính: cho phép chọn một hoặc nhiều sản phẩm gợi ý, thêm, bỏ, đổi số lượng, xem lại, hủy và yêu cầu preview. Card/nút/số lượng chỉ là thao tác nhanh và dùng chung `DraftCommand` với câu tự nhiên.
-  - Đơn nháp Pilot là state có cấu trúc theo `UserId + ConversationId`, có `DraftId`, `DraftVersion`, TTL và snapshot vô hiệu sau mỗi lần sửa; không dùng trí nhớ tự do của AI làm nguồn sự thật.
-  - Draft chỉ giữ khách, mã sản phẩm và số lượng. Giá, CTBH, tồn và kho phải được tải lại từ nguồn nghiệp vụ khi preview; SQL CORE-005 vẫn kiểm tra lại và chọn kho khi tạo thật.
-  - Phụ thuộc: `CORE-004`, `CORE-008`, `STOCK-001` và guard giá/CTBH/quyền hiện hành của `CORE-005`.
-  - Nghiệm thu: truyền đúng khách/sản phẩm/số lượng; câu mơ hồ không đổi draft; context cũ không tác động tài khoản/khách hiện tại; double-click/retry không thêm trùng; thao tác trong CORE-009 không tự tạo đơn.
-  - Kết quả code 05/08/2026: thêm conversational reducer `CREATE/ADD/UPDATE/REMOVE/SHOW/CANCEL/PREVIEW`, state `sessionStorage` cách ly theo tài khoản/cuộc hội thoại và hết hạn 30 phút; card gợi ý có số lượng + nút thêm; sửa race condition phải chờ xác minh khách rồi mới tải giá/tồn sản phẩm; tạo đơn thành công xóa draft. Unit/static CORE-009 PASS `23/23`; natural-chat regression `159/159`; bundle local `11.128` build thành công. Báo cáo: [CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md](CORE-009_QUAN_LY_DON_NHAP_HOI_THOAI_2026-08-05.md).
-  - **Chưa đánh dấu `DONE`:** còn UAT trực quan qua tài khoản/token thật cho chuỗi nhiều lượt và lưu ảnh/request ID; CORE-009 chỉ bàn giao sang preview, mutation thật vẫn thuộc CORE-005.
+- [ ] **CORE-009 — Thêm thao tác đưa gợi ý vào giỏ hàng** · `P1` · `CODE_COMPLETE`
+  - *Reason:* backlog ghi sai. Code đã có và đã vào bundle: `chatbot-widget/js/chatbot-order-draft.js` được nối 12 điểm trong `chatbot.js`, có `scripts/test_core009_order_draft.js` và npm script `test:core009`, commit `4d25f58`. Chỉ còn thiếu nghiệm thu UAT trên UI nên chưa `DONE`.
+  - Cho phép chọn sản phẩm/số lượng và chuyển sang preview đơn.
+  - Phụ thuộc: `CORE-004`, `STOCK-001`.
+  - Nghiệm thu: dữ liệu sản phẩm và khách được truyền đúng, không tự tạo đơn.
 
-- [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `SQL_DEPLOYED_MEDTEST_VERIFIED_UAT_REPORTED_PENDING_AUDIT_EVIDENCE`
+- [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `RUNTIME_PARTIAL`
+  - *Reason:* chi tiết cũ `CUSTOMER_AUDIT_EVIDENCE_CONFIRMED_PENDING_ORDER_AND_CONCURRENCY` — đã có bằng chứng audit cho luồng khách hàng, còn thiếu `CREATE_DONHANG` (hiện `= 0`) và kiểm thử tranh chấp đồng thời.
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.
   - Nghiệm thu: không có mutation ngoài ý muốn; mọi thao tác ghi đều có audit.
-  - Kết quả code 05/08/2026: thống nhất direct gateway cho tạo khách/tạo đơn theo pipeline verified identity → SQL scope hiện hữu → request ID/idempotency → SQL transaction → audit bắt buộc; bổ sung server-side idempotency và deterministic replay cho tạo khách; audit fail-closed cho cả hai mutation; cập nhật gate UAT-018 theo contract STOCK-001 `AvailableStock`. Guard capability mới từng chặn nhầm manager vì `API_UserInfo` không có contract capability đã được loại bỏ; không tạo schema hay cấp quyền DB mới. Static PASS `10/10`, gateway policy PASS `5/5`, SQL compile preflight PASS và mutation rollback tạo khách PASS create/replay/conflict/audit-unavailable; hậu kiểm `CustomerCount = 0`, `AuditCount = 0`. Báo cáo: [CORE-010_MUTATION_HARDENING_2026-08-05.md](CORE-010_MUTATION_HARDENING_2026-08-05.md).
-  - Cập nhật runtime 05/08/2026: user xác nhận đã deploy và chạy UAT thật. Hậu kiểm trực tiếp trên `medtest`: UAT-017 `PASS_READ_ONLY`, UAT-018 `READY_FOR_CONTROLLED_MUTATION`; procedure tạo khách/tạo đơn đang deploy đã có idempotency và mandatory audit mới. Tuy nhiên truy vấn read-only toàn bộ `AI_AuditLog` không tìm thấy event CORE-010 nào (`RelevantEventCount = 0`), nên chưa có request ID/audit lưu bền để đối chiếu lần UAT được báo cáo.
-  - **Chưa đánh dấu `DONE`:** cần cung cấp request ID/log/ảnh của lần UAT hoặc chạy một mutation thật có kiểm soát và giữ lại audit; nếu mutation đã thành công nhưng audit vẫn bằng `0` thì đây là lỗi P0 phải điều tra trước khi nghiệm thu.
+  - Trạng thái `TODO` trước đây là **lệch tài liệu**, không phải task chưa bắt đầu: phần code/SQL đã hardening và deploy `medtest` từ 05/08/2026, kèm 6 script kiểm chứng trong `scripts/` và báo cáo [CORE-010_MUTATION_HARDENING_2026-08-05.md](CORE-010_MUTATION_HARDENING_2026-08-05.md).
+  - **Bằng chứng audit runtime 06/08/2026 (read-only, không mutation):** `scripts/verify_core010_deployed_audit.js` trả `RelevantEventCount = 2` trên `medtest` — bác bỏ con số `0` chốt trong báo cáo ngày 05/08.
 
-- [x] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `DECISION_B_DIRECT_CREATE_ACCEPTED` · *đóng 01/08/2026*
+    | Thời điểm | Tài khoản | Event | Kết quả | Request ID |
+    |---|---|---|---|---|
+    | 05/08 16:25:54Z | `QLBH013.MED` | `CREATE_CUSTOMER` | `CREATED` | `req-84a76983-ab94-4d61-b969-16ebdcfe1798` |
+    | 05/08 16:25:44Z | `QLBH013.MED` | `CREATE_CUSTOMER_FAILED` | `DUPLICATE_PHONE` | `req-e7bf1b64-141f-484d-837c-40a7f08e5422` |
+
+    Ý nghĩa: đường ghi audit hoạt động thật và ghi bền đúng `medtest`, có `requestId`/`outcome`/`resultCode`/`capability = customers.write`. Giả thuyết nguy hiểm nhất ở mục 9.4 của báo cáo — *mutation đã commit nhưng đi sai runtime/DB target* — **đã bị loại bỏ**. Ca thất bại `DUPLICATE_PHONE` cũng được audit, đứng trước ca thành công 10 giây, đúng hình dạng một lượt UAT thật. `DuplicateCreateAuditTargets` rỗng ⇒ không có mutation trùng ngoài ý muốn.
+  - **Còn thiếu để đóng P0** (không suy diễn từ kết quả trên):
+    - Nửa đơn hàng chưa có bằng chứng runtime: `CREATE_DONHANG`, `REPLAY_DONHANG`, `CREATE_DONHANG_FAILED` đều `0`.
+    - Chưa có `REPLAY_CUSTOMER` và `IDEMPOTENCY_CONFLICT_CUSTOMER` ⇒ double-click/retry mới chứng minh bằng SQL rollback, chưa có tải đồng thời thật qua gateway.
+    - Ca "chưa xác nhận" và "hủy" **không thể nghiệm thu bằng truy vấn audit**, vì bản chất là *không có gì được ghi*; cần ảnh UI hoặc log gateway kèm request ID.
+  - Ghi chú phạm vi: task này chạm luồng tạo khách hàng đang bị khóa theo yêu cầu người dùng (06/08/2026). Lượt kiểm tra trên đã được người dùng phê duyệt riêng và giới hạn ở đọc `AI_AuditLog`; mọi bước tiếp theo chạm luồng tạo khách phải xin phê duyệt mới.
+
+- [x] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `DONE` · *đóng 01/08/2026*
+  - *Reason:* nội dung quyết định cũ `DECISION_B_DIRECT_CREATE_ACCEPTED` — chọn phương án B (tạo trực tiếp, không qua duyệt). Quyết định đã chốt nên trạng thái kết thúc là `DONE`; nội dung phương án giữ ở dòng bằng chứng bên dưới.
   - Quyết định nghiệp vụ: chấp nhận phương án B. Chat gọi `API_KhachHang_Insert_AI`, ghi trực tiếp `CF_ObjectTbl`; khách dùng được ngay và không qua `AR_ObjectNewRequireTbl`.
   - Luồng tạo khách của ERP UI vẫn độc lập và tiếp tục theo cơ chế duyệt hiện có. Sự khác biệt này là chủ đích của contract chat, không phải trạng thái tạm chưa xử lý.
   - Bằng chứng nghiệm thu: CORE-001/002/003 thống nhất cùng hành vi; UAT-017 PASS; response thành công bắt buộc `MsgType = 5` và có `ObjectID`; kiểm tra quyền, dữ liệu và chống trùng nằm ở server.

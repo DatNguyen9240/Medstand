@@ -68,6 +68,34 @@ BEGIN
         RETURN;
     END
 
+    -- SELF_ASSIGN là một capability cấu hình phía server, không phải ngoại lệ
+    -- hard-code theo username trong frontend. Trả một dòng kỹ thuật để client
+    -- tự ẩn bước giao nhân viên và server vẫn có đủ SaleID/ObjectGroupID.
+    IF OBJECT_ID(N'dbo.AI_CustomerSelfAssignConfig', N'U') IS NOT NULL
+       AND EXISTS
+       (
+           SELECT 1
+           FROM dbo.AI_CustomerSelfAssignConfig C
+           INNER JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = C.ObjectGroupID
+           WHERE C.Username = @User
+             AND C.IsActive = 1
+             AND COALESCE(G.isCustomer, 0) = 1
+       )
+    BEGIN
+        SELECT C.EmployeeID,
+               C.DisplayName,
+               @User AS UserName,
+               1 AS SoNhom,
+               C.ObjectGroupID,
+               CAST(1 AS BIT) AS IsSelfAssign
+        FROM dbo.AI_CustomerSelfAssignConfig C
+        INNER JOIN dbo.CF_ObjectGroupTbl G ON G.ObjectGroupID = C.ObjectGroupID
+        WHERE C.Username = @User
+          AND C.IsActive = 1
+          AND COALESCE(G.isCustomer, 0) = 1;
+        RETURN;
+    END
+
     -- Giữ đúng thứ tự ưu tiên của AR_GetObjectByUserFnc để hai procedure của
     -- CORE-001 luôn suy ra cùng một EmployeeID cho cùng một tài khoản.
     IF COALESCE(@EmployeeID, '') = '' AND COALESCE(@ManagerID, '') = '' SET @EmployeeID = @CeoID;
@@ -90,7 +118,8 @@ BEGIN
            COUNT(DISTINCT E.ObjectGroupID)    AS SoNhom,
            CASE WHEN COUNT(DISTINCT E.ObjectGroupID) = 1
                 THEN MAX(E.ObjectGroupID)
-           END                                AS ObjectGroupID
+           END                                AS ObjectGroupID,
+           CAST(0 AS BIT)                     AS IsSelfAssign
     FROM dbo.AR_OpListEmployeeTbl E
         LEFT JOIN dbo.SY_User U
                ON U.EmployeeID = E.EmployeeID

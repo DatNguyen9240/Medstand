@@ -56,6 +56,12 @@
         catch (_) { return {}; }
     }
 
+    function _getSelfAssignEmployee(employees) {
+        return (employees || []).find(function (employee) {
+            return Number(employee.IsSelfAssign || employee.isSelfAssign || 0) === 1;
+        }) || null;
+    }
+
     // ── API helper: dùng Http global (đi qua gateway, đã mã hoá) ─
     function _apiGet(endpoint, params) {
         if (typeof Http !== 'undefined' && Http.get) {
@@ -242,6 +248,8 @@
         var objectGroups = metaData.objectGroups || [];
         var employees = metaData.employees || [];
         var isManager = !!metaData.isManager;
+        var selfAssignEmployee = _getSelfAssignEmployee(employees);
+        var requiresEmployeeSelection = isManager && !selfAssignEmployee;
         var userBranch = metaData.userBranch || '';
 
         // ── BUILD FORM HTML ──────────────────────────────────────
@@ -322,7 +330,7 @@
         // Nếu objectGroups rỗng → sẽ báo FORBIDDEN khi submit
 
         // 9. Manager: giao cho sale nào
-        if (isManager && employees.length > 0) {
+        if (requiresEmployeeSelection && employees.length > 0) {
             html += _buildDropdownHtml('employee', formId, 'Giao cho nhân viên', 'Chọn nhân viên phụ trách', true);
         }
 
@@ -445,7 +453,7 @@
             }
 
             // ── Init nhân viên dropdown (nếu manager) ────────────
-            if (isManager && employees.length > 0) {
+            if (requiresEmployeeSelection && employees.length > 0) {
                 var empOptions = employees.map(function (e) {
                     return { value: e.value || e.EmployeeID || '', label: e.label || e.EmployeeName || '' };
                 });
@@ -489,7 +497,7 @@
                         return;
                     }
                     _clearErrors(formEl);
-                    _showPreview(formEl, formId, objectGroups, isManager);
+                    _showPreview(formEl, formId, objectGroups, isManager, employees);
                 });
             }
 
@@ -614,7 +622,7 @@
         }
 
         // Manager phải chọn nhân viên
-        if (isManager && employees && employees.length > 0) {
+        if (isManager && !_getSelfAssignEmployee(employees) && employees && employees.length > 0) {
             var emp = _getDropdownValue(formEl, formId, 'employee');
             if (!emp) errors.push({ field: 'employee', msg: 'Vui lòng chọn nhân viên phụ trách' });
         }
@@ -654,7 +662,7 @@
     }
 
     // ── PREVIEW ──────────────────────────────────────────────────
-    function _showPreview(formEl, formId, objectGroups, isManager) {
+    function _showPreview(formEl, formId, objectGroups, isManager, employees) {
         var name = (formEl.querySelector('#' + formId + '-name') || {}).value || '';
         var rawPhone = (formEl.querySelector('#' + formId + '-phone') || {}).value || '';
         var phone = _cleanPhone(rawPhone);
@@ -674,7 +682,10 @@
 
         var empLabel = '';
         if (isManager) {
-            empLabel = _getDropdownLabel(formEl, formId, 'employee');
+            var selfAssignEmployee = _getSelfAssignEmployee(employees);
+            empLabel = selfAssignEmployee
+                ? (selfAssignEmployee.DisplayName || selfAssignEmployee.EmployeeName || selfAssignEmployee.EmployeeID || '')
+                : _getDropdownLabel(formEl, formId, 'employee');
         }
 
         var previewHtml = '<div class="ccf-preview-card">';
@@ -741,7 +752,10 @@
 
         // Server kiểm tra nhân viên được chọn có thuộc quyền manager và nhóm
         // khách có thực sự thuộc sale đó trước khi ghi SaleID.
-        var assignedEmployeeId = isManager ? _getDropdownValue(formEl, formId, 'employee') : '';
+        var selfAssignEmployee = _getSelfAssignEmployee(employees);
+        var assignedEmployeeId = selfAssignEmployee
+            ? (selfAssignEmployee.EmployeeID || selfAssignEmployee.value || '')
+            : (isManager ? _getDropdownValue(formEl, formId, 'employee') : '');
 
         var payload = {
             User: user.UserName || '',
