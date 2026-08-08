@@ -121,7 +121,7 @@
         // Dùng ApiEngine.invalidateCache() để force refresh ngay lập tức
         CACHE_TTL: 2 * 60 * 1000,
 
-        CACHE_KEY: 'api_engine_v4_list',
+        CACHE_KEY: 'api_engine_v5_list',
 
 
 
@@ -978,6 +978,10 @@
 
         var filtered = _apiList.filter(function (a) {
 
+            // Chi tiết hóa đơn được mở từ nút "Xem chi tiết" trong bảng hóa đơn.
+            // Không hiển thị thành chức năng độc lập bắt người dùng nhớ mã hóa đơn.
+            if (String(a.ApiCode || '').toLowerCase() === '@hoa_don_chi_tiet') return false;
+
             var code = _strip(a.ApiCode || '');
 
             var name = _strip(_getApiMenuLabel(a));
@@ -1202,7 +1206,20 @@
 
 
 
-        if (!filtered.length) { _menuHide(); return; }
+        var orderAdvancedFields = [];
+        if (activeApiCode === '@don_hang') {
+            filtered = filtered.filter(function (field) {
+                var fieldCode = String(field.FieldCode || '').toLowerCase();
+                if (fieldCode === '@topn' || fieldCode === '@soluong') return false;
+                if (fieldCode === '@makhachhang') {
+                    orderAdvancedFields.push(field);
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        if (!filtered.length && !orderAdvancedFields.length) { _menuHide(); return; }
 
 
 
@@ -1240,6 +1257,16 @@
                 + '</div>';
 
         });
+
+        if (orderAdvancedFields.length) {
+            html += '<details class="ae-order-advanced"><summary>Bộ lọc thêm</summary>';
+            orderAdvancedFields.forEach(function (f) {
+                html += '<div class="ae-menu-item ae-order-advanced-item" data-code="' + _esc(f.FieldCode) + '">'
+                    + '<span class="ae-val-name">' + _esc(f.FieldName || 'Khách hàng') + '</span>'
+                    + '</div>';
+            });
+            html += '</details>';
+        }
 
         _menuEl.innerHTML = html;
 
@@ -1298,6 +1325,18 @@
             }, 50);
 
         });
+
+        var advancedDetails = _menuEl.querySelector('.ae-order-advanced');
+        if (advancedDetails) {
+            var advancedItems = advancedDetails.querySelectorAll('.ae-order-advanced-item');
+            var syncAdvancedItems = function () {
+                advancedItems.forEach(function (item) {
+                    item.classList.toggle('ae-menu-item', advancedDetails.open);
+                });
+            };
+            advancedDetails.addEventListener('toggle', syncAdvancedItems);
+            syncAdvancedItems();
+        }
 
     }
 

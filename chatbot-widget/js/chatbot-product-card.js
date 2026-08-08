@@ -155,6 +155,14 @@
             && String(params['@timkiem'] || params['@TimKiem'] || '').trim() !== '';
     }
 
+    function isInventoryList(apiCode) {
+        return String(apiCode || '').toLowerCase() === '@danh_sach_tonkho';
+    }
+
+    function wrapInventoryTable(html) {
+        return '<section class="ai-inventory-compact">' + html + '</section>';
+    }
+
     function looksLikeProductLookup(rows) {
         var row = Array.isArray(rows) && rows.length ? rows[0] : null;
         if (!row || typeof row !== 'object') return false;
@@ -184,7 +192,10 @@
             && (hasProductDetail || dataSource.indexOf('tracuusanpham') >= 0);
     }
 
-    function renderProductLookup(rows) {
+    function renderProductLookup(rows, headerMsg, apiCode, meta) {
+        if (isInventoryList(apiCode) && defaultRenderer) {
+            return wrapInventoryTable(defaultRenderer(rows, headerMsg, apiCode, meta));
+        }
         var safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
         if (!safeRows.length) return '<p class="ai-product-empty">Không tìm thấy sản phẩm phù hợp.</p>';
         var permissions = currentUserPermissions();
@@ -205,17 +216,21 @@
         if (installedApi !== api) {
             defaultRenderer = typeof internal.renderCardView === 'function' ? internal.renderCardView : null;
             defaultWrapper = defaultRenderer ? function (rows, headerMsg, apiCode, meta) {
+                if (isInventoryList(apiCode)) {
+                    return wrapInventoryTable(defaultRenderer(rows, headerMsg, apiCode, meta));
+                }
                 return isProductLookup(apiCode, meta) || looksLikeProductLookup(rows)
-                    ? renderProductLookup(rows)
-                    : defaultRenderer(rows, headerMsg, apiCode, meta);
+                    ? renderProductLookup(rows) : defaultRenderer(rows, headerMsg, apiCode, meta);
             } : null;
             catalogRenderer = typeof internal.renderCatalogView === 'function'
                 ? internal.renderCatalogView
                 : defaultRenderer;
             catalogWrapper = catalogRenderer ? function (rows, headerMsg, apiCode, meta) {
+                if (isInventoryList(apiCode)) {
+                    return wrapInventoryTable(catalogRenderer(rows, headerMsg, apiCode, meta));
+                }
                 return isProductLookup(apiCode, meta) || looksLikeProductLookup(rows)
-                    ? renderProductLookup(rows)
-                    : catalogRenderer(rows, headerMsg, apiCode, meta);
+                    ? renderProductLookup(rows) : catalogRenderer(rows, headerMsg, apiCode, meta);
             } : null;
             installedApi = api;
         }

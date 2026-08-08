@@ -177,6 +177,29 @@ body.ae-panel-open .chatbot-topbar {
     line-height: 1.45;
 }
 
+.ae-order-advanced {
+    margin: 4px 12px 8px;
+    border-top: 1px solid var(--ae-border);
+}
+
+.ae-order-advanced summary {
+    padding: 12px 2px 8px;
+    color: var(--ae-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ae-order-advanced[open] summary {
+    color: var(--ae-accent);
+}
+
+.ae-order-advanced .ae-order-advanced-item {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
 @media (max-width: 640px) {
     .ae-menu {
         /* 160px = composer + dòng khuyến cáo + khoảng hở 8px + chiều cao

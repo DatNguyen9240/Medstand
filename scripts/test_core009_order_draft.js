@@ -283,7 +283,9 @@ check('CHAT_ORDER_SUCCESS_RETURNS_RECEIPT_ONCE', () => {
   assert.ok(bridge.includes('sessionStorage.removeItem(STORAGE_KEY)'));
   assert.ok(bridge.includes('notice.documentId'));
   assert.ok(bridge.includes('Đã lên đơn thành công.'));
-  assert.ok(productionIndex.includes('chatbot-order-result-bridge.min.js?v=2'));
+  assert.ok(bridge.includes('function installSuccessHook()'));
+  assert.ok(bridge.includes('queueFallbackNoticeFromAlert(text)'));
+  assert.ok(productionIndex.includes('chatbot-order-result-bridge.min.js?v=3'));
 });
 
 check('CHAT_ORDER_RECEIPT_RUNTIME_DELIVERS_ONCE', () => {
@@ -331,6 +333,46 @@ check('CHAT_ORDER_RECEIPT_RUNTIME_DELIVERS_ONCE', () => {
   assert.ok(delivered[0][1].includes('Đã lên đơn thành công.'));
   assert.ok(delivered[0][1].includes('DMB0826/2'));
   assert.strictEqual(runtimeStorage.getItem(noticeKey), null);
+});
+
+check('CACHED_CREATE_ORDER_UI_STILL_QUEUES_CHAT_RECEIPT', () => {
+  const bridge = fs.readFileSync(path.join(workspace, 'chatbot-widget/js/chatbot-order-result-bridge.js'), 'utf8');
+  const runtimeStorage = createStorage();
+  const alertCalls = [];
+  const alertApi = {
+    success: (text) => {
+      alertCalls.push(text);
+      return Promise.resolve();
+    }
+  };
+  const context = {
+    window: {
+      location: { hash: '#/create-order?data=%7B%7D' },
+      addEventListener: () => {}
+    },
+    Alert: alertApi,
+    document: { documentElement: {}, querySelector: () => null },
+    localStorage: {
+      getItem: (key) => key === 'auth_user' ? JSON.stringify({ UserName: 'demo' }) : null
+    },
+    sessionStorage: runtimeStorage,
+    MutationObserver: function () { this.observe = () => {}; },
+    setInterval: () => 1,
+    clearInterval: () => {},
+    console,
+    Date,
+    JSON,
+    Number,
+    String,
+    Array,
+    Promise
+  };
+
+  vm.runInNewContext(bridge, context);
+  context.Alert.success('Tạo đơn hàng thành công Mã đơn: DMB0826/3');
+  const queued = JSON.parse(runtimeStorage.getItem('medstand_chat_order_created_notice_v1'));
+  assert.strictEqual(alertCalls.length, 1);
+  assert.strictEqual(queued.documentId, 'DMB0826/3');
 });
 
 check('PRODUCTION_BUILD_INCLUDES_CORE009_MODULE', () => {

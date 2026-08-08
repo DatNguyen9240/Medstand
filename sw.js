@@ -4,7 +4,7 @@
  * Khi deploy phiên bản mới: tăng CACHE_VERSION → SW mới sẽ xóa cache cũ.
  */
 
-const CACHE_VERSION = 'medstand-11.144'; // Route all internal business requests through the gateway
+const CACHE_VERSION = 'medstand-11.145'; // Route all internal business requests through the gateway
 
 // Danh sách tài nguyên cần cache ngay khi install (SPA mode)
 const PRECACHE_URLS = [
@@ -25,6 +25,7 @@ const PRECACHE_URLS = [
   '/chatbot-widget/template/ai-bot-button.html',
   '/chatbot-widget/js/chatbot.bundle.min.js',
   '/chatbot-widget/js/chatbot-core.bundle.min.js',
+  '/chatbot-widget/js/chatbot-ui-policy.min.js',
   '/chatbot-widget/css/chatbot.css',
   '/chatbot-widget/css/chatbot-api-engine.css',
   '/chatbot-widget/css/ai-bot-button.css',
