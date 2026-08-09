@@ -9,7 +9,7 @@ const crypto = require('crypto');
 //  MEDSTAND — TỰ ĐỘNG ĐỌC BẢN CẤU HÌNH CỤC BỘ .ENV
 // ============================================================
 const envPath = path.join(__dirname, '.env');
-if (fs.existsSync(envPath)) {
+if (process.env.MEDSTAND_SKIP_LOCAL_ENV !== '1' && fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf-8');
     envContent.split(/\r?\n/).forEach(line => {
         const trimmed = line.trim();
@@ -215,6 +215,8 @@ const requestIdOf = (req) => {
     if (/^req-[A-Za-z0-9._:-]{4,96}$/.test(hint)) return hint;
     return `req-${crypto.randomUUID()}`;
 };
+
+const getAdminUploadKey = () => String(process.env.ADMIN_UPLOAD_KEY || '').trim();
 
 const unwrapUserInfoRecord = (payload) => {
     let data = payload;
@@ -424,6 +426,20 @@ app.post('/api/gateway', async (req, res) => {
             );
         }
 
+        const requiresAdminUploadKey = endpointPath === '/webhook/admin-upload'
+            || endpointPath === '/webhook/approve-catalog';
+        const adminUploadKey = requiresAdminUploadKey ? getAdminUploadKey() : '';
+        if (requiresAdminUploadKey && !adminUploadKey) {
+            console.error(`[Proxy Gateway] requestId=${requestId}; Thiếu ADMIN_UPLOAD_KEY, từ chối ${endpointPath}`);
+            return sendGatewayError(
+                res,
+                503,
+                requestId,
+                'MISSING_ADMIN_UPLOAD_KEY',
+                'Máy chủ chưa được cấu hình khóa quản trị upload. Vui lòng liên hệ quản trị viên.'
+            );
+        }
+
         // Mutation không được tin identity do trình duyệt gửi. Xác minh lại token
         // bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
         // idempotency. Quyền/phạm vi nghiệp vụ được các procedure SQL hiện hữu
@@ -460,8 +476,8 @@ app.post('/api/gateway', async (req, res) => {
             ...(authorization ? { 'Authorization': authorization } : {}),
             ...(req.headers['idempotency-key'] ? { 'Idempotency-Key': req.headers['idempotency-key'] } : {}),
             ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {}),
-            ...(endpointPath === '/webhook/admin-upload'
-                ? { 'x-admin-key': process.env.ADMIN_UPLOAD_KEY || 'Medstand@Admin2026' }
+            ...(requiresAdminUploadKey
+                ? { 'x-admin-key': adminUploadKey }
                 : {})
         };
 

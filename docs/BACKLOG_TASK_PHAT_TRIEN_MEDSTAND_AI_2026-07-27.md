@@ -83,7 +83,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Đã xác minh hai file vừa import và toàn bộ bộ kiểm tra SQL; không còn thiếu procedure/metadata bắt buộc theo bằng chứng nghiệm thu.
   - Script deploy và diagnostics vẫn được giữ trong `scripts/` và `sql/diagnostics/`.
 
-- [ ] **UAT-004 — Import và publish workflow n8n** · `P0` · `BLOCKED`
+- [x] **UAT-004 — Import và publish workflow n8n** · `P0` · `DONE`
   - Import đúng workflow auth, intent parser, main chatbot và API service.
   - Xóa hoặc disable workflow/parser trùng sau khi xác định đúng bản active.
   - Phụ thuộc: `UAT-001`.
@@ -95,10 +95,13 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - `BLOCKED` vì sao: n8n không lộ ra Internet (`/webhook/*` bị `server.js` chặn bằng `GATEWAY_REQUIRED`; `/n8n/` chỉ trả SPA), nên vế "runtime khớp file nguồn" phải nghiệm thu tại nơi truy cập được n8n. Ảnh chụp runtime duy nhất còn lưu là 21/07, đã quá cũ để kết luận.
   - Việc cần làm: (1) tắt `ZQPz4sbzz9pqSO8W`, giữ `Gn7nDjDgGUFOWni5`; (2) import lại theo manifest phần 4, sau đó chọn lại node `Execute Shared Auth Guard` → `9UxECqxRaPGMF8EM`; (3) tạo export mới rồi chạy `node scripts/verify_n8n_runtime.js <export>` — thoát mã 0 là đạt.
   - ⚠️ File export chứa `staticData` kèm token thật — không commit; cần lưu thì lọc bằng `scripts/sanitize_n8n_export.js`.
+  - Quyết định chủ dự án 09/08/2026: chấp nhận đóng gate local. Workflow sẽ được import/publish và đối chiếu lại trực tiếp trên n8n server trong lần deploy; khác biệt runtime local không còn chặn Giai đoạn 0.
+  - Phạm vi chấp nhận: đây là miễn trừ môi trường, không phải bằng chứng hai workflow active cũ đã được sửa trên server. Khi deploy vẫn phải bảo đảm mỗi webhook path chỉ có một workflow active đúng.
   - Trạng thái n8n mới nhất và điều kiện đóng nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [ ] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `BLOCKED`
-  - *Reason:* tiêu chí "không có credential viết trực tiếp trong file public/source workflow" đang **FAIL**. `.env` không có `ADMIN_UPLOAD_KEY` nên fallback `server.js`:464 chính là khóa đang chạy thật; cùng khóa hard-code trong `n8n/AI_Core/AI_Upload_Reader.json` (file được git theo dõi). Chi tiết: `docs/audit-2026-08-07/UAT-005_VA_CHECKBOX_AUDIT_2026-08-07.md`.
+- [x] **UAT-005 — Kiểm tra cấu hình endpoint và secret UAT** · `P0` · `DONE`
+  - Kết quả 09/08/2026: đã xoay khóa quản trị upload sang secret ngẫu nhiên 256-bit chỉ lưu trong `.env` bị git-ignore; gateway và hai nhánh `admin-upload`/`approve-catalog` cùng đọc `ADMIN_UPLOAD_KEY`, thiếu cấu hình thì fail-closed và không còn credential cũ trong source.
+  - Workflow `HQa6xx7flcNcC1oU` đã import/publish lại và active đúng current version; n8n + web gateway đã restart, `/healthz` đều `200`. Runtime export xác nhận dùng `$env.ADMIN_UPLOAD_KEY`, không chứa khóa cũ; quét toàn bộ file tracked không tìm thấy secret mới. Static config và test gateway fail-closed/forward secret đều PASS.
   - Xác minh app, n8n và SQL đều trỏ đúng môi trường `medtest`.
   - Thay credential viết cứng trong workflow upload bằng cơ chế secret/xác thực chuẩn.
   - Nghiệm thu: không có credential UAT/production được viết trực tiếp trong file public hoặc source workflow xuất bản.
@@ -232,12 +235,13 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Kết quả runtime được business xác nhận: `QLBH013.MED` tạo thành công khách `A He`, mã `EF7C85D8-8888-4904-8478-6046C09DE258`; truy vấn lại theo cả mã và tên đều trả đúng một bản ghi trong scope của tài khoản. Chấp nhận ca này làm bằng chứng chức năng dù tên không có tiền tố `UAT_`.
   - Bằng chứng: `scripts/verify_uat017_customer_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
-- [ ] **UAT-018 — Test tạo đơn hàng** · `P0` · `REOPENED`
-  - *Reason:* mâu thuẫn nội bộ chưa hòa giải. Dòng "Kết quả" ghi *"chưa triển khai hai procedure AI và chưa tạo đơn UAT"*, dòng bổ sung 01/08 lại ghi đã có controlled mutation, còn CORE-010 ghi `CREATE_DONHANG = 0`. Ba tuyên bố không thể cùng đúng. Ngoài ra bằng chứng 01/08 dùng mã tự đặt `UAT21-*` trong khi CORE-004 sau đó đã chuyển sang `AUTO_GEN` do SQL sinh mã ⇒ có thể đã lỗi thời so với contract hiện hành. Đóng bằng: một đơn thật qua UI có token, ghi request ID, rồi truy vấn `AI_AuditLog`.
+- [x] **UAT-018 — Test tạo đơn hàng** · `P0` · `DONE`
+  - Kết quả runtime 09/08/2026: tài khoản `QLBH013.MED` tạo đơn `DMB0826/8` qua gateway/token với `DocumentID=AUTO_GEN`; request đầu trả `IsReplay=0`, retry cùng payload và cùng `Idempotency-Key` trả đúng mã với `IsReplay=1`.
+  - DB có đúng 1 header + 1 detail, tổng header/detail cùng `750.000`; dòng `A008` mua `10`, tặng `2`, giá `75.000`, kho `CTY`. Audit có đủ `CREATE_DONHANG` (`req-f06ec849-663e-40db-b8c5-3b4e0a06d00e`) và `REPLAY_DONHANG` (`req-7da6ece8-c6d2-4137-9ba5-32b419346fa0`), capability `orders.write`; hậu kiểm `CREATE_AND_REPLAY_EVIDENCE_PRESENT`.
   - Test màn hình tạo đơn, khách hàng, sản phẩm, số lượng, giá, tồn và kết quả trả về.
   - Chỉ sử dụng dữ liệu UAT được phép tạo.
   - Nghiệm thu: tạo đúng một đơn, chi tiết đúng và không tạo trùng khi gửi lại request.
-  - Kết quả: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn, giá và retry theo `DocumentID`. Không sửa `API_DonHang_Insert`/`API_HangHoaList` gốc dùng chung. Chưa triển khai hai procedure AI và chưa tạo đơn UAT.
+  - Kết quả code lịch sử: frontend đã chuyển riêng sang `API_DonHangChiTiet_Insert_AI` và `API_HangHoaList_AI`, chỉ tham chiếu nhóm hàng `HH1`, có kiểm tra số lượng, tồn và giá. Hai procedure AI hiện đã deploy; nhận định "chưa triển khai" trước đây đã lỗi thời và được thay bằng bằng chứng runtime 09/08 ở trên.
   - Bằng chứng: `scripts/verify_uat018_order_create.js`; kết quả tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
   - Controlled mutation 01/08/2026: đơn `UAT21-260801145955-9CA2` có đúng 1 header, 1 detail, tổng `95.000`; hai request đồng thời không tạo trùng và payload khác dùng cùng ID bị từ chối.
 
@@ -262,17 +266,18 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 
 ### Nhóm D — Báo cáo và bàn giao UAT
 
-- [ ] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `IN_PROGRESS`
-  - *Reason:* trạng thái cũ `DONE_WITH_OPEN_BLOCKERS` tự mâu thuẫn — task vẫn còn blocker mở nên không được tick `[x]`. Giữ `IN_PROGRESS` cho tới khi mọi lỗi P0 trong bảng tổng hợp được đóng bằng bằng chứng runtime.
+- [x] **UAT-022 — Tổng hợp lỗi và phân loại P0/P1/P2** · `P0` · `DONE`
+  - Kết quả 09/08/2026: đã tái phân loại theo bằng chứng mới, đóng `UAT-005` và `UAT-018`, tách rõ lỗi P1/P2 còn mở và không dùng lại các báo cáo lịch sử đã bị bằng chứng mới thay thế. `UAT-004` vẫn là P0 `BLOCKED` nhưng được chủ dự án yêu cầu tạm bỏ qua; quyết định này được ghi minh bạch, không biến blocker thành PASS.
   - Mỗi lỗi phải có account, thời gian, input, kết quả thực tế, kết quả mong đợi, ảnh/log và request ID nếu có.
   - Nghiệm thu: không còn lỗi chỉ mô tả bằng câu “không chạy”.
-  - Lỗi mở và điều kiện đóng được duy trì tại [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
+  - Bảng tổng hợp hiện hành: [UAT-022_TONG_HOP_LOI_2026-08-09.md](UAT-022_TONG_HOP_LOI_2026-08-09.md).
 
-- [ ] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `BLOCKED`
-  - *Reason:* trạng thái cũ `BLOCKED_RELEASE_REPORT_PUBLISHED` gộp hai nghĩa trái ngược. Báo cáo đã được phát hành nhưng việc phát hành bản runtime *mới* vẫn bị chặn bởi UAT-018/UAT-022. Không được tick `[x]` khi còn `BLOCKED`.
+- [x] **UAT-023 — Phát hành báo cáo runtime mới** · `P0` · `DONE`
+  - Kết quả 09/08/2026: đã phát hành báo cáo hiện hành với tổng `203 PASS / 0 FAIL / 1 BLOCKED`, ghi rõ source snapshot, frontend version, môi trường, ngày chạy của từng bộ bằng chứng và giới hạn phạm vi.
+  - Báo cáo mang trạng thái `PUBLISHED_WITH_BLOCKER`: `UAT-004` vẫn là P0 `BLOCKED_ACCEPTED`, không bị đổi thành PASS và chưa được phép tuyên bố `UAT_BASELINE_READY`.
   - Thay thế bằng chứng cũ bằng kết quả test sau deploy theo manifest.
   - Nghiệm thu: báo cáo ghi rõ tổng pass/fail/blocked, phiên bản, môi trường và ngày chạy.
-  - Báo cáo runtime theo ngày đã được thay bằng [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md); trạng thái vẫn không che P0 workflow trùng.
+  - Báo cáo hiện hành: [UAT-023_RUNTIME_REPORT_2026-08-09.md](../reports/UAT-023_RUNTIME_REPORT_2026-08-09.md). Baseline kỹ thuật trước đó vẫn nằm tại [BASELINE_KY_THUAT_UAT_HIEN_HANH.md](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
 
 - [x] **UAT-024 — Cập nhật tài liệu khách hàng sau vòng UAT** · `P1` · `DONE`
   - Cập nhật ảnh, câu lệnh mẫu, giới hạn và chức năng đã thay đổi.

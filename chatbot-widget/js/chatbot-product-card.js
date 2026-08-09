@@ -163,6 +163,10 @@
         return '<section class="ai-inventory-compact">' + html + '</section>';
     }
 
+    function wrapProductLookupTable(html) {
+        return '<section class="ai-product-lookup-compact">' + html + '</section>';
+    }
+
     function looksLikeProductLookup(rows) {
         var row = Array.isArray(rows) && rows.length ? rows[0] : null;
         if (!row || typeof row !== 'object') return false;
@@ -196,6 +200,9 @@
         if (isInventoryList(apiCode) && defaultRenderer) {
             return wrapInventoryTable(defaultRenderer(rows, headerMsg, apiCode, meta));
         }
+        if (defaultRenderer) {
+            return wrapProductLookupTable(defaultRenderer(rows, headerMsg, apiCode, meta));
+        }
         var safeRows = Array.isArray(rows) ? rows.filter(Boolean) : [];
         if (!safeRows.length) return '<p class="ai-product-empty">Không tìm thấy sản phẩm phù hợp.</p>';
         var permissions = currentUserPermissions();
@@ -220,7 +227,8 @@
                     return wrapInventoryTable(defaultRenderer(rows, headerMsg, apiCode, meta));
                 }
                 return isProductLookup(apiCode, meta) || looksLikeProductLookup(rows)
-                    ? renderProductLookup(rows) : defaultRenderer(rows, headerMsg, apiCode, meta);
+                    ? renderProductLookup(rows, headerMsg, apiCode, meta)
+                    : defaultRenderer(rows, headerMsg, apiCode, meta);
             } : null;
             catalogRenderer = typeof internal.renderCatalogView === 'function'
                 ? internal.renderCatalogView
@@ -230,7 +238,8 @@
                     return wrapInventoryTable(catalogRenderer(rows, headerMsg, apiCode, meta));
                 }
                 return isProductLookup(apiCode, meta) || looksLikeProductLookup(rows)
-                    ? renderProductLookup(rows) : catalogRenderer(rows, headerMsg, apiCode, meta);
+                    ? renderProductLookup(rows, headerMsg, apiCode, meta)
+                    : catalogRenderer(rows, headerMsg, apiCode, meta);
             } : null;
             installedApi = api;
         }

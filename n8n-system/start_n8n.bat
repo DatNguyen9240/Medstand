@@ -99,6 +99,13 @@ set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 set "N8N_DISABLE_TASK_RUNNERS=true"
 
+:: Nap secret runtime dung chung tu .env ma khong ghi gia tri vao source workflow.
+if exist "%BASE_DIR%\..\.env" (
+    for /f "usebackq tokens=1,* delims==" %%A in ("%BASE_DIR%\..\.env") do (
+        if /I "%%A"=="ADMIN_UPLOAD_KEY" set "ADMIN_UPLOAD_KEY=%%B"
+    )
+)
+
 :: Don sach tien trinh cu neu mang hoac port bi ket
 call "%NPM_GLOBAL_DIR%\pm2.cmd" kill > nul 2>&1
 :: taskkill /f /im node.exe /t > nul 2>&1

@@ -1,6 +1,17 @@
 const path = require('path');
 const fs = require('fs');
 
+const rootEnvPath = path.join(__dirname, '..', '.env');
+if (fs.existsSync(rootEnvPath)) {
+  for (const line of fs.readFileSync(rootEnvPath, 'utf8').split(/\r?\n/)) {
+    const match = line.match(/^\s*([^#=]+)=(.*)$/);
+    if (!match) continue;
+    const key = match[1].trim();
+    const value = match[2].trim().replace(/^['"]|['"]$/g, '');
+    if (key && process.env[key] === undefined) process.env[key] = value;
+  }
+}
+
 // Force local portable environment variables
 process.env.N8N_USER_FOLDER = path.join(__dirname, 'n8n_data');
 process.env.PM2_HOME = path.join(process.env.N8N_USER_FOLDER, '.pm2');

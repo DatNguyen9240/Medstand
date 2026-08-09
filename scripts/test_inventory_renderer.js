@@ -53,7 +53,12 @@ assert.ok(defaultInventory.includes('OLD_TABLE:@danh_sach_tonkho:1'));
 assert.ok(productTemplateInventory.includes('OLD_TABLE:@danh_sach_tonkho:1'));
 assert.ok(defaultInventory.includes('ai-inventory-compact'));
 assert.ok(
-  renderers.DEFAULT(inventoryRows, '', '@tra_cuu_san_pham', {}).includes('ai-product-card')
+  renderers.DEFAULT(inventoryRows, '', '@tra_cuu_san_pham', {})
+    .includes('OLD_TABLE:@tra_cuu_san_pham:1')
+);
+assert.ok(
+  renderers.PRODUCT_LOOKUP(inventoryRows, '', '@tra_cuu_san_pham', {})
+    .includes('ai-product-lookup-compact')
 );
 
 const tablePolicy = fs.readFileSync(
@@ -64,4 +69,4 @@ const productionIndex = fs.readFileSync(path.resolve(__dirname, '../index.html')
 assert.ok(tablePolicy.includes('.chat-bubble.ai .ai-table-page-size-label{display:none!important}'));
 assert.ok(productionIndex.includes('chatbot-table-ui-policy.min.js?v=1'));
 
-console.log('Inventory/table renderer: PASS 6/6');
+console.log('Inventory/table renderer: PASS 7/7');

@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\n\nlet isAdmin = false;\n// Yêu cầu API Key cứng (Tránh Data Poisoning)\nconst apiKey = headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '';\n\nif (apiKey === 'Medstand@Admin2026') {\n    isAdmin = true;\n} else {\n    throw new Error(\"SECURITY_ALERT: Truy cập trái phép. Thiếu hoặc sai API Key quản trị. Nguy cơ Data Poisoning bị chặn!\");\n}\n\nlet hasFile = false;\nlet mime = '';\nlet ext = '';\nif ($input.first().binary && $input.first().binary.file) {\n    hasFile = true;\n    mime = ($input.first().binary.file.mimeType || '').toLowerCase();\n    ext = ($input.first().binary.file.fileExtension || '').toLowerCase();\n}\n\nreturn [{\n    json: {\n        passes: isAdmin,\n        hasFile: hasFile,\n        expiryDate: body.expiryDate || 'never',\n        title: body.title || 'Untitled Document',\n        mime: mime,\n        ext: ext\n    },\n    binary: $input.first().binary\n}];"
+        "jsCode": "const body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\nconst expectedAdminKey = String($env.ADMIN_UPLOAD_KEY || '').trim();\nconst apiKey = String(headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '').trim();\n\nif (!expectedAdminKey) {\n    throw new Error(\"CONFIG_ERROR: ADMIN_UPLOAD_KEY is not configured.\");\n}\nif (apiKey !== expectedAdminKey) {\n    throw new Error(\"SECURITY_ALERT: Truy cập trái phép. Thiếu hoặc sai API Key quản trị. Nguy cơ Data Poisoning bị chặn!\");\n}\n\nlet hasFile = false;\nlet mime = '';\nlet ext = '';\nif ($input.first().binary && $input.first().binary.file) {\n    hasFile = true;\n    mime = ($input.first().binary.file.mimeType || '').toLowerCase();\n    ext = ($input.first().binary.file.fileExtension || '').toLowerCase();\n}\n\nreturn [{\n    json: {\n        passes: true,\n        hasFile: hasFile,\n        expiryDate: body.expiryDate || 'never',\n        title: body.title || 'Untitled Document',\n        mime: mime,\n        ext: ext\n    },\n    binary: $input.first().binary\n}];"
       },
       "id": "check-auth-format",
       "name": "Check Auth & Format",
@@ -396,7 +396,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const headers = $input.first().json.headers || {};\nconst body = $input.first().json.body || {};\nconst adminKey = headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '';\nif (adminKey !== 'Medstand@Admin2026') {\n    throw new Error(\"SECURITY_ALERT: Unauthorized. Only admins can approve catalog.\");\n}\nreturn [{ json: { \n    itemId: body.itemId,\n    action: body.action || 'APPROVE',\n    username: body.username || 'admin'\n}}];"
+        "jsCode": "const headers = $input.first().json.headers || {};\nconst body = $input.first().json.body || {};\nconst expectedAdminKey = String($env.ADMIN_UPLOAD_KEY || '').trim();\nconst adminKey = String(headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '').trim();\nif (!expectedAdminKey) {\n    throw new Error(\"CONFIG_ERROR: ADMIN_UPLOAD_KEY is not configured.\");\n}\nif (adminKey !== expectedAdminKey) {\n    throw new Error(\"SECURITY_ALERT: Unauthorized. Only admins can approve catalog.\");\n}\nreturn [{ json: { \n    itemId: body.itemId,\n    action: body.action || 'APPROVE',\n    username: body.username || 'admin'\n}}];"
       },
       "id": "check-approve-auth",
       "name": "Check Approve Auth",

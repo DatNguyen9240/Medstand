@@ -27,7 +27,13 @@ if (fs.existsSync(envPath)) {
   const api = (env.match(/^API_BASE\s*=\s*(.+)$/m) || [])[1] || '';
   const n8n = (env.match(/^N8N_BASE\s*=\s*(.+)$/m) || [])[1] || '';
   add('SERVER_API_TARGET', api.includes(apiHost) ? 'PASS' : 'FAIL', `API_BASE host=${safeHost(api)}; expected internal API=${apiHost}`);
-  add('SERVER_N8N_TARGET', /^https?:\/\//.test(n8n) ? 'REVIEW' : 'FAIL', `N8N_BASE host=${safeHost(n8n)}; endpoint must be checked against deployed n8n UAT`);
+  const n8nHost = safeHost(n8n);
+  const n8nInternal = (env.match(/^N8N_INTERNAL_URL\s*=\s*(.+)$/m) || [])[1] || '';
+  const n8nInternalHost = safeHost(n8nInternal);
+  const n8nTargetOk = /^https?:\/\//.test(n8n)
+    && (/\.trycloudflare\.com$/i.test(n8nHost) || /\.ngrok\.io$/i.test(n8nHost))
+    && /^(127\.0\.0\.1|localhost):5678$/i.test(n8nInternalHost);
+  add('SERVER_N8N_TARGET', n8nTargetOk ? 'PASS' : 'FAIL', `public=${n8nHost}; internal=${n8nInternalHost}; expected UAT tunnel -> local n8n:5678`);
 } else {
   add('SERVER_ENV_PRESENT', 'REVIEW', '.env is not present in this checkout; deployed runtime config cannot be proven');
 }
@@ -35,9 +41,14 @@ if (fs.existsSync(envPath)) {
 const server = read('server.js');
 const chatConfigured = fs.existsSync(envPath) && /^CHAT_API_KEY\s*=\s*\S+/m.test(read('.env'));
 add('CHAT_KEY_CONFIG', chatConfigured ? 'PASS' : 'FAIL', chatConfigured ? 'CHAT_API_KEY is supplied through server environment' : 'CHAT_API_KEY is missing from server environment');
-const adminFallback = /ADMIN_UPLOAD_KEY\s*\|\|\s*['"]Medstand@Admin2026['"]/.test(server);
-const workflowAdminKey = /adminKey\s*!==?\s*['"]Medstand@Admin2026['"]|apiKey\s*===?\s*['"]Medstand@Admin2026['"]/.test(read('n8n/AI_Core/AI_Upload_Reader.json'));
-add('ADMIN_KEY_COMPATIBILITY', adminFallback && workflowAdminKey ? 'PASS' : 'FAIL', adminFallback && workflowAdminKey ? 'server fallback matches the current upload workflow key' : 'server and upload workflow admin keys are not compatible');
+const workflowSource = read('n8n/AI_Core/AI_Upload_Reader.json');
+const adminKeyConfigured = fs.existsSync(envPath) && /^ADMIN_UPLOAD_KEY\s*=\s*\S+/m.test(read('.env'));
+const adminKeyFromEnv = server.includes('process.env.ADMIN_UPLOAD_KEY')
+  && server.includes('MISSING_ADMIN_UPLOAD_KEY')
+  && workflowSource.includes('$env.ADMIN_UPLOAD_KEY');
+const exposedAdminKey = /Medstand@Admin2026/.test(server) || /Medstand@Admin2026/.test(workflowSource);
+add('ADMIN_KEY_SOURCE', adminKeyFromEnv && !exposedAdminKey ? 'PASS' : 'FAIL', adminKeyFromEnv && !exposedAdminKey ? 'gateway and workflow use ADMIN_UPLOAD_KEY and fail closed' : 'admin key is still embedded or env wiring is incomplete');
+add('ADMIN_KEY_CONFIG', adminKeyConfigured ? 'PASS' : 'REVIEW', adminKeyConfigured ? 'ADMIN_UPLOAD_KEY is supplied through server environment' : 'set a rotated ADMIN_UPLOAD_KEY in the deployed environment before runtime verification');
 
 const workflowFiles = walk(path.join(root, 'n8n')).filter((f) => f.endsWith('.json'));
 const wrongHosts = [];
