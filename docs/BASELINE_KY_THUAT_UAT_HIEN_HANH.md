@@ -1,7 +1,7 @@
 # Baseline kỹ thuật và UAT hiện hành
 
-- Cập nhật: `03/08/2026`
-- Môi trường: frontend `11.126`, DB `medtest`, timezone `UTC+07:00`
+- Cập nhật: `09/08/2026`
+- Môi trường kiểm tra browser: frontend server `11.112`, DB `medtest`, timezone `UTC+07:00`
 
 Tài liệu này thay thế các báo cáo UAT/CORE theo từng ngày đã hoàn tất. Chi tiết task và việc còn lại được quản lý tại [backlog](BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md); contract nghiệp vụ vẫn nằm trong các tài liệu contract riêng.
 
@@ -16,7 +16,7 @@ Phần chức năng chính, phân quyền, tồn kho, dữ liệu mẫu và regr
 | Phạm vi kho | 13/13, chỉ `CTY/DL02/DL03` | PASS |
 | Hội thoại tự nhiên | static 163/163; live 31/31 | PASS |
 | Hiệu năng AI | p95 5.668 giây, đạt ngưỡng dưới 6 giây | PASS |
-| Idempotency đơn hàng | replay trả mã cũ; payload khác cùng key bị từ chối | PASS ở SQL/gateway; còn UAT UI cho CORE-005 |
+| Idempotency đơn hàng | `DMB0826/8` create/replay cùng mã; đúng một header/detail và đủ audit | PASS; CORE-005 DONE |
 | Phân nhóm khách hàng | 52/52 ca A/B/C/UNRATED | PASS ở SQL/API; còn ảnh/token UI cho CORE-007 |
 | Tồn khả dụng theo quyền | SQL, API, n8n, frontend và token UAT | DONE |
 | n8n unique active webhook | `intent-parser` và `api-list-active` còn trùng active | FAIL/P0 |
@@ -30,10 +30,13 @@ Phần chức năng chính, phân quyền, tồn kho, dữ liệu mẫu và regr
 | CORE-002 | DONE | Form thu thập bảy trường, cascade địa chỉ, validate và preview trước khi ghi |
 | CORE-003 | DONE | Xác nhận rõ ràng, chống trùng và audit; chưa xác nhận/hủy không ghi DB |
 | CORE-004 | Contract locked | Tách rõ `preview/confirmed/created/failed`; SQL quyết định giá, CTBH, tồn, kho và mã đơn |
-| CORE-005 | Pending end-to-end UAT | SQL đã deploy; rollback mutation và idempotency đạt; còn token/UI thật, concurrency và request ID |
+| CORE-005 | DONE | Token/gateway tạo `DMB0826/8`; replay cùng mã, đúng một header/detail và đủ audit create/replay |
 | CORE-006 | Contract approved | Rule `BR-TIER-005/2.0.0` đọc từ cấu hình, không hard-code ngưỡng trong procedure |
-| CORE-007 | Pending UI evidence | SQL/API và 13 tài khoản đạt; còn bộ lọc UI A/B/C/UNRATED, ảnh và request ID |
+| CORE-007 | Pending browser evidence | Rule/API hậu kiểm PASS; static UI contract đạt, còn thao tác/ảnh/request ID A/B/C/UNRATED |
 | STOCK-001 | DONE | Công thức chung `max(tồn vật lý chưa hết hạn - lượng giữ, 0)`; chỉ gợi ý hàng có giá và tồn khả dụng dương |
+| CORE-008 | Pending browser evidence | Runtime token 4/4 và static visual contract đạt; còn ảnh cách trình bày gắn request ID |
+| CORE-009 | Pending browser evidence | Draft regression 29/29 và live gateway 31/31; còn thao tác browser và đối chiếu không mutation trước xác nhận |
+| CORE-010 | Pending deployment/concurrency evidence | Server gateway cũ chưa overwrite identity và không tương thích payload idempotency SQL mới; lần thử không tạo đơn/audit |
 
 Contract chi tiết được giữ tại:
 
@@ -69,7 +72,7 @@ Contract chi tiết được giữ tại:
 | Runtime | UAT-004–005 | Còn P0 workflow trùng và P1 fallback secret; xem mục việc mở |
 | Quyền và dữ liệu | UAT-006–010 | 13/13 đăng nhập, scope khách/kho, fixture và ngày chốt đều đạt |
 | Read flow | UAT-011–016 | Gợi ý đơn, tuyến, scoring, upsell, tồn và tra cứu sản phẩm đều 13/13 |
-| Mutation | UAT-017–018 | Tạo khách và tạo đơn có validate, scope và idempotency; CORE-005 còn UI UAT mới |
+| Mutation | UAT-017–018 | Tạo khách và tạo đơn có validate, scope và idempotency; CORE-005 đã có create/replay runtime thật |
 | Regression | UAT-019–021 | Live 31/31, hiệu năng đạt, truy vấn lặp nhất quán và double-click không tạo trùng |
 | Bàn giao | UAT-022–024 | Lỗi đã phân loại, tài liệu khách hàng đã cập nhật; release vẫn bị chặn bởi P0 n8n |
 
@@ -93,8 +96,10 @@ Bằng chứng máy đọc vẫn được giữ trong `reports/`; script kiểm 
 
 ### UAT nghiệp vụ còn thiếu
 
-- CORE-005: tạo đơn qua token/UI thật, double-click/concurrency, ảnh/log và request ID.
+- CORE-010: còn concurrency thật qua gateway và bằng chứng UI cho các ca hủy/chưa xác nhận; create/replay đơn đã có audit bền.
 - CORE-007: thao tác bộ lọc A/B/C/UNRATED qua UI/token thật, ảnh và request ID.
+- CORE-008/009: browser UAT bị chặn vì server còn phục vụ `11.112`; thiếu UI gợi ý mới và `window.MedstandOrderDraft`.
+- Điều kiện chạy lại: deploy frontend/gateway hiện hành lên server, xác nhận version không còn `11.112`, rồi chạy `node scripts/verify_phase1_browser_uat.js` và concurrency đơn hàng.
 
 ## Bằng chứng và lệnh chạy lại
 

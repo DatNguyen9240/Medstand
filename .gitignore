@@ -106,3 +106,6 @@ n8n-system/snapshots/
 *.export.json
 reports/*.export.json
 reports/**/*.export.json
+
+# Browser UAT screenshots and runtime summaries may contain business data.
+reports/phase1-browser-uat-*/

@@ -108,8 +108,10 @@ SELECT OBJECT_DEFINITION(OBJECT_ID(N'dbo.API_ChamDiemKH_AI')) AS Definition;`)).
     const uiSource = fs.readFileSync(path.join(ROOT, 'chatbot-widget', 'js', 'chatbot.js'), 'utf8');
     const buildSource = fs.readFileSync(path.join(ROOT, 'scripts', 'build.js'), 'utf8');
     const uiChecks = {
-      unratedTierFilter: uiSource.includes('data-server-tier="UNRATED"'),
-      unknownRiskFilter: uiSource.includes('data-server-risk="UNKNOWN"'),
+      unratedTierFilter: uiSource.includes('<option value="UNRATED">Chưa đủ dữ liệu</option>')
+        && uiSource.includes('data-tier-filter="tier"'),
+      unknownRiskFilter: uiSource.includes('<option value="UNKNOWN">Chưa đủ dữ liệu</option>')
+        && uiSource.includes('data-tier-filter="risk"'),
       usesApiClassification: uiSource.includes('var tierName = row.PhanLoai'),
       doesNotRepeatRiskDayThresholds: !uiSource.includes("daysValue >= 90 ? 'Cần chú ý'"),
       unratedScoreFriendly: uiSource.includes("return 'Chưa chấm điểm'"),
