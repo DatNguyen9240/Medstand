@@ -1,0 +1,48 @@
+{
+  "checkedAt": "2026-08-10T02:48:24.068Z",
+  "baseUrl": "https://medtest.bms7.net",
+  "mutationRequestsSent": 0,
+  "artifacts": [
+    {
+      "name": "app.bundle.min.js",
+      "version": "11.144",
+      "url": "https://medtest.bms7.net/src/js/dist/app.bundle.min.js?v=11.144",
+      "httpStatus": 200,
+      "bytes": 90096,
+      "sha256": "0567bb57d408f4437859833a469e8284ffc469380e22ec6a246ba01b9b3601bf"
+    },
+    {
+      "name": "chatbot-core.bundle.min.js",
+      "version": "11.144",
+      "url": "https://medtest.bms7.net/chatbot-widget/js/chatbot-core.bundle.min.js?v=11.144",
+      "httpStatus": 200,
+      "bytes": 6175,
+      "sha256": "183ccf66940d11d44755e7fceab3b35cf3600a7f5e06f020d70264f2e3829b7d"
+    },
+    {
+      "name": "chatbot.bundle.min.js",
+      "version": null,
+      "url": "https://medtest.bms7.net/chatbot-widget/js/chatbot.bundle.min.js",
+      "httpStatus": 200,
+      "bytes": 327287,
+      "sha256": "9c64ae63688bdacd8639de57c2d4a54ab9c356d1a611a345cf0678fdf0056958"
+    }
+  ],
+  "browser": {
+    "url": "https://medtest.bms7.net/pages/login.html?v=1786330094758",
+    "title": "Đăng nhập - Medstand",
+    "apiEngine": "undefined",
+    "orderDraft": "undefined",
+    "tierFilter": false,
+    "chatbotInput": false,
+    "scripts": [
+      "https://medtest.bms7.net/src/js/dist/theme.min.js?v=11.144",
+      "https://cdnjs.cloudflare.com/ajax/libs/cash/8.1.5/cash.min.js",
+      "https://cdn.jsdelivr.net/npm/sweetalert2@11",
+      "https://medtest.bms7.net/src/js/dist/auth.bundle.min.js?v=11.144",
+      "https://medtest.bms7.net/src/pwa/pwa-register.js"
+    ],
+    "bodyText": "Đăng nhập vào tài khoản\nTên đăng nhập\nMật khẩu\nGhi nhớ đăng nhập\nQuên mật khẩu?\nĐăng nhập\nLiên hệ Quản trị viên để nhận tài khoản"
+  },
+  "screenshot": "C:\\MedApp\\reports\\deployment-readonly-2026-08-10\\chatbot-readonly.png"
+}
