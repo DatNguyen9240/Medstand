@@ -413,42 +413,63 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 **Thời gian mục tiêu:** 16/09–31/10/2026  
 **Gate hoàn thành:** `CATALOG_PROMOTION_READY`
 
-- [ ] **CAT-001 — Chuẩn hóa schema tri thức sản phẩm** · `P1` · `TODO`
+**Đánh giá lại 10/08/2026:** `CAT-001`–`CAT-004` đủ bằng chứng để giữ `DONE`. `CAT-002` đã bổ sung sáu mapping thật có mã sản phẩm in trực tiếp trên ảnh; các ảnh còn lại chưa đủ bằng chứng vẫn không được tự động map. Gate Phase 2 chưa hoàn thành vì `PROMO-*`, `RAG-*`, `NOTI-001`, `CAT-005` và `CAT-006` còn mở.
+
+- [x] **CAT-001 — Chuẩn hóa schema tri thức sản phẩm** · `P1` · `DONE`
   - Chốt mã, tên, ảnh, thành phần, công dụng, đối tượng, cách dùng, chống chỉ định, nguồn và trạng thái duyệt.
   - Nghiệm thu: mỗi dữ liệu có nguồn và thời điểm cập nhật.
+  - Thiết kế 10/08/2026: giữ nguyên `AI_ProductKnowledgeTbl` và `API_TraCuuSanPham_AI` đang chạy; bổ sung lớp version riêng `AI_ProductKnowledgeVersionTbl`, view chỉ đọc `AI_ApprovedProductKnowledgeVw` và API shadow `API_TriThucSanPham_AI`. Không `ALTER`/trigger/ghi bảng ERP và không dual-write. Contract: [CAT-001_CONTRACT_TRI_THUC_SAN_PHAM_AI_2026-08-10.md](CAT-001_CONTRACT_TRI_THUC_SAN_PHAM_AI_2026-08-10.md).
+  - Deploy `medtest` 10/08/2026: 5/5 batch commit trong một transaction; hậu kiểm thấy đủ bảng/view/procedure mới, bảng version và view công bố đều `0` dòng. API tài khoản hợp lệ trả rỗng đúng thiết kế, tài khoản sai trả `OUT_OF_SCOPE`; bảng cũ vẫn giữ `19 Approved + 46 Pending`, API cũ vẫn đọc bảng cũ.
+  - UAT rollback 10/08/2026: `scripts/verify_cat001_uat_rollback.js` tạo tạm 6 phiên bản cho sản phẩm `A003` trong transaction; view chỉ công bố đúng bản `APPROVED` còn hiệu lực có version cao nhất (`ContentVersion=4`), loại `DRAFT`, hết hạn, chưa hiệu lực và `WITHDRAWN`. Transaction được rollback và hậu kiểm `remainingFixtures=0`, không để lại dữ liệu test hay làm sai lệch thông tin thật.
 
-- [ ] **CAT-002 — Mapping ảnh catalog với mã sản phẩm** · `P1` · `TODO`
+- [x] **CAT-002 — Mapping ảnh catalog với mã sản phẩm** · `P1` · `DONE`
   - Chuẩn hóa định dạng, dung lượng và ảnh mặc định.
   - Nghiệm thu: ảnh đúng sản phẩm, không dùng tên file làm khóa duy nhất.
+  - Thiết kế 10/08/2026: `103/103` file có mặt nhưng manifest hiện có `0` mapping `ItemID`; không tự suy mã từ tên file. Lớp mới dùng `AI_ProductImageMapTbl`, `AI_ApprovedProductImageVw`, `API_AnhSanPham_AI`, hash nội dung và fallback `default-product.svg`; không sửa ERP/API cũ. Contract: [CAT-002_CONTRACT_MAPPING_ANH_SAN_PHAM_AI_2026-08-10.md](CAT-002_CONTRACT_MAPPING_ANH_SAN_PHAM_AI_2026-08-10.md).
+  - Deploy/UAT 10/08/2026: 5/5 batch deploy atomically trên `medtest`; bảng/view mới bắt đầu `0` dòng. `scripts/verify_cat002_uat_rollback.js` tạo tạm 4 mapping cho `A003`, chỉ công bố đúng ảnh `PRIMARY/APPROVED` còn hiệu lực, loại `DRAFT`, hết hạn và `WITHDRAWN`; rollback và hậu kiểm `remainingFixtures=0`. API sau rollback trả `default-product.svg`, `IsDefaultImage=true`, không để lại mapping giả hay dữ liệu test.
+  - Hoàn tất nghiệm thu 10/08/2026: bảng kiểm soát `assets/product-catalog/approved-mapping.json` chứa 6 ảnh có `ItemID` in trực tiếp trên nội dung ảnh (`A011`, `A014`, `A008`, `B037`, `D024`, `V002`), không suy từ tên file. Hai ảnh vượt `2 MB` trong bộ được duyệt đã tạo bản công bố dưới `1 MB`; deploy idempotent vào `medtest` và API hậu kiểm PASS `6/6`, đều `APPROVED`, `IsDefaultImage=false`. Ảnh mơ hồ `LINH PHẾ AN.png` in mã `H010` nhưng không khớp sản phẩm `H010` trong ERP nên bị loại, không tạo mapping. Các ảnh chưa được duyệt tiếp tục dùng fallback; không cần sửa hoặc nạp toàn bộ 103 ảnh để đóng task.
 
-- [ ] **CAT-003 — Trả giá đúng theo bảng giá và khách hàng** · `P1` · `TODO`
+- [x] **CAT-003 — Trả giá đúng theo bảng giá và khách hàng** · `P1` · `DONE`
   - Chốt quy tắc chọn bảng giá, hiệu lực và trường hợp không có giá.
   - Nghiệm thu: giá trên chatbot khớp màn hình lập đơn tại cùng thời điểm.
+  - Thiết kế 10/08/2026: giữ `AR_LayGiaSanPhamFnc` làm nguồn giá có thẩm quyền và đúng thứ tự khách → nhóm khách → giá chung; API mới `API_GiaSanPhamTheoKhachHang_AI` chỉ đọc, kiểm tra scope khách/sản phẩm và trả rõ `NO_ACTIVE_PRICE`, không tạo bảng giá riêng. Contract: [CAT-003_CONTRACT_GIA_THEO_KHACH_HANG_AI_2026-08-10.md](CAT-003_CONTRACT_GIA_THEO_KHACH_HANG_AI_2026-08-10.md).
+  - Deploy/UAT 10/08/2026: API read-only deploy trên `medtest`; `scripts/verify_cat003_price_uat.js` đối chiếu khách `4E7E28AF-70A8-4AB8-B594-6DC1E3104E2B`, sản phẩm `A008`, giá API và hàm ERP cùng `75.000đ`, sai lệch `0`, nguồn `AR_LayGiaSanPhamFnc`; khách ngoài scope bị chặn. Ca không có giá `A003` trả `UnitPrice=NULL`, `NO_ACTIVE_PRICE`, `IsOrderableByPrice=false`. Không mutation và không tạo dữ liệu UAT.
 
-- [ ] **CAT-004 — Ghép tồn kho theo quyền vào catalog** · `P1` · `TODO`
+- [x] **CAT-004 — Ghép tồn kho theo quyền vào catalog** · `P1` · `DONE`
   - Phụ thuộc: `STOCK-001`.
   - Nghiệm thu: hiển thị tồn khả dụng, kho và thời điểm cập nhật.
+  - Đối chiếu 10/08/2026: không tạo lớp SQL mới vì `API_HangHoaList_AI` và `API_TraCuuSanPham_AI` đã dùng chung `AI_StockAvailableByUserFnc`; product card đã hiển thị `AvailableStock`, kho và `StockUpdatedAt/StockAsOfAt`. Hậu kiểm read-only `scripts/verify_stock001_postdeploy.js` PASS `13/13` tài khoản, mỗi catalog trả đúng một sản phẩm trong kho được cấp và đủ timestamp/scope/status; guard `QLBH005.MED/Q002/DL02` có tồn vật lý `10192`, đã giữ `13024`, tồn khả dụng `0` và không xuất hiện trong catalog. Static CAT-004 preflight tại `scripts/preflight_cat004_catalog_stock.js`.
 
-- [ ] **PROMO-001 — Thiết kế schema CTBH có hiệu lực** · `P1` · `TODO`
+- [x] **PROMO-001 — Thiết kế schema CTBH có hiệu lực** · `P1` · `DONE`
   - Bổ sung từ ngày, đến ngày, chi nhánh, nhóm user, sản phẩm, điều kiện và trạng thái duyệt.
   - Nghiệm thu: mô tả được CTBH tháng và chương trình phát sinh theo sự vụ.
+  - Thiết kế 10/08/2026: không sửa `AR_Promotion*` đang dùng chung; bổ sung lớp shadow `AI_PromotionProgramTbl`, scope chi nhánh/nhóm user, rule sản phẩm và view công bố `AI_ApprovedPromotionItemRuleVw`. Contract hỗ trợ `MONTHLY`/`EVENT`, version, hiệu lực `[from,to)`, trạng thái duyệt, điều kiện số lượng/giá trị và quyền lợi chiết khấu/quà. Chi tiết: [PROMO-001_CONTRACT_SCHEMA_CTBH_AI_2026-08-10.md](PROMO-001_CONTRACT_SCHEMA_CTBH_AI_2026-08-10.md).
+  - Deploy/UAT 10/08/2026: deploy atomically `7` batch, đủ `4` bảng AI và `1` view trên `medtest`; không mutation ERP. `scripts/verify_promo001_uat_rollback.js` chứng minh chỉ chương trình `MONTHLY` và `EVENT` đã duyệt, còn hiệu lực, đủ scope được công bố; loại nháp, hết hạn, chưa hiệu lực và thiếu scope. Transaction rollback sạch, `remainingFixtures=0`.
 
-- [ ] **PROMO-002 — Ghép CTBH hiện hành vào sản phẩm** · `P1` · `TODO`
+- [x] **PROMO-002 — Ghép CTBH hiện hành vào sản phẩm** · `P1` · `DONE`
   - Chỉ lấy chương trình còn hiệu lực và đúng phạm vi người dùng.
   - Phụ thuộc: `PROMO-001`.
   - Nghiệm thu: card sản phẩm hiển thị đúng CTBH; chương trình hết hạn không xuất hiện.
+  - Thiết kế/deploy 10/08/2026: `AI_ActivePromotionByUserFnc` chỉ đọc view đã duyệt của PROMO-001, lọc đồng thời `BranchID`, `UserGroupID`, `ItemID` và hiệu lực. `API_HangHoaList_AI`/`API_TraCuuSanPham_AI` trả số chương trình, tóm tắt, JSON điều kiện/quyền lợi và thời điểm cập nhật; product card chỉ hiện `CTBH hiện hành` khi có dữ liệu. Contract: [PROMO-002_CONTRACT_GHEP_CTBH_VAO_SAN_PHAM_AI_2026-08-10.md](PROMO-002_CONTRACT_GHEP_CTBH_VAO_SAN_PHAM_AI_2026-08-10.md).
+  - UAT rollback 10/08/2026: chương trình mẫu đúng chi nhánh `MN`, nhóm `KDMN`, sản phẩm `A003` chỉ xuất hiện cho user đúng scope; user ngoài scope trả `0` dòng và cùng chương trình sau thời điểm hết hạn trả `0` dòng. Transaction rollback sạch, `remainingFixtures=0`; preflight PASS `12/12`.
 
 - [ ] **RAG-001 — Hoàn thiện upload Excel/PDF/ảnh** · `P1` · `TODO`
   - Validate loại file, kích thước, virus/malware policy và metadata nguồn.
   - Nghiệm thu: lỗi upload có thông báo rõ; tài liệu không được dùng trước khi duyệt.
+  - Triển khai source/schema 10/08/2026: allowlist PDF/XLSX/PNG/JPG-JPEG tối đa 10 MiB; kiểm extension + MIME + magic signature, SHA-256 và metadata nguồn. Workflow fail-closed khi scanner thiếu/lỗi/nhiễm; upload hợp lệ chỉ lưu metadata `CLEAN + PENDING_REVIEW`, không OCR/vector. Query Qdrant lọc bắt buộc `APPROVED + CLEAN`. Contract: [RAG-001_CONTRACT_UPLOAD_QUARANTINE_AI_2026-08-10.md](RAG-001_CONTRACT_UPLOAD_QUARANTINE_AI_2026-08-10.md).
+  - Bằng chứng local/DB: preflight PASS `21/21`; deploy `AI_RagDocumentTbl` + `AI_ApprovedRagDocumentVw` trên `medtest`; UAT rollback chỉ công bố bản `CLEAN + APPROVED`, `remainingFixtures=0`.
+  - Runtime local 10/08/2026: đã import/publish `AI_Upload_Reader` (`HQa6xx7flcNcC1oU`) và `AI_RAG_Query` (`actVwBhqMGLQ6cSH`) lên n8n `:5678`; health `200`, hai workflow active sau restart. Đã tích hợp Microsoft Defender CLI fail-closed và tạo Qdrant `medstand-policies` vector `1536/Cosine` với index trạng thái. Còn mở: upload live qua giao diện và query Qdrant end-to-end; giữ `TODO` để không tuyên bố hoàn tất sai.
 
-- [ ] **RAG-002 — Xây màn hình xem trước và phê duyệt OCR** · `P1` · `TODO`
+- [ ] **RAG-002 — Xây màn hình xem trước và phê duyệt OCR** · `P1` · `READY_FOR_TEST`
   - Cho phép sửa nội dung, approve/reject, lưu người duyệt và thời gian duyệt.
   - Nghiệm thu: chỉ bản `Approved` được chatbot sử dụng.
+  - Triển khai source 10/08/2026: `AI_RagDocumentContentTbl` lưu bản OCR/chỉnh sửa theo revision; `AI_RagDocumentReviewLogTbl` lưu SAVE/APPROVE/REJECT; `AI_ApprovedRagContentVw` chỉ trả tài liệu `CLEAN + APPROVED + READY`. UI `rag-admin` có queue, preview textarea, lưu nháp, phê duyệt và từ chối; workflow `HQa6xx7flcNcC1oU` active/published trên n8n local `:5678`, runtime export khớp source `58` node. Preflight PASS `14/14`; còn mở UAT DB rollback và xác nhận live approve không lưu vector cho pending/rejected.
 
-- [ ] **RAG-003 — Tự động hết hiệu lực và thu hồi tài liệu** · `P1` · `TODO`
+- [ ] **RAG-003 — Tự động hết hiệu lực và thu hồi tài liệu** · `P1` · `READY_FOR_TEST`
   - Xử lý from/to date và thao tác thu hồi thủ công.
   - Nghiệm thu: nội dung hết hạn không còn được truy vấn hoặc thông báo.
+  - Triển khai 10/08/2026: chuẩn hóa khoảng hiệu lực `[EffectiveFrom, EffectiveTo)`, trạng thái `ACTIVE/SCHEDULED/EXPIRED/WITHDRAWN`, audit thu hồi và procedure `API_RagDocumentLifecycle_AI`. Query Qdrant lọc epoch hiệu lực rồi đối chiếu lại `AI_ApprovedRagContentVw` theo fail-closed; UI có ngày bắt đầu/kết thúc, danh sách trạng thái và thu hồi có lý do. Contract: [RAG-003_CONTRACT_DOCUMENT_LIFECYCLE_AI_2026-08-10.md](RAG-003_CONTRACT_DOCUMENT_LIFECYCLE_AI_2026-08-10.md).
+  - Bằng chứng: schema deploy trên `medtest`; UAT rollback PASS, chỉ `Active` được công bố, scheduled/expired/withdrawn bị loại, audit thu hồi đúng và `remainingFixtures=0`. Preflight PASS `16/16`; workflow upload/query đã import/publish local. Còn mở smoke webhook end-to-end vì runtime n8n không kết nối được SQL UAT dù deploy/UAT trực tiếp từ CLI kết nối thành công.
 
 - [ ] **NOTI-001 — Phân phối thông báo đúng người nhận** · `P1` · `TODO`
   - Lọc theo chi nhánh, nhóm sale, tài khoản và thời gian áp dụng.

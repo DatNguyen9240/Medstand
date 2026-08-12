@@ -7,7 +7,7 @@
 </header>
 
 <main class="app-main" style="background: var(--color-background); min-height: calc(100vh - 56px);">
-  <div class="app-content" style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
+  <div class="app-content" style="max-width: 980px; margin: 0 auto; padding: 24px 16px;">
     
     <!-- Sleek Minimalist Banner -->
     <div style="padding: 16px; background: var(--color-surface); border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: 24px; display: flex; gap: 12px; align-items: flex-start; box-shadow: var(--shadow-xs);">
@@ -31,8 +31,8 @@
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
         </div>
         <h4 style="margin: 0; font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text);">Chọn hoặc kéo thả tài liệu vào đây</h4>
-        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); opacity: 0.85;">Hỗ trợ: PDF, DOCX, XLSX, PNG, JPG (Tối đa 10MB)</p>
-        <input type="file" id="rag-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" style="display: none;" />
+        <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); opacity: 0.85;">Hỗ trợ: PDF, XLSX, PNG, JPG/JPEG (Tối đa 10MB)</p>
+        <input type="file" id="rag-file-input" accept=".pdf,.xlsx,.png,.jpg,.jpeg" style="display: none;" />
       </div>
 
       <!-- File Preview Pill -->
@@ -54,6 +54,23 @@
         <input type="text" id="rag-title" placeholder="Ví dụ: Chính sách bán hàng Tháng 5..." required style="width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); font-family: inherit; font-size: var(--font-size-sm); color: var(--color-text); outline: none; transition: border-color 0.2s;">
       </div>
 
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label for="rag-source-type" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">Loại nguồn tài liệu</label>
+        <select id="rag-source-type" required style="width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); font-family: inherit; font-size: var(--font-size-sm); color: var(--color-text); outline: none;">
+          <option value="">Chọn loại nguồn</option>
+          <option value="POLICY">Chính sách</option>
+          <option value="CATALOG">Catalogue sản phẩm</option>
+          <option value="PROMOTION">Chương trình khuyến mại</option>
+          <option value="INTERNAL_RULE">Quy định nội bộ</option>
+          <option value="OTHER">Nguồn khác</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px;">
+        <label for="rag-source-reference" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">Mô tả nguồn</label>
+        <input type="text" id="rag-source-reference" placeholder="Ví dụ: Phòng kinh doanh cung cấp ngày 10/08/2026" required maxlength="500" style="width: 100%; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-background); font-family: inherit; font-size: var(--font-size-sm); color: var(--color-text); outline: none; transition: border-color 0.2s;">
+      </div>
+
       <!-- Input Ngày hết hạn -->
       <div class="form-group" style="margin-bottom: 28px;">
         <label for="rag-expiry" style="display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted);">Ngày hết hạn hiệu lực (Tùy chọn)</label>
@@ -69,9 +86,58 @@
       
       <!-- Sleek Footnote -->
       <p style="margin: 12px 0 0; font-size: var(--font-size-xs); color: var(--color-text-muted); text-align: center; line-height: 1.4; opacity: 0.8;">
-        * <strong>Chú thích:</strong> Quá trình xử lý và đồng bộ tri thức có thể mất từ 5-10 giây tùy thuộc vào dung lượng tài liệu. Vui lòng giữ nguyên trang cho đến khi nhận được thông báo thành công.
+        * <strong>Chú thích:</strong> File chỉ được đưa vào hàng đợi sau khi quét an toàn. Tài liệu chưa duyệt không được chatbot sử dụng.
       </p>
     </form>
+
+    <section class="rag-review-card" aria-labelledby="rag-review-heading">
+      <div class="rag-review-header">
+        <div>
+          <h2 id="rag-review-heading">Hàng đợi kiểm duyệt OCR</h2>
+          <p>Chỉ tài liệu <strong>Approved + Clean</strong> mới được chatbot sử dụng.</p>
+        </div>
+        <button type="button" id="btn-refresh-rag-reviews" class="rag-secondary-button">Làm mới</button>
+      </div>
+      <div id="rag-review-message" class="rag-review-message" role="status" aria-live="polite"></div>
+      <div class="rag-review-layout">
+        <div id="rag-review-list" class="rag-review-list">
+          <p class="rag-review-empty">Đang tải hàng đợi...</p>
+        </div>
+        <div id="rag-review-editor" class="rag-review-editor" hidden>
+          <div id="rag-review-meta" class="rag-review-meta"></div>
+          <label for="rag-review-content">Nội dung OCR xem trước và chỉnh sửa</label>
+          <textarea id="rag-review-content" rows="18" maxlength="500000"></textarea>
+          <div class="rag-effective-fields">
+            <label>Hiệu lực từ
+              <input type="date" id="rag-effective-from">
+            </label>
+            <label>Hiệu lực đến hết ngày
+              <input type="date" id="rag-effective-to">
+            </label>
+          </div>
+          <div class="rag-review-actions">
+            <button type="button" id="btn-save-rag-review" class="rag-secondary-button">Lưu bản nháp</button>
+            <button type="button" id="btn-reject-rag-review" class="rag-danger-button">Từ chối</button>
+            <button type="button" id="btn-approve-rag-review" class="rag-primary-button">Phê duyệt</button>
+          </div>
+          <p class="rag-review-note">Khi phê duyệt, nội dung hiện tại sẽ được ghi người duyệt/thời gian và mới được đồng bộ vào kho vector.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="rag-review-card" aria-labelledby="rag-lifecycle-heading">
+      <div class="rag-review-header">
+        <div>
+          <h2 id="rag-lifecycle-heading">Hiệu lực tài liệu</h2>
+          <p>Tài liệu hết hạn hoặc đã thu hồi sẽ bị loại khỏi truy vấn chatbot.</p>
+        </div>
+        <button type="button" id="btn-refresh-rag-lifecycle" class="rag-secondary-button">Làm mới</button>
+      </div>
+      <div id="rag-lifecycle-message" class="rag-review-message" role="status" aria-live="polite"></div>
+      <div id="rag-lifecycle-list" class="rag-lifecycle-list">
+        <p class="rag-review-empty">Đang tải trạng thái hiệu lực...</p>
+      </div>
+    </section>
 
   </div>
 </main>

@@ -27,7 +27,7 @@
         }
       },
       "id": "webhook-admin-upload",
-      "name": "Webhook Admin Upload",
+      "name": "admin-upload",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
@@ -37,7 +37,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.first().json.body || {};\nconst headers = $input.first().json.headers || {};\nconst expectedAdminKey = String($env.ADMIN_UPLOAD_KEY || '').trim();\nconst apiKey = String(headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '').trim();\n\nif (!expectedAdminKey) {\n    throw new Error(\"CONFIG_ERROR: ADMIN_UPLOAD_KEY is not configured.\");\n}\nif (apiKey !== expectedAdminKey) {\n    throw new Error(\"SECURITY_ALERT: Truy cập trái phép. Thiếu hoặc sai API Key quản trị. Nguy cơ Data Poisoning bị chặn!\");\n}\n\nlet hasFile = false;\nlet mime = '';\nlet ext = '';\nif ($input.first().binary && $input.first().binary.file) {\n    hasFile = true;\n    mime = ($input.first().binary.file.mimeType || '').toLowerCase();\n    ext = ($input.first().binary.file.fileExtension || '').toLowerCase();\n}\n\nreturn [{\n    json: {\n        passes: true,\n        hasFile: hasFile,\n        expiryDate: body.expiryDate || 'never',\n        title: body.title || 'Untitled Document',\n        mime: mime,\n        ext: ext\n    },\n    binary: $input.first().binary\n}];"
+        "jsCode": "const input = $input.first();\nconst body = input.json.body || {};\nconst headers = input.json.headers || {};\nconst expectedAdminKey = String($env.ADMIN_UPLOAD_KEY || '').trim();\nconst apiKey = String(headers['x-admin-key'] || headers['X-Admin-Key'] || body.adminKey || '').trim();\nif (!expectedAdminKey) throw new Error('CONFIG_ERROR: ADMIN_UPLOAD_KEY is not configured.');\nif (apiKey !== expectedAdminKey) throw new Error('SECURITY_ALERT: Truy cập trái phép.');\n\nconst operation = String(body.operation || '').trim().toUpperCase();\nconst reviewOperations = ['LIST_REVIEWS', 'GET_REVIEW', 'SAVE_REVIEW', 'APPROVE_REVIEW', 'REJECT_REVIEW', 'LIST_LIFECYCLE', 'WITHDRAW_DOCUMENT'];\nif (operation) {\n  if (!reviewOperations.includes(operation)) return [{ json: { passes: false, isReviewOperation: true, code: 'INVALID_OPERATION', message: 'Thao tác kiểm duyệt không hợp lệ.' } }];\n  const documentID = String(body.documentID || '').trim();\n  const contentVersion = Number(body.contentVersion || 0);\n  const editRevision = Number(body.editRevision || 0);\n  const editedContent = String(body.editedContent || '');\n  const reason = String(body.reason || '').trim();\n  const effectiveFromDate = String(body.effectiveFromDate || '').trim();\n  const effectiveToDate = String(body.effectiveToDate || '').trim();\n  const actor = String(headers['x-verified-user'] || body.username || '').trim();\n  const requestID = String(headers['x-request-id'] || headers['x-correlation-id'] || '').trim();\n  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\n  let code = '';\n  let message = '';\n  if (!['LIST_REVIEWS', 'LIST_LIFECYCLE'].includes(operation) && !uuidPattern.test(documentID)) { code = 'INVALID_DOCUMENT_ID'; message = 'Mã tài liệu không hợp lệ.'; }\n  else if (['SAVE_REVIEW', 'APPROVE_REVIEW', 'REJECT_REVIEW', 'WITHDRAW_DOCUMENT'].includes(operation) && !actor) { code = 'REVIEWER_REQUIRED'; message = 'Không xác định được người duyệt.'; }\n  else if (['SAVE_REVIEW', 'APPROVE_REVIEW'].includes(operation) && !editedContent.trim()) { code = 'EMPTY_REVIEW_CONTENT'; message = 'Nội dung duyệt không được để trống.'; }\n  else if (editedContent.length > 500000) { code = 'CONTENT_TOO_LARGE'; message = 'Nội dung duyệt vượt quá 500.000 ký tự.'; }\n  else if (['REJECT_REVIEW', 'WITHDRAW_DOCUMENT'].includes(operation) && !reason) { code = 'REJECT_REASON_REQUIRED'; message = 'Vui lòng nhập lý do từ chối.'; }\n  else if (reason.length > 1000) { code = 'REASON_TOO_LARGE'; message = 'Lý do vượt quá 1.000 ký tự.'; }\n  else {\n    const datePattern = /^\\d{4}-\\d{2}-\\d{2}$/;\n    const isValidDate = (value) => !value || (datePattern.test(value) && new Date(value + 'T00:00:00.000Z').toISOString().slice(0, 10) === value);\n    if (!isValidDate(effectiveFromDate) || !isValidDate(effectiveToDate)) { code = 'INVALID_EFFECTIVE_DATE'; message = 'Ngày hiệu lực không hợp lệ.'; }\n    else if (effectiveFromDate && effectiveToDate && effectiveToDate < effectiveFromDate) { code = 'INVALID_EFFECTIVE_RANGE'; message = 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.'; }\n  }\n  return [{ json: {\n    passes: !code,\n    isReviewOperation: true,\n    operation,\n    documentID,\n    contentVersion,\n    editRevision,\n    editedContent,\n    reason,\n    actor,\n    requestID,\n    effectiveFromDate,\n    effectiveToDate,\n    code,\n    message\n  } }];\n}\n\nif (!input.binary || !input.binary.file) return [{ json: { passes: false, isReviewOperation: false, code: 'EMPTY_FILE', message: 'File rỗng, vui lòng chọn file khác.' } }];\nconst file = input.binary.file;\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst originalFileName = String(file.fileName || '').trim();\nconst baseName = originalFileName.split(/[\\/]/).pop();\nconst ext = String(file.fileExtension || baseName.split('.').pop() || '').toLowerCase();\nconst mime = String(file.mimeType || '').toLowerCase();\nconst title = String(body.title || '').trim();\nconst sourceType = String(body.sourceType || '').trim().toUpperCase();\nconst sourceReference = String(body.sourceReference || '').trim();\nconst uploadedBy = String(headers['x-verified-user'] || body.username || '').trim();\nconst sourceTypes = ['POLICY', 'CATALOG', 'PROMOTION', 'INTERNAL_RULE', 'OTHER'];\nconst definitions = {\n  pdf: { mime: 'application/pdf', signature: buffer.subarray(0, 5).toString('ascii') === '%PDF-' },\n  xlsx: { mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', signature: buffer[0] === 0x50 && buffer[1] === 0x4b },\n  png: { mime: 'image/png', signature: buffer.subarray(0, 8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a])) },\n  jpg: { mime: 'image/jpeg', signature: buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff },\n  jpeg: { mime: 'image/jpeg', signature: buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff }\n};\nlet code = '';\nlet message = '';\nif (!buffer.length) { code = 'EMPTY_FILE'; message = 'File rỗng, vui lòng chọn file khác.'; }\nelse if (buffer.length > 10 * 1024 * 1024) { code = 'FILE_TOO_LARGE'; message = 'File vượt quá giới hạn 10 MB.'; }\nelse if (!definitions[ext] || baseName !== originalFileName) { code = 'UNSUPPORTED_FILE_TYPE'; message = 'Chỉ hỗ trợ PDF, XLSX, PNG và JPG/JPEG.'; }\nelse if (mime !== definitions[ext].mime || !definitions[ext].signature) { code = 'FILE_SIGNATURE_MISMATCH'; message = 'Nội dung file không khớp phần mở rộng hoặc MIME.'; }\nelse if (!title || !sourceTypes.includes(sourceType) || !sourceReference || !uploadedBy) { code = 'INVALID_SOURCE_METADATA'; message = 'Thiếu tiêu đề, loại nguồn hoặc mô tả nguồn tài liệu.'; }\nif (code) return [{ json: { passes: false, isReviewOperation: false, status: 'error', code, message } }];\nconst documentID = globalThis.crypto.randomUUID();\nreturn [{ json: {\n  passes: true,\n  isReviewOperation: false,\n  status: 'quarantined',\n  documentID,\n  originalFileName,\n  safeFileName: documentID + '.' + (ext === 'jpeg' ? 'jpg' : ext),\n  ext,\n  declaredMimeType: mime,\n  detectedMimeType: definitions[ext].mime,\n  fileSizeBytes: buffer.length,\n  sha256Hex: '',\n  title,\n  sourceType,\n  sourceReference,\n  sourceChannel: 'RAG_ADMIN',\n  uploadedBy,\n  malwareScanStatus: 'PENDING',\n  malwareScanner: '',\n  reviewStatus: 'PENDING_REVIEW',\n  expiryDate: body.expiryDate || 'never',\n  requestID: String(headers['x-request-id'] || headers['x-correlation-id'] || '').trim()\n}, binary: input.binary }];"
       },
       "id": "check-auth-format",
       "name": "Check Auth & Format",
@@ -74,7 +74,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { status: 'error', message: 'Access Denied or No File Uploaded.' } }];"
+        "jsCode": "const input = $input.first().json || {};\nreturn [{ json: { status: 'error', code: input.code || 'REQUEST_REJECTED', message: input.message || 'Yêu cầu không đạt điều kiện an toàn.' } }];"
       },
       "id": "respond-error",
       "name": "Respond Error",
@@ -386,7 +386,7 @@
         }
       },
       "id": "webhook-approve-catalog",
-      "name": "Webhook Approve Catalog",
+      "name": "approve-catalog",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
@@ -536,25 +536,765 @@
         950,
         750
       ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.RAG_QUARANTINE_DIR + '/' + $json.safeFileName }}",
+        "dataPropertyName": "file",
+        "options": {
+          "append": false
+        }
+      },
+      "id": "rag001-write-quarantine",
+      "name": "RAG001 Write Quarantine Binary",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        650,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "executeOnce": true,
+        "command": "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"={{ $env.RAG_SCAN_SCRIPT }}\" -LiteralPath \"={{ $env.RAG_QUARANTINE_DIR + '/' + $json.safeFileName }}\""
+      },
+      "id": "rag001-scan-defender",
+      "name": "RAG001 Scan with Defender",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Check Auth & Format').first().json;\nlet scan = {};\ntry { scan = JSON.parse($json.stdout || '{}'); } catch (_) { scan = { status: 'SCAN_ERROR' }; }\nconst status = String(scan.status || '').toUpperCase();\nconst code = status === 'INFECTED' ? 'MALWARE_DETECTED' : status === 'CLEAN' ? null : 'MALWARE_SCAN_UNAVAILABLE';\nreturn [{ json: { ...original, sha256Hex: scan.sha256Hex || '', malwareScanStatus: status || 'SCAN_ERROR', malwareScanner: scan.scanner || '', malwareScannedAt: new Date().toISOString(), passes: status === 'CLEAN', code, message: code === 'MALWARE_DETECTED' ? 'File bị từ chối vì phát hiện nguy cơ malware.' : code ? 'Chưa thể quét an toàn; file chưa được sử dụng và cần thử lại sau.' : '' } }];"
+      },
+      "id": "rag001-check-scan",
+      "name": "RAG001 Check Scan Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1150,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.passes }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "rag001-if-clean",
+      "name": "RAG001 If Scan Clean",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @DocumentID UNIQUEIDENTIFIER='{{ $json.documentID }}';\nDECLARE @OriginalFileName NVARCHAR(260)=N'{{ $json.originalFileName.replace(/'/g, \"''\") }}';\nDECLARE @SafeFileName VARCHAR(80)='{{ $json.safeFileName.replace(/'/g, \"''\") }}';\nDECLARE @Ext VARCHAR(10)='{{ $json.ext.replace(/'/g, \"''\") }}';\nDECLARE @DeclaredMime VARCHAR(150)='{{ $json.declaredMimeType.replace(/'/g, \"''\") }}';\nDECLARE @DetectedMime VARCHAR(150)='{{ $json.detectedMimeType.replace(/'/g, \"''\") }}';\nDECLARE @FileSize BIGINT={{ $json.fileSizeBytes }};\nDECLARE @Sha256 CHAR(64)='{{ $json.sha256Hex }}';\nDECLARE @Title NVARCHAR(300)=N'{{ $json.title.replace(/'/g, \"''\") }}';\nDECLARE @SourceType VARCHAR(30)='{{ $json.sourceType }}';\nDECLARE @SourceReference NVARCHAR(500)=N'{{ $json.sourceReference.replace(/'/g, \"''\") }}';\nDECLARE @UploadedBy VARCHAR(100)='{{ $json.uploadedBy.replace(/'/g, \"''\") }}';\nDECLARE @Scanner NVARCHAR(100)=N'{{ $json.malwareScanner.replace(/'/g, \"''\") }}';\nDECLARE @RequestID VARCHAR(100)=NULLIF('{{ ($json.requestID || '').replace(/'/g, \"''\") }}','');\nDECLARE @EffectiveTo DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.expiryDate }}','never'));\n\nINSERT dbo.AI_RagDocumentTbl\n  (DocumentID,OriginalFileName,SafeFileName,FileExtension,DeclaredMimeType,DetectedMimeType,FileSizeBytes,Sha256Hex,Title,SourceType,SourceReference,SourceChannel,UploadedBy,MalwareScanStatus,MalwareScanner,MalwareScannedAt,ReviewStatus,EffectiveTo,RequestID)\nVALUES\n  (@DocumentID,@OriginalFileName,@SafeFileName,@Ext,@DeclaredMime,@DetectedMime,@FileSize,@Sha256,@Title,@SourceType,@SourceReference,'RAG_ADMIN',@UploadedBy,'CLEAN',@Scanner,SYSUTCDATETIME(),'PENDING_REVIEW',@EffectiveTo,@RequestID);\n\nSELECT CONVERT(VARCHAR(36),@DocumentID) AS DocumentID,'PENDING_REVIEW' AS ReviewStatus,'CLEAN' AS MalwareScanStatus;"
+      },
+      "id": "rag001-save-quarantine",
+      "name": "RAG001 Save Quarantine Metadata",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        650,
+        180
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json || {};\nreturn [{ json: {\n  status: 'success',\n  code: 'QUARANTINED_PENDING_REVIEW',\n  message: 'File đã qua kiểm tra đầu vào và được lưu metadata ở hàng đợi kiểm duyệt. Chatbot chưa sử dụng tài liệu này.',\n  documentID: row.DocumentID,\n  malwareScanStatus: row.MalwareScanStatus,\n  reviewStatus: row.ReviewStatus,\n  usableByChatbot: false\n} }];"
+      },
+      "id": "rag001-respond-quarantine",
+      "name": "RAG001 Respond Quarantined",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isReviewOperation }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "rag002-if-review-operation",
+      "name": "RAG002 If Review Operation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.passes }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "rag002-if-review-valid",
+      "name": "RAG002 If Review Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "LIST_REVIEWS",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LIST_REVIEWS"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "GET_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "GET_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "SAVE_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "SAVE_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "APPROVE_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "APPROVE_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "REJECT_REVIEW",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "REJECT_REVIEW"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "LIST_LIFECYCLE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LIST_LIFECYCLE"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "rightValue": "WITHDRAW_DOCUMENT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WITHDRAW_DOCUMENT"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "rag002-route-review-operation",
+      "name": "RAG002 Route Review Operation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        650,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  'success' AS status,\n  'REVIEW_QUEUE' AS code,\n  CONVERT(VARCHAR(36),D.DocumentID) AS documentID,\n  D.Title AS title,\n  D.OriginalFileName AS originalFileName,\n  D.SourceType AS sourceType,\n  D.SourceReference AS sourceReference,\n  D.UploadedBy AS uploadedBy,\n  CONVERT(VARCHAR(33),D.UploadedAt,126)+'Z' AS uploadedAt,\n  D.MalwareScanStatus AS malwareScanStatus,\n  D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  C.ContentVersion AS contentVersion,\n  C.EditRevision AS editRevision,\n  C.ExtractionStatus AS extractionStatus,\n  C.ExtractionMethod AS extractionMethod,\n  C.Confidence AS confidence,\n  LEN(COALESCE(C.EditedContent,C.ExtractedContent,N'')) AS contentLength\nFROM dbo.AI_RagDocumentTbl AS D\nOUTER APPLY\n(\n  SELECT TOP (1) ContentVersion,EditRevision,ExtractionStatus,ExtractionMethod,Confidence,ExtractedContent,EditedContent\n  FROM dbo.AI_RagDocumentContentTbl AS Content\n  WHERE Content.DocumentID=D.DocumentID\n  ORDER BY Content.ContentVersion DESC\n) AS C\nWHERE D.MalwareScanStatus='CLEAN' AND D.ReviewStatus='PENDING_REVIEW'\nORDER BY D.UploadedAt DESC;"
+      },
+      "id": "rag002-review-list",
+      "name": "RAG002 Review List",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        900,
+        440
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @DocumentID UNIQUEIDENTIFIER=TRY_CONVERT(UNIQUEIDENTIFIER,'{{ $json.documentID }}');\nSELECT TOP (1)\n  'success' AS status,\n  'REVIEW_DETAIL' AS code,\n  CONVERT(VARCHAR(36),D.DocumentID) AS documentID,\n  D.Title AS title,\n  D.OriginalFileName AS originalFileName,\n  D.SourceType AS sourceType,\n  D.SourceReference AS sourceReference,\n  D.UploadedBy AS uploadedBy,\n  CONVERT(VARCHAR(33),D.UploadedAt,126)+'Z' AS uploadedAt,\n  D.MalwareScanStatus AS malwareScanStatus,\n  D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,\n  C.ContentVersion AS contentVersion,\n  C.EditRevision AS editRevision,\n  C.ExtractionStatus AS extractionStatus,\n  C.ExtractionMethod AS extractionMethod,\n  C.Confidence AS confidence,\n  COALESCE(C.EditedContent,C.ExtractedContent,N'') AS editedContent,\n  D.ReviewNote AS reviewNote\nFROM dbo.AI_RagDocumentTbl AS D\nJOIN dbo.AI_RagDocumentContentTbl AS C ON C.DocumentID=D.DocumentID\nWHERE D.DocumentID=@DocumentID\nORDER BY C.ContentVersion DESC;"
+      },
+      "id": "rag002-review-detail",
+      "name": "RAG002 Review Detail",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        900,
+        560
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SET NOCOUNT ON;\nSET XACT_ABORT ON;\nDECLARE @Operation VARCHAR(20)='{{ $json.operation }}';\nDECLARE @DocumentID UNIQUEIDENTIFIER=TRY_CONVERT(UNIQUEIDENTIFIER,'{{ $json.documentID }}');\nDECLARE @RequestedVersion INT={{ $json.contentVersion || 0 }};\nDECLARE @RequestedRevision INT={{ $json.editRevision || 0 }};\nDECLARE @Actor VARCHAR(100)='{{ $json.actor.replace(/'/g, \"''\") }}';\nDECLARE @EditedContent NVARCHAR(MAX)=N'{{ $json.editedContent.replace(/'/g, \"''\") }}';\nDECLARE @Reason NVARCHAR(1000)=N'{{ $json.reason.replace(/'/g, \"''\") }}';\nDECLARE @RequestID VARCHAR(100)=NULLIF('{{ $json.requestID.replace(/'/g, \"''\") }}','');\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;\nDECLARE @CurrentStatus VARCHAR(20),@MalwareStatus VARCHAR(20),@ExtractionStatus VARCHAR(20);\nDECLARE @ContentVersion INT,@EditRevision INT,@NewRevision INT,@ExtractionMethod VARCHAR(30),@Confidence VARCHAR(20);\nDECLARE @CurrentContent NVARCHAR(MAX),@Title NVARCHAR(300),@SourceType VARCHAR(30),@SourceReference NVARCHAR(500);\nDECLARE @Sha256 CHAR(64),@Error VARCHAR(50)='',@Message NVARCHAR(500)=N'';\n\nBEGIN TRANSACTION;\nSELECT @CurrentStatus=D.ReviewStatus,@MalwareStatus=D.MalwareScanStatus,@Title=D.Title,@SourceType=D.SourceType,@SourceReference=D.SourceReference\nFROM dbo.AI_RagDocumentTbl AS D WITH (UPDLOCK,HOLDLOCK)\nWHERE D.DocumentID=@DocumentID;\n\nSELECT TOP (1)\n  @ContentVersion=C.ContentVersion,@EditRevision=C.EditRevision,@ExtractionStatus=C.ExtractionStatus,\n  @ExtractionMethod=C.ExtractionMethod,@Confidence=C.Confidence,@CurrentContent=COALESCE(C.EditedContent,C.ExtractedContent,N'')\nFROM dbo.AI_RagDocumentContentTbl AS C WITH (UPDLOCK,HOLDLOCK)\nWHERE C.DocumentID=@DocumentID\nORDER BY C.ContentVersion DESC;\n\nIF @CurrentStatus IS NULL BEGIN SET @Error='DOCUMENT_NOT_FOUND'; SET @Message=N'Không tìm thấy tài liệu.'; END\nELSE IF @CurrentStatus<>'PENDING_REVIEW' BEGIN SET @Error='REVIEW_ALREADY_CLOSED'; SET @Message=N'Tài liệu không còn ở trạng thái chờ duyệt.'; END\nELSE IF @MalwareStatus<>'CLEAN' BEGIN SET @Error='DOCUMENT_NOT_CLEAN'; SET @Message=N'Tài liệu chưa qua cổng quét an toàn.'; END\nELSE IF @ContentVersion IS NULL BEGIN SET @Error='CONTENT_NOT_FOUND'; SET @Message=N'Chưa có nội dung OCR để duyệt.'; END\nELSE IF @RequestedVersion>0 AND @RequestedVersion<>@ContentVersion BEGIN SET @Error='CONTENT_VERSION_CONFLICT'; SET @Message=N'Phiên bản nội dung đã thay đổi.'; END\nELSE IF @RequestedRevision>0 AND @RequestedRevision<>@EditRevision BEGIN SET @Error='EDIT_CONFLICT'; SET @Message=N'Nội dung đã được người khác cập nhật. Vui lòng tải lại.'; END\nELSE IF @Operation IN ('SAVE_REVIEW','APPROVE_REVIEW') AND (LEN(LTRIM(RTRIM(@EditedContent)))=0 OR @ExtractionStatus<>'READY') BEGIN SET @Error='CONTENT_NOT_READY'; SET @Message=N'Nội dung OCR chưa sẵn sàng hoặc đang rỗng.'; END\nELSE IF @Operation='REJECT_REVIEW' AND LEN(LTRIM(RTRIM(@Reason)))=0 BEGIN SET @Error='REJECT_REASON_REQUIRED'; SET @Message=N'Vui lòng nhập lý do từ chối.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END\n\nIF @Error=''\nBEGIN\n  SET @NewRevision=@EditRevision;\n  IF @Operation IN ('SAVE_REVIEW','APPROVE_REVIEW')\n  BEGIN\n    SET @NewRevision=@EditRevision+1;\n    SET @Sha256=CONVERT(CHAR(64),HASHBYTES('SHA2_256',CONVERT(VARBINARY(MAX),@EditedContent)),2);\n    UPDATE dbo.AI_RagDocumentContentTbl\n      SET EditedContent=@EditedContent,EditedBy=@Actor,EditedAt=SYSUTCDATETIME(),EditRevision=@NewRevision,\n          ContentSha256Hex=@Sha256,UpdatedAt=SYSUTCDATETIME()\n      WHERE DocumentID=@DocumentID AND ContentVersion=@ContentVersion;\n  END\n  ELSE\n  BEGIN\n    SET @Sha256=CONVERT(CHAR(64),HASHBYTES('SHA2_256',CONVERT(VARBINARY(MAX),@CurrentContent)),2);\n  END;\n\n  IF @Operation='APPROVE_REVIEW'\n  BEGIN\n    UPDATE dbo.AI_RagDocumentTbl\n      SET ReviewStatus='APPROVED',ReviewedBy=@Actor,ReviewedAt=SYSUTCDATETIME(),ReviewNote=NULL,EffectiveFrom=@EffectiveFrom,EffectiveTo=@EffectiveTo,UpdatedAt=SYSUTCDATETIME()\n      WHERE DocumentID=@DocumentID;\n  END\n  ELSE IF @Operation='REJECT_REVIEW'\n  BEGIN\n    UPDATE dbo.AI_RagDocumentTbl\n      SET ReviewStatus='REJECTED',ReviewedBy=@Actor,ReviewedAt=SYSUTCDATETIME(),ReviewNote=@Reason,UpdatedAt=SYSUTCDATETIME()\n      WHERE DocumentID=@DocumentID;\n  END;\n\n  INSERT dbo.AI_RagDocumentReviewLogTbl\n    (DocumentID,ContentVersion,Action,Actor,PreviousStatus,NewStatus,EditRevision,Reason,ContentSha256Hex,RequestID)\n  VALUES\n    (@DocumentID,@ContentVersion,\n      CASE @Operation WHEN 'SAVE_REVIEW' THEN 'SAVE' WHEN 'APPROVE_REVIEW' THEN 'APPROVE' ELSE 'REJECT' END,\n      @Actor,@CurrentStatus,\n      CASE @Operation WHEN 'APPROVE_REVIEW' THEN 'APPROVED' WHEN 'REJECT_REVIEW' THEN 'REJECTED' ELSE @CurrentStatus END,\n      @NewRevision,NULLIF(@Reason,N''),@Sha256,@RequestID);\n\n  SET @Message=CASE @Operation WHEN 'SAVE_REVIEW' THEN N'Đã lưu bản nháp.' WHEN 'APPROVE_REVIEW' THEN N'Đã phê duyệt tài liệu.' ELSE N'Đã từ chối tài liệu.' END;\nEND;\n\nCOMMIT TRANSACTION;\nSELECT\n  CASE WHEN @Error='' THEN 'success' ELSE 'error' END AS status,\n  CASE WHEN @Error='' THEN @Operation ELSE @Error END AS code,\n  @Message AS message,\n  CONVERT(VARCHAR(36),@DocumentID) AS documentID,\n  @ContentVersion AS contentVersion,\n  @NewRevision AS editRevision,\n  CASE WHEN @Error='' AND @Operation='APPROVE_REVIEW' THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS publishApproved,\n  @Title AS title,\n  @SourceType AS sourceType,\n  @SourceReference AS sourceReference,\n  @ExtractionMethod AS extractionMethod,\n  @Confidence AS confidence,\n  CASE WHEN @Operation='APPROVE_REVIEW' THEN @EditedContent ELSE NULL END AS approvedContent,\n  CASE WHEN @Error='' AND @Operation='APPROVE_REVIEW' THEN 'APPROVED' WHEN @Error='' AND @Operation='REJECT_REVIEW' THEN 'REJECTED' ELSE @CurrentStatus END AS reviewStatus,\n  @MalwareStatus AS malwareScanStatus,\n  CONVERT(VARCHAR(33),@EffectiveFrom,126)+CASE WHEN @EffectiveFrom IS NULL THEN '' ELSE 'Z' END AS effectiveFrom,\n  CONVERT(VARCHAR(33),@EffectiveTo,126)+CASE WHEN @EffectiveTo IS NULL THEN '' ELSE 'Z' END AS effectiveTo;"
+      },
+      "id": "rag002-review-action-db",
+      "name": "RAG002 Review Action DB",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        900,
+        760
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.publishApproved }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "rag002-if-approval-ready",
+      "name": "RAG002 If Approval Ready",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1150,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json || {};\nconst content = String(row.approvedContent || '').trim();\nconst buffer = Buffer.from(content, 'utf8');\nreturn [{ json: {\n  documentID: row.documentID,\n  title: row.title,\n  sourceType: row.sourceType,\n  sourceReference: row.sourceReference,\n  contentVersion: row.contentVersion,\n  editRevision: row.editRevision,\n  extractionMethod: row.extractionMethod,\n  confidence: row.confidence,\n  reviewStatus: 'APPROVED',\n  malwareScanStatus: 'CLEAN',\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799,\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799\n}, binary: { approved_file: { data: buffer.toString('base64'), mimeType: 'text/plain', fileName: row.documentID + '.txt' } } }];"
+      },
+      "id": "rag002-prepare-approved-document",
+      "name": "RAG002 Prepare Approved Document",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "binaryPropertyName": "approved_file",
+        "options": {
+          "metadata": "={\n  \"documentID\": \"{{ $json.documentID }}\",\n  \"title\": \"{{ $json.title }}\",\n  \"sourceType\": \"{{ $json.sourceType }}\",\n  \"sourceReference\": \"{{ $json.sourceReference }}\",\n  \"contentVersion\": {{ $json.contentVersion }},\n  \"editRevision\": {{ $json.editRevision }},\n  \"reviewStatus\": \"APPROVED\",\n  \"malwareScanStatus\": \"CLEAN\",\n  \"effectiveFrom\": \"{{ $json.effectiveFrom }}\",\n  \"effectiveTo\": \"{{ $json.effectiveTo }}\",\n  \"effectiveFromEpoch\": {{ $json.effectiveFromEpoch }},\n  \"effectiveToEpoch\": {{ $json.effectiveToEpoch }}\n}"
+        }
+      },
+      "id": "rag002-approved-document-loader",
+      "name": "RAG002 Approved Document Loader",
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "options": {}
+      },
+      "id": "rag002-approved-embeddings",
+      "name": "RAG002 Approved Embeddings",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        1820,
+        920
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": "medstand-policies",
+        "options": {}
+      },
+      "id": "rag002-approved-vector-store",
+      "name": "RAG002 Approved Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        1820,
+        680
+      ],
+      "credentials": {
+        "qdrantApi": {
+          "id": "Smpjg3Jo47EbcJNc",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $('RAG002 Review Action DB').first().json || {};\nreturn [{ json: {\n  status: row.status,\n  code: row.code,\n  message: row.message,\n  documentID: row.documentID,\n  contentVersion: row.contentVersion,\n  editRevision: row.editRevision,\n  reviewStatus: row.reviewStatus,\n  usableByChatbot: row.status === 'success' && row.reviewStatus === 'APPROVED'\n} }];"
+      },
+      "id": "rag002-respond-review-action",
+      "name": "RAG002 Respond Review Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2070,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ext }}",
+              "operation": "equal",
+              "value2": "xlsx"
+            }
+          ]
+        }
+      },
+      "id": "rag002-if-xlsx",
+      "name": "RAG002 If XLSX",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "file",
+        "options": {
+          "headerRow": false,
+          "readAsString": true
+        }
+      },
+      "id": "rag002-extract-xlsx",
+      "name": "RAG002 Extract XLSX",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2070,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "let fullText = '';\nfor (const item of $input.all()) {\n  const line = Object.values(item.json || {}).filter((value) => value !== null && value !== undefined && String(value).trim() !== '').join(' | ');\n  if (line.trim()) fullText += line + '\n';\n}\nconst source = $('RAG001 Check Scan Result').first().json;\nreturn [{ json: { ...source, extractionMethod: 'XLSX_TEXT', extractionStatus: fullText.trim() ? 'READY' : 'ERROR', confidence: null, extractedContent: fullText.trim() } }];"
+      },
+      "id": "rag002-normalize-xlsx",
+      "name": "RAG002 Normalize XLSX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2290,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.ext }}",
+              "operation": "equal",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "id": "rag002-if-pdf",
+      "name": "RAG002 If PDF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2070,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "file",
+        "options": {
+          "joinPages": true,
+          "keepSource": "json",
+          "maxPages": 0
+        }
+      },
+      "id": "rag002-extract-pdf",
+      "name": "RAG002 Extract PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2290,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const extracted = $input.first().json || {};\nconst source = $('RAG001 Check Scan Result').first().json;\nconst content = Array.isArray(extracted.text) ? extracted.text.join('\n\n') : String(extracted.text || '');\nreturn [{ json: { ...source, extractionMethod: 'PDF_TEXT', extractionStatus: content.trim() ? 'READY' : 'ERROR', confidence: null, extractedContent: content.trim() } }];"
+      },
+      "id": "rag002-normalize-pdf",
+      "name": "RAG002 Normalize PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2510,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'file');\nconst mimeType = item.binary.file.mimeType || 'image/png';\nreturn [{ json: {\n  model: 'openai/gpt-4o-mini',\n  messages: [\n    { role: 'system', content: 'Bạn là công cụ OCR. Trích xuất nguyên văn toàn bộ chữ trong ảnh, giữ thứ tự đọc, không tóm tắt, không thêm nội dung. Chỉ trả về văn bản thuần.' },\n    { role: 'user', content: [\n      { type: 'text', text: 'Trích xuất nguyên văn nội dung trong ảnh này.' },\n      { type: 'image_url', image_url: { url: 'data:' + mimeType + ';base64,' + buffer.toString('base64') } }\n    ] }\n  ]\n} }];"
+      },
+      "id": "rag002-prep-vision-ocr",
+      "name": "RAG002 Prep Vision OCR",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2290,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "method": "POST",
+        "url": "={{ $env.LLM_API_BASE ? $env.LLM_API_BASE : 'https://openrouter.ai/api/v1' }}/chat/completions",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}"
+      },
+      "id": "rag002-vision-ocr",
+      "name": "RAG002 Vision OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2510,
+        320
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "frs6ZRDbNFeYhZf7",
+          "name": "OpenAi account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json || {};\nconst source = $('RAG001 Check Scan Result').first().json;\nconst content = String(result.choices?.[0]?.message?.content || '').replace(/```(?:text)?|```/gi, '').trim();\nreturn [{ json: { ...source, extractionMethod: 'VISION_OCR', extractionStatus: content ? 'READY' : 'ERROR', confidence: content ? 'MEDIUM' : null, extractedContent: content } }];"
+      },
+      "id": "rag002-normalize-vision",
+      "name": "RAG002 Normalize Vision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2730,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @DocumentID UNIQUEIDENTIFIER=TRY_CONVERT(UNIQUEIDENTIFIER,'{{ $json.documentID }}');\nDECLARE @Method VARCHAR(30)='{{ $json.extractionMethod }}';\nDECLARE @Status VARCHAR(20)='{{ $json.extractionStatus }}';\nDECLARE @Confidence VARCHAR(20)=NULLIF('{{ $json.confidence || '' }}','');\nDECLARE @Content NVARCHAR(MAX)=N'{{ $json.extractedContent.replace(/'/g, \"''\") }}';\nDECLARE @Sha256 CHAR(64)=CASE WHEN LEN(@Content)>0 THEN CONVERT(CHAR(64),HASHBYTES('SHA2_256',CONVERT(VARBINARY(MAX),@Content)),2) ELSE NULL END;\nINSERT dbo.AI_RagDocumentContentTbl\n  (DocumentID,ContentVersion,ExtractedContent,ExtractionMethod,ExtractionStatus,Confidence,ExtractedAt,ContentSha256Hex)\nVALUES\n  (@DocumentID,1,NULLIF(@Content,N''),@Method,@Status,@Confidence,SYSUTCDATETIME(),@Sha256);\nSELECT\n  'success' AS status,\n  CASE WHEN @Status='READY' THEN 'OCR_DRAFT_READY' ELSE 'OCR_DRAFT_ERROR' END AS code,\n  CONVERT(VARCHAR(36),@DocumentID) AS documentID,\n  @Status AS extractionStatus,\n  @Method AS extractionMethod,\n  'PENDING_REVIEW' AS reviewStatus,\n  CAST(0 AS BIT) AS usableByChatbot;"
+      },
+      "id": "rag002-save-ocr-draft",
+      "name": "RAG002 Save OCR Draft",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        2950,
+        180
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json || {};\nreturn [{ json: {\n  status: row.status,\n  code: row.code,\n  message: row.extractionStatus === 'READY'\n    ? 'File đã quét an toàn, bóc tách thành bản nháp và đưa vào hàng đợi duyệt.'\n    : 'File đã quét an toàn nhưng chưa bóc tách được nội dung. Cần kiểm tra thủ công.',\n  documentID: row.documentID,\n  malwareScanStatus: 'CLEAN',\n  extractionStatus: row.extractionStatus,\n  extractionMethod: row.extractionMethod,\n  reviewStatus: row.reviewStatus,\n  usableByChatbot: false\n} }];"
+      },
+      "id": "rag002-respond-ocr-draft",
+      "name": "RAG002 Respond OCR Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3170,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const metadata = $input.first().json || {};\nconst scan = $('RAG001 Check Scan Result').first();\nconst original = $('Check Auth & Format').first();\nreturn [{ json: { ...scan.json, ...metadata }, binary: original.binary }];"
+      },
+      "id": "rag002-reattach-clean-file",
+      "name": "RAG002 Reattach Clean File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1170,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @DocumentID UNIQUEIDENTIFIER=TRY_CONVERT(UNIQUEIDENTIFIER,NULLIF('{{ $json.documentID }}',''));\nEXEC dbo.API_RagDocumentLifecycle_AI\n  @Operation='{{ $json.operation }}',\n  @DocumentID=@DocumentID,\n  @Actor=NULLIF('{{ $json.actor.replace(/'/g, \"''\") }}',''),\n  @Reason=NULLIF(N'{{ $json.reason.replace(/'/g, \"''\") }}',N''),\n  @RequestID=NULLIF('{{ $json.requestID.replace(/'/g, \"''\") }}','');"
+      },
+      "id": "rag003-lifecycle-db",
+      "name": "RAG003 Lifecycle DB",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        900,
+        1040
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.status === 'success' && $json.code === 'WITHDRAW_DOCUMENT' }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "rag003-if-withdraw-success",
+      "name": "RAG003 If Withdraw Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        1040
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333' }}/collections/medstand-policies/points/delete?wait=true",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"filter\": { \"must\": [ { \"key\": \"metadata.documentID\", \"match\": { \"value\": \"{{ $json.documentID }}\" } } ] } }"
+      },
+      "id": "rag003-delete-withdrawn-vectors",
+      "name": "RAG003 Delete Withdrawn Vectors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1340,
+        960
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dbRows = $('RAG003 Lifecycle DB').all().map((item) => item.json);\nconst first = dbRows[0] || {};\nreturn [{ json: dbRows.length > 1 || first.code === 'LIFECYCLE_LIST'\n  ? { status: 'success', code: 'LIFECYCLE_LIST', records: dbRows }\n  : { ...first, vectorCleanupRequested: first.status === 'success' && first.code === 'WITHDRAW_DOCUMENT' }\n}];"
+      },
+      "id": "rag003-respond-lifecycle",
+      "name": "RAG003 Respond Lifecycle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        1040
+      ]
     }
   ],
   "connections": {
-    "Webhook Admin Upload": {
-      "main": [
-        [
-          {
-            "node": "Check Auth & Format",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Check Auth & Format": {
       "main": [
         [
           {
-            "node": "If Admin & Has File",
+            "node": "RAG002 If Review Operation",
             "type": "main",
             "index": 0
           }
@@ -565,7 +1305,7 @@
       "main": [
         [
           {
-            "node": "Route by File Type",
+            "node": "RAG001 Write Quarantine Binary",
             "type": "main",
             "index": 0
           }
@@ -734,12 +1474,7 @@
       "ai_textSplitter": [
         [
           {
-            "node": "Default Data Loader",
-            "type": "ai_textSplitter",
-            "index": 0
-          },
-          {
-            "node": "Document Loader Sync",
+            "node": "RAG002 Approved Document Loader",
             "type": "ai_textSplitter",
             "index": 0
           }
@@ -751,17 +1486,6 @@
         [
           {
             "node": "Respond Success",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Webhook Approve Catalog": {
-      "main": [
-        [
-          {
-            "node": "Check Approve Auth",
             "type": "main",
             "index": 0
           }
@@ -835,6 +1559,527 @@
         [
           {
             "node": "Respond Approve Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG001 Save Quarantine Metadata": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Reattach Clean File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG001 Write Quarantine Binary": {
+      "main": [
+        [
+          {
+            "node": "RAG001 Scan with Defender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG001 Scan with Defender": {
+      "main": [
+        [
+          {
+            "node": "RAG001 Check Scan Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG001 Check Scan Result": {
+      "main": [
+        [
+          {
+            "node": "RAG001 If Scan Clean",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG001 If Scan Clean": {
+      "main": [
+        [
+          {
+            "node": "RAG001 Save Quarantine Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "admin-upload": {
+      "main": [
+        [
+          {
+            "node": "Check Auth & Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "approve-catalog": {
+      "main": [
+        [
+          {
+            "node": "Check Approve Auth",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 If Review Operation": {
+      "main": [
+        [
+          {
+            "node": "RAG002 If Review Valid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If Admin & Has File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 If Review Valid": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Route Review Operation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Route Review Operation": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Review List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Review Detail",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Review Action DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Review Action DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Review Action DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Lifecycle DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Review Action DB": {
+      "main": [
+        [
+          {
+            "node": "RAG002 If Approval Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 If Approval Ready": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Prepare Approved Document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Respond Review Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Prepare Approved Document": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Approved Document Loader",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Approved Document Loader": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Approved Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "ai_document": [
+        [
+          {
+            "node": "RAG002 Approved Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Approved Vector Store": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Respond Review Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Approved Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "RAG002 Approved Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Reattach Clean File": {
+      "main": [
+        [
+          {
+            "node": "RAG002 If XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 If XLSX": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Extract XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 If PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Extract XLSX": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Normalize XLSX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 If PDF": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG002 Prep Vision OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Normalize PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Prep Vision OCR": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Vision OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Vision OCR": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Normalize Vision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Normalize XLSX": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Save OCR Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Normalize PDF": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Save OCR Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Normalize Vision": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Save OCR Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG002 Save OCR Draft": {
+      "main": [
+        [
+          {
+            "node": "RAG002 Respond OCR Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG003 Lifecycle DB": {
+      "main": [
+        [
+          {
+            "node": "RAG003 If Withdraw Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG003 If Withdraw Success": {
+      "main": [
+        [
+          {
+            "node": "RAG003 Delete Withdrawn Vectors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "RAG003 Respond Lifecycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG003 Delete Withdrawn Vectors": {
+      "main": [
+        [
+          {
+            "node": "RAG003 Respond Lifecycle",
             "type": "main",
             "index": 0
           }

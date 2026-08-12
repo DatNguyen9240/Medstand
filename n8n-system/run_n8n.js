@@ -17,8 +17,8 @@ process.env.N8N_USER_FOLDER = path.join(__dirname, 'n8n_data');
 process.env.PM2_HOME = path.join(process.env.N8N_USER_FOLDER, '.pm2');
 process.env.NODE_PATH = path.join(__dirname, 'n8n_data', 'npm_global', 'node_modules');
 process.env.N8N_PORT = "5678";
-process.env.N8N_HOST = "0.0.0.0";
-process.env.N8N_LISTEN_ADDRESS = "0.0.0.0";
+process.env.N8N_HOST = "127.0.0.1";
+process.env.N8N_LISTEN_ADDRESS = "127.0.0.1";
 process.env.N8N_PROTOCOL = "http";
 process.env.N8N_DEFAULT_CORS = "true";
 process.env.N8N_CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000,https://medtest.bms7.net";
@@ -35,6 +35,11 @@ process.env.N8N_HIRING_BANNER_ENABLED = "false";
 process.env.N8N_BASIC_AUTH_ACTIVE = "false";
 process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = "false";
 process.env.N8N_DISABLE_TASK_RUNNERS = "true";
+process.env.NODES_EXCLUDE = "[]";
+process.env.RAG_MALWARE_SCANNER_READY = "true";
+process.env.RAG_SCAN_SCRIPT = path.join(__dirname, '..', 'scripts', 'rag001_scan_file.ps1');
+process.env.RAG_QUARANTINE_DIR = path.join(__dirname, 'n8n_data', 'rag-quarantine');
+fs.mkdirSync(process.env.RAG_QUARANTINE_DIR, { recursive: true });
 
 const { spawn } = require('child_process');
 
@@ -63,7 +68,7 @@ if (n8nOk) {
 
 const child = spawn(cmd, args, {
   stdio: 'inherit',
-  shell: true,
+  shell: false,
   windowsHide: true,
   cwd: path.join(__dirname, '..')
 });

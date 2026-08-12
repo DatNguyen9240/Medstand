@@ -111,6 +111,9 @@
         var sideEffects = pick(row, ['SideEffects', 'Tác Dụng Phụ', 'TacDungPhu']);
         var recommendation = pick(row, ['RecommendationStatus', 'Trạng Thái Khuyến Nghị', 'TrangThaiKhuyenNghi']);
         var disclaimer = pick(row, ['MedicalDisclaimer', 'Cảnh Báo Chuyên Môn', 'CanhBaoChuyenMon']);
+        var promotionSummary = pick(row, ['PromotionSummary', 'CTBH hiện hành', 'ChuongTrinhBanHang']);
+        var promotionCount = number(pick(row, ['ActivePromotionCount', 'Số CTBH hiện hành']));
+        var promotionUpdatedAt = pick(row, ['PromotionUpdatedAt', 'Cập nhật CTBH lúc']);
         var hasDetails = ingredients || usage || contraindications || sideEffects || recommendation || disclaimer;
 
         var html = '<article class="ai-product-card">'
@@ -123,9 +126,10 @@
             + '<div class="ai-product-stock-time"><span>Cập nhật: <strong>' + esc(formatDate(updatedAt || asOfAt) || '—') + '</strong></span>'
             + (storeId && storeId !== storeName ? '<span>Mã kho: <strong>' + esc(storeId) + '</strong></span>' : '') + '</div>';
 
-        if (permissions.showProductInfo && (uses || target)) {
+        if (permissions.showProductInfo && (uses || target || promotionSummary)) {
             html += '<section class="ai-product-summary">' + infoBlock('Công dụng', shortText(uses, 190))
-                + infoBlock('Đối tượng sử dụng', shortText(target, 190)) + '</section>';
+                + infoBlock('Đối tượng sử dụng', shortText(target, 190))
+                + infoBlock('CTBH hiện hành', shortText(promotionSummary, 260)) + '</section>';
         }
         if (permissions.showProductInfo && hasDetails) {
             html += '<details class="ai-product-details"><summary>Xem thành phần, cách dùng và cảnh báo</summary><dl>'
@@ -141,7 +145,10 @@
                 + detailRow('Phiên bản quy tắc tồn', pick(row, ['StockRuleVersion']))
                 + detailRow('Nguồn dữ liệu', pick(row, ['DataSource', 'Nguồn dữ liệu']))
                 + detailRow('Nguồn dữ liệu tồn', pick(row, ['StockDataSource', 'Nguồn dữ liệu tồn']))
-                + detailRow('Trạng thái dữ liệu tồn', pick(row, ['StockDataStatus', 'Trạng thái dữ liệu tồn kho'])) + '</dl></details>';
+                + detailRow('Trạng thái dữ liệu tồn', pick(row, ['StockDataStatus', 'Trạng thái dữ liệu tồn kho']))
+                + detailRow('Số CTBH hiện hành', promotionCount)
+                + detailRow('Cập nhật CTBH lúc', formatDate(promotionUpdatedAt))
+                + detailRow('Nguồn CTBH', pick(row, ['PromotionDataSource'])) + '</dl></details>';
         }
         return html + '</article>';
     }
