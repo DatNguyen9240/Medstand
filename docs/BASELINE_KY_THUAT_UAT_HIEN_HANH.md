@@ -1,6 +1,6 @@
 # Baseline kỹ thuật và UAT hiện hành
 
-- Cập nhật: `09/08/2026`
+- Cập nhật: `10/08/2026`
 - Môi trường kiểm tra browser: frontend server `11.112`, DB `medtest`, timezone `UTC+07:00`
 
 Tài liệu này thay thế các báo cáo UAT/CORE theo từng ngày đã hoàn tất. Chi tiết task và việc còn lại được quản lý tại [backlog](BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md); contract nghiệp vụ vẫn nằm trong các tài liệu contract riêng.
@@ -43,6 +43,24 @@ Contract chi tiết được giữ tại:
 - [Tạo khách hàng](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md)
 - [Lập đơn hàng](CORE-004_CONTRACT_CHAT_LAP_DON_HANG_2026-08-03.md)
 - [Phân nhóm A/B/C](CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md)
+
+## Trạng thái Catalog Phase 2
+
+Đánh giá lại ngày `10/08/2026` xác nhận `CAT-001`–`CAT-004` đã đạt nghiệm thu kỹ thuật/nghiệp vụ hiện tại.
+
+| Task | Trạng thái | Kết quả và phần còn mở |
+|---|---|---|
+| CAT-001 | DONE | Lớp tri thức có version, nguồn, trạng thái duyệt và hiệu lực đã deploy; UAT sáu phiên bản chỉ công bố đúng bản hợp lệ và rollback sạch `remainingFixtures=0` |
+| CAT-002 | DONE | Schema/view/API/fallback đã deploy; 6 mapping có mã in trực tiếp trên ảnh được nạp và API hậu kiểm PASS `6/6`; hai ảnh công bố vượt ngưỡng đã tối ưu dưới `1 MB`, ảnh mơ hồ/sai mã không được map |
+| CAT-003 | DONE | API dùng trực tiếp `AR_LayGiaSanPhamFnc`; mẫu `A008` trả cùng giá ERP `75.000đ`, sai lệch `0`; ca `A003` không có giá trả `NO_ACTIVE_PRICE` và không tạo giá giả |
+| CAT-004 | DONE | Tái sử dụng `STOCK-001`; hậu kiểm read-only PASS `13/13` tài khoản, có tồn khả dụng, kho, thời điểm cập nhật và loại đúng hàng `RESERVED_OUT` |
+| PROMO-001 | DONE | Schema shadow gồm header version, scope chi nhánh/nhóm user và rule sản phẩm; UAT rollback công bố đúng `MONTHLY`/`EVENT` đã duyệt và loại nháp/hết hạn/chưa hiệu lực/thiếu scope |
+| PROMO-002 | DONE | Catalog và tra cứu dùng hàm CTBH theo user; UAT chứng minh đúng `BranchID + UserGroupID + ItemID`, ngoài scope và sau hết hạn đều trả `0` dòng; card chỉ hiện CTBH khi có dữ liệu |
+| RAG-001 | PARTIAL | Schema quarantine/approved view đã deploy; validator PASS `23/23`, UAT rollback sạch `remainingFixtures=0`; upload runtime đã nối sang draft OCR của RAG-002 nhưng live upload/query vẫn chưa được nghiệm thu end-to-end |
+| RAG-002 | READY_FOR_TEST | Schema content/audit/approved view đã tạo source; UI hàng đợi + preview chỉnh sửa + approve/reject; workflow `HQa6xx7flcNcC1oU` active trên n8n local `:5678`, export runtime khớp source `58` node; preflight PASS `14/14`; UAT DB rollback chưa chạy do DB `z5.bms79.com:17456` không kết nối được |
+| RAG-003 | READY_FOR_TEST | Schema lifecycle deploy trên `medtest`; UAT rollback PASS và `remainingFixtures=0`; chỉ ACTIVE được approved view trả về, scheduled/expired/withdrawn bị loại; preflight PASS `16/16`; workflow upload/query đã publish local nhưng smoke webhook còn bị chặn bởi kết nối SQL từ tiến trình n8n |
+
+Gate `CATALOG_PROMOTION_READY` chưa đạt. Việc còn lại của Phase 2 gồm nghiệm thu runtime `RAG-001/002/003`, `NOTI-001`, `CAT-005` và `CAT-006`. Các UAT CAT/PROMO/RAG có mutation đều dùng transaction rollback; không có dữ liệu test tồn lưu.
 
 ## Dữ liệu UAT hiện hành
 
@@ -108,4 +126,10 @@ Bằng chứng máy đọc vẫn được giữ trong `reports/`; script kiểm 
 - Tạo khách/đơn: `scripts/verify_uat017_customer_create.js`, `scripts/verify_uat018_order_create.js`.
 - Scoring: `scripts/verify_core006_postdeploy.js`, `scripts/verify_uatv2_seed_13_accounts.js`.
 - Tồn khả dụng: `scripts/verify_stock001_postdeploy.js`, `scripts/verify_stock001_token_uat.js`.
+- Catalog Phase 2: `scripts/preflight_cat001_product_knowledge.js`, `scripts/preflight_cat002_product_images.js`, `scripts/preflight_cat003_customer_price.js`, `scripts/preflight_cat004_catalog_stock.js`.
+- UAT catalog rollback/read-only: `scripts/verify_cat001_uat_rollback.js`, `scripts/verify_cat002_uat_rollback.js`, `scripts/verify_cat003_price_uat.js`.
+- Mapping ảnh thật: `assets/product-catalog/approved-mapping.json`, `scripts/build_cat002_approved_assets.ps1`, `scripts/deploy_cat002_approved_mapping.js`.
+- CTBH Phase 2: `scripts/preflight_promo001_schema.js`, `scripts/deploy_promo001_schema.js`, `scripts/verify_promo001_uat_rollback.js`.
+- Ghép CTBH catalog: `scripts/preflight_promo002_catalog.js`, `scripts/deploy_promo002_catalog.js`, `scripts/verify_promo002_uat_rollback.js`.
+- Upload RAG an toàn: `scripts/preflight_rag001_upload.js`, `scripts/deploy_rag001_schema.js`, `scripts/verify_rag001_uat_rollback.js`, `scripts/update_rag001_n8n.js`.
 - Bằng chứng live/performance: `reports/uat023-*.json`, `reports/uat020-*.json`.

@@ -238,6 +238,11 @@ BEGIN
             CAST(NULL AS DATETIME2(0)) AS StockAsOfAt,
             CAST(NULL AS DATETIME) AS LatestStockMovementDate,
             CAST(NULL AS NVARCHAR(50)) AS StockDataStatus,
+            CAST(NULL AS BIGINT) AS ActivePromotionCount,
+            CAST(NULL AS NVARCHAR(MAX)) AS PromotionSummary,
+            CAST(NULL AS NVARCHAR(MAX)) AS ActivePromotionsJson,
+            CAST(NULL AS DATETIME2(0)) AS PromotionUpdatedAt,
+            CAST(NULL AS NVARCHAR(100)) AS PromotionDataSource,
             CAST(NULL AS NVARCHAR(100)) AS RecommendationStatus,
             CAST(NULL AS NVARCHAR(500)) AS MedicalDisclaimer,
             CAST(NULL AS NVARCHAR(50)) AS RuleVersion,
@@ -261,6 +266,11 @@ BEGIN
             S.StockAsOfAt,
             S.LatestStockMovementDate,
             S.StockDataStatus,
+            COALESCE(Promotion.ActivePromotionCount, 0) AS ActivePromotionCount,
+            Promotion.PromotionSummary,
+            COALESCE(Promotion.ActivePromotionsJson, N'[]') AS ActivePromotionsJson,
+            Promotion.PromotionUpdatedAt,
+            N'AI_ActivePromotionByUserFnc' AS PromotionDataSource,
             K.Ingredients AS [Thành Phần],
             K.MainUses AS [Công Dụng],
             K.TargetPatients AS [Đối Tượng],
@@ -277,6 +287,31 @@ BEGIN
         JOIN #FinalPrices P ON I.ItemID = P.ItemID AND P.UnitPrice > 0
         JOIN #AIStock S ON S.ItemID = I.ItemID AND S.StockRank = 1
         LEFT JOIN dbo.AI_ProductKnowledgeTbl K ON I.ItemID = K.ItemID
+        OUTER APPLY
+        (
+            SELECT
+                (SELECT COUNT_BIG(*) FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc)) AS ActivePromotionCount,
+                STUFF
+                (
+                    (
+                        SELECT N' | ' + X.PromotionName + N': ' + COALESCE(X.PromotionBenefitText, X.BenefitDescription, N'Xem điều kiện chương trình')
+                        FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X
+                        ORDER BY X.Priority, X.PromotionCode, X.RuleOrder
+                        FOR XML PATH(''), TYPE
+                    ).value('.', 'NVARCHAR(MAX)'),
+                    1, 3, N''
+                ) AS PromotionSummary,
+                (
+                    SELECT X.PromotionCode, X.PromotionName, X.ProgramType, X.EffectiveFrom, X.EffectiveTo,
+                           X.RuleType, X.MinimumQuantity, X.MaximumQuantity, X.MinimumOrderAmount, X.MaximumOrderAmount,
+                           X.DiscountPercent, X.GiftItemID, X.GiftItemName, X.GiftQuantity,
+                           X.BenefitDescription, X.PromotionBenefitText, X.PromotionStatus
+                    FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X
+                    ORDER BY X.Priority, X.PromotionCode, X.RuleOrder
+                    FOR JSON PATH
+                ) AS ActivePromotionsJson,
+                (SELECT MAX(X.PromotionUpdatedAt) FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X) AS PromotionUpdatedAt
+        ) Promotion
         ORDER BY I.OrderIndex ASC;
     END
 

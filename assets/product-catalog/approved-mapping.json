@@ -1,0 +1,56 @@
+[
+  {
+    "itemId": "A011",
+    "itemName": "Thực phẩm bảo vệ sức khỏe ALCO-MED (Hộp 20 gói stick 10ml)",
+    "imagePath": "images/product-catalog/ALCO MED.png",
+    "mediaType": "image/png",
+    "altText": "Catalog ALCO-MED hộp 20 gói stick 10ml",
+    "sourcePath": "images/product-catalog/ALCO MED.png",
+    "embeddedProductCode": "A011"
+  },
+  {
+    "itemId": "A014",
+    "itemName": "An thần ngủ ngon (Hộp 3 vỉ x 10 viên)",
+    "imagePath": "images/product-catalog/AN THẦN NGỦ NGON MEDSTAND ctl đầy đủ.jpg",
+    "mediaType": "image/jpeg",
+    "altText": "Catalog An thần ngủ ngon hộp 3 vỉ x 10 viên",
+    "sourcePath": "images/product-catalog/AN THẦN NGỦ NGON MEDSTAND ctl đầy đủ.jpg",
+    "embeddedProductCode": "A014"
+  },
+  {
+    "itemId": "A008",
+    "itemName": "Aquamed Plus (10ml)",
+    "imagePath": "images/product-catalog/AQUAMED PLUS.png",
+    "mediaType": "image/png",
+    "altText": "Catalog Aquamed Plus lọ 10ml",
+    "sourcePath": "images/product-catalog/AQUAMED PLUS.png",
+    "embeddedProductCode": "A008"
+  },
+  {
+    "itemId": "B037",
+    "itemName": "TPBVSK BẢO CAN LINH (hộp 4 vỉ*5 ống)",
+    "imagePath": "images/product-catalog/approved/cat-b037-bao-can-linh.jpg",
+    "mediaType": "image/jpeg",
+    "altText": "Catalog Bảo Can Linh hộp 20 ống x 10ml",
+    "sourcePath": "images/product-catalog/Bảo Can Linh mẫu mới ctl đầy đủ.png",
+    "embeddedProductCode": "B037"
+  },
+  {
+    "itemId": "D024",
+    "itemName": "Dung dịch vệ sinh mũi Visamed Family",
+    "imagePath": "images/product-catalog/approved/cat-d024-visamed-family.jpg",
+    "mediaType": "image/jpeg",
+    "altText": "Catalog dung dịch vệ sinh mũi Visamed Family",
+    "sourcePath": "images/product-catalog/catalog Visamed Family-01.png",
+    "embeddedProductCode": "D024"
+  },
+  {
+    "itemId": "V002",
+    "itemName": "Viên tiểu đêm Medstand (hộp 3 vỉ x 10 viên)",
+    "imagePath": "images/product-catalog/VIÊN TIỂU ĐÊM MEDSTAND (VỈ).png",
+    "mediaType": "image/png",
+    "altText": "Catalog Viên tiểu đêm Medstand hộp 3 vỉ x 10 viên",
+    "sourcePath": "images/product-catalog/VIÊN TIỂU ĐÊM MEDSTAND (VỈ).png",
+    "embeddedProductCode": "V002"
+  }
+]

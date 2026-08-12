@@ -105,7 +105,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const vector = $input.first().json.data[0].embedding;\nreturn [{ json: { vector: vector, limit: 100, with_payload: true } }];"
+        "jsCode": "const vector = $input.first().json.data[0].embedding;\nconst nowEpoch = Math.floor(Date.now() / 1000);\nreturn [{ json: {\n  vector,\n  limit: 100,\n  with_payload: true,\n  filter: {\n    must: [\n      { key: 'metadata.reviewStatus', match: { value: 'APPROVED' } },\n      { key: 'metadata.malwareScanStatus', match: { value: 'CLEAN' } },\n      { key: 'metadata.effectiveFromEpoch', range: { lte: nowEpoch } },\n      { key: 'metadata.effectiveToEpoch', range: { gt: nowEpoch } }\n    ]\n  }\n} }];"
       },
       "id": "6",
       "name": "Prep Qdrant Body",
@@ -196,6 +196,39 @@
         600,
         200
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DECLARE @Ids NVARCHAR(MAX)=N'{{ (($json.result || []).map(p => p.payload?.metadata?.documentID || '').filter(Boolean).join(',')).replace(/'/g, \"''\") }}';\nSELECT CONVERT(VARCHAR(36),DocumentID) AS documentID\nFROM dbo.AI_ApprovedRagContentVw\nWHERE CONVERT(VARCHAR(36),DocumentID) IN (SELECT LTRIM(RTRIM(value)) FROM STRING_SPLIT(@Ids,','));"
+      },
+      "id": "rag003-validate-active-documents",
+      "name": "RAG003 Validate Active Documents",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        220
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $('Qdrant: Find Docs').first().json || {};\nconst activeIDs = new Set($input.all().map((item) => String(item.json.documentID || '').toLowerCase()).filter(Boolean));\nreturn [{ json: { ...response, result: (response.result || []).filter((point) => activeIDs.has(String(point.payload?.metadata?.documentID || '').toLowerCase())) } }];"
+      },
+      "id": "rag003-keep-active-points",
+      "name": "RAG003 Keep Active Points",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        220
+      ]
     }
   ],
   "connections": {
@@ -276,7 +309,7 @@
       "main": [
         [
           {
-            "node": "Prep OpenAI Chat Body",
+            "node": "RAG003 Validate Active Documents",
             "type": "main",
             "index": 0
           }
@@ -299,6 +332,28 @@
         [
           {
             "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG003 Validate Active Documents": {
+      "main": [
+        [
+          {
+            "node": "RAG003 Keep Active Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG003 Keep Active Points": {
+      "main": [
+        [
+          {
+            "node": "Prep OpenAI Chat Body",
             "type": "main",
             "index": 0
           }

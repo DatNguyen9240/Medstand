@@ -80,7 +80,8 @@ if not exist "%NPM_GLOBAL_DIR%\pm2.cmd" (
 :: 4. CẤU HÌNH BIẾN MÔI TRƯỜNG N8N 
 :: ============================================================
 set "N8N_PORT=5678"
-set "N8N_HOST=0.0.0.0"
+set "N8N_HOST=127.0.0.1"
+set "N8N_LISTEN_ADDRESS=127.0.0.1"
 set "N8N_LISTEN_ADDRESS=0.0.0.0"
 set "N8N_PROTOCOL=http"
 set "N8N_DEFAULT_CORS=true"
@@ -98,6 +99,7 @@ set "N8N_HIRING_BANNER_ENABLED=false"
 set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 set "N8N_DISABLE_TASK_RUNNERS=true"
+set "NODES_EXCLUDE=[]"
 
 :: Nap secret runtime dung chung tu .env ma khong ghi gia tri vao source workflow.
 if exist "%BASE_DIR%\..\.env" (

@@ -199,11 +199,41 @@ BEGIN
            COALESCE(I.StockAsOfAt, @StockAsOfUtc) AS StockAsOfAt,
            I.LatestStockMovementDate,
            COALESCE(I.StockDataSource, N'IV_StockTransactionTbl-AR_OrderOpenReservation') AS StockDataSource,
-           I.RuleVersion AS StockRuleVersion
+           I.RuleVersion AS StockRuleVersion,
+           COALESCE(Promotion.ActivePromotionCount, 0) AS ActivePromotionCount,
+           Promotion.PromotionSummary,
+           COALESCE(Promotion.ActivePromotionsJson, N'[]') AS ActivePromotionsJson,
+           Promotion.PromotionUpdatedAt,
+           N'AI_ActivePromotionByUserFnc' AS PromotionDataSource
     FROM #CandidateItems I
     INNER JOIN RankedPrice P
             ON P.ItemID = I.ItemID
            AND P.PriceRank = 1
+    OUTER APPLY
+    (
+        SELECT
+            (SELECT COUNT_BIG(*) FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc)) AS ActivePromotionCount,
+            STUFF
+            (
+                (
+                    SELECT N' | ' + X.PromotionName + N': ' + COALESCE(X.PromotionBenefitText, X.BenefitDescription, N'Xem điều kiện chương trình')
+                    FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X
+                    ORDER BY X.Priority, X.PromotionCode, X.RuleOrder
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'NVARCHAR(MAX)'),
+                1, 3, N''
+            ) AS PromotionSummary,
+            (
+                SELECT X.PromotionCode, X.PromotionName, X.ProgramType, X.EffectiveFrom, X.EffectiveTo,
+                       X.RuleType, X.MinimumQuantity, X.MaximumQuantity, X.MinimumOrderAmount, X.MaximumOrderAmount,
+                       X.DiscountPercent, X.GiftItemID, X.GiftItemName, X.GiftQuantity,
+                       X.BenefitDescription, X.PromotionBenefitText, X.PromotionStatus
+                FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X
+                ORDER BY X.Priority, X.PromotionCode, X.RuleOrder
+                FOR JSON PATH
+            ) AS ActivePromotionsJson,
+            (SELECT MAX(X.PromotionUpdatedAt) FROM dbo.AI_ActivePromotionByUserFnc(@Username, I.ItemID, @StockAsOfUtc) X) AS PromotionUpdatedAt
+    ) Promotion
     WHERE P.UnitPrice IS NOT NULL
     ORDER BY I.ItemName;
 END;
