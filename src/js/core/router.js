@@ -27,8 +27,6 @@ const Router = (() => {
     // Return orders
     { path: 'return-orders', template: 'src/templates/return-orders.html', scripts: ['src/js/pages/return-orders.js'], css: ['src/css/pages/return-orders.css'], auth: true, nav: 'orders', title: 'Phiếu trả hàng' },
     { path: 'return-order-detail', template: 'src/templates/return-order-detail.html', scripts: ['src/js/pages/return-order-detail.js'], css: ['src/css/pages/detail.css', 'src/css/pages/return-order-detail.css'], auth: true, nav: 'orders', title: 'Chi tiết phiếu trả hàng' },
-    { path: 'return-product-list', template: 'src/templates/return-product-list.html', scripts: ['src/js/pages/return-product-list.js'], css: ['src/css/pages/return-product-list.css'], auth: true, nav: 'orders', title: 'Danh sách SP trả' },
-
     // Sales
     { path: 'revenue', template: 'src/templates/revenue.html', scripts: ['src/js/pages/revenue.js'], css: ['src/css/components/segment.css', 'src/css/components/data-table.css', 'src/css/pages/revenue.css'], auth: true, nav: 'orders', title: 'Doanh số' },
     { path: 'sales-plan', template: 'src/templates/sales-plan.html', scripts: ['src/js/pages/sales-plan.js'], css: ['src/css/pages/sales-plan.css'], auth: true, nav: 'orders', title: 'Kế hoạch bán hàng' },

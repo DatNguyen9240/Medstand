@@ -4,17 +4,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "node scripts/build.js",
-    "test:natural": "node scripts/test_natural_chat_system.js static",
-    "test:resilience": "node scripts/test_natural_chat_system.js resilience",
-    "test:health": "node scripts/test_natural_chat_system.js health",
-    "test:auth:gate": "node scripts/test_natural_chat_system.js auth-gate",
-    "test:chat:smoke": "node scripts/test_natural_chat_system.js smoke",
-    "test:chat:live": "node scripts/test_natural_chat_system.js live",
-    "test:chat:load": "node scripts/test_natural_chat_system.js load",
-    "test:infra:load": "node scripts/test_natural_chat_system.js infra-load",
-    "test:core009": "node scripts/test_core009_order_draft.js",
-    "verify:backlog": "node scripts/verify_backlog_integrity.js"
+    "build": "node scripts/build.js"
   },
   "dependencies": {
     "compression": "^1.8.1",
