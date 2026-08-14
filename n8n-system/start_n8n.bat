@@ -67,10 +67,18 @@ set "PATH=%NPM_GLOBAL_DIR%;%PATH%"
 :: Sua loi registry cho thu vien SheetJS
 call "%npm_cmd%" config set @sheetjs:registry https://cdn.sheetjs.com/ > nul 2>&1
 
-:: CAI N8N GLOBAL MOT LAN VA MAI MAI (Bypass de dung npx)
-goto SKIP_N8N_INSTALL
-
-:SKIP_N8N_INSTALL
+:: Ghim n8n de workflow import/publish nhat quan tren moi server.
+set "N8N_VERSION=2.8.4"
+set "N8N_BIN=%NPM_GLOBAL_DIR%\node_modules\n8n\bin\n8n"
+if not exist "%N8N_BIN%" (
+    echo [SETUP] Dang cai n8n %N8N_VERSION% portable...
+    call "%npm_cmd%" install -g n8n@%N8N_VERSION%
+    if errorlevel 1 (
+        echo [ERROR] Cai n8n that bai. Vui long kiem tra ket noi mang.
+        pause
+        exit /b 1
+    )
+)
 
 if not exist "%NPM_GLOBAL_DIR%\pm2.cmd" (
     echo [SETUP] Tich hop Quan Gia PM2 Portable vao he thong...
@@ -100,11 +108,17 @@ set "N8N_BASIC_AUTH_ACTIVE=false"
 set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 set "N8N_DISABLE_TASK_RUNNERS=true"
 set "NODES_EXCLUDE=[]"
+set "N8N_BOOTSTRAP=1"
 
-:: Nap secret runtime dung chung tu .env ma khong ghi gia tri vao source workflow.
-if exist "%BASE_DIR%\..\.env" (
-    for /f "usebackq tokens=1,* delims==" %%A in ("%BASE_DIR%\..\.env") do (
-        if /I "%%A"=="ADMIN_UPLOAD_KEY" set "ADMIN_UPLOAD_KEY=%%B"
+:: Nap toan bo cau hinh runtime tu .env. File nay bi git-ignore.
+call "%BASE_DIR%\load_env.bat" "%BASE_DIR%\..\.env"
+
+if not defined N8N_ENCRYPTION_KEY (
+    if not exist "%N8N_USER_FOLDER%\.n8n\config" (
+        echo [ERROR] Thieu N8N_ENCRYPTION_KEY trong .env.
+        echo Tao .env tu .env.example va dien day du cau hinh truoc khi khoi dong.
+        pause
+        exit /b 1
     )
 )
 
@@ -239,6 +253,20 @@ if exist "%N8N_USER_FOLDER%\.cache" rmdir /s /q "%N8N_USER_FOLDER%\.cache" > nul
 echo.
 echo [INFO] Dang tu dong dong goi va toi uu hoa tai nguyen Web...
 "%NODE_EXE%" "%BASE_DIR%\..\scripts\build.js"
+if errorlevel 1 (
+    echo [ERROR] Dong goi web that bai. Dung khoi dong de tranh chay ban loi.
+    pause
+    exit /b 1
+)
+
+echo.
+echo [INFO] Dang bootstrap credentials va workflow n8n production...
+"%NODE_EXE%" "%BASE_DIR%\bootstrap_n8n.js"
+if errorlevel 1 (
+    echo [ERROR] Bootstrap n8n that bai. Kiem tra .env va log o tren.
+    pause
+    exit /b 1
+)
 
 echo.
 echo [INFO] Dang ban giao toan bo quyen luc cho Quan Gia PM2...
