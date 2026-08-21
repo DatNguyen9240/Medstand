@@ -279,14 +279,11 @@
           ItemID: itemId || '', SearchText: '', DocumentDate: documentDate
         })
       }).then(function (res) {
-        var data = res && res.data !== undefined ? res.data : res;
-        var rows = (data && data.records) || data || [];
-        var detail = rows.find(function (item) {
-          return String(item.ItemID || '').toLowerCase() === String(itemId || '').toLowerCase();
-        }) || null;
-        if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
-        _productsCache[cacheKey] = detail;
-        return detail;
+        // PRODUCT-DIAG-001: dùng chung helper với trang tạo đơn và chatbot.
+        var verdict = window.MedstandProductOrderability.resolve(res, itemId);
+        if (!verdict.orderable) throw window.MedstandProductOrderability.toError(verdict);
+        _productsCache[cacheKey] = verdict.detail;
+        return verdict.detail;
       });
     }
 

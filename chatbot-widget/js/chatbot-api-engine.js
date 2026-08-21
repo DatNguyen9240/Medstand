@@ -3452,10 +3452,10 @@
             return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCTS, {
                 q: JSON.stringify({ Username: username, ObjectID: objectId, ItemID: itemId, SearchText: '' })
             }).then(function (res) {
-                var detail = _orderRows(res).find(function (item) {
-                    return String(item.ItemID || '').toLowerCase() === String(itemId).toLowerCase();
-                }) || null;
-                if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
+                // PRODUCT-DIAG-001: cùng một helper với create-order/edit-order, không tự chép bảng message.
+                var verdict = window.MedstandProductOrderability.resolve(res, itemId);
+                if (!verdict.orderable) throw window.MedstandProductOrderability.toError(verdict);
+                var detail = verdict.detail;
                 _orderProducts[productsKey] = detail;
                 errorEl.textContent = '';
                 return detail;

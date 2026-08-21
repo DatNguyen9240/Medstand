@@ -343,6 +343,7 @@ var _dec = function(b64) {
     console.log('\nĐang tiến hành đóng gói các UI script bổ trợ của Chatbot...');
     const chatbotUIScripts = [
         'src/js/utils/promotion.js',
+        'src/js/utils/product-orderability.js',
         'chatbot-widget/js/chatbot-suggestions.js',
         'chatbot-widget/js/chatbot-order-draft.js',
         'chatbot-widget/js/chatbot-api-engine.js',

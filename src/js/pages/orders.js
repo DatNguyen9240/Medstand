@@ -31,6 +31,34 @@
       User: user.UserName || user.User || ''
     };
 
+    // ORDER-APPROVAL-003: lối vào danh sách đơn chờ duyệt cho người có quyền duyệt.
+    // Username do gateway gắn từ token; trạng thái "chờ duyệt" lấy từ hợp đồng duyệt đơn
+    // (PendingStatusIDs), không hard-code trong UI.
+    function renderPendingApprovalEntry() {
+      return Http.get(API_CONFIG.ENDPOINTS.ORDERS.APPROVAL_CONTEXT, { q: JSON.stringify({}) }, { cache: false })
+        .then(function (res) {
+          var data = res && res.data !== undefined ? res.data : res;
+          var ctx = ((data && data.records) || data || [])[0];
+          if (!ctx || ctx.MsgType == 1 || !ctx.HasApprovalRole) return;
+
+          var firstStatus = String(ctx.PendingStatusIDs || '').split(',')[0];
+          var href = '#/order-list' + (firstStatus ? '?status=' + encodeURIComponent(firstStatus) : '');
+          var count = ctx.PendingCount == null ? '' : ' (' + ctx.PendingCount + ')';
+          var hint = ctx.BlockMsg ? '<span class="menu-hint">' + ctx.BlockMsg + '</span>' : '';
+
+          $('#orders-grid').prepend(
+            '<a href="' + href + '" class="order-menu-card highlighted">' +
+            '<div class="menu-icon">🕒</div>' +
+            '<span class="menu-label">Đơn chờ duyệt' + count + '</span>' + hint +
+            '</a>'
+          );
+        })
+        .catch(function (err) {
+          // Không chặn màn hình chính vì một lối tắt: chỉ ghi log để còn truy được nguyên nhân.
+          console.error('[orders] Không đọc được ngữ cảnh duyệt đơn', err);
+        });
+    }
+
     OrderService.getThongKeSoLuong(payload)
       .then(function (res) {
         var data = res.data || res;
@@ -55,4 +83,5 @@
       .finally(function () {
         $('#orders-skeleton').hide();
         $('#orders-grid').show().prop('hidden', false);
+        renderPendingApprovalEntry();
       });

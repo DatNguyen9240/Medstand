@@ -22,7 +22,8 @@ CREATE OR ALTER PROCEDURE dbo.API_DonHangChiTiet_Insert_AI
     @ThuDiTuyen NVARCHAR(10) = '',
     @ItemList NVARCHAR(MAX) = '',
     @IdempotencyKey VARCHAR(128) = '',
-    @RequestID VARCHAR(100) = ''
+    @RequestID VARCHAR(100) = '',
+    @SaveAsDraft BIT = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -51,6 +52,8 @@ BEGIN
     DECLARE @StoredMsg NVARCHAR(500) = NULL;
     DECLARE @StoredMsgType INT = NULL;
     DECLARE @OrderActorConfig NVARCHAR(200) = NULL;
+    -- ORDER-APPROVAL-002: -1 (Đơn nháp) khi lưu nháp, 0 (Chờ duyệt) khi gửi thẳng — như cũ.
+    DECLARE @InitialStatusID INT = CASE WHEN COALESCE(@SaveAsDraft, 0) = 1 THEN -1 ELSE 0 END;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @DocumentID = LTRIM(RTRIM(COALESCE(@DocumentID, '')));
@@ -298,7 +301,8 @@ BEGIN
         CONCAT(LOWER(@Username), '|', @ObjectID, '|', CONVERT(CHAR(10), CAST(@DocumentDate AS DATE), 23), '|',
                @BranchID, '|', CASE WHEN @DocumentID IN ('', 'AUTO_GEN') THEN 'AUTO_GEN' ELSE @DocumentID END, '|',
                COALESCE(@Memo, N''), '|', COALESCE(@Notes, N''), '|',
-               COALESCE(@XaPhuong, N''), '|', COALESCE(@ThuDiTuyen, N''), '|', @CanonicalItems))), 2));
+               COALESCE(@XaPhuong, N''), '|', COALESCE(@ThuDiTuyen, N''), '|', @CanonicalItems, '|',
+               CAST(@InitialStatusID AS VARCHAR(3))))), 2));
 
     SELECT @StoredStatus = Status,
            @StoredFingerprintHash = RequestFingerprintHash,
@@ -663,7 +667,10 @@ BEGIN
                            OR COALESCE(Memo, N'') <> COALESCE(@Memo, N'')
                            OR COALESCE(Notes, N'') <> COALESCE(@Notes, N'')
                            OR COALESCE(XaPhuong, N'') <> COALESCE(@XaPhuong, N'')
-                           OR COALESCE(ThuTrongTuan, N'') <> COALESCE(@ThuDiTuyen, N''))
+                           OR COALESCE(ThuTrongTuan, N'') <> COALESCE(@ThuDiTuyen, N'')
+                           -- Cùng DocumentID nhưng lệch SaveAsDraft (vd lần đầu lưu nháp, lần sau
+                           -- gửi thẳng) là 2 ý định khác nhau, không phải cùng 1 request lặp lại.
+                           OR StatusID <> @InitialStatusID)
                 )
                 OR EXISTS (
                     SELECT ItemID, UnitPrice, SUM(Quantity), SUM(COALESCE(SoLuongTang, 0)), MAX(DiscountPercent)
@@ -787,7 +794,7 @@ BEGIN
         ) VALUES (
             @DocumentID, @DocumentDate, @EmployeeID, @ManagerID, @CeoID,
             @ObjectID, @BranchID, @Memo, @Notes, LEFT(@Username, 30), GETDATE(),
-            @XaPhuong, @ThuDiTuyen, 0, @Phone
+            @XaPhuong, @ThuDiTuyen, @InitialStatusID, @Phone
         );
 
         INSERT dbo.AR_OrderDetailTbl (
@@ -811,9 +818,12 @@ BEGIN
         SET BaseTotal = COALESCE((SELECT SUM(TotalAmount) FROM dbo.AR_OrderDetailTbl WHERE DocumentID = @DocumentID), 0)
         WHERE DocumentID = @DocumentID;
 
+        DECLARE @CreateResultMsg NVARCHAR(500) = CASE WHEN @InitialStatusID = -1
+            THEN N'Đã lưu nháp đơn hàng' ELSE N'Tạo đơn hàng thành công' END;
+
         UPDATE dbo.AI_API_MutationIdempotency
         SET Status='COMPLETED', ResultEntityID=@DocumentID,
-            ResultMsg=N'Tạo đơn hàng thành công', ResultMsgType=5,
+            ResultMsg=@CreateResultMsg, ResultMsgType=5,
             LastRequestID=@RequestID, UpdatedAt=SYSUTCDATETIME(), CompletedAt=SYSUTCDATETIME()
         WHERE IdempotencyKeyHash=@IdempotencyKeyHash AND VerifiedUserHash=@VerifiedUserHash AND ApiCode=@ApiCode;
 
@@ -821,7 +831,9 @@ BEGIN
             + N'","idempotencyKeyHash":"' + @IdempotencyKeyHash
             + N'","payloadFingerprint":"' + @RequestFingerprintHash
             + N'","capability":"' + @RequiredCapability
-            + N'","outcome":"CREATED","branchId":"' + STRING_ESCAPE(@BranchID, 'json') + N'"}';
+            + N'","saveAsDraft":' + CAST(COALESCE(@SaveAsDraft, 0) AS VARCHAR(1))
+            + N',"initialStatusId":' + CAST(@InitialStatusID AS VARCHAR(3))
+            + N',"outcome":"CREATED","branchId":"' + STRING_ESCAPE(@BranchID, 'json') + N'"}';
         EXEC dbo.AI_WriteAuditLog @Username=@Username, @ActionType='CREATE_DONHANG',
              @TargetEntity=@ApiCode, @TargetID=@DocumentID, @ExtraInfo=@AuditInfo;
 
@@ -843,8 +855,8 @@ BEGIN
         GOTO ReturnFailure;
     END CATCH;
 
-    SELECT @DocumentID AS DocumentID, N'Tạo đơn hàng thành công' AS Msg, 5 AS MsgType,
-           @RequestID AS RequestID, CAST(0 AS BIT) AS IsReplay;
+    SELECT @DocumentID AS DocumentID, @CreateResultMsg AS Msg, 5 AS MsgType,
+           @RequestID AS RequestID, CAST(0 AS BIT) AS IsReplay, @InitialStatusID AS StatusID;
     RETURN;
 
 ReturnFailure:

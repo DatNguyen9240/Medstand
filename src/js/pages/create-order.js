@@ -358,11 +358,10 @@ function loadProductDetail(itemId) {
       DocumentDate: documentDate
     })
   }).then(function (res) {
-    var rows = responseRows(res);
-    var detail = rows.find(function (item) {
-      return String(item.ItemID || '').toLowerCase() === String(itemId || '').toLowerCase();
-    }) || null;
-    if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
+    // PRODUCT-DIAG-001: đọc nguyên nhân từ Code, không tự đoán bằng danh sách rỗng.
+    var verdict = window.MedstandProductOrderability.resolve(res, itemId);
+    if (!verdict.orderable) throw window.MedstandProductOrderability.toError(verdict);
+    var detail = verdict.detail;
     _productsCache[cacheKey] = detail;
     _productsLoadError = false;
     return loadConfigPromoRules(itemId).then(function () { return detail; });

@@ -302,6 +302,18 @@ const withServerOwnedIdentity = (endpoint, identityField, username) => {
     return parsed.pathname + parsed.search;
 };
 
+// ORDER-APPROVAL-003 — luật gateway của luồng duyệt đơn (chặn đường vòng đổi trạng thái đơn,
+// và bắt API đọc lấy identity từ token). Nằm ở module riêng để test tự động nạp được;
+// xem src/server/order-status-guard.js và scripts/verify_order_status_guard.js.
+const {
+    ORDER_STATUS_WRITE_ENDPOINT,
+    READ_IDENTITY_POLICY,
+    BLOCKED_ERP_ENDPOINTS,
+    stripOrderStatusField,
+    shouldStripOrderStatus,
+    withServerOwnedQueryIdentity
+} = require('./src/server/order-status-guard');
+
 const authRequiredPayload = (requestId) => ({
     success: false,
     status: 'AUTH_REQUIRED',
@@ -505,16 +517,52 @@ app.post('/api/gateway', async (req, res) => {
             body[mutationPolicy.identityField] = verifiedIdentity.username;
         }
 
-        // dbo.API_DonHang_Update (proc ERP gốc, không phải do AI viết — không sửa trực tiếp ở
-        // đây) có một nhánh cũ: hễ @StatusID > 0 là đổi thẳng trạng thái đơn, bỏ qua mọi kiểm
-        // tra quyền/chi nhánh/transition. UI đổi trạng thái không hợp lệ đã bị gỡ khỏi
-        // edit-order.js, nhưng ai gọi thẳng endpoint này (devtools, script khác) vẫn khai thác
-        // được nhánh đó nếu còn field StatusID trong payload. Chặn tại gateway: luôn xóa
-        // StatusID khỏi mọi request tới endpoint này — đổi trạng thái đơn giờ CHỈ được phép qua
-        // /api/API_DonHang_ApproveTransition_AI (đã có kiểm quyền/chi nhánh/transition/idempotency).
-        if (endpointPath === '/api/API_DonHang_Update' && body && typeof body === 'object' && !Array.isArray(body)) {
-            for (const key of Object.keys(body)) {
-                if (key.toLowerCase() === 'statusid') delete body[key];
+        // Đổi trạng thái đơn chỉ được phép qua endpoint duyệt đơn. Xem ORDER_STATUS_WRITE_ENDPOINT.
+        if (shouldStripOrderStatus(method, endpointPath)) {
+            const removedStatusFields = stripOrderStatusField(body);
+            if (removedStatusFields.length) {
+                console.warn(
+                    `[Proxy Gateway] requestId=${requestId}; Gỡ ${removedStatusFields.join(',')} khỏi ${endpointPath};`
+                    + ` đổi trạng thái đơn chỉ được phép qua ${ORDER_STATUS_WRITE_ENDPOINT}`
+                );
+            }
+        }
+
+        if (BLOCKED_ERP_ENDPOINTS.has(endpointPath)) {
+            console.warn(`[Security Warning] requestId=${requestId}; Chặn procedure ERP đổi trạng thái đơn: ${endpointPath}`);
+            return sendGatewayError(
+                res,
+                403,
+                requestId,
+                'ERP_INTERNAL_ENDPOINT_BLOCKED',
+                'Endpoint nội bộ của ERP không được gọi từ ứng dụng.'
+            );
+        }
+
+        // API đọc có chính sách identity: Username phải lấy từ token, không tin trình duyệt.
+        const readPolicy = READ_IDENTITY_POLICY[endpointPath];
+        if (readPolicy) {
+            let verifiedIdentity = null;
+            try {
+                verifiedIdentity = await resolveVerifiedGatewayIdentity(authorization);
+            } catch (identityError) {
+                console.error(`[Proxy Gateway Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
+            }
+            if (!verifiedIdentity || !verifiedIdentity.username) {
+                return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản đăng nhập. Vui lòng đăng nhập lại.');
+            }
+            if (method === 'GET' || method === 'HEAD') {
+                forwardedEndpoint = withServerOwnedQueryIdentity(
+                    forwardedEndpoint,
+                    readPolicy.identityField,
+                    verifiedIdentity.username
+                );
+            } else {
+                body = body && typeof body === 'object' && !Array.isArray(body) ? { ...body } : {};
+                for (const key of Object.keys(body)) {
+                    if (['user', 'username'].includes(key.toLowerCase())) delete body[key];
+                }
+                body[readPolicy.identityField] = verifiedIdentity.username;
             }
         }
 

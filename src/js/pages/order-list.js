@@ -47,16 +47,45 @@
           });
       }
 
-      // Init filter — onApply triggers loadPage
-      var filter = new FilterComponent({
-        container: '#filter-container',
-        fields: FilterFields.getDefault(),
-        onApply: function (values) {
-          if (values.dateFrom) fromDate = values.dateFrom;
-          if (values.dateTo) toDate = values.dateTo;
-          filterValues = values.filters || {};
-          loadPage(1);
-        },
-        onSearch: function (keyword) { searchText = keyword; loadPage(1); }
-      });
+      // ORDER-APPROVAL-003: lối vào "Đơn chờ duyệt" của Kế toán mở màn này kèm ?status=<id>.
+      // Trạng thái nào là "chờ duyệt" do hợp đồng duyệt đơn quyết định (API trả PendingStatusIDs),
+      // không hard-code ở đây.
+      var routeStatus = String((window._routeParams || {}).status || '').trim();
+
+      function initFilter(routeStatusLabel) {
+        var filter = new FilterComponent({
+          container: '#filter-container',
+          fields: FilterFields.getDefault(),
+          onApply: function (values) {
+            if (values.dateFrom) fromDate = values.dateFrom;
+            if (values.dateTo) toDate = values.dateTo;
+            filterValues = values.filters || {};
+            loadPage(1);
+          },
+          onSearch: function (keyword) { searchText = keyword; loadPage(1); }
+        });
+
+        // Ghi đè SAU khi khởi tạo: FilterComponent khôi phục bộ lọc đã lưu trong localStorage
+        // ngay trong constructor, nên đặt defaultValue trước đó sẽ bị lần lọc trước của người
+        // dùng đè mất. Lần onApply đầu tiên chạy trong setTimeout(0) nên vẫn đọc được giá trị này.
+        if (routeStatus) {
+          filter.values.status = routeStatus;
+          if (routeStatusLabel) filter.labels.status = routeStatusLabel;
+        }
+      }
+
+      if (!routeStatus) {
+        initFilter('');
+      } else {
+        filterValues = { status: routeStatus };
+        Http.get(API_CONFIG.ENDPOINTS.FILTER.STATUSES, { q: '{}' })
+          .then(function (res) {
+            var rows = ((res.data || res).records) || [];
+            var match = rows.filter(function (s) {
+              return String(s.OrderStatusID || s.StatusID || s.ID || '') === routeStatus;
+            })[0];
+            initFilter(match ? (match.StatusName || match.Name || '') : '');
+          })
+          .catch(function () { initFilter(''); });
+      }
     })();

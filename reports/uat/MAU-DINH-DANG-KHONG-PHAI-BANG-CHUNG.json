@@ -1,0 +1,296 @@
+{
+  "Task": "CUSTOMER-UAT-001-DATA-READINESS",
+  "Status": "EVIDENCE_INCOMPLETE",
+  "RunID": "UATCHK-20260821094239-tzianq",
+  "RunAtUtc": "2026-08-21T09:42:38.444Z",
+  "Environment": {
+    "Database": "medtest",
+    "Server": "z5.bms79.com",
+    "ExecutedBy": "medtest"
+  },
+  "Account": {
+    "UserName": "demo",
+    "BranchID": "MB",
+    "EmployeeID": "",
+    "UserGroupID": "Admin",
+    "Manager": 1
+  },
+  "Customer": {
+    "ObjectID": "DL011",
+    "ObjectName": "Công Ty TNHH Dược Trâm Anh -Nam Định",
+    "ObjectGroupID": "NDA",
+    "BranchID": "MB",
+    "SaleID": "",
+    "CreatedBy": "Admin",
+    "CreatedAt": "2020-09-30T14:58:13.000Z"
+  },
+  "Item": "A008",
+  "StockRuleVersion": "2.0.0",
+  "StockRuleVersionSource": "USER_WAREHOUSE_SCOPE",
+  "Layers": [
+    {
+      "Layer": "ACCOUNT",
+      "Status": "WARN",
+      "Code": "ACCOUNT_EMPLOYEE_FROM_CONFIG",
+      "Message": "Tài khoản không gắn nhân viên ERP; đang mượn cấu hình BR-ORDER-ACTOR-001. Tài khoản UAT mới sẽ KHÔNG có dòng này — phải gắn EmployeeID thật hoặc thêm cấu hình.",
+      "Evidence": {
+        "Account": {
+          "UserName": "demo",
+          "Disable": 0,
+          "BranchID": "MB",
+          "EmployeeID": "",
+          "ManagerID": "",
+          "UserGroupID": "Admin",
+          "Manager": 1
+        },
+        "ActorConfig": {
+          "ConfigValue": "{\"EmployeeID\":\"DEMO\",\"BranchID\":\"MB\"}",
+          "RuleVersion": "1.0.0",
+          "Status": "APPROVED",
+          "EffectiveFrom": "2026-08-07T11:10:27.000Z",
+          "EffectiveTo": null
+        },
+        "IsManager": true,
+        "IsGlobalPerInsertProc": true
+      }
+    },
+    {
+      "Layer": "WAREHOUSE_SCOPE",
+      "Status": "PASS",
+      "Code": "WAREHOUSE_OK",
+      "Message": "Tài khoản được 3 kho bán hàng.",
+      "Evidence": {
+        "RuleVersion": "2.0.0",
+        "StoreHouseIDs": [
+          "CTY",
+          "DL02",
+          "DL03"
+        ]
+      }
+    },
+    {
+      "Layer": "CUSTOMER",
+      "Status": "PASS",
+      "Code": "CUSTOMER_OK",
+      "Message": "Khách hợp lệ và thuộc phạm vi tài khoản.",
+      "Evidence": {
+        "ObjectID": "DL011",
+        "ObjectName": "Công Ty TNHH Dược Trâm Anh -Nam Định",
+        "ObjectGroupID": "NDA",
+        "Phone": "0601007384",
+        "BranchID": "MB",
+        "SaleID": "",
+        "UserCreate": "Admin",
+        "DateCreate": "2020-09-30T14:58:13.000Z",
+        "isCustomer": 1,
+        "isDisable": 0
+      }
+    },
+    {
+      "Layer": "PRODUCT",
+      "Status": "PASS",
+      "Code": "ITEM_OK",
+      "Message": "Sản phẩm tồn tại, mở tại chi nhánh và thuộc nhóm được bán.",
+      "Evidence": {
+        "ItemID": "A008",
+        "ItemName": "Aquamed Plus (10ml)",
+        "ItemGroupID": "HH1",
+        "Unit": "Hộp",
+        "IsDisable": 0,
+        "IsDisableMB": 0,
+        "IsDisableMN": 0,
+        "IsDisableMT": 0
+      }
+    },
+    {
+      "Layer": "STOCK",
+      "Status": "PASS",
+      "Code": "STOCK_OK",
+      "Message": "Còn 3 kho bán được, tồn khả dụng cao nhất 3303.",
+      "Evidence": [
+        {
+          "StoreHouseID": "CTY",
+          "StoreHouseName": "Kho công ty",
+          "PhysicalStock": 3586,
+          "ReservedStock": 283,
+          "AvailableStock": 3303,
+          "WarehouseScope": "AUTHORIZED_CONFIGURED_STORE",
+          "StockDataStatus": "AVAILABLE_FOR_SALE",
+          "StockUpdatedAt": "2026-08-21T09:42:39.000Z",
+          "StockAsOfAt": "2026-08-21T09:42:39.000Z",
+          "LatestStockMovementDate": "2026-03-10T00:00:00.000Z",
+          "StockDataSource": "IV_StockTransactionTbl-AR_OrderDetailTbl"
+        },
+        {
+          "StoreHouseID": "DL03",
+          "StoreHouseName": "Kho Miền Nam",
+          "PhysicalStock": 631,
+          "ReservedStock": 25,
+          "AvailableStock": 606,
+          "WarehouseScope": "AUTHORIZED_CONFIGURED_STORE",
+          "StockDataStatus": "AVAILABLE_FOR_SALE",
+          "StockUpdatedAt": "2026-08-21T09:42:39.000Z",
+          "StockAsOfAt": "2026-08-21T09:42:39.000Z",
+          "LatestStockMovementDate": "2026-03-10T00:00:00.000Z",
+          "StockDataSource": "IV_StockTransactionTbl-AR_OrderDetailTbl"
+        },
+        {
+          "StoreHouseID": "DL02",
+          "StoreHouseName": "Kho miền trung",
+          "PhysicalStock": 546,
+          "ReservedStock": 221,
+          "AvailableStock": 325,
+          "WarehouseScope": "AUTHORIZED_CONFIGURED_STORE",
+          "StockDataStatus": "AVAILABLE_FOR_SALE",
+          "StockUpdatedAt": "2026-08-21T09:42:39.000Z",
+          "StockAsOfAt": "2026-08-21T09:42:39.000Z",
+          "LatestStockMovementDate": "2026-03-11T00:00:00.000Z",
+          "StockDataSource": "IV_StockTransactionTbl-AR_OrderDetailTbl"
+        }
+      ]
+    },
+    {
+      "Layer": "PRICE",
+      "Status": "PASS",
+      "Code": "PRICE_OK",
+      "Message": "Giá áp dụng 75000 từ nguồn GENERAL_PRICE (danh mục và cổng tạo đơn khớp nhau).",
+      "Evidence": {
+        "PriceSources": {
+          "CatalogShown": 75000,
+          "OrderGate": 75000,
+          "DiagnosticTierPick": 75000
+        },
+        "Applied": {
+          "PriceSource": "GENERAL_PRICE",
+          "Tier": 3,
+          "UnitPrice": 75000,
+          "UserAutoID": "2512292141114744892761263",
+          "GhiChu": "Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8",
+          "DocumentID": "N1225/0005",
+          "FromDate": "2025-12-30T00:00:00.000Z",
+          "ToDate": null,
+          "isDisable": 0,
+          "IsEffectiveToday": 1
+        },
+        "AllCandidates": [
+          {
+            "PriceSource": "GENERAL_PRICE",
+            "Tier": 3,
+            "UnitPrice": 75000,
+            "UserAutoID": "2512292141114744892761263",
+            "GhiChu": "Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8",
+            "DocumentID": "N1225/0005",
+            "FromDate": "2025-12-30T00:00:00.000Z",
+            "ToDate": null,
+            "isDisable": 0,
+            "IsEffectiveToday": 1
+          },
+          {
+            "PriceSource": "GENERAL_PRICE",
+            "Tier": 3,
+            "UnitPrice": 65000,
+            "UserAutoID": "2509031622534454564254557",
+            "GhiChu": "Mua 4+1, 10+3 (<10 ck 20%, >=10 ck 23%), KHHĐ Nguyên giá",
+            "DocumentID": "N0925/0003",
+            "FromDate": "2023-04-01T00:00:00.000Z",
+            "ToDate": "2025-09-22T00:00:00.000Z",
+            "isDisable": 0,
+            "IsEffectiveToday": 0
+          },
+          {
+            "PriceSource": "GENERAL_PRICE",
+            "Tier": 3,
+            "UnitPrice": 75000,
+            "UserAutoID": "2509031510431001116200373",
+            "GhiChu": "Mua 10+2 (<10 ck 10%, KHHĐ Nguyên giá",
+            "DocumentID": "N0925/0001",
+            "FromDate": "2025-09-23T00:00:00.000Z",
+            "ToDate": "2025-12-29T00:00:00.000Z",
+            "isDisable": 0,
+            "IsEffectiveToday": 0
+          }
+        ]
+      }
+    },
+    {
+      "Layer": "PROMOTION",
+      "Status": "INFO",
+      "Code": "PROMOTION_NOTE_TEXT_ONLY",
+      "Message": "Không có CTBH cấu hình, nhưng ghi chú bảng giá CÓ chứa ưu đãi và sẽ được áp dụng theo note-text. Ca này phải test riêng: cách tính đi qua parser ghi chú, không qua rule đã duyệt.",
+      "Evidence": {
+        "NoteText": "Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8",
+        "ParsedRule": {
+          "source": "Mua 10+2 (<10 ck 10%",
+          "buyTiers": [
+            {
+              "minimumQuantity": 10,
+              "giftQuantity": 2
+            }
+          ],
+          "belowMinimumQuantity": 10,
+          "belowMinimumDiscountPercent": 10,
+          "pricingMode": "gift",
+          "deferredKhhd": false
+        }
+      }
+    },
+    {
+      "Layer": "CATALOG_API",
+      "Status": "PASS",
+      "Code": "CATALOG_VISIBLE",
+      "Message": "API_HangHoaList_AI trả sản phẩm này — UI chọn được.",
+      "Evidence": [
+        {
+          "ItemID": "A008",
+          "ItemName": "Aquamed Plus (10ml) (Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8)",
+          "Unit": "Hộp",
+          "ItemGroupID": "HH1",
+          "CategoryID": "TPCN",
+          "HangSX": "STP",
+          "UnitPrice": 75000,
+          "DiemSanPham": 10,
+          "GhiChu": "Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8",
+          "QuantityinStock": 3303,
+          "TonKho": 3303,
+          "StoreHouseID": "CTY",
+          "StoreHouseName": "Kho công ty",
+          "PhysicalStock": 3586,
+          "ReservedStock": 283,
+          "AvailableStock": 3303,
+          "WarehouseScope": "AUTHORIZED_CONFIGURED_STORE",
+          "StockDataStatus": "AVAILABLE_FOR_SALE",
+          "StockUpdatedAt": "2026-08-21T09:42:40.000Z",
+          "StockAsOfAt": "2026-08-21T09:42:40.000Z",
+          "LatestStockMovementDate": "2026-03-10T00:00:00.000Z",
+          "StockDataSource": "IV_StockTransactionTbl-AR_OrderDetailTbl",
+          "StockRuleVersion": "2.0.0",
+          "ActivePromotionCount": "0",
+          "PromotionSummary": null,
+          "ActivePromotionsJson": "[]",
+          "PromotionUpdatedAt": null,
+          "PromotionDataSource": "AI_ActivePromotionByUserFnc"
+        }
+      ]
+    }
+  ],
+  "BlockingCodes": [],
+  "Warnings": [
+    "ACCOUNT_EMPLOYEE_FROM_CONFIG"
+  ],
+  "Undetermined": [],
+  "TesterFields": {
+    "DataCreatedBy": null,
+    "DataSource": null,
+    "CleanupPlan": null,
+    "OrderRequestID": null,
+    "OrderIdempotencyKey": null,
+    "OrderDocumentID": null,
+    "OrderStatusID": null
+  },
+  "MissingTesterFields": [
+    "DataCreatedBy",
+    "DataSource",
+    "CleanupPlan"
+  ],
+  "Verdict": "Dữ liệu đủ để THỬ lập đơn, nhưng manifest chưa dùng làm bằng chứng được: thiếu DataCreatedBy, DataSource, CleanupPlan. Bổ sung bằng --created-by/--data-source/--cleanup-plan."
+}
