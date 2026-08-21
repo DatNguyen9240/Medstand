@@ -298,13 +298,14 @@ const Http = (() => {
 
   // ─── Public methods ────────────────────────────────────────────────────────
 
-  async function get(endpoint, params = {}) {
+  async function get(endpoint, params = {}, options = {}) {
     const qs = new URLSearchParams(params).toString();
     const url = _url(endpoint) + (qs ? `?${qs}` : '');
     const cacheKey = _cacheKey(url);
+    const useCache = options.cache !== false;
 
     // Kiểm tra cache trước
-    const cached = _getFromCache(cacheKey);
+    const cached = useCache ? _getFromCache(cacheKey) : null;
     if (cached) {
       console.log('[HTTP] Cache HIT:', url);
       return cached;
@@ -330,7 +331,7 @@ const Http = (() => {
         // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
         const recs = data?.records || data?.data?.records;
         const hasData = !Array.isArray(recs) || recs.length > 0;
-        if (data && data.code === 0 && hasData) _setCache(cacheKey, data);
+        if (useCache && data && data.code === 0 && hasData) _setCache(cacheKey, data);
 
         return data;
       } finally {

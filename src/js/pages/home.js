@@ -153,33 +153,65 @@ function initDashboard() {
 
   // ── Load Notification Count ──
   function loadNotificationCount() {
-    var user = {};
-    try {
-      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
-    } catch (e) {}
-    var userName = user.UserName || '';
-    if (!userName) return Promise.resolve();
-
-    return Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+    return Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.UNREAD_COUNT, {}, { cache: false })
       .then(function (res) {
-        var records = res.records || res.data || [];
-        if (!Array.isArray(records)) records = [];
-        var unreadCount = 0;
-        records.forEach(function (n) { if (!n.isView) unreadCount++; });
-        
+        var record = (res.records && res.records[0]) || res.data || res || {};
+        var unreadCount = Math.max(0, Number(record.UnreadCount ?? record.unreadCount ?? 0) || 0);
         var $headerBadge = $('#notif-badge');
-        var $heroBadge = $('#hero-notif-badge');
-        
+
         if (unreadCount > 0) {
           $headerBadge.text(unreadCount).prop('hidden', false);
-          $heroBadge.text(unreadCount).prop('hidden', false);
         } else {
           $headerBadge.prop('hidden', true);
-          $heroBadge.prop('hidden', true);
         }
       })
       .catch(function (err) {
         console.warn('[Dashboard loadNotificationCount Error]:', err);
+      });
+  }
+
+  // Tin khẩn chỉ tự mở một lần trong phiên. Đóng popup không đồng nghĩa đã đọc.
+  function loadUrgentNotification() {
+    return Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, {
+      Action: 'LIST',
+      Page: 1,
+      PageSize: 10,
+      UnreadOnly: 1
+    }, { cache: false })
+      .then(function (res) {
+        var data = res && res.data !== undefined ? res.data : res;
+        var records = data && Array.isArray(data.records) ? data.records
+          : Array.isArray(data) ? data
+            : res && Array.isArray(res.records) ? res.records : [];
+        var urgent = records.find(function (record) {
+          return Number(record.Priority ?? record.priority ?? 100) <= 10;
+        });
+        if (!urgent) return;
+
+        var id = String(urgent.NotificationID ?? urgent.notificationId ?? '');
+        var version = String(urgent.ContentVersion ?? urgent.contentVersion ?? 1);
+        var sessionKey = 'noti001-urgent-' + id + '-v' + version;
+        if (!id || sessionStorage.getItem(sessionKey)) return;
+        sessionStorage.setItem(sessionKey, '1');
+
+        var title = String(urgent.Title ?? urgent.title ?? 'Thông báo khẩn');
+        var summary = String(urgent.Summary ?? urgent.summary ?? urgent.Body ?? urgent.body ?? '');
+        if (window.Swal && typeof window.Swal.fire === 'function') {
+          return window.Swal.fire({
+            icon: 'warning',
+            title: title,
+            text: summary,
+            confirmButtonText: 'Xem chi tiết',
+            showCancelButton: true,
+            cancelButtonText: 'Đóng',
+            confirmButtonColor: '#0b8a43'
+          }).then(function (result) {
+            if (result.isConfirmed && typeof navigate === 'function') navigate('notifications');
+          });
+        }
+      })
+      .catch(function (err) {
+        console.warn('[Dashboard loadUrgentNotification Error]:', err);
       });
   }
 
@@ -204,6 +236,7 @@ function initDashboard() {
       loadChartAndRevenue(fromDate, toDate),
       loadBirthdays(),
       loadNotificationCount(),
+      loadUrgentNotification(),
       loadTodayRoutes(),
       loadSalesPlan(fromDate, toDate)
     ]).finally(function() {

@@ -150,6 +150,14 @@ const AuthService = (() => {
     // Server còn giữ cookie phiên HttpOnly, vì vậy cần gọi logout trước. Timeout bảo đảm
     // gateway chậm không khóa nút đăng xuất vô thời hạn.
     try {
+      if (typeof NotificationPushService !== 'undefined') {
+        await Promise.race([
+          NotificationPushService.unsubscribe(),
+          new Promise(function (resolve) { setTimeout(resolve, 2000); })
+        ]).catch(function (error) {
+          console.warn('[Auth] Push unsubscribe failed:', error);
+        });
+      }
       await Promise.race([
         Http.post(EP.LOGOUT),
         new Promise(function (resolve) { setTimeout(resolve, 3000); })

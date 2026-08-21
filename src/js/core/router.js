@@ -211,27 +211,17 @@ const Router = (() => {
     if (!$badge) return;
     if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined') return;
 
-    let user = null;
-    try {
-      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
-    } catch (e) {}
-    const userName = user ? (user.UserName || user.Username || '') : '';
-    if (!userName) return;
-
-    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.UNREAD_COUNT, {}, { cache: false })
       .then(res => {
-        const records = res?.records || res?.data || [];
-        if (Array.isArray(records)) {
-          let unreadCount = 0;
-          records.forEach(n => { if (!n.isView) unreadCount++; });
-          if (unreadCount > 0) {
-            $badge.textContent = unreadCount;
-            $badge.removeAttribute('hidden');
-            $badge.style.display = '';
-          } else {
-            $badge.setAttribute('hidden', '');
-            $badge.style.display = 'none';
-          }
+        const record = res?.records?.[0] || res?.data || res || {};
+        const unreadCount = Math.max(0, Number(record.UnreadCount ?? record.unreadCount ?? 0) || 0);
+        if (unreadCount > 0) {
+          $badge.textContent = unreadCount;
+          $badge.removeAttribute('hidden');
+          $badge.style.display = '';
+        } else {
+          $badge.setAttribute('hidden', '');
+          $badge.style.display = 'none';
         }
       })
       .catch(err => console.warn('[Router] Failed to fetch notification count:', err));

@@ -255,6 +255,7 @@ var _dec = function(b64) {
         'env.js',
         'src/js/services/http.js',
         'src/js/services/auth.service.js',
+        'src/js/services/notification-push.service.js',
         'src/js/components/Alert.js',
         'src/js/components/AuthThemeToggle.js',
         'src/js/components/PasswordToggle.js'

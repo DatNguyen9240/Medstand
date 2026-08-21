@@ -1,5 +1,31 @@
     AuthService.syncUserDisplay('.profile-name', '.profile-avatar');
 
+    var pushButton = document.getElementById('btn-push-toggle');
+    var pushLabel = document.getElementById('push-toggle-label');
+    function refreshPushState() {
+      if (!pushButton || typeof NotificationPushService === 'undefined' || !NotificationPushService.supported()) {
+        if (pushButton) pushButton.style.display = 'none';
+        return Promise.resolve();
+      }
+      return NotificationPushService.currentSubscription().then(function (subscription) {
+        pushLabel.textContent = subscription ? 'Tắt thông báo thiết bị' : 'Bật thông báo thiết bị';
+        pushButton.setAttribute('aria-pressed', subscription ? 'true' : 'false');
+      });
+    }
+    if (pushButton) {
+      pushButton.addEventListener('click', function () {
+        pushButton.disabled = true;
+        NotificationPushService.currentSubscription()
+          .then(function (subscription) {
+            return subscription ? NotificationPushService.unsubscribe() : NotificationPushService.subscribe();
+          })
+          .then(refreshPushState)
+          .catch(function (error) { Alert.error(error.message || 'Không thể cập nhật thông báo thiết bị.'); })
+          .finally(function () { pushButton.disabled = false; });
+      });
+      refreshPushState().catch(function () {});
+    }
+
     // Chặn luồng: Hiển thị Quản lý RAG nếu người dùng là admin
     try {
         var userStr = localStorage.getItem('auth_user');

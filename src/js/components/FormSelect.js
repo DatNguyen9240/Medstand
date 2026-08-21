@@ -120,7 +120,19 @@ var FormSelect = (function () {
       var $text = $trigger.find('.filter-value-text');
       $text.text(field.labelText || field.placeholder);
 
-      if (!options || options.length === 0) return;
+      var safeOptions = options || [];
+      var listHtml = safeOptions.length === 0
+        ? '<li class="picker-empty" style="opacity:.6;text-align:center;padding:16px 0;list-style:none">Không tìm thấy kết quả phù hợp.</li>'
+        : safeOptions.map(function (opt) {
+          var val = (typeof opt === 'object') ? (opt.value || opt.ID || '') : opt;
+          var lbl = (typeof opt === 'object') ? (opt.label || opt.Name || '') : opt;
+
+          // So sánh không phân biệt chữ hoa thường và bỏ khoảng trắng thừa
+          var isSelected = String(field.value).trim().toLowerCase() === String(val).trim().toLowerCase();
+          var selected = isSelected ? ' class="selected"' : '';
+
+          return '<li data-value="' + val + '"' + selected + '>' + lbl + '</li>';
+        }).join('');
 
       var html = '<div class="filter-modal-header">' +
         '<button type="button" class="filter-modal-close" aria-label="Đóng" id="picker-close">&times;</button>' +
@@ -130,16 +142,7 @@ var FormSelect = (function () {
         Input.renderSearch({ id: 'picker-search', placeholder: 'Tìm kiếm' }) +
         '</div>' +
         '<ul class="select-modal-list" id="picker-list" style="max-height:50vh;overflow-y:auto;padding:0 12px">' +
-        options.map(function (opt) {
-          var val = (typeof opt === 'object') ? (opt.value || opt.ID || '') : opt;
-          var lbl = (typeof opt === 'object') ? (opt.label || opt.Name || '') : opt;
-          
-          // So sánh không phân biệt chữ hoa thường và bỏ khoảng trắng thừa
-          var isSelected = String(field.value).trim().toLowerCase() === String(val).trim().toLowerCase();
-          var selected = isSelected ? ' class="selected"' : '';
-          
-          return '<li data-value="' + val + '"' + selected + '>' + lbl + '</li>';
-        }).join('') +
+        listHtml +
         '</ul>';
 
       var $overlay = $('<div class="picker-overlay"></div>');
@@ -178,7 +181,7 @@ var FormSelect = (function () {
       });
 
       // Select
-      $overlay.find('#picker-list li').on('click', function () {
+      $overlay.find('#picker-list li[data-value]').on('click', function () {
         var val = $(this).attr('data-value');
         var lbl = $(this).text();
         field.value = val;

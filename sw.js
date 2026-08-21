@@ -138,3 +138,45 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (_) {
+    payload = { title: 'Medstand', summary: event.data ? event.data.text() : '' };
+  }
+
+  const notificationId = String(payload.notificationId || payload.NotificationID || '');
+  const title = String(payload.title || payload.Title || 'Thông báo Medstand').slice(0, 120);
+  const body = String(payload.summary || payload.Summary || '').slice(0, 240);
+  const actionUrl = String(payload.actionUrl || payload.ActionUrl || '/#/notifications');
+  const safeUrl = actionUrl.startsWith('/') && !actionUrl.startsWith('//') ? actionUrl : '/#/notifications';
+
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    icon: '/images/logo/medstand-icon.png',
+    badge: '/images/logo/medstand-icon.png',
+    tag: notificationId ? 'noti-' + notificationId : 'medstand-notification',
+    data: { notificationId, actionUrl: safeUrl }
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const actionUrl = String(data.actionUrl || '/#/notifications');
+  const safeUrl = actionUrl.startsWith('/') && !actionUrl.startsWith('//') ? actionUrl : '/#/notifications';
+  const targetUrl = new URL(safeUrl, self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if (new URL(client.url).origin === self.location.origin) {
+          return client.navigate(targetUrl).then(() => client.focus());
+        }
+      }
+      return clients.openWindow(targetUrl);
+    })
+  );
+});

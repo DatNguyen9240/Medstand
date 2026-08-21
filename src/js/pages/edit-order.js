@@ -194,6 +194,25 @@
               done(fallbackOpts);
               if (summary.ObjectID) orderForm.setListValue('customer', summary.ObjectID, summary.ObjectName || summary.ObjectID);
             });
+          },
+          searchFn: function (keyword, done) {
+            Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
+              q: JSON.stringify({
+                User: user.UserName || '', ManagerID: '', EmployeeID: '',
+                ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: keyword || '',
+                SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || ''
+              })
+            }).then(function (res) {
+              var records = (res.data || res).records || res.data || res || [];
+              var existing = window._customerRecords || [];
+              window._customerRecords = existing.concat(records).filter(function (item, index, list) {
+                return list.findIndex(function (x) { return x.ObjectID === item.ObjectID; }) === index;
+              });
+              done(records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; }));
+            }).catch(function () {
+              Alert.error('Không thể tải danh sách khách hàng. Vui lòng thử lại.');
+              done([]);
+            });
           }
         })
         .addInput({ id: 'ward', label: 'Phường/Xã', value: summary.XaPhuong || '', placeholder: 'Phường/Xã', readonly: true })

@@ -4,7 +4,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "build": "node scripts/build.js"
+    "build": "node scripts/build.js",
+    "noti:preflight": "node scripts/preflight_noti001_distribution.js",
+    "noti:deploy": "node scripts/deploy_noti001_schema.js",
+    "noti:deploy:apply": "node scripts/deploy_noti001_schema.js --apply",
+    "noti:deploy:metadata": "node scripts/deploy_noti001_schema.js --apply --metadata",
+    "noti:uat": "node scripts/verify_noti001_uat_rollback.js",
+    "noti:push": "node scripts/dispatch_noti001_push.js"
   },
   "dependencies": {
     "compression": "^1.8.1",
@@ -13,6 +19,7 @@
     "express": "^5.2.1",
     "mssql": "^12.7.0",
     "sqlite3": "^6.0.1",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
