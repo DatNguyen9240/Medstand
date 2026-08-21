@@ -35,7 +35,12 @@
             var isNameAdmin = user.DisplayName && user.DisplayName.toLowerCase().includes('admin');
             var isUserAdmin = user.UserName && user.UserName.toLowerCase().includes('admin');
             
-            if (isRoleAdmin || isNameAdmin || isUserAdmin || user.Admin === 1) {
+            // Trang này giờ gồm cả Quản lý Tri thức (RAG, chỉ admin) và Quản lý CTBH
+            // (mở rộng cho cấp quản lý — khớp guard SQL của API_PromotionProgram_*_AI).
+            // Mỗi phần bên trong trang vẫn được API riêng chặn quyền đúng theo vai trò;
+            // hiện link ở đây chỉ là điều hướng, không thay cho việc chặn quyền phía server.
+            var isManagerOrAbove = typeof isManagerNavUser === 'function' && isManagerNavUser(user);
+            if (isRoleAdmin || isNameAdmin || isUserAdmin || user.Admin === 1 || isManagerOrAbove) {
                 var $ragLink = document.getElementById('admin-rag-link');
                 if ($ragLink) $ragLink.style.display = 'flex';
             }

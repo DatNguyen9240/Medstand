@@ -96,10 +96,67 @@
     return result;
   }
 
+  // PROMO-CFG-001/002: CTBH cấu hình qua AI_PromotionProgramTbl được ưu tiên hơn note-text
+  // khi có rule khớp mốc số lượng/giá trị hiện tại — cùng logic ưu tiên (Priority rồi tới
+  // mốc cao nhất còn thoả mãn) mà API_DonHangChiTiet_Insert_AI dùng để tính giá thật phía
+  // server. Trả về null khi không có rule nào khớp mốc hiện tại, để caller tự fallback về
+  // note-text — khớp đúng hành vi server (server cũng rơi về note-text khi chưa đạt mốc).
+  function calculateFromConfigRules(rules, quantity, unitPrice) {
+    var qty = Number(quantity);
+    var price = Number(unitPrice);
+    if (!Array.isArray(rules) || !rules.length || !Number.isInteger(qty) || qty <= 0) return null;
+
+    var lineAmount = Number.isFinite(price) ? qty * price : 0;
+    var candidates = rules.filter(function (r) {
+      if (r.RuleType === 'QUANTITY_DISCOUNT' || r.RuleType === 'QUANTITY_GIFT') {
+        return r.MinimumQuantity != null && qty >= Number(r.MinimumQuantity)
+          && (r.MaximumQuantity == null || qty <= Number(r.MaximumQuantity));
+      }
+      if (r.RuleType === 'AMOUNT_DISCOUNT' || r.RuleType === 'AMOUNT_GIFT') {
+        return r.MinimumOrderAmount != null && lineAmount >= Number(r.MinimumOrderAmount)
+          && (r.MaximumOrderAmount == null || lineAmount <= Number(r.MaximumOrderAmount));
+      }
+      return false;
+    });
+    if (!candidates.length) return null;
+
+    // Tie-break phải khớp CHÍNH XÁC thứ tự ROW_NUMBER() trong API_DonHangChiTiet_Insert_AI
+    // (Priority ASC, mốc cao nhất DESC, PromotionItemRuleID ASC) — nếu không, client có thể
+    // xem trước một rule khác với rule server thực sự áp dụng khi hai rule trùng cả priority
+    // lẫn mốc.
+    candidates.sort(function (a, b) {
+      var pa = Number(a.Priority != null ? a.Priority : 100);
+      var pb = Number(b.Priority != null ? b.Priority : 100);
+      if (pa !== pb) return pa - pb;
+      var ta = Number(a.MinimumOrderAmount != null ? a.MinimumOrderAmount : a.MinimumQuantity);
+      var tb = Number(b.MinimumOrderAmount != null ? b.MinimumOrderAmount : b.MinimumQuantity);
+      if (ta !== tb) return tb - ta;
+      var ida = Number(a.PromotionItemRuleID != null ? a.PromotionItemRuleID : Infinity);
+      var idb = Number(b.PromotionItemRuleID != null ? b.PromotionItemRuleID : Infinity);
+      return ida - idb;
+    });
+
+    var best = candidates[0];
+    var result = { discountPercent: 0, giftQuantity: 0, giftItemID: '', giftItemName: '', matchedRule: best };
+    if (best.RuleType === 'QUANTITY_GIFT') {
+      result.giftQuantity = Math.floor(qty / Number(best.MinimumQuantity)) * Number(best.GiftQuantity || 0);
+      result.giftItemID = best.GiftItemID || '';
+      result.giftItemName = best.GiftItemName || '';
+    } else if (best.RuleType === 'AMOUNT_GIFT') {
+      result.giftQuantity = Number(best.GiftQuantity || 0);
+      result.giftItemID = best.GiftItemID || '';
+      result.giftItemName = best.GiftItemName || '';
+    } else {
+      result.discountPercent = Number(best.DiscountPercent || 0);
+    }
+    return result;
+  }
+
   var api = {
     parse: parse,
     calculate: calculate,
-    generalPromotionText: generalPromotionText
+    generalPromotionText: generalPromotionText,
+    calculateFromConfigRules: calculateFromConfigRules
   };
 
   root.MedstandPromotion = api;

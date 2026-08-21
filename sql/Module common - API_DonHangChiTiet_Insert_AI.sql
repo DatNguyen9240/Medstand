@@ -360,6 +360,7 @@ BEGIN
         DiscountPercent DECIMAL(18,2) NOT NULL,
         ExpectedGiftQuantity DECIMAL(18,2) NOT NULL DEFAULT 0,
         ExpectedDiscountPercent DECIMAL(18,2) NOT NULL DEFAULT 0,
+        HasConfigRule BIT NOT NULL DEFAULT 0,
         ItemName NVARCHAR(500) NULL,
         PromotionNote NVARCHAR(MAX) NULL,
         DiemSanPham DECIMAL(18,2) NULL,
@@ -415,8 +416,71 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
+    /* PROMO-CFG-001: CTBH cấu hình qua AI_PromotionProgramTbl (đã duyệt, còn hiệu lực) được
+       ưu tiên tuyệt đối cho ItemID nào đã có rule — ghi đè hoàn toàn cách tính bằng ghi chú
+       (note-text) bên dưới cho đúng sản phẩm đó. Sản phẩm chưa cấu hình rule mới rơi vào
+       nhánh note-text cũ, không đổi hành vi. Khi nhiều rule/nhiều chương trình cùng khớp một
+       ItemID: chọn theo Priority của chương trình (số nhỏ hơn = ưu tiên hơn, đúng thiết kế
+       AI_PromotionProgramTbl.Priority), rồi mới đến mốc số lượng/giá trị cao nhất còn thoả mãn.
+       MinimumOrderAmount là giá trị của DÒNG sản phẩm này (Quantity * UnitPrice), không phải
+       tổng giá trị đơn hàng — khớp đúng lựa chọn "Giá trị theo từng sản phẩm" khi cấu hình.
+
+       QUYẾT ĐỊNH NGHIỆP VỤ (đã chốt với business): khi số lượng/giá trị VƯỢT MaximumQuantity
+       hoặc MaximumOrderAmount của rule cấu hình, ConfigCandidate không khớp item đó nữa
+       (HasConfigRule vẫn = 0) và ITEM ĐÓ rơi về cursor note-text bên dưới NHƯ KHÔNG CÓ CẤU
+       HÌNH GÌ — KHÔNG chặn hẳn mọi CTBH của item đó. Đây là lựa chọn có chủ đích, không phải
+       thiếu sót: chỉ rule cấu hình mới bị giới hạn đúng theo Maximum đã khai; khuyến mãi cũ
+       đang chạy bằng ghi chú sản phẩm không bị ảnh hưởng bởi việc ai đó cấu hình thêm rule mới
+       có giới hạn hẹp hơn. */
+    IF OBJECT_ID(N'dbo.AI_ActivePromotionByUserFnc', N'IF') IS NOT NULL
+    BEGIN
+        ;WITH ConfigCandidate AS (
+            SELECT
+                T.ItemID,
+                F.RuleType,
+                F.MinimumQuantity,
+                F.MinimumOrderAmount,
+                F.DiscountPercent,
+                F.GiftQuantity,
+                F.Priority,
+                F.PromotionItemRuleID,
+                ROW_NUMBER() OVER (
+                    PARTITION BY T.ItemID
+                    ORDER BY F.Priority ASC,
+                             COALESCE(F.MinimumOrderAmount, F.MinimumQuantity) DESC,
+                             F.PromotionItemRuleID ASC
+                ) AS TierRank
+            FROM #Items T
+            CROSS APPLY dbo.AI_ActivePromotionByUserFnc(@Username, T.ItemID, @StockAsOfUtc) F
+            WHERE (
+                    F.RuleType IN ('QUANTITY_DISCOUNT', 'QUANTITY_GIFT') AND F.MinimumQuantity IS NOT NULL
+                    AND T.Quantity >= F.MinimumQuantity
+                    AND (F.MaximumQuantity IS NULL OR T.Quantity <= F.MaximumQuantity)
+                  )
+               OR (
+                    F.RuleType IN ('AMOUNT_DISCOUNT', 'AMOUNT_GIFT') AND F.MinimumOrderAmount IS NOT NULL
+                    AND (T.Quantity * T.UnitPrice) >= F.MinimumOrderAmount
+                    AND (F.MaximumOrderAmount IS NULL OR (T.Quantity * T.UnitPrice) <= F.MaximumOrderAmount)
+                  )
+        )
+        UPDATE T
+        SET T.ExpectedGiftQuantity = CASE
+                WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(T.Quantity / C.MinimumQuantity) * COALESCE(C.GiftQuantity, 0)
+                WHEN C.RuleType = 'AMOUNT_GIFT' THEN COALESCE(C.GiftQuantity, 0)
+                ELSE 0
+            END,
+            T.ExpectedDiscountPercent = CASE
+                WHEN C.RuleType IN ('QUANTITY_DISCOUNT', 'AMOUNT_DISCOUNT') THEN COALESCE(C.DiscountPercent, 0)
+                ELSE 0
+            END,
+            T.HasConfigRule = 1
+        FROM #Items T
+        JOIN ConfigCandidate C ON C.ItemID = T.ItemID AND C.TierRank = 1;
+    END;
+
     /* Recalculate the current general-customer promotion from the SQL price note.
-       The client values are accepted only when they match this server result. */
+       The client values are accepted only when they match this server result.
+       Bỏ qua ItemID đã được tính bằng rule cấu hình ở trên (HasConfigRule = 1). */
     DECLARE @PromoItemID VARCHAR(50), @PromoQuantity INT, @PromoNote NVARCHAR(MAX);
     DECLARE @PromoText NVARCHAR(MAX), @PromoUpper NVARCHAR(MAX), @Scan INT, @PlusPos INT;
     DECLARE @LeftPos INT, @LeftEnd INT, @RightPos INT, @RightEnd INT;
@@ -426,7 +490,7 @@ BEGIN
     DECLARE @CkPos INT, @CkLength INT, @PercentPos INT, @DiscountText NVARCHAR(100), @ExpectedDiscount DECIMAL(18,2);
 
     DECLARE PromotionCursor CURSOR LOCAL FAST_FORWARD FOR
-        SELECT ItemID, CONVERT(INT, Quantity), COALESCE(PromotionNote, N'') FROM #Items;
+        SELECT ItemID, CONVERT(INT, Quantity), COALESCE(PromotionNote, N'') FROM #Items WHERE HasConfigRule = 0;
     OPEN PromotionCursor;
     FETCH NEXT FROM PromotionCursor INTO @PromoItemID, @PromoQuantity, @PromoNote;
     WHILE @@FETCH_STATUS = 0

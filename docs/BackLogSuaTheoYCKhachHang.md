@@ -23,17 +23,25 @@ Mỗi task chỉ được chuyển sang `DONE` khi có đủ:
   - **Bằng chứng:** ảnh trước/sau khi chọn, Network request/response, request ID và báo cáo nguyên nhân gốc gắn code/API liên quan.
   - **Nghiệm thu:** tái lập được lỗi và chứng minh nguyên nhân cụ thể; không dùng kết luận chung “không tìm thấy”.
 
-- [ ] **CUST-SEARCH-002 — Sửa autocomplete dùng đúng định danh khách** · `P0` · `BLOCKED_BY_CUST_SEARCH_001`
+- [x] **CORE-011 — Sửa tìm kiếm và chọn khách hàng từ gợi ý** · `P0` · `DONE` · *nghiệm thu 21/08/2026*
   - **Phạm vi:** lưu `ObjectID` làm giá trị nghiệp vụ; tên/mã/địa chỉ/SĐT chỉ để hiển thị. Sửa nội dung tìm kiếm phải xóa lựa chọn cũ; không tự chọn khi user chưa xác nhận.
-  - **Xác minh:** chọn bằng chuột/Enter, chọn–xóa–chọn lại, tên có/không dấu, hai khách trùng tên, khách ngoài scope.
-  - **Bằng chứng:** test mapping `label → ObjectID`, ảnh desktop/mobile, payload đúng `ObjectID` và request ID runtime.
+  - **Xác minh CORE-011:** đăng nhập bằng tài khoản `demo`; kiểm tra bộ chọn khách trên màn lập đơn và sửa đơn; ca rỗng `xyz99999`; tìm theo tên `An`; tìm chính xác theo mã `ONL1136`; chọn bằng chuột và kiểm tra dữ liệu được map vào form.
+  - **Bằng chứng:** biên bản E2E do người kiểm thử cung cấp; đối chiếu code mapping `label → ObjectID`; đối chiếu gateway read-only cho `xyz99999` và `ONL1136`; video được báo cáo tên `test_customer_search_1787278729160.webp`.
   - **Nghiệm thu:** chọn gợi ý mở đúng khách và không còn báo “Không tìm thấy dữ liệu” do gửi sai định danh.
+  - **Kết quả 21/08/2026:** `PASS` màn lập đơn và sửa đơn. `xyz99999` giữ modal mở và hiển thị trạng thái không có kết quả; `ONL1136` trả đúng `ONL1136 - Anh An`; sau khi chọn, form map lại chi nhánh, tuyến thứ, phường/xã, địa chỉ và SĐT theo dữ liệu có sẵn của khách.
+  - **Đối chiếu kỹ thuật:** option trên hai màn hình dùng `{ value: ObjectID, label: DisplayName }`, cache/deduplicate theo `ObjectID`; commit `74f6c53e` bổ sung tìm kiếm từ xa cho màn sửa đơn và trạng thái danh sách rỗng của bộ chọn dùng chung.
+  - **Giới hạn bằng chứng:** từ khóa ngắn `An` trả nhiều khách (runtime khoảng `500` dòng), nên chỉ chứng minh tìm kiếm tên một phần có chứa `ONL1136`, không chứng minh kết quả duy nhất. Video chưa nằm trong workspace và gateway chưa trả request ID trong response header để lưu kèm báo cáo.
+  - **Phạm vi đóng:** chỉ đóng `CORE-011` trong backlog sửa theo yêu cầu khách hàng. Các ca Enter, chọn–xóa–chọn lại, khách trùng tên/ngoài scope, API chậm/lỗi, context tài khoản và regression toàn bộ màn hình vẫn thuộc `CUST-SEARCH-003`, chưa nghiệm thu.
 
-- [ ] **CUST-SEARCH-003 — Regression các màn hình sử dụng bộ chọn khách** · `P0` · `BLOCKED_BY_CUST_SEARCH_002`
+- [ ] **CUST-SEARCH-003 — Regression các màn hình sử dụng bộ chọn khách** · `P0` · `PARTIAL_PASS_PENDING_FULL_E2E_EVIDENCE`
   - **Phạm vi:** xem khách, lập đơn và các form khác dùng autocomplete; test click nhanh, retry, xóa từ khóa, API chậm/lỗi và danh sách nhiều dòng.
   - **Xác minh:** cùng input/cùng mốc dữ liệu cho kết quả nhất quán; không giữ khách của phiên hoặc tài khoản trước.
   - **Bằng chứng:** ma trận pass/fail, ảnh/video ca chính, request ID của ca thành công và ca âm.
   - **Nghiệm thu:** 100% ca P0/P1 pass, không gây regression luồng lập đơn.
+  - **Kết quả kỹ thuật 21/08/2026:** đã thêm sequence guard `_loadSeq/requestSeq` cho `src/js/pages/customer-management.js` và `src/js/pages/contract-point.js`; response thành công hoặc lỗi của request cũ đều bị bỏ qua khi đã có request mới hơn. Source và bundle `src/js/dist/pages/*` đã đồng bộ; `node --check`/`git diff --check` không phát hiện lỗi cú pháp hoặc whitespace.
+  - **Kết quả trình duyệt do người kiểm thử cung cấp:** báo cáo `PASS` 5 ca `An → XYZ9999`, `An → Shop`, `Shop → An`, xóa tìm kiếm và chuyển trang `1 → 2 → 3`; kết quả cuối không bị response cũ ghi đè.
+  - **Giới hạn bằng chứng race condition:** ô tìm kiếm debounce `300 ms`. Nếu đổi từ khóa trước khi request đầu được phát đi thì chỉ request sau chạy, chưa tạo race thật. Báo cáo chưa có Network timeline chứng minh cả hai request cùng tồn tại và request đầu hoàn tất sau request thứ hai; video `test_customer_regression_1787287268021.webp` chưa tìm thấy trong workspace.
+  - **Phần còn thiếu trước khi `DONE`:** ép request đầu chậm và chắc chắn đã gửi; chụp hai request cùng thứ tự hoàn tất; test API lỗi/retry, stale error, đổi/đăng nhập lại tài khoản, khách ngoài scope và regression bộ chọn khách tại màn lập/sửa đơn. Cần bổ sung video/ảnh, request ID hoặc timestamp Network cho ca dương và ca âm.
 
 ## 3. Cấu hình giá trị tối thiểu CTBH
 
@@ -42,18 +50,29 @@ Mỗi task chỉ được chuyển sang `DONE` khi có đủ:
   - **Xác minh:** ví dụ dưới/bằng/trên ngưỡng, hết hạn và hai CTBH xung đột; config phải có version, hiệu lực, trạng thái duyệt và scope.
   - **Bằng chứng:** business sign-off và bảng input → kết quả CTBH mong đợi.
   - **Nghiệm thu:** frontend, API, SQL và business dùng chung một contract; không hard-code ngưỡng.
+  - **Kết quả kỹ thuật tạm thời 21/08/2026:** contract code hiện hỗ trợ cận dưới/cận trên theo số lượng hoặc giá trị dòng, `Priority`, và tie-break bằng `PromotionItemRuleID`. Đây mới là contract kỹ thuật đang triển khai, chưa thay thế business sign-off.
+  - **Điểm phải chốt với business:** khi một rule cấu hình tồn tại nhưng số lượng/giá trị nằm ngoài khoảng `min/max`, hệ thống sẽ không áp rule đó nhưng hiện vẫn fallback sang CTBH ghi chú ERP cũ. Cần quyết định fallback là hành vi mong muốn hay vượt `max` phải không hưởng bất kỳ CTBH nào.
+  - **Giới hạn hàng tặng:** quà khác SKU hiện được chặn fail-closed; chưa phải chức năng đã hỗ trợ quà khác sản phẩm mua.
 
-- [ ] **PROMO-CFG-002 — Xây cấu hình min có phân quyền và audit** · `P1` · `BLOCKED_BY_PROMO_CFG_001`
+- [ ] **PROMO-CFG-002 — Xây cấu hình min có phân quyền và audit** · `P1` · `IMPLEMENTED_MEDTEST_PARTIAL_VERIFIED_PENDING_SIGN_OFF_AND_E2E`
   - **Phạm vi:** tài khoản được cấp quyền tạo version mới; không sửa trực tiếp version đã duyệt. Lưu người tạo/duyệt, thời gian, trước/sau và lý do.
   - **Xác minh:** thay config không build code; test config tương lai/hết hạn/thiếu/sai scope và tài khoản không có quyền. API tạo đơn phải kiểm tra lại phía server.
   - **Bằng chứng:** migration/config manifest, audit thay đổi, response trước/sau hiệu lực và test fail-closed.
   - **Nghiệm thu:** đổi `min` bằng config làm kết quả thay đổi đúng contract; payload giả không vượt kiểm tra server.
+  - **Code/runtime 21/08/2026:** frontend dùng `src/js/utils/promotion.js` và `src/js/pages/promotion-admin.js`; SQL dùng `sql/PROMO-CFG-001_Promotion_Program_Admin_AI.sql`, `sql/PROMO-CFG-002_Active_Promotion_By_Items_AI.sql` và `sql/Module common - API_DonHangChiTiet_Insert_AI.sql`. Runtime `medtest` đã có guard quà khác SKU, `MaximumQuantity`, `MaximumOrderAmount`, `HasConfigRule` và tie-break `PromotionItemRuleID ASC`.
+  - **Unit test client có assertion:** `PASS` dưới/trong/trên `MaximumQuantity`; dưới/trong/trên `MaximumOrderAmount`; hai rule trùng priority/mốc luôn chọn `PromotionItemRuleID` nhỏ hơn. `node --check` và `git diff --check` đều `PASS`; bundle phiên bản `11.144` có client guard tương ứng.
+  - **DB verification rollback:** chạy `node scripts/verify_promo_cfg001_fixes.js` trên `medtest` trả `PASS` cho `MAX_BOUND_RESPECTED`, `TIE_BREAK_DETERMINISTIC` và `CROSS_SKU_GIFT_REJECTED`; transaction đã `ROLLBACK`. Hậu kiểm có `0` dòng `VERIFY_*`, `0` rule quà khác SKU cũ và `0` rule quà khác SKU đang active/approved.
+  - **Quà khác SKU:** server `API_PromotionProgram_Upsert_AI` từ chối `GiftItemID <> ItemID`; frontend admin cũng chặn sớm. Đây là biện pháp bảo toàn dữ liệu cho tới khi payload và SQL đơn hàng hỗ trợ quà khác SKU thật sự.
+  - **Giới hạn script:** `runOrderConfigCandidate()` sao chép CTE tính CTBH để kiểm tra, chưa gọi procedure tạo đơn thật. DB script mới kiểm tra cận trên số lượng; cận trên giá trị mới được xác minh bằng unit client và đối chiếu định nghĩa runtime. Ca tie-break DB chỉ chứng minh ba lần chạy cùng kết quả, chưa assert trực tiếp rule thắng là ID nhỏ nhất; phần này hiện được đảm bảo thêm bằng static/runtime check.
+  - **Chưa nghiệm thu:** chưa đủ test quyền âm, audit trước/sau, config tương lai/hết hạn/sai scope và chưa có mutation qua API/UI thật kèm request ID.
 
-- [ ] **PROMO-CFG-003 — UAT min CTBH trên preview và đơn thật** · `P0` · `BLOCKED_BY_PROMO_CFG_002`
+- [ ] **PROMO-CFG-003 — UAT min CTBH trên preview và đơn thật** · `P0` · `BLOCKED_PENDING_FALLBACK_DECISION_AND_TRUE_ORDER_E2E`
   - **Phạm vi:** chạy bộ ví dụ business ở preview và xác nhận tạo đơn; server không tin giá trị CTBH từ frontend.
   - **Xác minh:** dưới/bằng/trên ngưỡng, double-click, retry, config đổi giữa preview/xác nhận và chương trình hết hiệu lực.
   - **Bằng chứng:** ảnh preview, response tạo đơn, request ID, mã đơn rollback hoặc biên bản dọn dữ liệu và bảng kỳ vọng/thực tế.
   - **Nghiệm thu:** 100% ví dụ chuẩn pass; không áp sai CTBH hoặc tạo đơn trùng.
+  - **Kết quả hiện tại 21/08/2026:** chưa chạy procedure tạo đơn thật với bộ rule `min/max`; chưa có ảnh preview, response tạo đơn, request ID hoặc mã đơn rollback. Không dùng kết quả helper/CTE độc lập để đánh dấu task này `DONE`.
+  - **Rủi ro cần xử lý/chốt:** rule cấu hình `SL 5–10, giảm 7%` với `SL = 12` trả `null` ở config, nhưng nếu ghi chú ERP cũ là `Mua 10+2` thì frontend và SQL hiện có thể fallback và vẫn tặng `2`. Sau khi business chốt semantics, phải test lại preview và `API_DonHangChiTiet_Insert_AI` trong transaction rollback.
 
 ## 4. Workflow Sale tạo đơn → Kế toán duyệt
 
@@ -137,7 +156,7 @@ Mỗi task chỉ được chuyển sang `DONE` khi có đủ:
 
 ## 8. Thứ tự thực hiện đề xuất
 
-1. `CUST-SEARCH-001` → `CUST-SEARCH-003`.
+1. `CUST-SEARCH-001` → `CORE-011` → `CUST-SEARCH-003`.
 2. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002`.
 3. `ORDER-APPROVAL-001` → `ORDER-APPROVAL-004`.
 4. `PROMO-CFG-001` → `PROMO-CFG-003` sau khi business sign-off.

@@ -41,7 +41,7 @@ const Router = (() => {
     { path: 'account-detail', template: 'src/templates/account-detail.html', scripts: ['src/js/pages/account-detail.js'], css: ['src/css/pages/account-detail.css'], auth: true, nav: 'account', title: 'Thông tin tài khoản' },
     { path: 'account-edit', template: 'src/templates/account-edit.html', scripts: ['src/js/pages/account-edit.js'], css: ['src/css/pages/account-edit.css'], auth: true, nav: 'account', title: 'Chỉnh sửa tài khoản' },
     { path: 'change-password', template: 'src/templates/change-password.html', scripts: ['src/js/pages/change-password.js'], css: ['src/css/components/forms.css', 'src/css/pages/change-password.css'], auth: true, nav: 'account', title: 'Đổi mật khẩu' },
-    { path: 'rag-admin', template: 'src/templates/rag-admin.html', scripts: ['src/js/pages/rag-admin.js'], css: ['src/css/pages/rag-admin.css'], auth: true, nav: 'account', title: 'Quản lý Tri thức' },
+    { path: 'rag-admin', template: 'src/templates/rag-admin.html', scripts: ['src/js/pages/rag-admin.js', 'src/js/pages/promotion-admin.js'], css: ['src/css/pages/rag-admin.css', 'src/css/pages/promotion-admin.css'], auth: true, nav: 'account', title: 'Quản lý Tri thức & CTBH' },
 
 
     // Survey

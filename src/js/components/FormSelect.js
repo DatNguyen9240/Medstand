@@ -55,11 +55,11 @@ var FormSelect = (function () {
 
     this.$container.append($el);
     this._fields[id] = { type: 'input', inputType: type, label: opts.label, placeholder: placeholder, required: opts.required };
-    
+
     if (opts.locked || opts.readonly) {
       this.setLocked(id, true);
     }
-    
+
     return this;
   };
 
@@ -101,7 +101,7 @@ var FormSelect = (function () {
     if (opts.autoload !== false && opts.loadFn) {
       var selfPreload = this;
       var fieldRef = this._fields[id];
-      opts.loadFn(function(options) {
+      opts.loadFn(function (options) {
         fieldRef._cachedOptions = options;   // cache để picker dùng lại, không call API 2 lần
       });
     }
@@ -148,9 +148,9 @@ var FormSelect = (function () {
       var $overlay = $('<div class="picker-overlay"></div>');
       var $sheet = $('<div class="picker-sheet"></div>').html(html);
       $overlay.append($sheet).appendTo('body');
-      
+
       // Trigger animation
-      setTimeout(function() {
+      setTimeout(function () {
         $overlay.addClass('active');
         $sheet.addClass('active');
       }, 10);

@@ -60,6 +60,8 @@ window.API_CONFIG = {
             DELETE_DETAIL: '/api/API_DonHangChiTiet_Delete',
             INSERT_DETAIL: '/api/API_DonHangChiTiet_Insert',
             UPDATE_DETAIL: '/api/API_DonHangChiTiet_Update',
+            APPROVAL_CONTEXT: '/api/API_DonHang_ApprovalContext_AI',
+            APPROVE_TRANSITION: '/api/API_DonHang_ApproveTransition_AI',
             THONG_KE_SO_LUONG: '/api/API_ThongKeSoLuong',
             SAVE_DRAFT: '/api/API_LuuDonNhap',
         },
@@ -88,6 +90,13 @@ window.API_CONFIG = {
             MARK_READ: '/api/API_ThongBao_AI',
             UNREAD_COUNT: '/api/API_ThongBao_UnreadCount_AI',
             PUSH: '/api/API_ThongBao_Push_AI'
+        },
+        PROMOTION_ADMIN: {
+            LIST: '/api/API_PromotionProgram_List_AI',
+            DETAIL: '/api/API_PromotionProgram_Detail_AI',
+            UPSERT: '/api/API_PromotionProgram_Upsert_AI',
+            APPROVE: '/api/API_PromotionProgram_Approve_AI',
+            ACTIVE_BY_ITEMS: '/api/API_PromotionActiveByItems_AI',
         },
         FILTER: {
             BRANCHES: '/api/API_ChiNhanhList',

@@ -4,6 +4,7 @@
       var dateTo = '';
       var searchText = '';
       var _filterValues = {};
+      var _loadSeq = 0; // Chặn kết quả trả về chậm của lần gọi cũ đè lên kết quả mới hơn
 
       var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
 
@@ -93,6 +94,7 @@
         $('#detail-content').prop('hidden', true);
         $('#skeleton-detail').prop('hidden', false);
 
+        var requestSeq = ++_loadSeq;
         Http.get(API_CONFIG.ENDPOINTS.CONTRACT_POINT.LIST, {
           q: JSON.stringify({
             FromDate: dateFrom,
@@ -108,6 +110,7 @@
           })
         })
           .then(function (res) {
+            if (requestSeq !== _loadSeq) return; // Có lần gọi mới hơn đã thay thế, bỏ kết quả cũ này
             var data = res.data || res;
             var totalPages = data.pagetotal || data._pagetotal || 1;
 
@@ -128,6 +131,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
           })
           .catch(function (err) {
+            if (requestSeq !== _loadSeq) return;
             console.error('Failed to load contract points', err);
             $('#skeleton-report').prop('hidden', true);
             $('#skeleton-detail').prop('hidden', true);

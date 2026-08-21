@@ -6,9 +6,12 @@ function todayStr() {
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
 }
 
-function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
+// giftItemId/giftItemName: dùng khi CTBH cấu hình chỉ định quà tặng khác sản phẩm đang mua
+// (vd mua dầu gội tặng dầu xả). Mặc định giữ hành vi cũ — tặng cùng sản phẩm — khi không
+// truyền (đúng cách note-text luôn hoạt động từ trước tới nay).
+function autoApplyPromotion(parentRowId, itemId, name, freeQty, giftItemId, giftItemName) {
   var $existingPromoRow = $('#dynamicProductRowsContainer .add-product-row[data-parent-row-id="' + parentRowId + '"]');
-  
+
   if (freeQty <= 0) {
     if ($existingPromoRow.length) {
       var existingRowId = $existingPromoRow.attr('id').split('_')[1];
@@ -16,20 +19,38 @@ function autoApplyPromotion(parentRowId, itemId, name, freeQty) {
     }
     return;
   }
-  
+
   var cleanName = name.replace(/\s*\(Mua\s+[\s\S]*$/, '');
-  
+  var resolvedItemId = giftItemId || itemId;
+  var resolvedName = giftItemName || cleanName;
+
   if ($existingPromoRow.length) {
     var existingRowId = $existingPromoRow.attr('id').split('_')[1];
     var $qtyField = $('#qty_' + existingRowId);
-    if (parseInt($qtyField.val(), 10) !== freeQty) {
+    var currentGiftItemId = $('#productPickerContainer_' + existingRowId).attr('data-value') || '';
+    if (currentGiftItemId !== resolvedItemId) {
+      // Quà tặng đổi sản phẩm (vd đổi CTBH) — chỉ xoá đúng dòng quà tặng cũ (KHÔNG phải
+      // removeProductRow(parentRowId), vì hàm đó xoá luôn dòng sản phẩm chính) rồi tạo lại
+      // đúng sản phẩm mới, vì dòng quà tặng bị khoá (readonly) nên không thể chỉ đổi
+      // data-value tại chỗ.
+      $('#row_' + existingRowId).remove();
+      appendProductRow({
+        ItemID: resolvedItemId,
+        ItemName: resolvedName,
+        UnitPrice: 0,
+        Quantity: freeQty,
+        DiscountPercent: 0,
+        PromotionLabel: 'Hàng tặng',
+        parentRowId: parentRowId
+      });
+    } else if (parseInt($qtyField.val(), 10) !== freeQty) {
       $qtyField.val(freeQty);
       calculateRowTotal(existingRowId);
     }
   } else {
     appendProductRow({
-      ItemID: itemId,
-      ItemName: cleanName,
+      ItemID: resolvedItemId,
+      ItemName: resolvedName,
       UnitPrice: 0,
       Quantity: freeQty,
       DiscountPercent: 0,
@@ -145,6 +166,28 @@ function loadCustomers(searchText, done) {
 }
 var _customersCache = [];    // Cache danh sách khách hàng đầy đủ
 var _selectedLocationID = ''; // Lưu tỉnh thành của khách hàng đang chọn
+
+// PROMO-CFG-001/002: cache rule CTBH cấu hình (đã duyệt) theo ItemID, ưu tiên hơn note-text
+// khi có rule khớp mốc số lượng/giá trị hiện tại. Xem trước phía client, server vẫn luôn
+// tính lại và là nguồn sự thật cuối cùng khi tạo đơn (API_DonHangChiTiet_Insert_AI).
+var _configPromoRulesByItem = {};
+
+function loadConfigPromoRules(itemId) {
+  if (!itemId) return Promise.resolve([]);
+  if (_configPromoRulesByItem[itemId]) return Promise.resolve(_configPromoRulesByItem[itemId]);
+  return Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.ACTIVE_BY_ITEMS, {
+    q: JSON.stringify({ Username: user.UserName || '', JsonItemIDs: JSON.stringify([itemId]) })
+  }).then(function (res) {
+    var body = res && res.data !== undefined ? res.data : res;
+    var rows = (body && body.records) || body || [];
+    if (rows.length && rows[0].MsgType === 1) rows = [];
+    _configPromoRulesByItem[itemId] = rows;
+    return rows;
+  }).catch(function () {
+    _configPromoRulesByItem[itemId] = [];
+    return [];
+  });
+}
 
 // -- Build form using FormSelect component -----------------------------------
 var orderForm = new FormSelect({ container: '#orderFormContainer' });
@@ -322,7 +365,7 @@ function loadProductDetail(itemId) {
     if (!detail) throw new Error('Sản phẩm không còn bán được hoặc không có giá/tồn hợp lệ.');
     _productsCache[cacheKey] = detail;
     _productsLoadError = false;
-    return detail;
+    return loadConfigPromoRules(itemId).then(function () { return detail; });
   }).catch(function (error) {
     _productsLoadError = true;
     throw error;
@@ -433,7 +476,11 @@ function calculateRowTotal(rowId) {
   var discount = parseFloat($('#discount_' + rowId).val() || 0);
   var promotionResult = null;
   if (price > 0 && itemId && qty > 0 && window.MedstandPromotion) {
-    promotionResult = window.MedstandPromotion.calculate(note, qty);
+    var configRules = _configPromoRulesByItem[itemId];
+    promotionResult = (configRules && configRules.length)
+      ? window.MedstandPromotion.calculateFromConfigRules(configRules, qty, price)
+      : null;
+    if (!promotionResult) promotionResult = window.MedstandPromotion.calculate(note, qty);
     discount = promotionResult.discountPercent;
     $('#discount_' + rowId).val(discount);
   }
@@ -446,9 +493,11 @@ function calculateRowTotal(rowId) {
   if ($promoSuggest.length) {
     if (price > 0 && name && qty > 0) {
       var freeQty = promotionResult ? promotionResult.giftQuantity : 0;
+      var giftItemId = promotionResult ? promotionResult.giftItemID : '';
+      var giftItemName = promotionResult ? promotionResult.giftItemName : '';
       if (freeQty > 0) {
-        autoApplyPromotion(rowId, itemId, name, freeQty);
-        $promoSuggest.html('🎁 Hàng tặng: ' + freeQty + ' sản phẩm (giá 0đ).').show();
+        autoApplyPromotion(rowId, itemId, name, freeQty, giftItemId, giftItemName);
+        $promoSuggest.html('🎁 Hàng tặng: ' + freeQty + (giftItemName ? ' ' + giftItemName : ' sản phẩm') + ' (giá 0đ).').show();
       } else {
         autoApplyPromotion(rowId, itemId, name, 0);
         if (promotionResult && promotionResult.discountPercent > 0) {

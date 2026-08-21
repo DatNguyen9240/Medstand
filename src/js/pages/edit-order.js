@@ -101,14 +101,6 @@
             appendProductRow();
           }
           updateLiveTotal();
-
-          // StatusID: thử đọc từ first product row, mặc định 0 nếu không có
-          setTimeout(function() {
-            if ($('#selAdminStatus').length) {
-              var sid = p0.StatusID !== undefined ? parseInt(p0.StatusID, 10) : 0;
-              $('#selAdminStatus').val(sid);
-            }
-          }, 300);
         })
         .catch(function (err) {
           console.error(err);
@@ -637,57 +629,14 @@
       });
     });
     // ── Admin Approve ─────────────────────────────────────────────────────────────
-    // Hiển thị phần "Cập nhật trạng thái" cho tất cả user để test (hoặc đưa logic phân quyền về backend)
-    $('#adminApproveBtnContainer').html(
-      '<div style="display:inline-flex; align-items:center; gap:8px; margin-right:8px;">' +
-        '<select id="selAdminStatus" style="padding:0 12px; border-radius:var(--radius-md); border:1px solid #d1d5db; font-size:0.9rem; outline:none; background:#fff; font-weight:600; color:#374151; min-width:170px; height: 42px; cursor:pointer;">' +
-          '<option value="0">Mới tạo (Lưu nháp)</option>' +
-          '<option value="1">Đã Duyệt</option>' +
-          '<option value="2">Đang Giao Hàng</option>' + 
-          '<option value="10">Hoàn Thành</option>' +
-          '<option value="-1">Hủy Đơn</option>' +
-          '<option value="-2">Trả Lại Hàng</option>' +
-        '</select>' +
-        '<button type="button" id="btnApproveOrder" style="padding:0 24px;background:#3b82f6;color:#fff;border:none;border-radius:var(--radius-md);font-size:0.9rem;font-weight:700;letter-spacing:.04em;cursor:pointer;white-space:nowrap; height: 42px; transition: background 0.2s;">CẬP NHẬT TRẠNG THÁI</button>' +
-      '</div>'
-    ).show();
-
-    $('#btnApproveOrder').on('mouseenter', function() { $(this).css('background', '#2563eb'); })
-                         .on('mouseleave', function() { $(this).css('background', '#3b82f6'); });
-
-    $('#btnApproveOrder').on('click', function() {
-      var targetStatus = parseInt($('#selAdminStatus').val(), 10);
-      var $btn = $(this);
-      $btn.prop('disabled', true).text('ĐANG XỬ LÝ...');
-      OrderService.update({
-        OldKeyID: orderId,
-        BranchID: '', CeoID: '', ManagerID: '', EmployeeID: '', ObjectID: '', Memo: '', Notes: '', ThuDiTuyen: '', ItemList: '',
-        User: user.UserName || '',
-        StatusID: targetStatus
-      }).then(function (res) {
-        var data = res.data || res;
-        var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
-        var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
-        if (msgType == 1) { 
-          Alert.error(record.Msg || 'Lỗi cập nhật trạng thái'); 
-          $btn.prop('disabled', false).text('CẬP NHẬT TRẠNG THÁI');
-          return; 
-        }
-        Alert.success('Đã cập nhật trạng thái đơn hàng thành công!');
-        
-        // Hiển thị nút thành trạng thái Đã lưu
-        $btn.css('background', '#10b981').text('ĐÃ LƯU!');
-        
-        // Khôi phục lại trạng thái nút sau 3s
-        setTimeout(function () {
-           $btn.prop('disabled', false).css('background', '#3b82f6').text('CẬP NHẬT TRẠNG THÁI');
-        }, 3000);
-        
-      }).catch(function (err) {
-        Alert.error(err.message || 'Lỗi hệ thống');
-        $btn.prop('disabled', false).text('CẬP TRẠNG THÁI');
-      });
-    });
+    // ĐÃ GỠ (ORDER-APPROVAL-001, khảo sát 21/08/2026): dropdown đổi StatusID trước đây hiện
+    // cho MỌI user, không kiểm quyền Kế toán/chi nhánh/transition hợp lệ, và NHÃN HIỂN THỊ
+    // SAI HOÀN TOÀN so với StatusID thật trong DB (vd chọn "Hoàn Thành" thực ra ghi StatusID
+    // của "Đã hủy") — có thể huỷ nhầm đơn thật. Gỡ ngay để chặn rủi ro trong lúc chờ workflow
+    // duyệt đơn đúng (ORDER-APPROVAL-002/003: contract trạng thái do business chốt, proc
+    // transition riêng có kiểm quyền/idempotency/audit, UI lấy tên trạng thái từ
+    // API_OrderStatusList — không hard-code).
+    $('#adminApproveBtnContainer').hide().empty();
 
     // Bind apply promotion button click
     $(document).on('click', '.btn-apply-promo', function (e) {

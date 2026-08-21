@@ -274,6 +274,10 @@ const DIRECT_MUTATION_POLICY = Object.freeze({
     '/api/API_DonHangChiTiet_Insert_AI': Object.freeze({
         identityField: 'Username',
         operationCode: 'API_DonHangChiTiet_Insert_AI'
+    }),
+    '/api/API_DonHang_ApproveTransition_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_ApproveTransition_AI'
     })
 });
 
@@ -499,6 +503,19 @@ app.post('/api/gateway', async (req, res) => {
                 RequestID: requestId
             };
             body[mutationPolicy.identityField] = verifiedIdentity.username;
+        }
+
+        // dbo.API_DonHang_Update (proc ERP gốc, không phải do AI viết — không sửa trực tiếp ở
+        // đây) có một nhánh cũ: hễ @StatusID > 0 là đổi thẳng trạng thái đơn, bỏ qua mọi kiểm
+        // tra quyền/chi nhánh/transition. UI đổi trạng thái không hợp lệ đã bị gỡ khỏi
+        // edit-order.js, nhưng ai gọi thẳng endpoint này (devtools, script khác) vẫn khai thác
+        // được nhánh đó nếu còn field StatusID trong payload. Chặn tại gateway: luôn xóa
+        // StatusID khỏi mọi request tới endpoint này — đổi trạng thái đơn giờ CHỈ được phép qua
+        // /api/API_DonHang_ApproveTransition_AI (đã có kiểm quyền/chi nhánh/transition/idempotency).
+        if (endpointPath === '/api/API_DonHang_Update' && body && typeof body === 'object' && !Array.isArray(body)) {
+            for (const key of Object.keys(body)) {
+                if (key.toLowerCase() === 'statusid') delete body[key];
+            }
         }
 
         targetUrl = `${baseUrl}${forwardedEndpoint}`;
