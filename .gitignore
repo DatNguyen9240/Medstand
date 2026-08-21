@@ -80,6 +80,7 @@ Technical_Documentation/*.zip
 
 # AI Agent Context Files
 .agent/
+.claude/
 AGENTS.md
 Phan_Tich_BRD_AI_Sale.md
 

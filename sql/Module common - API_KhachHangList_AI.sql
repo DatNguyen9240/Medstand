@@ -65,6 +65,7 @@ BEGIN
           ISNULL(@SearchText, '') = ''
           OR A.ObjectID LIKE '%' + @SearchText + '%'
           OR A.ObjectName LIKE '%' + @SearchText + '%'
+          OR A.Phone LIKE '%' + @SearchText + '%'
       )
     ORDER BY A.ObjectName, A.ObjectID;
 END

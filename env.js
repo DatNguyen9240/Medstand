@@ -10,7 +10,8 @@
 const ENV_VARS = {
     N8N_BASE: 'http://localhost:5678', // Local n8n instance
     API_BASE: '', // Chạy qua Server Proxy nội bộ (ẩn link backend thật)
-    CHAT_API_KEY: '' // Khóa bí mật do Server Proxy tự động chèn ở phía backend
+    CHAT_API_KEY: '', // Khóa bí mật do Server Proxy tự động chèn ở phía backend
+    WEB_PUSH_VAPID_PUBLIC_KEY: ''
 };
 
 
@@ -20,6 +21,7 @@ window.API_CONFIG = {
     BASE_URL: ENV_VARS.API_BASE,
     N8N_BASE: ENV_VARS.N8N_BASE,
     CHAT_API_KEY: ENV_VARS.CHAT_API_KEY,
+    WEB_PUSH_VAPID_PUBLIC_KEY: ENV_VARS.WEB_PUSH_VAPID_PUBLIC_KEY,
     GATEWAY_URL: '/api/gateway', // Cổng API Gateway hợp nhất bảo mật
 
     ENDPOINTS: {
@@ -58,6 +60,8 @@ window.API_CONFIG = {
             DELETE_DETAIL: '/api/API_DonHangChiTiet_Delete',
             INSERT_DETAIL: '/api/API_DonHangChiTiet_Insert',
             UPDATE_DETAIL: '/api/API_DonHangChiTiet_Update',
+            APPROVAL_CONTEXT: '/api/API_DonHang_ApprovalContext_AI',
+            APPROVE_TRANSITION: '/api/API_DonHang_ApproveTransition_AI',
             THONG_KE_SO_LUONG: '/api/API_ThongKeSoLuong',
             SAVE_DRAFT: '/api/API_LuuDonNhap',
         },
@@ -80,7 +84,20 @@ window.API_CONFIG = {
             CHECK_DAILY: '/api/API_KiemTraKhaoSatNgay',
         },
         PRODUCT_WARNING: { LIST: '/api/API_SanPhamCanhBao' },
-        NOTIFICATION: { LIST: '/api/API_ThongBao' },
+        NOTIFICATION: {
+            LIST: '/api/API_ThongBao_AI',
+            DETAIL: '/api/API_ThongBao_AI',
+            MARK_READ: '/api/API_ThongBao_AI',
+            UNREAD_COUNT: '/api/API_ThongBao_UnreadCount_AI',
+            PUSH: '/api/API_ThongBao_Push_AI'
+        },
+        PROMOTION_ADMIN: {
+            LIST: '/api/API_PromotionProgram_List_AI',
+            DETAIL: '/api/API_PromotionProgram_Detail_AI',
+            UPSERT: '/api/API_PromotionProgram_Upsert_AI',
+            APPROVE: '/api/API_PromotionProgram_Approve_AI',
+            ACTIVE_BY_ITEMS: '/api/API_PromotionActiveByItems_AI',
+        },
         FILTER: {
             BRANCHES: '/api/API_ChiNhanhList',
             CUSTOMERS: '/api/API_KhachHangList',

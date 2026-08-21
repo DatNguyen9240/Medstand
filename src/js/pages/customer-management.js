@@ -1,6 +1,7 @@
 (function () {
   var LIMIT = 20;
   var searchText = '';
+  var _loadSeq = 0; // Chặn kết quả trả về chậm của lần gọi cũ đè lên kết quả mới hơn
 
   // Init filter ngay lập tức
   new FilterComponent({
@@ -58,6 +59,7 @@
     $('#customer-list').prop('hidden', true);
     $('#skeleton').prop('hidden', false);
     var user = JSON.parse(localStorage.getItem('auth_user') || '{}');
+    var requestSeq = ++_loadSeq;
     Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
       q: JSON.stringify({
         User: user.UserName || '',
@@ -74,6 +76,7 @@
       })
     })
       .then(function (res) {
+        if (requestSeq !== _loadSeq) return; // Có lần gọi mới hơn đã thay thế, bỏ kết quả cũ này
         var data = res.data || res;
         var customers = data.records || data || [];
         var firstCustomer = customers[0] || {};
@@ -87,6 +90,7 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       })
       .catch(function () {
+        if (requestSeq !== _loadSeq) return;
         $('#skeleton').prop('hidden', true);
         $('#customer-list').prop('hidden', false).html('<p style="text-align:center;color:var(--color-text-muted);padding:48px 0;grid-column:1/-1">Không tải được dữ liệu</p>');
       });

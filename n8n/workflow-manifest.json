@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "workflows": [
+    { "file": "Shared/Shared_Auth_Guard.json", "id": "9UxECqxRaPGMF8EM", "publish": true },
+    { "file": "AI_Core/AI_ChatCasual.json", "id": "5wgkVq7UJ2GQJ9BR", "publish": true },
+    { "file": "AI_Core/AI_Intent_Parser.json", "id": "Gn7nDjDgGUFOWni5", "publish": true },
+    { "file": "AI_Core/AI_RAG_Query.json", "id": "actVwBhqMGLQ6cSH", "publish": true },
+    { "file": "AI_Core/AI_Reviewer.json", "id": "K2fHIkZIyZjfRkSL", "publish": true },
+    { "file": "AI_Core/AI_Upload_Reader.json", "id": "HQa6xx7flcNcC1oU", "publish": true },
+    { "file": "API_Services/API_DataSource.json", "id": "qMD8DESZ8pXRqrMR", "publish": true },
+    { "file": "API_Services/API_Execute.json", "id": "fCJwiyAT9r6eh1ys", "publish": true },
+    { "file": "API_Services/API_GetConfig.json", "id": "sGPz8LMQQHVp0IiL", "publish": true },
+    { "file": "API_Services/API_ListActive.json", "id": "FRbuGdI9jz0ZZIvU", "publish": true },
+    { "file": "API_Services/API_SystemMeta.json", "id": "YAiRyFqcyVmMU5c3", "publish": true },
+    { "file": "AI_Core/MAIN_ChatBot_V5.json", "id": "mQ2X8ubexBpqD3Ru", "publish": true },
+    { "file": "Cron_Jobs/CRON_CleanupRAG.json", "id": "medstandCronCleanupRag", "publish": true },
+    { "file": "Cron_Jobs/CRON_DailyReport.json", "id": "medstandCronDailyReport", "publish": false }
+  ],
+  "credentials": [
+    {
+      "id": "frs6ZRDbNFeYhZf7",
+      "name": "OpenAi account",
+      "type": "openAiApi",
+      "requiredEnv": ["OPENAI_API_KEY"],
+      "data": {
+        "apiKey": { "env": "OPENAI_API_KEY" },
+        "organizationId": { "env": "OPENAI_ORGANIZATION_ID", "default": "" },
+        "url": { "env": "LLM_API_BASE", "default": "https://api.openai.com/v1" }
+      }
+    },
+    {
+      "id": "5ixwpwlPHaQhoThr",
+      "name": "Microsoft SQL account",
+      "type": "microsoftSql",
+      "requiredEnv": ["MSSQL_SERVER", "MSSQL_DATABASE", "MSSQL_USER", "MSSQL_PASSWORD"],
+      "data": {
+        "server": { "env": "MSSQL_SERVER" },
+        "database": { "env": "MSSQL_DATABASE" },
+        "user": { "env": "MSSQL_USER" },
+        "password": { "env": "MSSQL_PASSWORD" },
+        "port": { "env": "MSSQL_PORT", "default": 1433, "type": "number" },
+        "domain": { "env": "MSSQL_DOMAIN", "default": "" },
+        "tls": { "env": "MSSQL_TLS", "default": true, "type": "boolean" },
+        "allowUnauthorizedCerts": { "env": "MSSQL_ALLOW_UNAUTHORIZED_CERTS", "default": false, "type": "boolean" },
+        "connectTimeout": { "env": "MSSQL_CONNECT_TIMEOUT", "default": 15000, "type": "number" },
+        "requestTimeout": { "env": "MSSQL_REQUEST_TIMEOUT", "default": 15000, "type": "number" },
+        "tdsVersion": { "env": "MSSQL_TDS_VERSION", "default": "7_4" }
+      }
+    },
+    {
+      "id": "Smpjg3Jo47EbcJNc",
+      "name": "QdrantApi account",
+      "type": "qdrantApi",
+      "requiredEnv": ["QDRANT_URL"],
+      "data": {
+        "apiKey": { "env": "QDRANT_API_KEY", "default": "" },
+        "qdrantUrl": { "env": "QDRANT_URL" }
+      }
+    },
+    {
+      "id": "ZgCV64OurMo9np6L",
+      "name": "Redis account",
+      "type": "redis",
+      "requiredEnv": ["REDIS_HOST"],
+      "data": {
+        "password": { "env": "REDIS_PASSWORD", "default": "" },
+        "user": { "env": "REDIS_USER", "default": "" },
+        "host": { "env": "REDIS_HOST" },
+        "port": { "env": "REDIS_PORT", "default": 6379, "type": "number" },
+        "database": { "env": "REDIS_DATABASE", "default": 0, "type": "number" },
+        "ssl": { "env": "REDIS_SSL", "default": false, "type": "boolean" },
+        "disableTlsVerification": { "env": "REDIS_DISABLE_TLS_VERIFICATION", "default": false, "type": "boolean" }
+      }
+    }
+  ]
+}

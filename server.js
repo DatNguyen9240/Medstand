@@ -218,6 +218,16 @@ const requestIdOf = (req) => {
 
 const getAdminUploadKey = () => String(process.env.ADMIN_UPLOAD_KEY || '').trim();
 
+const encryptPushSubscription = (subscription) => {
+    const keySource = String(process.env.NOTIFICATION_PUSH_ENCRYPTION_KEY || process.env.N8N_ENCRYPTION_KEY || '').trim();
+    if (keySource.length < 32) throw new Error('MISSING_PUSH_ENCRYPTION_KEY');
+    const key = crypto.createHash('sha256').update(keySource).digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const encrypted = Buffer.concat([cipher.update(JSON.stringify(subscription), 'utf8'), cipher.final()]);
+    return Buffer.concat([iv, cipher.getAuthTag(), encrypted]);
+};
+
 const unwrapUserInfoRecord = (payload) => {
     let data = payload;
     for (let depth = 0; depth < 4 && data; depth += 1) {
@@ -264,8 +274,33 @@ const DIRECT_MUTATION_POLICY = Object.freeze({
     '/api/API_DonHangChiTiet_Insert_AI': Object.freeze({
         identityField: 'Username',
         operationCode: 'API_DonHangChiTiet_Insert_AI'
+    }),
+    '/api/API_DonHang_ApproveTransition_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_ApproveTransition_AI'
     })
 });
+
+const NOTIFICATION_MUTATION_ACTIONS = new Set([
+    'MARK_READ', 'CREATE_DRAFT', 'UPDATE_DRAFT', 'APPROVE', 'WITHDRAW', 'SUBSCRIBE', 'UNSUBSCRIBE'
+]);
+
+const NOTIFICATION_IDENTITY_POLICY = Object.freeze({
+    '/api/API_ThongBao': Object.freeze({ identityField: 'User' }),
+    '/api/API_ThongBao_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_ThongBao_UnreadCount_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_ThongBao_Admin_AI': Object.freeze({ identityField: 'ActorUsername' }),
+    '/api/API_ThongBao_Push_AI': Object.freeze({ identityField: 'Username' })
+});
+
+const withServerOwnedIdentity = (endpoint, identityField, username) => {
+    const parsed = new URL(endpoint, 'http://gateway.local');
+    for (const key of Array.from(parsed.searchParams.keys())) {
+        if (['user', 'username'].includes(key.toLowerCase())) parsed.searchParams.delete(key);
+    }
+    parsed.searchParams.set(identityField, username);
+    return parsed.pathname + parsed.search;
+};
 
 const authRequiredPayload = (requestId) => ({
     success: false,
@@ -372,6 +407,7 @@ app.post('/api/gateway', async (req, res) => {
             return sendGatewayError(res, 400, requestId, validationError.message, 'Invalid gateway endpoint or method.');
         }
         const { method, endpoint } = normalizedRequest;
+        let forwardedEndpoint = endpoint;
         let body = requestPayload.body;
         const { multipart } = requestPayload;
 
@@ -397,7 +433,6 @@ app.post('/api/gateway', async (req, res) => {
         // 2. Định tuyến đến máy chủ đích thật
         const isN8n = endpoint.startsWith('/webhook');
         const baseUrl = isN8n ? getN8nUrl() : API_INTERNAL_URL;
-        targetUrl = `${baseUrl}${endpoint}`;
 
         // Chat/business webhooks are never anonymous. Login and other ERP APIs
         // remain reachable because they do not use the /webhook namespace.
@@ -468,6 +503,73 @@ app.post('/api/gateway', async (req, res) => {
                 RequestID: requestId
             };
             body[mutationPolicy.identityField] = verifiedIdentity.username;
+        }
+
+        // dbo.API_DonHang_Update (proc ERP gốc, không phải do AI viết — không sửa trực tiếp ở
+        // đây) có một nhánh cũ: hễ @StatusID > 0 là đổi thẳng trạng thái đơn, bỏ qua mọi kiểm
+        // tra quyền/chi nhánh/transition. UI đổi trạng thái không hợp lệ đã bị gỡ khỏi
+        // edit-order.js, nhưng ai gọi thẳng endpoint này (devtools, script khác) vẫn khai thác
+        // được nhánh đó nếu còn field StatusID trong payload. Chặn tại gateway: luôn xóa
+        // StatusID khỏi mọi request tới endpoint này — đổi trạng thái đơn giờ CHỈ được phép qua
+        // /api/API_DonHang_ApproveTransition_AI (đã có kiểm quyền/chi nhánh/transition/idempotency).
+        if (endpointPath === '/api/API_DonHang_Update' && body && typeof body === 'object' && !Array.isArray(body)) {
+            for (const key of Object.keys(body)) {
+                if (key.toLowerCase() === 'statusid') delete body[key];
+            }
+        }
+
+        targetUrl = `${baseUrl}${forwardedEndpoint}`;
+
+        // Notification identity is always derived from the authenticated token.
+        // Ignore User/Username supplied by the browser to prevent cross-user reads.
+        const notificationPolicy = NOTIFICATION_IDENTITY_POLICY[endpointPath];
+        if (notificationPolicy) {
+            const notificationAction = String(body && body.Action || '').trim().toUpperCase();
+            if (method !== 'GET' && method !== 'HEAD' && NOTIFICATION_MUTATION_ACTIONS.has(notificationAction)) {
+                const idempotencyKey = String(req.headers['idempotency-key'] || '').trim();
+                if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/.test(idempotencyKey)) {
+                    return sendGatewayError(res, 422, requestId, 'IDEMPOTENCY_KEY_REQUIRED', 'YÃªu cáº§u ghi dá»¯ liá»‡u thiáº¿u khÃ³a chá»‘ng gá»­i láº·p há»£p lá»‡.');
+                }
+            }
+            let verifiedIdentity = null;
+            try {
+                verifiedIdentity = await resolveVerifiedGatewayIdentity(authorization);
+            } catch (identityError) {
+                console.error(`[Notification Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
+            }
+            if (!verifiedIdentity || !verifiedIdentity.username) {
+                return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'KhÃ´ng thá»ƒ xÃ¡c minh tÃ i khoáº£n Ä‘Äƒng nháº­p. Vui lÃ²ng Ä‘Äƒng nháº­p láº¡i.');
+            }
+
+            if (method === 'GET' || method === 'HEAD') {
+                forwardedEndpoint = withServerOwnedIdentity(
+                    endpoint,
+                    notificationPolicy.identityField,
+                    verifiedIdentity.username
+                );
+            } else {
+                body = body && typeof body === 'object' && !Array.isArray(body) ? { ...body } : {};
+                for (const key of Object.keys(body)) {
+                    if (['user', 'username', 'actorusername'].includes(key.toLowerCase())) delete body[key];
+                }
+                if (endpointPath === '/api/API_ThongBao_Push_AI' && notificationAction === 'SUBSCRIBE') {
+                    const subscription = body.Subscription;
+                    const endpointValue = String(subscription && subscription.endpoint || '');
+                    const p256dh = String(subscription && subscription.keys && subscription.keys.p256dh || '');
+                    const authKey = String(subscription && subscription.keys && subscription.keys.auth || '');
+                    if (!endpointValue.startsWith('https://') || endpointValue.length > 2000 || !p256dh || !authKey) {
+                        return sendGatewayError(res, 422, requestId, 'INVALID_PUSH_SUBSCRIPTION', 'Push subscription khÃ´ng há»£p lá»‡.');
+                    }
+                    try {
+                        body.SubscriptionCipher = encryptPushSubscription(subscription).toString('base64');
+                        delete body.Subscription;
+                    } catch (_) {
+                        return sendGatewayError(res, 503, requestId, 'MISSING_PUSH_ENCRYPTION_KEY', 'MÃ¡y chá»§ chÆ°a cáº¥u hÃ¬nh khÃ³a mÃ£ hÃ³a Web Push.');
+                    }
+                }
+                body[notificationPolicy.identityField] = verifiedIdentity.username;
+            }
+            targetUrl = `${baseUrl}${forwardedEndpoint}`;
         }
 
         console.log(`[Proxy Gateway] Forwarding ${method} to ${targetUrl}`);

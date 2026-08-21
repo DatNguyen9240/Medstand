@@ -2,7 +2,7 @@
   <button type="button" class="btn-icon" aria-label="Quay lại" onclick="history.back()" style="background: none; border: none; color: var(--color-text); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-sm); transition: background-color 0.2s;">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
   </button>
-  <span class="header-title" style="font-weight: 600; font-size: var(--font-size-md); color: var(--color-text); letter-spacing: -0.01em;">Quản lý Tri thức RAG</span>
+  <span class="header-title" style="font-weight: 600; font-size: var(--font-size-md); color: var(--color-text); letter-spacing: -0.01em;">Quản lý Tri thức & CTBH</span>
   <div style="width:36px"></div>
 </header>
 
@@ -136,6 +136,104 @@
       <div id="rag-lifecycle-message" class="rag-review-message" role="status" aria-live="polite"></div>
       <div id="rag-lifecycle-list" class="rag-lifecycle-list">
         <p class="rag-review-empty">Đang tải trạng thái hiệu lực...</p>
+      </div>
+    </section>
+
+    <!-- Quản lý CTBH (cấu hình rule giá/điều kiện thật — khác với tài liệu RAG ở trên,
+         vốn chỉ để AI học và tư vấn bằng lời) -->
+    <div style="padding: 16px; background: var(--color-surface); border-radius: var(--radius-md); border: 1px solid var(--color-border); margin: 28px 0 24px; box-shadow: var(--shadow-xs);">
+      <h4 style="margin: 0 0 4px; font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text);">Cấu hình điều kiện tối thiểu của CTBH</h4>
+      <p style="margin: 0; font-size: var(--font-size-xs); color: var(--color-text-muted); line-height: 1.5;">
+        Mỗi chương trình tự quyết định điều kiện áp dụng (theo số lượng hoặc giá trị đơn hàng của từng sản phẩm),
+        có phiên bản và hiệu lực rõ ràng. Chỉ chương trình đã <strong>Duyệt</strong> mới có hiệu lực thật; sửa một
+        chương trình đã duyệt sẽ tạo phiên bản DRAFT mới, không ghi đè bản cũ.
+      </p>
+    </div>
+
+    <section class="promo-admin-card" aria-labelledby="promo-admin-heading">
+      <div class="promo-admin-header">
+        <div>
+          <h2 id="promo-admin-heading">Danh sách chương trình CTBH</h2>
+          <p>Hiển thị phiên bản mới nhất của mỗi mã CTBH.</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" id="btn-refresh-promo-list" class="promo-secondary-button">Làm mới</button>
+          <button type="button" id="btn-new-promo" class="promo-primary-button">+ CTBH mới</button>
+        </div>
+      </div>
+      <div id="promo-admin-message" class="promo-admin-message" role="status" aria-live="polite"></div>
+      <div class="promo-admin-layout">
+        <div id="promo-list" class="promo-list">
+          <p class="promo-empty">Đang tải danh sách...</p>
+        </div>
+
+        <div id="promo-editor" class="promo-editor">
+          <div class="promo-editor-grid">
+            <label>Mã CTBH
+              <input type="text" id="pf-code" placeholder="VD: TET2026">
+            </label>
+            <label>Tên chương trình
+              <input type="text" id="pf-name" placeholder="Tên hiển thị">
+            </label>
+            <label>Loại chương trình
+              <select id="pf-type">
+                <option value="MONTHLY">Hàng tháng (MONTHLY)</option>
+                <option value="EVENT">Sự kiện (EVENT)</option>
+              </select>
+            </label>
+            <label>Độ ưu tiên
+              <input type="number" id="pf-priority" value="100" min="1" max="10000">
+            </label>
+            <label>Hiệu lực từ
+              <input type="datetime-local" id="pf-from">
+            </label>
+            <label>Hiệu lực đến
+              <input type="datetime-local" id="pf-to">
+            </label>
+            <label class="promo-full">Nguồn tài liệu (bắt buộc — vd tên file/quyết định phê duyệt business)
+              <input type="text" id="pf-source" placeholder="VD: QD-CTBH-Tet2026.pdf">
+            </label>
+            <label class="promo-full">Mô tả
+              <textarea id="pf-desc" rows="2"></textarea>
+            </label>
+            <label>Phạm vi chi nhánh
+              <select id="pf-branch-scope">
+                <option value="ALL">Tất cả chi nhánh</option>
+                <option value="INCLUDE">Chỉ định chi nhánh</option>
+              </select>
+            </label>
+            <label id="pf-branch-ids-wrap" style="display:none">Mã chi nhánh (phân cách bằng dấu phẩy)
+              <input type="text" id="pf-branch-ids" placeholder="HN,HCM">
+            </label>
+            <label>Phạm vi nhóm người dùng
+              <select id="pf-group-scope">
+                <option value="ALL">Tất cả nhóm</option>
+                <option value="INCLUDE">Chỉ định nhóm</option>
+              </select>
+            </label>
+            <label id="pf-group-ids-wrap" style="display:none">Mã nhóm (phân cách bằng dấu phẩy)
+              <input type="text" id="pf-group-ids" placeholder="QL,SALE">
+            </label>
+          </div>
+
+          <div class="promo-rules-header">
+            <h3>Điều kiện áp dụng theo sản phẩm</h3>
+            <button type="button" id="btn-add-rule" class="promo-secondary-button">+ Thêm điều kiện</button>
+          </div>
+          <div id="promo-rules-list" class="promo-rules-list"></div>
+
+          <div class="promo-editor-actions">
+            <span id="promo-status-badge" class="promo-status-badge"></span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" id="btn-reject-promo" class="promo-danger-button" hidden>Từ chối</button>
+              <button type="button" id="btn-withdraw-promo" class="promo-danger-button" hidden>Thu hồi</button>
+              <button type="button" id="btn-approve-promo" class="promo-primary-button" hidden>Duyệt</button>
+              <button type="button" id="btn-save-draft-promo" class="promo-primary-button">Lưu DRAFT</button>
+            </div>
+          </div>
+          <p class="promo-editor-note">Chỉ được sửa trực tiếp khi chương trình đang ở trạng thái DRAFT. Chương trình
+            đã duyệt/hết hạn/thu hồi hiển thị chỉ để xem — bấm "+ CTBH mới" và dùng lại mã cũ để tạo phiên bản kế tiếp.</p>
+        </div>
       </div>
     </section>
 

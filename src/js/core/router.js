@@ -27,8 +27,6 @@ const Router = (() => {
     // Return orders
     { path: 'return-orders', template: 'src/templates/return-orders.html', scripts: ['src/js/pages/return-orders.js'], css: ['src/css/pages/return-orders.css'], auth: true, nav: 'orders', title: 'Phiếu trả hàng' },
     { path: 'return-order-detail', template: 'src/templates/return-order-detail.html', scripts: ['src/js/pages/return-order-detail.js'], css: ['src/css/pages/detail.css', 'src/css/pages/return-order-detail.css'], auth: true, nav: 'orders', title: 'Chi tiết phiếu trả hàng' },
-    { path: 'return-product-list', template: 'src/templates/return-product-list.html', scripts: ['src/js/pages/return-product-list.js'], css: ['src/css/pages/return-product-list.css'], auth: true, nav: 'orders', title: 'Danh sách SP trả' },
-
     // Sales
     { path: 'revenue', template: 'src/templates/revenue.html', scripts: ['src/js/pages/revenue.js'], css: ['src/css/components/segment.css', 'src/css/components/data-table.css', 'src/css/pages/revenue.css'], auth: true, nav: 'orders', title: 'Doanh số' },
     { path: 'sales-plan', template: 'src/templates/sales-plan.html', scripts: ['src/js/pages/sales-plan.js'], css: ['src/css/pages/sales-plan.css'], auth: true, nav: 'orders', title: 'Kế hoạch bán hàng' },
@@ -43,7 +41,7 @@ const Router = (() => {
     { path: 'account-detail', template: 'src/templates/account-detail.html', scripts: ['src/js/pages/account-detail.js'], css: ['src/css/pages/account-detail.css'], auth: true, nav: 'account', title: 'Thông tin tài khoản' },
     { path: 'account-edit', template: 'src/templates/account-edit.html', scripts: ['src/js/pages/account-edit.js'], css: ['src/css/pages/account-edit.css'], auth: true, nav: 'account', title: 'Chỉnh sửa tài khoản' },
     { path: 'change-password', template: 'src/templates/change-password.html', scripts: ['src/js/pages/change-password.js'], css: ['src/css/components/forms.css', 'src/css/pages/change-password.css'], auth: true, nav: 'account', title: 'Đổi mật khẩu' },
-    { path: 'rag-admin', template: 'src/templates/rag-admin.html', scripts: ['src/js/pages/rag-admin.js'], css: ['src/css/pages/rag-admin.css'], auth: true, nav: 'account', title: 'Quản lý Tri thức' },
+    { path: 'rag-admin', template: 'src/templates/rag-admin.html', scripts: ['src/js/pages/rag-admin.js', 'src/js/pages/promotion-admin.js'], css: ['src/css/pages/rag-admin.css', 'src/css/pages/promotion-admin.css'], auth: true, nav: 'account', title: 'Quản lý Tri thức & CTBH' },
 
 
     // Survey
@@ -213,27 +211,17 @@ const Router = (() => {
     if (!$badge) return;
     if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined') return;
 
-    let user = null;
-    try {
-      user = JSON.parse(localStorage.getItem('auth_user') || '{}');
-    } catch (e) {}
-    const userName = user ? (user.UserName || user.Username || '') : '';
-    if (!userName) return;
-
-    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.LIST, { User: userName })
+    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.UNREAD_COUNT, {}, { cache: false })
       .then(res => {
-        const records = res?.records || res?.data || [];
-        if (Array.isArray(records)) {
-          let unreadCount = 0;
-          records.forEach(n => { if (!n.isView) unreadCount++; });
-          if (unreadCount > 0) {
-            $badge.textContent = unreadCount;
-            $badge.removeAttribute('hidden');
-            $badge.style.display = '';
-          } else {
-            $badge.setAttribute('hidden', '');
-            $badge.style.display = 'none';
-          }
+        const record = res?.records?.[0] || res?.data || res || {};
+        const unreadCount = Math.max(0, Number(record.UnreadCount ?? record.unreadCount ?? 0) || 0);
+        if (unreadCount > 0) {
+          $badge.textContent = unreadCount;
+          $badge.removeAttribute('hidden');
+          $badge.style.display = '';
+        } else {
+          $badge.setAttribute('hidden', '');
+          $badge.style.display = 'none';
         }
       })
       .catch(err => console.warn('[Router] Failed to fetch notification count:', err));

@@ -1,4 +1,5 @@
 {
+  "id": "medstandCronDailyReport",
   "name": "K5 · CronJob Báo Cáo Tự Động",
   "nodes": [
     {
@@ -62,7 +63,7 @@
       "continueOnFail": true,
       "credentials": {
         "microsoftSql": {
-          "id": "5XZStIxQA6Sd5chg",
+          "id": "5ixwpwlPHaQhoThr",
           "name": "Microsoft SQL account"
         }
       }
