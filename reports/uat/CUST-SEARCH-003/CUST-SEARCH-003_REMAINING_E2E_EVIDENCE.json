@@ -1,0 +1,336 @@
+{
+  "Task": "CUST-SEARCH-003-REMAINING-E2E",
+  "Status": "PASS",
+  "Timestamp": "2026-08-22T04:18:40.847Z",
+  "BaseUrl": "http://localhost:3000",
+  "MutationCount": 0,
+  "Cases": {
+    "ScopeOracle": {
+      "status": "PASS",
+      "accountA": {
+        "user": "NAMDINHB.MED",
+        "ownCustomer": "NDB001",
+        "crossCustomer": "BNA051",
+        "ownVisible": 1,
+        "crossVisible": 0
+      },
+      "accountB": {
+        "user": "BACNINHA.MED",
+        "ownCustomer": "BNA051",
+        "crossCustomer": "NDB001",
+        "ownVisible": 1,
+        "crossVisible": 0
+      },
+      "editOrderAccount": {
+        "user": "QLBH013.MED",
+        "ownCustomer": "NDB001",
+        "crossCustomer": "BNA051",
+        "ownVisible": 1,
+        "crossVisible": 0
+      },
+      "readOnly": true
+    },
+    "CreateOrderCurrentErrorRetry": {
+      "status": "PASS",
+      "failKeyword": "FailCreate",
+      "currentErrorRenderedEmptyState": true,
+      "toastAfterCurrentError": false,
+      "retryCustomer": "HNBV356",
+      "retryOptionsContainCustomer": true,
+      "retryRequestId": "req-cust003-20260822041840-retry-create-order-20",
+      "retryHttpStatus": 200,
+      "mapping": {
+        "objectId": "HNBV356",
+        "selectedValueMatches": true,
+        "labelIncludesObjectId": true,
+        "fieldPresence": {
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "fieldMatches": {
+          "customer": true,
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "matches": true
+      },
+      "screenshot": "REMAINING_create-order_CURRENT_ERROR_RETRY_PASS.png",
+      "network": [
+        {
+          "requestId": "req-cust003-20260822041840-retry-create-order-14",
+          "at": "2026-08-22T04:18:45.859Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-create-order-18",
+          "at": "2026-08-22T04:18:49.270Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22FailCreate%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "FailCreate",
+          "declaredUser": "demo",
+          "action": "FORCED_CURRENT_REQUEST_500",
+          "httpStatus": 500
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-create-order-19",
+          "at": "2026-08-22T04:18:50.537Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22FailCreate%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "FailCreate",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-create-order-20",
+          "at": "2026-08-22T04:18:52.361Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22HNBV356%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "HNBV356",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        }
+      ]
+    },
+    "EditOrderCurrentErrorRetry": {
+      "status": "PASS",
+      "failKeyword": "FailEdit",
+      "currentErrorRenderedEmptyState": true,
+      "toastAfterCurrentError": false,
+      "retryCustomer": "HNBV356",
+      "retryOptionsContainCustomer": true,
+      "retryRequestId": "req-cust003-20260822041840-retry-edit-order-40",
+      "retryHttpStatus": 200,
+      "mapping": {
+        "objectId": "HNBV356",
+        "selectedValueMatches": true,
+        "labelIncludesObjectId": true,
+        "fieldPresence": {
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "fieldMatches": {
+          "customer": true,
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "matches": true
+      },
+      "screenshot": "REMAINING_edit-order_CURRENT_ERROR_RETRY_PASS.png",
+      "network": [
+        {
+          "requestId": "req-cust003-20260822041840-retry-edit-order-36",
+          "at": "2026-08-22T04:18:58.668Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-edit-order-38",
+          "at": "2026-08-22T04:19:02.043Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22FailEdit%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "FailEdit",
+          "declaredUser": "demo",
+          "action": "FORCED_CURRENT_REQUEST_500",
+          "httpStatus": 500
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-edit-order-39",
+          "at": "2026-08-22T04:19:03.303Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22FailEdit%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "FailEdit",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-retry-edit-order-40",
+          "at": "2026-08-22T04:19:04.890Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22HNBV356%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+          "searchText": "HNBV356",
+          "declaredUser": "demo",
+          "action": "FORWARD",
+          "httpStatus": 200
+        }
+      ]
+    },
+    "CrossAccountAndOutsideScope": {
+      "status": "PASS",
+      "accountA": "NAMDINHB.MED",
+      "accountB": "BACNINHA.MED",
+      "aCannotSeeB": {
+        "objectId": "BNA051",
+        "absent": true
+      },
+      "bCannotSeeA": {
+        "objectId": "NDB001",
+        "absent": true
+      },
+      "mappingA": {
+        "objectId": "NDB001",
+        "selectedValueMatches": true,
+        "labelIncludesObjectId": true,
+        "fieldPresence": {
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "fieldMatches": {
+          "customer": true,
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "matches": true
+      },
+      "mappingB": {
+        "objectId": "BNA051",
+        "selectedValueMatches": true,
+        "labelIncludesObjectId": true,
+        "fieldPresence": {
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "fieldMatches": {
+          "customer": true,
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "matches": true
+      },
+      "cacheAEntryCountBeforeLogout": 1,
+      "afterLogout": {
+        "customerCacheKeys": [],
+        "authUserPresent": false,
+        "authCookiePresent": false
+      },
+      "cacheBEntryCount": 1,
+      "cacheBContainsAccountA": false,
+      "cacheBContainsAccountB": true,
+      "network": [
+        {
+          "requestId": "req-cust003-20260822041840-account-switch-53",
+          "at": "2026-08-22T04:19:10.410Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22NAMDINHB.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0085%22%7D",
+          "searchText": "",
+          "declaredUser": "NAMDINHB.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-account-switch-57",
+          "at": "2026-08-22T04:19:13.777Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22NAMDINHB.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22BNA051%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0085%22%7D",
+          "searchText": "BNA051",
+          "declaredUser": "NAMDINHB.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-account-switch-58",
+          "at": "2026-08-22T04:19:14.274Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22NAMDINHB.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22NDB001%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0085%22%7D",
+          "searchText": "NDB001",
+          "declaredUser": "NAMDINHB.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-account-switch-72",
+          "at": "2026-08-22T04:19:20.028Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22BACNINHA.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22MED0229%22%2C%22SYSEmployeeID%22%3A%22TDV_BACNINHA%22%7D",
+          "searchText": "",
+          "declaredUser": "BACNINHA.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-account-switch-76",
+          "at": "2026-08-22T04:19:23.370Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22BACNINHA.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22NDB001%22%2C%22SYSManagerID%22%3A%22MED0229%22%2C%22SYSEmployeeID%22%3A%22TDV_BACNINHA%22%7D",
+          "searchText": "NDB001",
+          "declaredUser": "BACNINHA.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        }
+      ]
+    },
+    "EditOrderOutsideScope": {
+      "status": "PASS",
+      "account": "QLBH013.MED",
+      "orderId": "DMB0826/11",
+      "cannotSeeCrossScope": {
+        "objectId": "BNA051",
+        "absent": true
+      },
+      "ownCustomerMapping": {
+        "objectId": "NDB001",
+        "selectedValueMatches": true,
+        "labelIncludesObjectId": true,
+        "fieldPresence": {
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "fieldMatches": {
+          "customer": true,
+          "phone": true,
+          "address": true,
+          "ward": true,
+          "route": true
+        },
+        "matches": true
+      },
+      "screenshot": "REMAINING_EDIT_ORDER_OUTSIDE_SCOPE_PASS.png",
+      "network": [
+        {
+          "requestId": "req-cust003-20260822041840-edit-scope-91",
+          "at": "2026-08-22T04:19:28.036Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22QLBH013.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0330%22%7D",
+          "searchText": "",
+          "declaredUser": "QLBH013.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-edit-scope-93",
+          "at": "2026-08-22T04:19:31.406Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22QLBH013.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22BNA051%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0330%22%7D",
+          "searchText": "BNA051",
+          "declaredUser": "QLBH013.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        },
+        {
+          "requestId": "req-cust003-20260822041840-edit-scope-94",
+          "at": "2026-08-22T04:19:31.949Z",
+          "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22QLBH013.MED%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22NDB001%22%2C%22SYSManagerID%22%3A%22MED0330%22%2C%22SYSEmployeeID%22%3A%22MED0330%22%7D",
+          "searchText": "NDB001",
+          "declaredUser": "QLBH013.MED",
+          "action": "FORWARD",
+          "httpStatus": 200
+        }
+      ]
+    }
+  },
+  "Summary": "5 PASS / 0 FAIL / 0 SKIPPED"
+}

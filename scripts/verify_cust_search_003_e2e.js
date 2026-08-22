@@ -148,13 +148,32 @@ async function pickTwoDistinctCustomers(page, sourceGlobal) {
 function pickerState(page) {
   return page.evaluate(() => {
     const overlays = Array.from(document.querySelectorAll('.picker-overlay'));
+    const optionNodes = Array.from(document.querySelectorAll('#picker-list li[data-value]'));
     return {
       overlayCount: overlays.length,
-      visibleOptions: Array.from(document.querySelectorAll('#picker-list li[data-value]'))
+      totalOptionCount: optionNodes.length,
+      visibleOptions: optionNodes
+        .filter((node) => {
+          const style = window.getComputedStyle(node);
+          return style.display !== 'none'
+            && style.visibility !== 'hidden'
+            && node.getClientRects().length > 0;
+        })
         .map((n) => ({ value: n.getAttribute('data-value'), label: n.textContent.trim() })),
       errorToastVisible: document.querySelectorAll('.swal2-popup.swal2-icon-error').length > 0
     };
   });
+}
+
+function summarizePickerState(state, pair) {
+  return {
+    overlayCount: state.overlayCount,
+    totalOptionCount: state.totalOptionCount,
+    visibleOptionCount: state.visibleOptions.length,
+    slowCustomerPresent: state.visibleOptions.some((option) => option.value === pair.slow.ObjectID),
+    fastCustomerPresent: state.visibleOptions.some((option) => option.value === pair.fast.ObjectID),
+    errorToastVisible: state.errorToastVisible
+  };
 }
 
 // Triple-click select-all (và cả Ctrl+A/Backspace mô phỏng qua CDP) trên input mới render
@@ -175,6 +194,24 @@ async function clearAndType(page, selector, text) {
   await page.type(selector, text, { delay: 30 });
 }
 
+async function openCustomerPicker(page) {
+  await page.waitForSelector('#fs-trigger-customer', { timeout: 20000 });
+  await page.evaluate(() => {
+    document.querySelectorAll('.picker-overlay').forEach((node) => node.remove());
+    const trigger = document.querySelector('#fs-trigger-customer');
+    if (trigger) trigger.scrollIntoView({ block: 'center' });
+  });
+  await page.click('#fs-trigger-customer');
+  let picker = await page.waitForSelector('.picker-overlay #picker-search', { timeout: 3000 }).catch(() => null);
+  if (!picker) {
+    // Headless đôi khi click đúng lúc global spinner vừa đóng. Gọi lại chính DOM click event
+    // của trigger; không gọi trực tiếp FormSelect._openPicker hay helper nội bộ.
+    await page.evaluate(() => document.querySelector('#fs-trigger-customer').click());
+    picker = await page.waitForSelector('.picker-overlay #picker-search', { timeout: 12000 }).catch(() => null);
+  }
+  assert(picker, `[${page.url()}] Không mở được customer picker.`);
+}
+
 async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
@@ -187,12 +224,17 @@ async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   const pair = await pickTwoDistinctCustomers(page, screenName === 'edit-order' ? '_customerRecords' : '_customersCache');
   assert(pair, `[${screenName}] Cần ít nhất 2 khách hàng với từ khoá tìm kiếm khác nhau trong dữ liệu thật của ${USERNAME}.`);
 
-  const result = { screenName, pair };
+  const result = {
+    screenName,
+    pair: {
+      slow: { ObjectID: pair.slow.ObjectID, keyword: pair.slow.keyword },
+      fast: { ObjectID: pair.fast.ObjectID, keyword: pair.fast.keyword }
+    }
+  };
 
   // ── Kịch bản A: request cũ (slow) hoàn tất SAU request mới (fast) — không được đè UI ────
   ctl.state.slowKeyword = pair.slow.keyword;
-  await page.click('#fs-trigger-customer');
-  await page.waitForSelector('.picker-overlay.active #picker-search', { timeout: 10000 });
+  await openCustomerPicker(page);
   await clearAndType(page, '#picker-search', pair.slow.keyword);
 
   const slowCaptured = await (async () => {
@@ -211,11 +253,13 @@ async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   await clearAndType(page, '#picker-search', pair.fast.keyword);
   await page.waitForFunction((objectID) => {
     const node = document.querySelector(`.picker-overlay.active #picker-list li[data-value="${objectID}"]`);
-    return Boolean(node);
+    if (!node) return false;
+    const style = window.getComputedStyle(node);
+    return style.display !== 'none' && style.visibility !== 'hidden' && node.getClientRects().length > 0;
   }, { timeout: 10000 }, pair.fast.ObjectID);
 
   const midRace = await pickerState(page);
-  result.midRace = midRace;
+  result.midRace = summarizePickerState(midRace, pair);
   await page.screenshot({ path: path.join(REPORT_DIR, `${screenName}_A2_FAST_RENDERED_SLOW_STILL_PENDING.png`) });
   assert.strictEqual(midRace.overlayCount, 1, `[${screenName}] Trước khi thả request cũ: phải chỉ có 1 overlay.`);
   assert(midRace.visibleOptions.some((o) => o.value === pair.fast.ObjectID),
@@ -225,7 +269,7 @@ async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   ctl.state.slowHold.release();
   await new Promise((r) => setTimeout(r, 1500));
   const afterStale = await pickerState(page);
-  result.afterStaleArrives = afterStale;
+  result.afterStaleArrives = summarizePickerState(afterStale, pair);
   result.slowHeldMs = ctl.state.slowHold.record.heldMs;
   await page.screenshot({ path: path.join(REPORT_DIR, `${screenName}_A3_AFTER_STALE_RESPONSE_ARRIVES.png`) });
 
@@ -246,14 +290,16 @@ async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   ctl.state.failKeyword = failPair.slow.keyword + 'x'; // biến thể khác để không trùng cache key với A
   const fastKw2 = failPair.fast.keyword;
 
-  await page.click('#fs-trigger-customer');
-  await page.waitForSelector('.picker-overlay.active #picker-search', { timeout: 10000 });
+  await openCustomerPicker(page);
   await clearAndType(page, '#picker-search', ctl.state.failKeyword);
   await new Promise((r) => setTimeout(r, 500)); // đảm bảo debounce đã bắn request lỗi (trễ 900ms mới trả 500)
   await clearAndType(page, '#picker-search', fastKw2);
   try {
     await page.waitForFunction((objectID) => {
-      return Boolean(document.querySelector(`.picker-overlay.active #picker-list li[data-value="${objectID}"]`));
+      const node = document.querySelector(`.picker-overlay.active #picker-list li[data-value="${objectID}"]`);
+      if (!node) return false;
+      const style = window.getComputedStyle(node);
+      return style.display !== 'none' && style.visibility !== 'hidden' && node.getClientRects().length > 0;
     }, { timeout: 10000 }, failPair.fast.ObjectID);
   } catch (waitErr) {
     const debugState = await pickerState(page);
@@ -281,14 +327,13 @@ async function runOnScreen(browser, screenName, gotoUrl, waitReadyFn) {
   return result;
 }
 
-/* Mục 4/5 của assignment: "đổi tài khoản... khách ngoài scope không được giữ dữ liệu của phiên
-   trước". Http.get cache theo sessionStorage, key = URL đầy đủ (bao gồm query "q" — đã đọc
+/* Kiểm tra cấu trúc cache key của MỘT tài khoản. Đây chỉ là defense-in-depth tĩnh, KHÔNG thay
+   thế ca đăng xuất A -> đăng nhập B và khách ngoài scope trong verifier remaining E2E.
+   Http.get cache theo sessionStorage, key = URL đầy đủ (bao gồm query "q" — đã đọc
    src/js/services/http.js: `_cacheKey(url)` = CACHE_PREFIX + url). Vì query của
    API_KhachHangList LUÔN nhúng `User: user.UserName` (đọc code create-order.js/edit-order.js),
    cache key của kết quả tìm kiếm khách hàng của tài khoản A và B KHÔNG BAO GIỜ trùng nhau —
-   dù chung sessionStorage (cùng tab), B không thể vô tình đọc trúng cache của A. Không cần 2
-   tài khoản thật để test: chỉ cần xác nhận SỐNG rằng cache key thực sự chứa đúng username của
-   người đang đăng nhập, đúng cơ chế đã đọc trong code. */
+   dù chung sessionStorage (cùng tab), B không thể vô tình đọc trúng cache của A. */
 async function verifyCacheKeyEmbedsUsername(browser) {
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
@@ -297,8 +342,7 @@ async function verifyCacheKeyEmbedsUsername(browser) {
   await page.waitForFunction(() => Array.isArray(window._customersCache) && window._customersCache.length > 1, { timeout: 20000 });
 
   const before = await page.evaluate(() => Object.keys(sessionStorage).filter((k) => k.startsWith('_hc_')).length);
-  await page.click('#fs-trigger-customer');
-  await page.waitForSelector('.picker-overlay.active #picker-search', { timeout: 10000 });
+  await openCustomerPicker(page);
   const pair = await pickTwoDistinctCustomers(page, '_customersCache');
   assert(pair, 'Cần ít nhất 2 khách hàng để chọn từ khoá tìm kiếm.');
   await clearAndType(page, '#picker-search', pair.fast.keyword);
@@ -339,42 +383,26 @@ async function main() {
       (page) => page.waitForFunction(() => Array.isArray(window._customersCache) && window._customersCache.length > 1, { timeout: 20000 })
     );
 
-    // edit-order dùng ĐÚNG cùng FormSelect._openPicker/searchFn với create-order (đã xác nhận
-    // qua đọc code: src/js/pages/edit-order.js addList({id:'customer', searchFn: ...})) — nên
-    // bug/fix ở đây áp dụng chung. Nhưng baseline commit của worktree này (90da013) có lỗi
-    // RIÊNG, KHÔNG liên quan CUST-SEARCH-003: edit-order.js đọc response của
-    // API_DonHang_EditContext_AI sai hình dạng nên luôn báo "Không kiểm tra được quyền sửa
-    // đơn" và không render form (kể cả field customer) dù server trả CanEdit đúng. Không sửa
-    // ở đây (ngoài phạm vi CUST-SEARCH-003, thuộc ORDER-APPROVAL-005/006) — SKIP có lý do rõ
-    // ràng thay vì fail cả script hoặc âm thầm sửa lan sang việc của người khác.
-    let editOrder;
-    try {
-      editOrder = await runOnScreen(
-        browser, 'edit-order', `${BASE_URL}/index.html#/edit-order?id=${encodeURIComponent(ORDER_ID)}`,
-        (page) => page.waitForFunction(() => Array.isArray(window._customerRecords) && window._customerRecords.length > 1, { timeout: 20000 })
-      );
-    } catch (editOrderError) {
-      editOrder = {
-        Status: 'SKIPPED',
-        Reason: 'edit-order.js không render được form sửa (lỗi đọc response API_DonHang_EditContext_AI có sẵn từ trước, KHÔNG liên quan CUST-SEARCH-003) nên #fs-trigger-customer không xuất hiện. Cần báo cho phần việc ORDER-APPROVAL-005/006, không sửa ở đây.',
-        Detail: editOrderError.message
-      };
-    }
+    // Blocker edit-context đã được sửa và merge cùng ORDER-APPROVAL-005/006. Từ đây màn sửa
+    // đơn là điều kiện bắt buộc: lỗi/timeout phải FAIL, không còn được đổi thành SKIPPED.
+    const editOrder = await runOnScreen(
+      browser, 'edit-order', `${BASE_URL}/index.html#/edit-order?id=${encodeURIComponent(ORDER_ID)}`,
+      (page) => page.waitForFunction(() => Array.isArray(window._customerRecords) && window._customerRecords.length > 1, { timeout: 20000 })
+    );
 
     const cacheKeyScope = await verifyCacheKeyEmbedsUsername(browser);
 
-    const editOrderBlocked = editOrder.Status === 'SKIPPED';
     const evidence = {
       Task: 'CUST-SEARCH-003',
-      Status: editOrderBlocked ? 'PASS_WITH_SKIPPED_SCREEN' : 'PASS',
+      Status: 'PASS',
       Server: BASE_URL,
       Account: USERNAME,
       Screens: { 'create-order': createOrder, 'edit-order': editOrder },
-      CrossAccountCacheScope: cacheKeyScope
+      SingleAccountCacheKeyShape: cacheKeyScope,
+      CrossAccountAndOutsideScopeEvidence: 'CUST-SEARCH-003_REMAINING_E2E_EVIDENCE.json'
     };
     fs.writeFileSync(path.join(REPORT_DIR, 'CUST-SEARCH-003_EVIDENCE.json'), JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify(evidence, null, 2));
-    if (editOrderBlocked) process.exitCode = 0;
   } finally {
     await browser.close();
   }

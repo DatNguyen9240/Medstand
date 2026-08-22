@@ -20,7 +20,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | --- | --- | --- |
 | `CUST-SEARCH-001` | `DONE` | Đã tái hiện trước/sau, xác định nguyên nhân gốc và nghiệm thu E2E bằng Chrome thật |
 | `CORE-011` | `DONE` | Đã nghiệm thu chọn khách ở màn lập/sửa đơn |
-| `CUST-SEARCH-003` | `PARTIAL_PASS_CREATE_ORDER_FIXED_EDIT_ORDER_READY_FOR_RETEST` | Race + stale-error ở màn lập đơn đã fix và có CDP evidence; blocker render màn sửa đơn đã được sửa/merge, còn phải chạy ma trận regression riêng trên màn này và các ca lỗi/scope/account |
+| `CUST-SEARCH-003` | `DONE` | Race/stale, lỗi hiện tại + retry, đổi tài khoản thật, cô lập cache, khách ngoài scope và mapping đều PASS trên màn lập/sửa đơn; 0 mutation |
 | `PROMO-CFG-001` | `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E` | Đã chốt và code `QUANTITY_GIFT` tỷ lệ + clamp max; các semantics tài chính còn mở |
 | `PROMO-CFG-002` | `AUDIT_PERMISSION_MERGED_PENDING_GATEWAY_IDENTITY_AND_E2E` | Quyền âm + audit before/after (kể cả scope/rule) đã merge, 16/16 PASS; P0 giả `Username` qua gateway vẫn mở, chưa có API/UI E2E thật |
 | `PROMO-CFG-003` | `BLOCKED` | Chờ contract và E2E tạo đơn thật |
@@ -49,14 +49,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Kết quả sau sửa:** phát đúng một request `API_KhachHangList` với `SearchText` là số điện thoại; gateway trả HTTP 200 với request ID `req-cust-search-001-after`; `data-value` bằng `ObjectID`, label bằng `DisplayName`; sau khi chọn, form tải đúng số điện thoại, địa chỉ và phường/xã.
 - **Nguyên nhân gốc:** màn sửa đơn chưa cấu hình remote `searchFn`; SQL chưa tìm `SearchText` theo `Phone`; `FormSelect` trả sớm khi kết quả rỗng nên picker biến mất thay vì giữ empty-state.
 - **Bằng chứng:** [biên bản chi tiết](CUST-SEARCH-001_BIEN_BAN_TAI_HIEN_VA_NGHIEM_THU_2026-08-21.md), JSON/ảnh/log tại `reports/uat/CUST-SEARCH-001/`; verifier `scripts/verify_cust_search_001_e2e.js` PASS.
-- **Giới hạn:** race giữa nhiều request, API lỗi/retry, stale response và regression các màn hình khác tiếp tục thuộc `CUST-SEARCH-003`.
+- **Giới hạn lúc đóng task:** race giữa nhiều request, API lỗi/retry, stale response và regression các màn hình khác được tách sang `CUST-SEARCH-003`; phạm vi đó đã được nghiệm thu hoàn tất ngày 22/08/2026.
 
 ### CORE-011 — Sửa tìm kiếm và chọn khách hàng từ gợi ý
 
 - **Nghiệm thu:** 21/08/2026.
 - **Kết quả:** PASS màn lập đơn và sửa đơn; `xyz99999` giữ modal mở với trạng thái rỗng; `ONL1136` trả đúng khách; sau khi chọn, form map lại chi nhánh, tuyến, phường/xã, địa chỉ và SĐT.
 - **Kỹ thuật:** option dùng `{ value: ObjectID, label: DisplayName }`, cache/deduplicate theo `ObjectID`; commit được ghi nhận là `74f6c53e`.
-- **Giới hạn đã tách sang task khác:** Enter, chọn–xóa–chọn lại, trùng tên/ngoài scope, API chậm/lỗi và regression toàn màn hình thuộc `CUST-SEARCH-003`.
+- **Giới hạn đã tách sang task khác:** Enter, chọn–xóa–chọn lại, trùng tên/ngoài scope, API chậm/lỗi và regression toàn màn hình thuộc `CUST-SEARCH-003`; task đó đã `DONE` ngày 22/08/2026.
 
 ### ORDER-APPROVAL-001 — Khảo sát workflow đơn hiện hành
 
@@ -65,15 +65,23 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Bằng chứng:** ca kiểm chứng đường cập nhật cũ dùng evidence ID `ORDER-APPROVAL-001-07d70ddd-3e75-47dc-ad1f-9acabd533dca` và rollback toàn bộ.
 - **Tài liệu:** [ORDER-APPROVAL-001_KHAO_SAT_WORKFLOW_DON_HIEN_HANH_2026-08-21.md](ORDER-APPROVAL-001_KHAO_SAT_WORKFLOW_DON_HIEN_HANH_2026-08-21.md).
 
-## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
-
-### CUST-SEARCH-003
+### CUST-SEARCH-003 — Regression các màn hình dùng bộ chọn khách
 
 - **Cập nhật 22/08/2026 — nguyên nhân gốc thật khác dự đoán trước đó:** sequence guard ở `customer-management.js`/`contract-point.js` không bảo vệ được bộ chọn khách ở màn lập/sửa đơn — hai màn đó dùng component dùng chung [FormSelect.js](../src/js/components/FormSelect.js), và `_openPicker`'s remote `searchFn` không có cơ chế kiểm request nào cả (không phải "đã có guard, thiếu bằng chứng" như ghi trước đây).
 - **Đã fix và merge** (`4f288b5`): thêm bộ đếm generation trong `_openPicker`, chỉ áp kết quả của request còn là request mới nhất; đồng thời bỏ `Alert.error` vô điều kiện ở nhánh lỗi `searchFn` của `create-order.js`/`edit-order.js` (lỗi của request đã bị bỏ qua không nên hiện toast).
 - **Bằng chứng màn lập đơn (create-order) — PASS thật bằng Chrome DevTools Protocol**, không phải suy luận từ code: giữ response request chậm (gõ trước) lại 354ms cho tới sau khi response request nhanh (gõ sau) đã render xong, rồi mới thả ra — kết quả cuối cùng vẫn giữ đúng danh sách của request nhanh, không bị request chậm ghi đè. Ca lỗi trễ (request bị hủy bỏ nhưng sau đó mới báo lỗi) cũng không hiện toast và không xóa kết quả đang hiển thị. Ảnh/JSON tại `reports/uat/CUST-SEARCH-003/`.
-- **Màn sửa đơn (edit-order): lần kiểm CUST-SEARCH trước đã SKIP, nhưng blocker nay đã được sửa và merge.** `order-ui-evidence-work` chuẩn hóa cờ `CanEdit`, giữ envelope nghiệp vụ/`BlockMsg` và được merge vào `hoangdang` tại `fb85981`; E2E ORDER-APPROVAL-005/006 đã chứng minh form sửa đơn render được. Điều này chỉ gỡ blocker, chưa thay thế bài test race riêng của CUST-SEARCH-003.
-- **Chưa làm:** race/stale-response trên màn sửa đơn; API lỗi/retry có chủ đích (ngoài ca lỗi trễ ở trên); đổi tài khoản 2 người dùng thật; khách ngoài scope; ma trận regression đầy đủ theo yêu cầu backlog gốc. `CrossAccountCacheScope` trong bằng chứng mới chỉ chụp 1 mẫu cache key có gắn username, chưa phải test chuyển tài khoản thật.
+- **Màn sửa đơn (edit-order): blocker đã được sửa và merge, sau đó đã chạy lại race/stale-response riêng — PASS 22/08/2026.** `order-ui-evidence-work` chuẩn hóa cờ `CanEdit`, giữ envelope nghiệp vụ/`BlockMsg` và được merge vào `hoangdang` tại `fb85981`; E2E ORDER-APPROVAL-005/006 đã chứng minh form sửa đơn render được. Sau đó viết `scripts/verify_cust_search_003_edit_order_race.js`, chạy PASS ổn định 2 lần liên tiếp trên `medtest`: request cũ (gõ trước) về trễ sau request mới không làm render lại và không lộ dữ liệu của nó vào danh sách; request bị bỏ dở sau đó lỗi không hiện toast, không xóa kết quả đang có. Bằng chứng: `reports/uat/CUST-SEARCH-003/AFTER_edit-order_RUN_OUTPUT.json`.
+- **Sự cố kỹ thuật khi viết test edit-order, tự phát hiện và tự sửa trong cùng phiên:**
+  1. CDP network interception (`page.setRequestInterception`) không bắt được đều các request `fetch()` qua gateway trong môi trường này (nghi Service Worker) — chuyển sang giữ request ở tầng JS bằng cách patch `Http.get` trong trang, đọc `SearchText` trực tiếp trước khi mã hóa.
+  2. **Phiên bản đầu của test tự cho PASS giả**: đồng bộ "đợi request nhanh render xong" bằng cách đoán qua nội dung (`có thấy khách kỳ vọng trong DOM chưa`) — nhưng list gốc (autoload lúc mở picker, ~500 khách) đã chứa sẵn hầu hết khách mẫu nên phép đoán này đúng ngay từ đầu, trước khi bất kỳ tìm kiếm nào thực sự chạy. Phát hiện qua việc "kết quả tìm 'Shop'" ban đầu có tới 500 dòng và cả "Techcombank" — vô lý cho một tìm kiếm đã lọc. Sửa lại bằng tín hiệu đáng tin cậy hơn: đếm số lần `_renderModal` thực sự chạy (MutationObserver trên số overlay mới được thêm vào DOM), chỉ coi là "đã render kết quả tìm kiếm" khi đếm tăng đúng 1 lần. Sau khi sửa, kết quả tìm "Shop" thật ra 466 dòng (nhiều công ty có chữ "Shop" trong tên là hợp lý), không có Techcombank — khớp đúng kỳ vọng.
+  3. **Nghi vấn cũ đã được xử lý ở lượt nghiệm thu cuối:** bằng chứng GỐC của `create-order` từng ghi `visibleOptions count: 500` vì đếm cả option ẩn. Verifier hợp nhất đã được sửa để chỉ tính node thực sự hiển thị và chạy lại cả hai màn: mỗi màn có 6 kết quả `Shop` đang hiển thị, không có `Techcombank`, kể cả sau khi response `Tech` cũ được thả ra.
+  4. **Phát hiện phụ, không phải bug chặn vĩnh viễn:** loading spinner toàn cục (`#global-spinner`, dùng chung 1 bộ đếm cho MỌI request đang chạy trên trang, kể cả các gọi nền không liên quan như đếm thông báo) có thể còn che và chặn click vài giây sau khi nội dung đã hiển thị xong — tự hết sau khi mọi request nền hoàn tất, nhưng là điểm UX gồ ghề nên ghi lại.
+- **Nghiệm thu cuối 22/08/2026:** siết `scripts/verify_cust_search_003_e2e.js` để chỉ tính option thực sự đang hiển thị, không tính 500 option ẩn của danh sách preload. Chạy lại Chrome thật: cả `create-order` và `edit-order` đều PASS; giữa race chỉ có 6 option `Shop` hiển thị, `Techcombank` không xuất hiện; sau khi thả response `Tech` cũ, kết quả vẫn giữ nguyên, không toast và chỉ có một overlay.
+- **Ma trận bổ sung:** `scripts/verify_cust_search_003_remaining_e2e.js` PASS `5/5`, `0 FAIL`, `0 SKIPPED`: request hiện tại HTTP 500 rồi retry HTTP 200 trên cả hai màn; logout tài khoản A rồi login B trong cùng browser context đã xóa cache/auth phiên A; scope hai chiều được đối chiếu bằng `AR_GetObjectByUserFnc`; màn sửa đơn kiểm riêng khách ngoài scope; chọn khách map đúng các trường từ record API. Ba tài khoản thật được dùng là `NAMDINHB.MED`, `BACNINHA.MED`, `QLBH013.MED`.
+- **Bằng chứng:** `reports/uat/CUST-SEARCH-003/CUST-SEARCH-003_EVIDENCE.json`, `CUST-SEARCH-003_REMAINING_E2E_EVIDENCE.json` và ảnh cùng thư mục. Evidence có request ID/HTTP status, không lưu token/password; ảnh supplemental đã che dữ liệu khách nhạy cảm.
+- **Kết luận:** `DONE`; toàn bộ điều kiện đóng P0/P1 của task đã đạt, không phát sinh mutation trên `medtest`.
+
+## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
 
 ### PROMO-CFG-001/002/003
 
