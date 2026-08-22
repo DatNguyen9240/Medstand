@@ -3720,7 +3720,7 @@
 
         if (normalizedApiCode === '@danh_sach_tonkho') {
             var inventoryPrimaryOrder = [
-                'itemid', 'itemname', 'storehousename', 'lot', 'physicalstock', 'reservedstock', 'availablestock'
+                'itemid', 'itemname', 'storehousename', 'availablestock'
             ];
             var inventoryPrimary = [];
             inventoryPrimaryOrder.forEach(function (wanted) {

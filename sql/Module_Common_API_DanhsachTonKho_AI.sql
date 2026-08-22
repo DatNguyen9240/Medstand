@@ -74,5 +74,15 @@ BEGIN
     WHERE (@ItemID = '' OR A.ItemID = @ItemID)
       AND (@TenSanPham = '' OR I.ItemName LIKE '%' + @TenSanPham + '%')
       AND (@timkiem = '' OR I.ItemName LIKE '%' + @timkiem + '%' OR A.ItemID LIKE '%' + @timkiem + '%')
+      AND EXISTS
+      (
+          SELECT 1
+          FROM dbo.AI_BusinessRuleConfigTbl C
+          CROSS APPLY STRING_SPLIT(C.ConfigValue, ',') V
+          WHERE C.RuleCode = 'BR-STOCK-001'
+            AND C.RuleVersion = S.RuleVersion
+            AND C.ConfigKey = 'SellableItemGroupIDs'
+            AND LTRIM(RTRIM(V.value)) = I.ItemGroupID
+      )
 END
 GO
