@@ -423,7 +423,7 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
-    /* PROMO-CFG-001 — PROMOTION_BENEFIT_V2:
+    /* PROMO-CFG-001 — PROMOTION_BENEFIT_V3:
        CTBH cấu hình qua AI_PromotionProgramTbl (đã duyệt, còn hiệu lực) được
        ưu tiên tuyệt đối cho ItemID nào đã có rule — ghi đè hoàn toàn cách tính bằng ghi chú
        (note-text) bên dưới cho đúng sản phẩm đó. Sản phẩm chưa cấu hình rule mới rơi vào
@@ -437,9 +437,21 @@ BEGIN
        - MinimumQuantity/GiftQuantity là tỷ lệ mua X tặng Y; quà = FLOOR(SL đủ điều kiện * Y / X).
        - MaximumQuantity là trần lượng dùng để tính quà. Vượt max vẫn áp rule với lượng đã clamp,
          không loại rule và không fallback về note-text.
-       QUANTITY_DISCOUNT và các rule theo giá trị giữ nguyên semantics cũ vì chưa được business chốt. */
+       QUANTITY_DISCOUNT và rule theo giá trị dùng max làm cận trên hợp lệ. Ngưỡng tiền tính trên
+       Quantity * UnitPrice trước VAT/chiết khấu; tiền chiết khấu làm tròn đến 1 đồng. */
     IF OBJECT_ID(N'dbo.AI_ActivePromotionByUserFnc', N'IF') IS NOT NULL
     BEGIN
+        /* V3: config đã duyệt là nguồn chuẩn kể cả khi dòng hàng chưa đạt ngưỡng.
+           Chỉ ItemID hoàn toàn không có config active mới được fallback về note-text ERP. */
+        UPDATE T
+        SET T.HasConfigRule = 1
+        FROM #Items T
+        WHERE EXISTS (
+            SELECT 1
+            FROM dbo.AI_ActivePromotionByUserFnc(@Username, T.ItemID, @StockAsOfUtc) F
+            WHERE F.RuleType IN ('QUANTITY_DISCOUNT', 'QUANTITY_GIFT', 'AMOUNT_DISCOUNT', 'AMOUNT_GIFT', 'INFORMATION')
+        );
+
         ;WITH ConfigCandidate AS (
             SELECT
                 T.ItemID,
@@ -822,8 +834,8 @@ BEGIN
         SELECT CONVERT(VARCHAR(40), NEWID()), @DocumentID, ItemID, UnitPrice, Quantity, SoLuongTang,
                Quantity * UnitPrice,
                DiscountPercent,
-               Quantity * UnitPrice * DiscountPercent / 100.0,
-               Quantity * UnitPrice * (1.0 - DiscountPercent / 100.0),
+               ROUND(Quantity * UnitPrice * DiscountPercent / 100.0, 0),
+               Quantity * UnitPrice - ROUND(Quantity * UnitPrice * DiscountPercent / 100.0, 0),
                COALESCE(DiemSanPham, 0),
                Quantity * COALESCE(DiemSanPham, 0),
                N'', StoreHouseID, LEFT(@Username, 30), GETDATE()

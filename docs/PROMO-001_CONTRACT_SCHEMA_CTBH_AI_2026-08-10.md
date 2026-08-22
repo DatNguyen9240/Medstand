@@ -1,4 +1,6 @@
-# PROMO-001 — Contract schema và cách tính CTBH
+# PROMO-001 — Contract schema và cách tính CTBH (lịch sử V2)
+
+> Tài liệu này được giữ làm lịch sử cho quyết định `QUANTITY_GIFT` V2. Contract đầy đủ hiện hành nằm tại `PROMO-CFG-001_CONTRACT_V3.md`.
 
 **Contract tính quyền lợi:** `PROMOTION_BENEFIT_V2`  
 **Cập nhật quyết định nghiệp vụ:** 22/08/2026  

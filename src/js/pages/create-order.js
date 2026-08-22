@@ -484,11 +484,14 @@ function calculateRowTotal(rowId) {
       ? window.MedstandPromotion.calculateFromConfigRules(configRules, qty, price)
       : null;
     if (!promotionResult) promotionResult = window.MedstandPromotion.calculate(note, qty);
+    $pickerContainer.attr('data-promo-contract-error', promotionResult && promotionResult.blocked ? '1' : '0');
     discount = promotionResult.discountPercent;
     $('#discount_' + rowId).val(discount);
   }
-  var subtotal = price * qty;
-  var total = subtotal - subtotal * (discount / 100);
+  var amounts = window.MedstandPromotion && window.MedstandPromotion.calculateLineAmounts
+    ? window.MedstandPromotion.calculateLineAmounts(qty, price, discount)
+    : { grossAmount: price * qty, totalAmount: price * qty - Math.round(price * qty * discount / 100) };
+  var total = amounts.totalAmount;
   $('#total_' + rowId).val(Format.currency(total));
 
   // Dynamic promotional suggestions
@@ -537,8 +540,10 @@ function updateLiveTotal() {
     var price = parseFloat($('#price_' + rowId).val() || 0);
     var qty = parseInt($('#qty_' + rowId).val() || 0);
     var discount = parseFloat($('#discount_' + rowId).val() || 0);
-    var subtotal = price * qty;
-    total += subtotal - subtotal * (discount / 100);
+    var amounts = window.MedstandPromotion && window.MedstandPromotion.calculateLineAmounts
+      ? window.MedstandPromotion.calculateLineAmounts(qty, price, discount)
+      : { totalAmount: price * qty - Math.round(price * qty * discount / 100) };
+    total += amounts.totalAmount;
   });
   $('#totalAmountText').text(Format.currency(total));
 }
@@ -575,6 +580,11 @@ function validateProductRows() {
     var isVerified = $('#productPickerContainer_' + rowId).attr('data-verified') === '1';
     var price = Number($('#price_' + rowId).val());
     var discount = Number($('#discount_' + rowId).val());
+    var hasPromoContractError = $('#productPickerContainer_' + rowId).attr('data-promo-contract-error') === '1';
+    if (!isPromo && hasPromoContractError) {
+      error = 'Phiên bản chính sách khuyến mãi của sản phẩm ' + itemId + ' không tương thích. Vui lòng tải lại trang.';
+      return;
+    }
     if (!isPromo && !isVerified) {
       error = 'Sản phẩm ' + itemId + ' chưa được đối chiếu lại giá và tồn theo SQL. Vui lòng chọn lại sản phẩm.';
       return;
@@ -682,8 +692,9 @@ function validateAndBuildPayload(isDraft) {
   if (productRows.length === 0) { Alert.warning('Vui lòng thêm ít nhất 1 sản phẩm.'); return null; }
 
   var itemList = productRows.map(function (p) {
-    var amount = p.price * p.qty;
-    var discAmt = Math.round(amount * (p.discount / 100));
+    var amounts = window.MedstandPromotion.calculateLineAmounts(p.qty, p.price, p.discount);
+    var amount = amounts.grossAmount;
+    var discAmt = amounts.discountAmount;
     return {
       ItemID: p.itemId, Quantity: p.qty, SoLuongTang: p.giftQty || 0,
       UnitPrice: p.price, Amount: amount,

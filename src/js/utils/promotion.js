@@ -1,7 +1,37 @@
 (function (root) {
   'use strict';
 
-  var CONTRACT_VERSION = 'PROMOTION_BENEFIT_V2';
+  var CONTRACT_VERSION = 'PROMOTION_BENEFIT_V3';
+
+  function emptyConfigResult(errorCode) {
+    return {
+      contractVersion: CONTRACT_VERSION,
+      configAuthoritative: true,
+      blocked: Boolean(errorCode),
+      errorCode: errorCode || '',
+      discountPercent: 0,
+      giftQuantity: 0,
+      giftItemID: '',
+      giftItemName: '',
+      matchedRule: null
+    };
+  }
+
+  function calculateLineAmounts(quantity, unitPrice, discountPercent) {
+    var qty = Number(quantity);
+    var price = Number(unitPrice);
+    var percent = Number(discountPercent || 0);
+    if (!Number.isFinite(qty) || !Number.isFinite(price) || !Number.isFinite(percent)) {
+      return { grossAmount: 0, discountAmount: 0, totalAmount: 0 };
+    }
+    var grossAmount = qty * price;
+    var discountAmount = Math.round(grossAmount * percent / 100);
+    return {
+      grossAmount: grossAmount,
+      discountAmount: discountAmount,
+      totalAmount: grossAmount - discountAmount
+    };
+  }
 
   function normalizeNote(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
@@ -114,7 +144,7 @@
       var version = String(r.PromotionBenefitContractVersion || '');
       return version && version !== CONTRACT_VERSION;
     });
-    if (hasUnknownVersion) return null;
+    if (hasUnknownVersion) return emptyConfigResult('UNSUPPORTED_PROMOTION_CONTRACT');
 
     var lineAmount = Number.isFinite(price) ? qty * price : 0;
     var candidates = rules.filter(function (r) {
@@ -136,7 +166,7 @@
       }
       return false;
     });
-    if (!candidates.length) return null;
+    if (!candidates.length) return emptyConfigResult('');
 
     // Tie-break phải khớp CHÍNH XÁC thứ tự ROW_NUMBER() trong API_DonHangChiTiet_Insert_AI
     // (Priority ASC, mốc cao nhất DESC, PromotionItemRuleID ASC) — nếu không, client có thể
@@ -157,6 +187,9 @@
     var best = candidates[0];
     var result = {
       contractVersion: CONTRACT_VERSION,
+      configAuthoritative: true,
+      blocked: false,
+      errorCode: '',
       discountPercent: 0,
       giftQuantity: 0,
       giftItemID: '',
@@ -186,7 +219,8 @@
     parse: parse,
     calculate: calculate,
     generalPromotionText: generalPromotionText,
-    calculateFromConfigRules: calculateFromConfigRules
+    calculateFromConfigRules: calculateFromConfigRules,
+    calculateLineAmounts: calculateLineAmounts
   };
 
   root.MedstandPromotion = api;

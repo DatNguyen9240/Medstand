@@ -1,9 +1,9 @@
 'use strict';
 
-/* Kiểm chứng có assertion thật (throw khi sai, exit code != 0) cho PROMOTION_BENEFIT_V2:
+/* Kiểm chứng có assertion thật (throw khi sai, exit code != 0) cho PROMOTION_BENEFIT_V3:
      1. QUANTITY_GIFT tính tỷ lệ (10+2 thì mua 5 tặng 1) giống nhau ở frontend và SQL.
      2. Vượt MaximumQuantity phải clamp quyền lợi, không loại rule cấu hình.
-     3. Semantics max của QUANTITY_DISCOUNT chưa được business chốt nên phải giữ nguyên.
+     3. MaximumQuantity của QUANTITY_DISCOUNT là cận trên hợp lệ; vượt max không giảm giá và không fallback.
      4. Hai rule trùng Priority + mốc phải tie-break ổn định bằng PromotionItemRuleID.
      5. Quà tặng khác SKU tiếp tục bị Upsert từ chối ngay khi lưu.
    Tất cả chạy trong 1 transaction luôn rollback ở cuối — không để lại dữ liệu test. */
@@ -11,7 +11,7 @@ const fs = require('fs');
 const sql = require('mssql');
 const promotion = require('../src/js/utils/promotion.js');
 
-const CONTRACT_VERSION = 'PROMOTION_BENEFIT_V2';
+const CONTRACT_VERSION = 'PROMOTION_BENEFIT_V3';
 
 function readEnv() {
   const values = {};
@@ -68,6 +68,13 @@ async function runOrderConfigCandidate(tx, { manager, item, quantity, unitPrice 
 
     DECLARE @Username VARCHAR(50) = '${escUser}';
     DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
+    UPDATE T
+    SET T.HasConfigRule = 1
+    FROM #Items T
+    WHERE EXISTS (
+      SELECT 1 FROM dbo.AI_ActivePromotionByUserFnc(@Username, T.ItemID, @StockAsOfUtc) F
+      WHERE F.RuleType IN ('QUANTITY_DISCOUNT','QUANTITY_GIFT','AMOUNT_DISCOUNT','AMOUNT_GIFT','INFORMATION')
+    );
     ;WITH ConfigCandidate AS (
         SELECT
             T.ItemID, F.RuleType, F.MinimumQuantity, F.MaximumQuantity, F.MinimumOrderAmount,
@@ -170,8 +177,28 @@ async function main() {
     assert(promotion.calculateFromConfigRules(helperCappedRule, 100, 1000).giftQuantity === 8,
       'Frontend vượt max 100 phải clamp tại 80 và vẫn chỉ tặng 8');
     const unknownVersionRule = [{ ...helperRule[0], PromotionBenefitContractVersion: 'PROMOTION_BENEFIT_V999' }];
-    assert(promotion.calculateFromConfigRules(unknownVersionRule, 10, 1000) === null,
-      'Frontend phải từ chối contract version lạ');
+    const unknownResult = promotion.calculateFromConfigRules(unknownVersionRule, 10, 1000);
+    assert(unknownResult && unknownResult.blocked === true && unknownResult.errorCode === 'UNSUPPORTED_PROMOTION_CONTRACT',
+      'Frontend phải fail-closed contract version lạ, không fallback note-text');
+    assert(promotion.calculateFromConfigRules([], 10, 1000) === null,
+      'Chỉ khi hoàn toàn không có config rule mới được fallback note-text');
+    const zeroBenefit = promotion.calculateFromConfigRules(helperRule, 4, 1000);
+    assert(zeroBenefit && zeroBenefit.configAuthoritative === true && zeroBenefit.giftQuantity === 0,
+      'Config có thật nhưng quyền lợi bằng 0 phải authoritative, không fallback note-text');
+    const amountDiscount = promotion.calculateFromConfigRules([{
+      PromotionBenefitContractVersion: CONTRACT_VERSION,
+      PromotionItemRuleID: 2,
+      Priority: 100,
+      RuleType: 'AMOUNT_DISCOUNT',
+      MinimumOrderAmount: 1000,
+      MaximumOrderAmount: 1500,
+      DiscountPercent: 10,
+    }], 10, 100);
+    assert(amountDiscount.discountPercent === 10,
+      'AMOUNT_DISCOUNT phải xét giá trị dòng trước VAT/chiết khấu');
+    const rounded = promotion.calculateLineAmounts(1, 999, 2.5);
+    assert(rounded.grossAmount === 999 && rounded.discountAmount === 25 && rounded.totalAmount === 974,
+      'Tiền giảm phải làm tròn 1 đồng đồng nhất: 999 x 2.5% => 25, total 974');
     results.push(['FRONTEND_RATIO_AND_MAX_CLAMP', true, '4/5/9/10/15/20 + 80/100']);
 
     // ── Test 2: SQL candidate tính tỷ lệ 10+2 ─────────────────────────────
@@ -185,8 +212,8 @@ async function main() {
       const result = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity, unitPrice: 1000 });
       assert(Number(result.ExpectedGiftQuantity) === expectedGift,
         `SQL 10+2 với SL=${quantity} phải tặng ${expectedGift}, thực tế: ${JSON.stringify(result)}`);
-      assert(result.HasConfigRule === (expectedGift > 0),
-        `SQL chỉ đánh dấu config rule khi quà nguyên >= 1, SL=${quantity}: ${JSON.stringify(result)}`);
+      assert(result.HasConfigRule === true,
+        `SQL phải coi config là authoritative kể cả quà bằng 0, SL=${quantity}: ${JSON.stringify(result)}`);
     }
     await new sql.Request(tx)
       .input('id', sql.BigInt, upRatio.recordset[0].PromotionProgramID)
@@ -224,9 +251,35 @@ async function main() {
       'SL=7 (trong khoảng 5-10) phải được áp 7%, thực tế: ' + JSON.stringify(withinBound));
 
     const discountOverMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 12, unitPrice: 1000 });
-    assert(discountOverMax.HasConfigRule === false,
-      'SL=12 (vượt Maximum=10) KHÔNG được áp rule này, thực tế: ' + JSON.stringify(discountOverMax));
-    results.push(['DISCOUNT_MAX_SEMANTICS_UNCHANGED', true]);
+    assert(discountOverMax.HasConfigRule === true && Number(discountOverMax.ExpectedDiscountPercent) === 0,
+      'SL=12 vượt Maximum=10 không được giảm giá nhưng config vẫn authoritative: ' + JSON.stringify(discountOverMax));
+    results.push(['DISCOUNT_MAX_IS_ELIGIBILITY_BOUND', true]);
+
+    await new sql.Request(tx)
+      .input('id', sql.BigInt, up1.recordset[0].PromotionProgramID)
+      .query("UPDATE dbo.AI_PromotionProgramTbl SET Status='WITHDRAWN' WHERE PromotionProgramID=@id;");
+
+    // Rule theo giá trị dùng gross line trước VAT/chiết khấu.
+    const codeAmount = 'VERIFY_AMOUNT_' + Date.now();
+    const upAmount = await upsertProgram(tx, {
+      manager, promotionCode: codeAmount,
+      rules: [{
+        RuleOrder: 1, ItemID: itemA, RuleType: 'AMOUNT_DISCOUNT',
+        MinimumOrderAmount: 1000, MaximumOrderAmount: 1500, DiscountPercent: 10,
+      }],
+    });
+    await approveProgram(tx, { manager, promotionProgramID: upAmount.recordset[0].PromotionProgramID });
+    const amountAtMin = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 10, unitPrice: 100 });
+    const amountOverMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 16, unitPrice: 100 });
+    assert(amountAtMin.HasConfigRule === true && Number(amountAtMin.ExpectedDiscountPercent) === 10,
+      'Gross line 1000 phải đạt ngưỡng và giảm 10%: ' + JSON.stringify(amountAtMin));
+    assert(amountOverMax.HasConfigRule === true && Number(amountOverMax.ExpectedDiscountPercent) === 0,
+      'Gross line 1600 vượt max không giảm nhưng không fallback: ' + JSON.stringify(amountOverMax));
+    results.push(['AMOUNT_RULE_USES_PRE_VAT_PRE_DISCOUNT_LINE_VALUE', true, '1000=>10%; 1600=>0%']);
+
+    await new sql.Request(tx)
+      .input('id', sql.BigInt, upAmount.recordset[0].PromotionProgramID)
+      .query("UPDATE dbo.AI_PromotionProgramTbl SET Status='WITHDRAWN' WHERE PromotionProgramID=@id;");
 
     // ── Test 5: Tie-break ổn định khi 2 rule cùng Priority + cùng mốc ─────
     const code2a = 'VERIFY_TIE_A_' + Date.now();
