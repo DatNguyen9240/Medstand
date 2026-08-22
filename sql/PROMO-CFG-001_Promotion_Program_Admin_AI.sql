@@ -51,6 +51,7 @@ BEGIN
         L.PromotionProgramID, L.PromotionCode, L.ProgramVersion, L.PromotionName, L.ProgramType,
         L.Description, L.EffectiveFrom, L.EffectiveTo, L.BranchScopeMode, L.UserGroupScopeMode,
         L.Priority, L.Status, L.SourceDocument, L.CreatedBy, L.CreatedAt, L.ApprovedBy, L.ApprovedAt, L.UpdatedAt,
+        L.VatBasis, L.MaxTotalBenefitAmountPerOrder,
         (SELECT COUNT(*) FROM dbo.AI_PromotionItemRuleTbl R WHERE R.PromotionProgramID = L.PromotionProgramID) AS RuleCount
     FROM Latest L
     WHERE L.VersionRank = 1
@@ -101,6 +102,7 @@ BEGIN
         P.PromotionProgramID, P.PromotionCode, P.ProgramVersion, P.PromotionName, P.ProgramType,
         P.Description, P.EffectiveFrom, P.EffectiveTo, P.BranchScopeMode, P.UserGroupScopeMode,
         P.Priority, P.Status, P.SourceDocument, P.CreatedBy, P.CreatedAt, P.ApprovedBy, P.ApprovedAt, P.UpdatedAt,
+        P.VatBasis, P.MaxTotalBenefitAmountPerOrder,
         R.PromotionItemRuleID, R.RuleOrder, R.ItemID, I.ItemName, R.RuleType,
         R.MinimumQuantity, R.MaximumQuantity, R.MinimumOrderAmount, R.MaximumOrderAmount,
         R.DiscountPercent, R.GiftItemID, GI.ItemName AS GiftItemName, R.GiftQuantity, R.BenefitDescription,
@@ -141,7 +143,10 @@ CREATE OR ALTER PROCEDURE dbo.API_PromotionProgram_Upsert_AI
     @SourceDocument       NVARCHAR(500),
     @JsonRules            NVARCHAR(MAX) = '[]',
     @Username             VARCHAR(50) = '',
-    @Apply                BIT = 0            -- 0 = xem trước, 1 = ghi thật
+    @Apply                BIT = 0,           -- 0 = xem trước, 1 = ghi thật
+    -- PROMO-CFG-001 (quyết định 22/08/2026): xem docs/PROMO-CFG-001_QUYET_DINH_NGHIEP_VU_AP_DUNG_2026-08-22.md
+    @VatBasis             VARCHAR(40) = 'INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT',
+    @MaxTotalBenefitAmountPerOrder DECIMAL(18,2) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -215,6 +220,56 @@ BEGIN
         SELECT N'Chưa hỗ trợ quà tặng khác sản phẩm mua (GiftItemID phải trùng ItemID hoặc để trống). Đơn hàng tạo ra sẽ ghi sai hàng tặng nếu khác.' AS Msg, 1 AS MsgType;
         RETURN;
     END
+    -- PROMO-CFG-001 (quyết định 22/08/2026, mục 1): VatBasis chỉ nhận 1 giá trị đang hỗ trợ —
+    -- chặn sớm nếu client gửi giá trị lạ, tránh giả định thuế âm thầm sai.
+    IF COALESCE(@VatBasis, '') NOT IN ('INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT')
+    BEGIN
+        SELECT N'VatBasis không hợp lệ. Hiện chỉ hỗ trợ INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF @MaxTotalBenefitAmountPerOrder IS NOT NULL AND @MaxTotalBenefitAmountPerOrder <= 0
+    BEGIN
+        SELECT N'MaxTotalBenefitAmountPerOrder phải là số dương hoặc để trống (không giới hạn).' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    -- PROMO-CFG-001 (quyết định 22/08/2026, mục 2): trong CÙNG một chương trình, 2 rule cùng
+    -- ItemID và cùng nhóm loại (QUANTITY_*/AMOUNT_*) không được có khoảng [Minimum,Maximum]
+    -- chồng nhau — tránh cấu hình mơ hồ, tie-break "may mắn thắng" mà người tạo không chủ đích.
+    IF EXISTS (
+        SELECT 1
+        FROM OPENJSON(@JsonRules) WITH (
+            RuleOrder INT '$.RuleOrder', ItemID VARCHAR(50) '$.ItemID', RuleType VARCHAR(30) '$.RuleType',
+            MinimumQuantity DECIMAL(18,2) '$.MinimumQuantity', MaximumQuantity DECIMAL(18,2) '$.MaximumQuantity',
+            MinimumOrderAmount DECIMAL(18,2) '$.MinimumOrderAmount', MaximumOrderAmount DECIMAL(18,2) '$.MaximumOrderAmount'
+        ) A
+        JOIN OPENJSON(@JsonRules) WITH (
+            RuleOrder INT '$.RuleOrder', ItemID VARCHAR(50) '$.ItemID', RuleType VARCHAR(30) '$.RuleType',
+            MinimumQuantity DECIMAL(18,2) '$.MinimumQuantity', MaximumQuantity DECIMAL(18,2) '$.MaximumQuantity',
+            MinimumOrderAmount DECIMAL(18,2) '$.MinimumOrderAmount', MaximumOrderAmount DECIMAL(18,2) '$.MaximumOrderAmount'
+        ) B
+          ON B.ItemID = A.ItemID
+         AND B.RuleOrder > A.RuleOrder
+         AND (
+                (A.RuleType IN ('QUANTITY_DISCOUNT', 'QUANTITY_GIFT') AND B.RuleType IN ('QUANTITY_DISCOUNT', 'QUANTITY_GIFT'))
+             OR (A.RuleType IN ('AMOUNT_DISCOUNT', 'AMOUNT_GIFT') AND B.RuleType IN ('AMOUNT_DISCOUNT', 'AMOUNT_GIFT'))
+             )
+        WHERE
+          (
+                A.MinimumQuantity IS NOT NULL AND B.MinimumQuantity IS NOT NULL
+                AND A.MinimumQuantity <= COALESCE(B.MaximumQuantity, 999999999)
+                AND COALESCE(A.MaximumQuantity, 999999999) >= B.MinimumQuantity
+          )
+          OR
+          (
+                A.MinimumOrderAmount IS NOT NULL AND B.MinimumOrderAmount IS NOT NULL
+                AND A.MinimumOrderAmount <= COALESCE(B.MaximumOrderAmount, 999999999999)
+                AND COALESCE(A.MaximumOrderAmount, 999999999999) >= B.MinimumOrderAmount
+          )
+    )
+    BEGIN
+        SELECT N'Có 2 điều kiện cùng sản phẩm và cùng nhóm loại (số lượng hoặc giá trị) bị chồng khoảng Minimum/Maximum trong cùng chương trình. Vui lòng tách khoảng không chồng nhau.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
 
     DECLARE @TargetID BIGINT = NULL;
     DECLARE @NextVersion INT = 1;
@@ -260,11 +315,11 @@ BEGIN
             INSERT INTO dbo.AI_PromotionProgramTbl
                 (PromotionCode, ProgramVersion, PromotionName, ProgramType, Description,
                  EffectiveFrom, EffectiveTo, BranchScopeMode, UserGroupScopeMode, Priority,
-                 Status, SourceDocument, CreatedBy)
+                 Status, SourceDocument, CreatedBy, VatBasis, MaxTotalBenefitAmountPerOrder)
             VALUES
                 (@PromotionCode, @NextVersion, @PromotionName, @ProgramType, @Description,
                  @EffectiveFrom, @EffectiveTo, @BranchScopeMode, @UserGroupScopeMode, @Priority,
-                 'DRAFT', @SourceDocument, @Username);
+                 'DRAFT', @SourceDocument, @Username, @VatBasis, @MaxTotalBenefitAmountPerOrder);
             SET @TargetID = SCOPE_IDENTITY();
         END
         ELSE
@@ -273,7 +328,8 @@ BEGIN
             SET PromotionName = @PromotionName, ProgramType = @ProgramType, Description = @Description,
                 EffectiveFrom = @EffectiveFrom, EffectiveTo = @EffectiveTo,
                 BranchScopeMode = @BranchScopeMode, UserGroupScopeMode = @UserGroupScopeMode,
-                Priority = @Priority, SourceDocument = @SourceDocument, UpdatedAt = SYSUTCDATETIME()
+                Priority = @Priority, SourceDocument = @SourceDocument, UpdatedAt = SYSUTCDATETIME(),
+                VatBasis = @VatBasis, MaxTotalBenefitAmountPerOrder = @MaxTotalBenefitAmountPerOrder
             WHERE PromotionProgramID = @TargetID;
 
             DELETE FROM dbo.AI_PromotionBranchScopeTbl WHERE PromotionProgramID = @TargetID;

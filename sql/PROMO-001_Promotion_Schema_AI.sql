@@ -25,6 +25,14 @@ BEGIN
         ApprovedBy VARCHAR(50) NULL,
         ApprovedAt DATETIME2(0) NULL,
         UpdatedAt DATETIME2(0) NOT NULL CONSTRAINT DF_AI_PromotionProgram_UpdatedAt DEFAULT SYSUTCDATETIME(),
+        -- PROMO-CFG-001 (quyết định 22/08/2026, xem docs/PROMO-CFG-001_QUYET_DINH_NGHIEP_VU_AP_DUNG_2026-08-22.md):
+        -- VatBasis ghi tường minh cơ sở tính CTBH đang dùng (giá đã gồm VAT, quà 0đ không phát
+        -- sinh VAT riêng) — hành vi không đổi, chỉ đặt tên cho giả định ngầm định đang chạy thật.
+        VatBasis VARCHAR(40) NOT NULL CONSTRAINT DF_AI_PromotionProgram_VatBasis DEFAULT 'INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT',
+        -- Trần tổng trị giá lợi ích (VNĐ) toàn đơn cho CHƯƠNG TRÌNH này, khác với MaximumOrderAmount
+        -- (per-rule, per-dòng) đã có. NULL = không giới hạn cấp đơn, hành vi các chương trình cũ
+        -- không đổi.
+        MaxTotalBenefitAmountPerOrder DECIMAL(18,2) NULL,
         CONSTRAINT PK_AI_PromotionProgram PRIMARY KEY (PromotionProgramID),
         CONSTRAINT UQ_AI_PromotionProgram_CodeVersion UNIQUE (PromotionCode, ProgramVersion),
         CONSTRAINT CK_AI_PromotionProgram_Code CHECK (LEN(LTRIM(RTRIM(PromotionCode))) > 0),
@@ -42,11 +50,33 @@ BEGIN
         (
             Status <> 'APPROVED'
             OR (ApprovedBy IS NOT NULL AND LEN(LTRIM(RTRIM(ApprovedBy))) > 0 AND ApprovedAt IS NOT NULL)
-        )
+        ),
+        CONSTRAINT CK_AI_PromotionProgram_VatBasis CHECK (VatBasis IN ('INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT')),
+        CONSTRAINT CK_AI_PromotionProgram_MaxTotalBenefit CHECK (MaxTotalBenefitAmountPerOrder IS NULL OR MaxTotalBenefitAmountPerOrder > 0)
     );
 
     CREATE INDEX IX_AI_PromotionProgram_Published
         ON dbo.AI_PromotionProgramTbl (Status, EffectiveFrom, EffectiveTo, PromotionCode, ProgramVersion DESC);
+END;
+GO
+
+-- Self-healing cho DB đã tồn tại bảng từ trước khi có VatBasis/MaxTotalBenefitAmountPerOrder
+-- (vd medtest) — idempotent, cùng convention với Bootstrap_API_Metadata_Auto_AI.sql.
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'VatBasis' AND Object_ID = OBJECT_ID('dbo.AI_PromotionProgramTbl'))
+BEGIN
+    -- CHECK phải cùng 1 câu ALTER TABLE với cột mới — tách thành 2 câu trong cùng batch sẽ báo
+    -- "Invalid column name" vì cột chưa tồn tại trong catalog lúc SQL Server phân giải tên.
+    ALTER TABLE dbo.AI_PromotionProgramTbl
+        ADD VatBasis VARCHAR(40) NOT NULL
+            CONSTRAINT DF_AI_PromotionProgram_VatBasis DEFAULT 'INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT'
+            CONSTRAINT CK_AI_PromotionProgram_VatBasis CHECK (VatBasis IN ('INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT'));
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE Name = 'MaxTotalBenefitAmountPerOrder' AND Object_ID = OBJECT_ID('dbo.AI_PromotionProgramTbl'))
+BEGIN
+    ALTER TABLE dbo.AI_PromotionProgramTbl
+        ADD MaxTotalBenefitAmountPerOrder DECIMAL(18,2) NULL
+            CONSTRAINT CK_AI_PromotionProgram_MaxTotalBenefit CHECK (MaxTotalBenefitAmountPerOrder IS NULL OR MaxTotalBenefitAmountPerOrder > 0);
 END;
 GO
 
@@ -188,6 +218,8 @@ SELECT
     P.ApprovedBy,
     P.ApprovedAt,
     P.UpdatedAt,
+    P.VatBasis,
+    P.MaxTotalBenefitAmountPerOrder,
     R.PromotionItemRuleID,
     R.RuleOrder,
     R.ItemID,

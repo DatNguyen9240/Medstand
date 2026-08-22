@@ -196,6 +196,14 @@
             <label class="promo-full">Mô tả
               <textarea id="pf-desc" rows="2"></textarea>
             </label>
+            <label>Cơ sở tính VAT
+              <select id="pf-vat-basis">
+                <option value="INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT">Giá đã gồm VAT, quà 0đ không chịu VAT riêng</option>
+              </select>
+            </label>
+            <label>Trần tổng lợi ích/đơn (VNĐ, để trống = không giới hạn)
+              <input type="number" id="pf-max-benefit-per-order" min="0" step="1" placeholder="VD: 500000">
+            </label>
             <label>Phạm vi chi nhánh
               <select id="pf-branch-scope">
                 <option value="ALL">Tất cả chi nhánh</option>

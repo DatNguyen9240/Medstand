@@ -137,7 +137,11 @@
     });
 
     var best = candidates[0];
-    var result = { discountPercent: 0, giftQuantity: 0, giftItemID: '', giftItemName: '', matchedRule: best };
+    var result = {
+      discountPercent: 0, giftQuantity: 0, giftItemID: '', giftItemName: '', matchedRule: best,
+      benefitValueVND: 0, vatBasis: best.VatBasis || null,
+      maxTotalBenefitAmountPerOrder: best.MaxTotalBenefitAmountPerOrder != null ? Number(best.MaxTotalBenefitAmountPerOrder) : null
+    };
     if (best.RuleType === 'QUANTITY_GIFT') {
       result.giftQuantity = Math.floor(qty / Number(best.MinimumQuantity)) * Number(best.GiftQuantity || 0);
       result.giftItemID = best.GiftItemID || '';
@@ -149,14 +153,63 @@
     } else {
       result.discountPercent = Number(best.DiscountPercent || 0);
     }
+
+    // PROMO-CFG-001 (quyết định 22/08/2026, mục 5): làm tròn XUỐNG (floor) tới VNĐ nguyên cho
+    // mọi trị giá tiền quy đổi từ CTBH — nhất quán với floor() đã dùng cho tỷ lệ số lượng quà.
+    if (result.giftQuantity > 0 && Number.isFinite(price)) {
+      result.benefitValueVND = Math.floor(result.giftQuantity * price);
+    } else if (result.discountPercent > 0 && Number.isFinite(price)) {
+      result.benefitValueVND = Math.floor(lineAmount * result.discountPercent / 100);
+    }
+
+    // PROMO-CFG-001 (quyết định 22/08/2026, mục 6): rule khớp điều kiện nhưng lợi ích tính ra
+    // = 0 (giftQuantity và discountPercent đều 0) → coi NHƯ CHƯA CÓ RULE NÀO KHỚP, trả về null
+    // để caller tự fallback về note-text — khớp đúng hành vi server (mirror của SQL).
+    if (result.giftQuantity <= 0 && result.discountPercent <= 0) return null;
+
     return result;
+  }
+
+  // PROMO-CFG-001 (quyết định 22/08/2026, mục 4 — trả hàng): mirror thuần JS của
+  // dbo.AI_PromotionReturnClawbackFnc — KHÔNG trừ tỷ lệ độc lập trên phần trả, luôn tính lại
+  // số quà đúng ra phải có từ số lượng CÒN GIỮ bằng công thức tỷ lệ + clamp gốc, rồi suy ra
+  // phần cần thu hồi (không âm). Hàm thuần, sẵn sàng cho task tích hợp trả hàng sau này.
+  function calculateReturnClawback(originalPurchasedQuantity, returnedQuantity, ruleMinimumQuantity, ruleGiftQuantity, ruleMaximumQuantity) {
+    var original = Number(originalPurchasedQuantity) || 0;
+    var returned = Number(returnedQuantity) || 0;
+    var minQty = Number(ruleMinimumQuantity);
+    var giftQty = Number(ruleGiftQuantity) || 0;
+    var maxQty = ruleMaximumQuantity == null ? null : Number(ruleMaximumQuantity);
+
+    if (!(minQty > 0)) {
+      return { giftAlreadyGiven: 0, giftShouldRemain: 0, clawbackQuantity: 0, quantityRemaining: original - returned };
+    }
+
+    var cappedOriginal = maxQty != null && original > maxQty ? maxQty : original;
+    var giftAlreadyGiven = Math.floor(cappedOriginal / minQty) * giftQty;
+
+    var remaining = original - returned;
+    if (remaining < 0) remaining = 0;
+    var cappedRemaining = maxQty != null && remaining > maxQty ? maxQty : remaining;
+    var giftShouldRemain = Math.floor(cappedRemaining / minQty) * giftQty;
+
+    var clawback = giftAlreadyGiven - giftShouldRemain;
+    if (clawback < 0) clawback = 0;
+
+    return {
+      giftAlreadyGiven: giftAlreadyGiven,
+      giftShouldRemain: giftShouldRemain,
+      clawbackQuantity: clawback,
+      quantityRemaining: remaining
+    };
   }
 
   var api = {
     parse: parse,
     calculate: calculate,
     generalPromotionText: generalPromotionText,
-    calculateFromConfigRules: calculateFromConfigRules
+    calculateFromConfigRules: calculateFromConfigRules,
+    calculateReturnClawback: calculateReturnClawback
   };
 
   root.MedstandPromotion = api;

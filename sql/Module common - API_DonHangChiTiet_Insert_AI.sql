@@ -361,6 +361,10 @@ BEGIN
         ExpectedGiftQuantity DECIMAL(18,2) NOT NULL DEFAULT 0,
         ExpectedDiscountPercent DECIMAL(18,2) NOT NULL DEFAULT 0,
         HasConfigRule BIT NOT NULL DEFAULT 0,
+        -- PROMO-CFG-001 (quyết định 22/08/2026, mục 3): chương trình đang thắng cho dòng này +
+        -- trị giá lợi ích quy đổi VNĐ (làm tròn xuống, mục 5) để đối chiếu trần MaxTotalBenefitAmountPerOrder.
+        WinningPromotionProgramID BIGINT NULL,
+        BenefitValueVND DECIMAL(18,2) NOT NULL DEFAULT 0,
         ItemName NVARCHAR(500) NULL,
         PromotionNote NVARCHAR(MAX) NULL,
         DiemSanPham DECIMAL(18,2) NULL,
@@ -444,6 +448,8 @@ BEGIN
                 F.GiftQuantity,
                 F.Priority,
                 F.PromotionItemRuleID,
+                F.PromotionProgramID,
+                F.MaxTotalBenefitAmountPerOrder,
                 ROW_NUMBER() OVER (
                     PARTITION BY T.ItemID
                     ORDER BY F.Priority ASC,
@@ -462,20 +468,68 @@ BEGIN
                     AND (T.Quantity * T.UnitPrice) >= F.MinimumOrderAmount
                     AND (F.MaximumOrderAmount IS NULL OR (T.Quantity * T.UnitPrice) <= F.MaximumOrderAmount)
                   )
+        ), Computed AS (
+            SELECT
+                C.ItemID, C.RuleType, C.PromotionProgramID, C.MaxTotalBenefitAmountPerOrder,
+                CASE
+                    WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(T.Quantity / C.MinimumQuantity) * COALESCE(C.GiftQuantity, 0)
+                    WHEN C.RuleType = 'AMOUNT_GIFT' THEN COALESCE(C.GiftQuantity, 0)
+                    ELSE 0
+                END AS GiftQty,
+                CASE
+                    WHEN C.RuleType IN ('QUANTITY_DISCOUNT', 'AMOUNT_DISCOUNT') THEN COALESCE(C.DiscountPercent, 0)
+                    ELSE 0
+                END AS DiscPct,
+                T.UnitPrice, T.Quantity
+            FROM #Items T
+            JOIN ConfigCandidate C ON C.ItemID = T.ItemID AND C.TierRank = 1
+        ), Benefit AS (
+            -- PROMO-CFG-001 (quyết định 22/08/2026, mục 5): làm tròn XUỐNG (FLOOR) mọi trị giá
+            -- tiền quy đổi từ CTBH, thống nhất với FLOOR đã dùng cho tỷ lệ số lượng quà.
+            SELECT
+                ItemID, RuleType, PromotionProgramID, MaxTotalBenefitAmountPerOrder, GiftQty, DiscPct,
+                CASE
+                    WHEN GiftQty > 0 THEN FLOOR(GiftQty * UnitPrice)
+                    WHEN DiscPct > 0 THEN FLOOR(Quantity * UnitPrice * DiscPct / 100.0)
+                    ELSE 0
+                END AS BenefitValueVND
+            FROM Computed
+        ), Ranked AS (
+            -- PROMO-CFG-001 (quyết định 22/08/2026, mục 3): trần tổng lợi ích/đơn theo chương
+            -- trình — cộng dồn theo thứ tự ItemID tăng dần (xác định, không phụ thuộc thứ tự
+            -- chèn), dòng nào làm tổng vượt trần thì CẢ DÒNG đó rơi về không có cấu hình.
+            SELECT
+                B.*,
+                SUM(B.BenefitValueVND) OVER (
+                    PARTITION BY B.PromotionProgramID
+                    ORDER BY B.ItemID ASC
+                    ROWS UNBOUNDED PRECEDING
+                ) AS RunningTotalVND
+            FROM Benefit B
         )
         UPDATE T
-        SET T.ExpectedGiftQuantity = CASE
-                WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(T.Quantity / C.MinimumQuantity) * COALESCE(C.GiftQuantity, 0)
-                WHEN C.RuleType = 'AMOUNT_GIFT' THEN COALESCE(C.GiftQuantity, 0)
-                ELSE 0
-            END,
-            T.ExpectedDiscountPercent = CASE
-                WHEN C.RuleType IN ('QUANTITY_DISCOUNT', 'AMOUNT_DISCOUNT') THEN COALESCE(C.DiscountPercent, 0)
-                ELSE 0
-            END,
-            T.HasConfigRule = 1
+        SET T.ExpectedGiftQuantity = CASE WHEN Fit.GiftQty > 0 THEN Fit.GiftQty ELSE 0 END,
+            T.ExpectedDiscountPercent = CASE WHEN Fit.GiftQty = 0 AND Fit.DiscPct > 0 THEN Fit.DiscPct ELSE 0 END,
+            -- PROMO-CFG-001 (quyết định 22/08/2026, mục 6): lợi ích tính ra = 0 dù rule đã khớp
+            -- điều kiện (hoặc bị trần cấp đơn cắt) → coi NHƯ CHƯA CÓ RULE NÀO KHỚP, để item vẫn
+            -- rơi về nhánh note-text cũ thay vì đứng yên không có CTBH gì.
+            T.HasConfigRule = CASE WHEN (Fit.GiftQty > 0 OR Fit.DiscPct > 0) THEN 1 ELSE 0 END,
+            T.WinningPromotionProgramID = CASE WHEN (Fit.GiftQty > 0 OR Fit.DiscPct > 0) THEN Fit.PromotionProgramID ELSE NULL END,
+            T.BenefitValueVND = CASE WHEN (Fit.GiftQty > 0 OR Fit.DiscPct > 0) THEN Fit.BenefitValueVND ELSE 0 END
         FROM #Items T
-        JOIN ConfigCandidate C ON C.ItemID = T.ItemID AND C.TierRank = 1;
+        JOIN (
+            SELECT
+                ItemID, PromotionProgramID, BenefitValueVND,
+                CASE
+                    WHEN MaxTotalBenefitAmountPerOrder IS NOT NULL AND RunningTotalVND > MaxTotalBenefitAmountPerOrder THEN 0
+                    ELSE GiftQty
+                END AS GiftQty,
+                CASE
+                    WHEN MaxTotalBenefitAmountPerOrder IS NOT NULL AND RunningTotalVND > MaxTotalBenefitAmountPerOrder THEN 0
+                    ELSE DiscPct
+                END AS DiscPct
+            FROM Ranked
+        ) Fit ON Fit.ItemID = T.ItemID;
     END;
 
     /* Recalculate the current general-customer promotion from the SQL price note.

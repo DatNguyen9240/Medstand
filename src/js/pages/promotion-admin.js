@@ -91,6 +91,8 @@
     $('#pf-to').val('');
     $('#pf-source').val('');
     $('#pf-desc').val('');
+    $('#pf-vat-basis').val('INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT');
+    $('#pf-max-benefit-per-order').val('');
     $('#pf-branch-scope').val('ALL').trigger('change');
     $('#pf-group-scope').val('ALL').trigger('change');
     $('#pf-branch-ids').val('');
@@ -138,6 +140,8 @@
       $('#pf-to').val(toDatetimeLocalValue(header.EffectiveTo));
       $('#pf-source').val(header.SourceDocument);
       $('#pf-desc').val(header.Description || '');
+      $('#pf-vat-basis').val(header.VatBasis || 'INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT');
+      $('#pf-max-benefit-per-order').val(header.MaxTotalBenefitAmountPerOrder != null ? header.MaxTotalBenefitAmountPerOrder : '');
       $('#pf-branch-scope').val(header.BranchScopeMode).trigger('change');
       $('#pf-group-scope').val(header.UserGroupScopeMode).trigger('change');
       $('#pf-branch-ids').val(header.BranchIDs || '');
@@ -310,7 +314,9 @@
       SourceDocument: source,
       JsonRules: JSON.stringify(buildRulesPayload()),
       Username: user.UserName || '',
-      Apply: 1
+      Apply: 1,
+      VatBasis: $('#pf-vat-basis').val() || 'INCLUSIVE_UNIT_PRICE_NO_GIFT_VAT',
+      MaxTotalBenefitAmountPerOrder: $('#pf-max-benefit-per-order').val() === '' ? null : Number($('#pf-max-benefit-per-order').val())
     };
 
     var $btn = $(this).prop('disabled', true);

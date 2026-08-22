@@ -37,6 +37,8 @@ RETURN
         P.ApprovedBy,
         P.ApprovedAt,
         P.UpdatedAt AS PromotionUpdatedAt,
+        P.VatBasis,
+        P.MaxTotalBenefitAmountPerOrder,
         P.PromotionItemRuleID,
         P.RuleOrder,
         P.ItemID,
