@@ -237,7 +237,7 @@ async function main() {
     }, managerToken, 'req-promo-shuffled-preview');
     const shuffledRow = resultRow(shuffledPreview);
     assert(shuffledRow && Number(shuffledRow.MsgType) === 0,
-      'Payload Upsert đảo thứ tự phải được gateway dựng lại và tới nhánh preview hợp lệ.');
+      'Payload Upsert đảo thứ tự phải được gateway dựng lại và tới nhánh preview hợp lệ. Response=' + JSON.stringify(shuffledRow));
     results.push('SHUFFLED_UPSERT_REORDERED_TO_PROCEDURE_SIGNATURE');
 
     const approvePreview = await gateway({

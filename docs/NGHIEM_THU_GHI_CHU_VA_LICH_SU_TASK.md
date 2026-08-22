@@ -21,9 +21,9 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUST-SEARCH-001` | `DONE` | Đã tái hiện trước/sau, xác định nguyên nhân gốc và nghiệm thu E2E bằng Chrome thật |
 | `CORE-011` | `DONE` | Đã nghiệm thu chọn khách ở màn lập/sửa đơn |
 | `CUST-SEARCH-003` | `DONE` | Race/stale, lỗi hiện tại + retry, đổi tài khoản thật, cô lập cache, khách ngoài scope và mapping đều PASS trên màn lập/sửa đơn; 0 mutation |
-| `PROMO-CFG-001` | `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E` | Đã chốt và code `QUANTITY_GIFT` tỷ lệ + clamp max; các semantics tài chính còn mở |
+| `PROMO-CFG-001` | `DONE` | Contract V3 đã đồng bộ frontend/API/SQL, deploy `medtest`, actual-order verifier và live Gateway đều PASS |
 | `PROMO-CFG-002` | `CODE_AND_GATEWAY_PREVIEW_PASS_PENDING_REASON_TRANSPORT_AND_UI_E2E` | SQL 16/16, gateway live 14/14 và guard 22/22 PASS; còn ERP chuyển `Reason`, UI REJECT/WITHDRAW, evidence sạch và QA |
-| `PROMO-CFG-003` | `BLOCKED` | Chờ contract và E2E tạo đơn thật |
+| `PROMO-CFG-003` | `PARTIAL_PASS_PENDING_UI_AND_CONCURRENCY_E2E` | Actual proc V3 đã PASS; còn UI preview, double-click/retry và đổi config giữa preview/xác nhận |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
 | `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
 | `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
@@ -82,14 +82,19 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Artifact QA bị bác và đã loại trước khi push:** commit local cũ `176cd9b` từng thêm `EDIT_ORDER_8_CASES_EVIDENCE.json` và `E2E_8_CASES_EDIT_ORDER_VERIFIED.png`. Bộ này bị kết luận `REJECTED_INVALID_EVIDENCE` vì đếm cả 500 option ẩn, không đổi hai tài khoản thật, dùng mã không tồn tại cho ca ngoài scope, thiếu request ID/HTTP timeline, mapping không assert đủ và còn để lộ thông tin khách. Lịch sử `hoangdang` đã được viết lại an toàn: HEAD mới `8a1bff7`, `176cd9b` không còn là ancestor và hai file không còn trong tree dự kiến push. Kết luận `DONE` vẫn dựa trên hai verifier chuẩn ở trên.
 - **Kết luận:** `DONE`; toàn bộ điều kiện đóng P0/P1 của task đã đạt, không phát sinh mutation trên `medtest`.
 
+### PROMO-CFG-001 — Contract tính quyền lợi CTBH V3
+
+- **Nghiệm thu:** 22/08/2026; nhánh `hoangdang`, commit nền `46eeb9b`; môi trường local Gateway kết nối `medtest`.
+- **Contract:** `PROMOTION_BENEFIT_V3`; quà tỷ lệ, clamp `MaximumQuantity`, discount theo khoảng số lượng/giá trị dòng, một rule thắng theo tie-break xác định, config active là nguồn chuẩn, version lạ fail-closed và tiền giảm làm tròn đến 1 đồng.
+- **Deploy đồng bộ:** `scripts/deploy_promo_cfg001_v3.js --apply` triển khai schema, active-rule function, admin proc, order proc và ActiveByItems trong một transaction; đọc lại đủ 6 object và chữ ký Upsert khớp Gateway.
+- **Verifier:** preflight contract `26/26`, admin `18/18`, catalog `12/12`; `verify_promo_cfg001_fixes.js` PASS `7/7`; `verify_promo_cfg001_v3_order_e2e.js` gọi proc tạo đơn thật và đối chiếu `AR_OrderDetailTbl` PASS quà 0, tỷ lệ, clamp, chặn quà sai, discount theo số lượng/giá trị và rounding; toàn bộ transaction rollback, `0` mutation tồn lưu.
+- **Gateway:** `verify_promo_cfg002_gateway_identity.js` gọi encrypted live Gateway PASS `14/14`, gồm identity server-owned, token thiếu/hỏng, payload đảo thứ tự và chữ ký proc; probe ghi dùng `Apply=0`.
+- **Regression:** build production PASS; order status guard `22/22`; order approval transition `25/25`, rollback.
+- **Kết luận:** `DONE`. UI preview/double-click/config thay đổi trong lúc xác nhận thuộc `PROMO-CFG-003`, không còn là điều kiện đóng contract `PROMO-CFG-001`.
+
 ## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
 
-### PROMO-CFG-001/002/003
-
-- Business chốt ngày 22/08/2026 cho `QUANTITY_GIFT`: gói `10+2` mua `5` tặng `1`; vượt `MaximumQuantity` thì clamp quyền lợi tại max (`80→8`, mua `100` vẫn tặng `8`), không loại rule/fallback note-text.
-- Frontend, API đọc rule và SQL tạo đơn đã dùng contract `PROMOTION_BENEFIT_V2`; `verify_promo_cfg001_fixes.js` rollback PASS 6 nhóm: ma trận tỷ lệ, clamp max, giữ nguyên discount, deterministic tie-break và chặn quà khác SKU.
-- Chưa được coi là E2E tạo đơn: script hiện kiểm helper/CTE, chưa có mutation API/UI thật với request ID.
-- Điểm business còn mở: VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quà tính ra bằng `0`.
+### PROMO-CFG-002/003
 - **Cập nhật 22/08/2026 — PROMO-CFG-002 (quyền âm + audit) đã merge:** `API_PromotionProgram_Upsert_AI` ghi audit trước/sau (gồm cả nội dung rule, `BranchIDs`, `UserGroupIDs`, không chỉ đếm số dòng) qua `AI_WriteAuditLog`, fail-closed nếu hạ tầng audit thiếu; `API_PromotionProgram_Approve_AI` thêm `@Reason`, bắt buộc khi REJECT/WITHDRAW. Verify `verify_promo_cfg002_permission_and_audit.js`: **16/16 PASS** trên `medtest` (rollback), gồm quyền âm tạo/duyệt, khóa sửa bản đã duyệt, audit trước/sau (rule + scope), bắt buộc lý do, config tương lai/hết hạn/sai scope bị loại đúng.
 - **P0 gateway identity và positional binding đã sửa, kiểm chứng live ngày 22/08/2026:** ba API đọc List/Detail/ActiveByItems dùng `READ_IDENTITY_POLICY`; hai API ghi Upsert/Approve dùng policy mutation không chèn idempotency giả. Gateway dựng mới body bằng allowlist theo đúng thứ tự tham số proc, canonicalize field, điền default, loại identity từ client và chặn field lạ/trùng/thiếu; frontend không còn gửi Username cho năm API này. SQL đặt tham số mới `@Reason` ở cuối chữ ký Approve để không phá caller bind theo vị trí.
 - **Kết quả:** `verify_order_status_guard.js` **22/22 PASS**; `verify_promo_cfg002_gateway_identity.js` gọi encrypted `/api/gateway` runtime thật **14/14 PASS**, gồm payload đảo thứ tự, field lạ, field bắt buộc bị thiếu, token thiếu/hỏng, giả identity hai chiều và frontend nhận đúng dòng kết quả nghiệp vụ. `verify_promo_cfg002_permission_and_audit.js` **16/16 PASS** và `verify_promo_cfg001_fixes.js` **6/6 PASS**, đều rollback. Write probes Gateway dùng `Apply=0`, xác nhận `0 mutation`.

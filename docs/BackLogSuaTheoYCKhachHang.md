@@ -12,11 +12,6 @@
 
 ## 1. Cấu hình giá trị tối thiểu CTBH
 
-- [ ] **PROMO-CFG-001 — Chốt contract giá trị tối thiểu CTBH** · `P1` · `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E`
-  - **Đã chốt 22/08/2026:** `QUANTITY_GIFT` tính theo tỷ lệ (gói `10+2`, mua `5` tặng `1`); vượt `MaximumQuantity` thì clamp lượng tính quyền lợi tại max (`80→8`, mua `100` vẫn tặng `8`), không loại rule/fallback note-text. Frontend + SQL dùng `PROMOTION_BENEFIT_V2`; verifier rollback PASS 6 nhóm kiểm tra.
-  - **Cần làm:** business còn phải chốt VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quyền lợi tính ra bằng `0`; sau đó chạy E2E tạo đơn thật có request ID.
-  - **Điều kiện đóng:** có sign-off phần còn lại và bảng ví dụ đầy đủ; preview frontend, API/SQL và dòng đơn thực tế cho cùng kết quả.
-
 - [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P0` · `CODE_AND_GATEWAY_PREVIEW_PASS_PENDING_REASON_TRANSPORT_AND_UI_E2E`
   - **Đã xong 22/08/2026:** quyền âm (tạo/duyệt), khóa sửa bản đã duyệt, audit trước/sau (gồm nội dung rule, `BranchIDs`, `UserGroupIDs`), bắt buộc lý do khi từ chối/thu hồi và lọc config theo thời gian/scope — verify SQL `16/16 PASS` trên `medtest`, rollback. Proc runtime đã có đủ tham số `@Reason`.
   - **P0 identity + positional binding đã vá và kiểm qua HTTP thật:** List/Detail/ActiveByItems lấy identity từ token; Upsert/Approve dựng lại body bằng allowlist đúng thứ tự chữ ký proc, điền default cho tham số optional, gỡ mọi biến thể `User`/`Username`, chặn field lạ, field trùng khác hoa/thường và field bắt buộc bị thiếu. `verify_order_status_guard.js` PASS `22/22`; `verify_promo_cfg002_gateway_identity.js` PASS `14/14`, gồm Sale giả Manager, token hỏng/thiếu, payload đảo thứ tự, payload cố làm lệch positional binding và response nghiệp vụ của frontend. Toàn bộ probe write dùng `Apply=0`, không mutation.
@@ -24,8 +19,9 @@
   - **Cần làm còn lại:** xử lý lớp ERP live để tham số thứ năm `Reason` thực sự tới proc; sau đó chạy qua UI các luồng DRAFT → REJECT và APPROVED → WITHDRAW, đối soát request ID/audit actor. Evidence phải được tạo lại ở dạng tối giản và che toàn bộ credential/PII; không nhập bộ evidence của worktree cũ. `medtest` hiện còn 18 fixture `E2E_UI_MUT_*` ở trạng thái `REJECTED`, cần kế hoạch dọn UAT được phê duyệt hoặc ghi nhận rõ, không được mô tả là “không còn dữ liệu test”.
   - **Điều kiện đóng:** đổi config qua UI không cần build lại code; user ngoài quyền bị chặn kể cả payload giả; mutation hợp lệ ghi đúng actor/audit và có kế hoạch phục hồi dữ liệu.
 
-- [ ] **PROMO-CFG-003 — UAT min CTBH trên preview và đơn thật** · `P0` · `BLOCKED_BY_PROMO_CFG_001_002`
-  - **Cần làm:** sau sign-off, chạy procedure tạo đơn thật/rollback cho các ca dưới/bằng/trên ngưỡng, double-click, retry và config đổi giữa preview/xác nhận.
+- [ ] **PROMO-CFG-003 — UAT min CTBH trên preview và đơn thật** · `P0` · `PARTIAL_PASS_PENDING_UI_AND_CONCURRENCY_E2E`
+  - **Đã có:** actual proc V3 đã PASS trong transaction rollback cho quà bằng 0, tỷ lệ `10+2`, clamp max, quà sai bị server chặn, discount theo số lượng/giá trị và làm tròn tiền; live Gateway identity PASS `14/14`.
+  - **Cần làm:** chạy UI preview, double-click/retry và config đổi giữa preview/xác nhận; thu ảnh/Network đã che dữ liệu.
   - **Điều kiện đóng:** có ảnh preview, response, request ID, mã đơn hoặc bằng chứng rollback; không áp sai CTBH hay tạo đơn trùng.
 
 ## 2. Workflow Sale tạo đơn → Kế toán duyệt
@@ -83,7 +79,7 @@
 
 1. `PROMO-CFG-002` sửa lớp ERP chuyển tiếp đủ `Reason`, chạy REJECT/WITHDRAW qua UI, đối soát audit actor và xử lý 18 fixture `REJECTED`; identity + ordered payload qua HTTP đã PASS.
 2. `PRODUCT-DIAG-001` hoàn tất Chatbot E2E và live identity evidence.
-3. Business chốt phần còn lại của `PROMO-CFG-001`, sau đó chạy `PROMO-CFG-003`.
+3. `PROMO-CFG-003` hoàn tất UI preview, double-click/retry và config đổi giữa preview/xác nhận; contract `PROMO-CFG-001` đã `DONE`.
 4. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
    Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
 5. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.

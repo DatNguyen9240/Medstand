@@ -2,7 +2,7 @@
 
 **Contract quyền lợi:** `PROMOTION_BENEFIT_V3`  
 **Ngày chốt:** 22/08/2026  
-**Trạng thái:** contract đầy đủ; code frontend/API/SQL đã đồng bộ, còn deploy đồng thời và E2E trước khi đóng task.
+**Trạng thái:** `DONE` — contract đầy đủ, frontend/API/SQL đã đồng bộ và deploy; actual-order verifier cùng live Gateway đã PASS ngày 22/08/2026.
 
 ## 1. Nguồn dữ liệu và phạm vi
 
@@ -83,10 +83,10 @@ Ví dụ: 999 đồng, giảm 2,5% → tiền giảm 25 đồng, thành tiền 9
 | Có config 10+2 nhưng mua 4 | Ghi chú ERP có khuyến mãi khác | 0, không fallback |
 | 999 đồng giảm 2,5% | Tiền giảm / thành tiền | 25 / 974 |
 
-## 7. Điều kiện triển khai và đóng task
+## 7. Bằng chứng triển khai và đóng task
 
-1. Merge toàn bộ frontend, API version và SQL trong cùng release.
-2. Deploy SQL trước hoặc trong cùng maintenance window; không để frontend V3 chạy lâu với API V2.
-3. Build lại bundle.
-4. Chạy verifier contract/regression trong transaction rollback.
-5. E2E tạo đơn thật cho: quà tỷ lệ, clamp max, giảm theo số lượng, giảm theo giá trị, config chưa đạt ngưỡng và version mismatch; đối soát `AR_OrderDetailTbl`, request ID và audit.
+1. Đã merge commit `46eeb9b` vào `hoangdang`.
+2. Đã deploy đồng bộ 5 file SQL bằng `scripts/deploy_promo_cfg001_v3.js --apply` và đọc lại đủ object/chữ ký proc.
+3. Build production PASS.
+4. Preflight `26/26`, admin `18/18`, catalog `12/12`, verifier contract `7/7` PASS.
+5. `verify_promo_cfg001_v3_order_e2e.js` gọi actual order proc, đối chiếu `AR_OrderDetailTbl`, request ID/audit và rollback sạch; live Gateway identity PASS `14/14`.
