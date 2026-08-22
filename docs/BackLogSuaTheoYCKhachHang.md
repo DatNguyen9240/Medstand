@@ -1,6 +1,6 @@
 # BACKLOG VIỆC CẦN LÀM THEO YÊU CẦU KHÁCH HÀNG
 
-**Cập nhật:** 21/08/2026
+**Cập nhật:** 22/08/2026
 **Mục đích:** file này chỉ liệt kê việc còn phải làm. Kết quả đã chạy, ghi chú dài, task đã hoàn thành và lịch sử trạng thái nằm tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md).
 
 ## Cách đọc
@@ -12,9 +12,11 @@
 
 ## 1. Tìm kiếm và chọn khách hàng
 
-- [ ] **CUST-SEARCH-003 — Regression các màn hình dùng bộ chọn khách** · `P0` · `PARTIAL_PASS_PENDING_FULL_E2E_EVIDENCE`
-  - **Cần làm:** ép request đầu chậm nhưng đã gửi; chứng minh response cũ hoàn tất sau response mới; test API lỗi/retry, stale error, đổi tài khoản, khách ngoài scope và các màn lập/sửa đơn.
-  - **Điều kiện đóng:** 100% ca P0/P1 pass, có Network timeline hoặc request ID và không giữ dữ liệu khách của phiên trước.
+- [ ] **CUST-SEARCH-003 — Regression các màn hình dùng bộ chọn khách** · `P0` · `PARTIAL_PASS_CREATE_ORDER_RACE_FIXED_EDIT_ORDER_BLOCKED`
+  - **Đã xong 22/08/2026:** race + stale-error ở màn lập đơn (`create-order`) đã fix tại `FormSelect.js` dùng chung (gốc rễ thật: picker này không có guard nào, không phải chỗ đã đoán trước đó) và có bằng chứng CDP intercept trước/sau tại `reports/uat/CUST-SEARCH-003/`.
+  - **Chặn mới phát hiện, chưa sửa (trên `hoangdang`):** màn sửa đơn (`edit-order`) không test được vì `edit-order.js` không render được form — lỗi đọc response `API_DonHang_EditContext_AI` có sẵn từ trước, không liên quan race condition. **Khả năng đã được vá** trong worktree `order-ui-evidence-work` chưa merge (mục "Giữ envelope nghiệp vụ code=1 của edit-context" ở ORDER-APPROVAL-005) — cần xác nhận lại sau khi worktree đó merge, không mặc định coi là đã xong.
+  - **Cần làm:** sửa lỗi render `edit-order.js` ở trên; sau đó test lại race trên màn sửa đơn; bổ sung API lỗi/retry có chủ đích, đổi tài khoản 2 người dùng thật, khách ngoài scope, và ma trận regression đầy đủ các màn còn lại.
+  - **Điều kiện đóng:** 100% ca P0/P1 pass trên cả 2 màn, có Network timeline hoặc request ID và không giữ dữ liệu khách của phiên trước.
 
 ## 2. Cấu hình giá trị tối thiểu CTBH
 
@@ -23,9 +25,10 @@
   - **Cần làm:** business còn phải chốt VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quyền lợi tính ra bằng `0`; sau đó chạy E2E tạo đơn thật có request ID.
   - **Điều kiện đóng:** có sign-off phần còn lại và bảng ví dụ đầy đủ; preview frontend, API/SQL và dòng đơn thực tế cho cùng kết quả.
 
-- [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P1` · `PENDING_SIGN_OFF_AND_E2E`
-  - **Cần làm:** bổ sung test quyền âm, audit trước/sau, config tương lai/hết hạn/sai scope và mutation thật qua API/UI có request ID.
-  - **Điều kiện đóng:** đổi config không cần build code; user ngoài quyền bị chặn; payload giả không vượt kiểm tra server.
+- [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P1` · `AUDIT_PERMISSION_MERGED_PENDING_GATEWAY_IDENTITY_AND_E2E`
+  - **Đã xong 22/08/2026:** quyền âm (tạo/duyệt), khóa sửa bản đã duyệt, audit trước/sau (gồm nội dung rule, `BranchIDs`, `UserGroupIDs`, không chỉ đếm dòng), bắt buộc lý do khi từ chối/thu hồi, và loại đúng config tương lai/hết hạn/sai scope — đã merge, verify 16/16 PASS trên `medtest` (rollback).
+  - **Cần làm (P0 còn mở):** Promotion admin APIs chưa nằm trong identity-server-owned policy của `server.js` — người dùng thường sửa `Username` trong payload gọi qua gateway hiện chưa bị chặn (test hiện có chỉ gọi thẳng proc SQL, không phải qua gateway thật). Sau khi vá xong: chạy mutation thật qua API/UI có request ID.
+  - **Điều kiện đóng:** đổi config không cần build code; user ngoài quyền bị chặn **kể cả khi gọi qua gateway với `Username` giả trong payload**; payload giả không vượt kiểm tra server.
 
 - [ ] **PROMO-CFG-003 — UAT min CTBH trên preview và đơn thật** · `P0` · `BLOCKED_BY_PROMO_CFG_001_002`
   - **Cần làm:** sau sign-off, chạy procedure tạo đơn thật/rollback cho các ca dưới/bằng/trên ngưỡng, double-click, retry và config đổi giữa preview/xác nhận.
@@ -49,8 +52,12 @@
     `API_DonHang_StatusLookup_AI` bị chặn hẳn ở gateway. `scripts/verify_order_edit_guard_ai.js`
     (11/11 PASS) và `scripts/verify_order_status_guard.js` (16/16 PASS) chạy trên dữ liệu thật,
     luôn rollback.
-  - **Còn thiếu để đóng:** ảnh/video UI thật (Sale bị khóa sửa sau khi gửi; người duyệt cùng
-    chi nhánh sửa được) — chưa có ai bấm thử trên UI.
+  - **Cập nhật 22/08/2026:** ảnh/video UI thật đã có trong worktree `.claude/worktrees/order-ui-evidence`
+    (branch `order-ui-evidence-work`, **chưa merge vào `hoangdang`**) — `reports/uat/ORDER-APPROVAL-005-006/`
+    ghi `PASS_READY_FOR_QA_REVIEW`, gồm double-click gửi duyệt/hủy chỉ phát một mutation, Sale bị khóa
+    sửa sau khi gửi, quản lý cùng chi nhánh sửa được. Worktree đó còn tự sửa thêm vài lỗi UI khác (chuẩn
+    hóa cờ quyền từ API, giữ đúng `BlockMsg` thay vì lỗi chung chung).
+  - **Còn thiếu để đóng:** merge worktree trên vào `hoangdang` và có người ngoài (QA) xác nhận lại.
 
 - [x] **ORDER-APPROVAL-006 — Khôi phục Lưu nháp + Sale sửa đơn nháp** · `P0` · `CODE_DONE_PENDING_UI_EVIDENCE`
   - **Quyết định khách (21/08/2026, đổi ý sau ORDER-APPROVAL-005):** giữ lại nút "Lưu nháp";
@@ -69,7 +76,8 @@
     viết lại đúng phạm vi mới — không còn ca chủ đơn hủy đơn Chờ duyệt) và
     `scripts/verify_order_edit_guard_ai.js` (thêm 2 ca chủ-đơn-sửa-được/không-sửa-được-đơn-
     nháp-người-khác) chạy trên dữ liệu thật, luôn rollback.
-  - **Còn thiếu để đóng:** ảnh/video UI thật (Lưu nháp → Sửa → Gửi duyệt / Hủy đơn nháp).
+  - **Còn thiếu để đóng:** giống ORDER-APPROVAL-005 — bằng chứng đã có trong worktree
+    `order-ui-evidence-work` chưa merge (`SUBMIT_01..09`, `CANCEL_01..06`); merge rồi mới tính đóng.
 
 ## 4. Test bằng dữ liệu mới
 
