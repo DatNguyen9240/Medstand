@@ -1,0 +1,547 @@
+{
+  "task": "ORDER-APPROVAL-005-006-UI-E2E",
+  "runId": "order-ui-20260822022257",
+  "startedAt": "2026-08-22T02:22:57.312Z",
+  "baseUrl": "http://localhost:3103",
+  "accounts": {
+    "sale": "NAMDINHB.MED",
+    "manager": "QLBH013.MED",
+    "otherSale": "BACNINHA.MED"
+  },
+  "createdOrders": [
+    {
+      "documentId": "DMB0826/11",
+      "intendedFinalStatus": "PENDING",
+      "marker": "UAT order-ui-20260822012245 SUBMIT"
+    }
+  ],
+  "cases": [
+    {
+      "case": "THREE_UAT_ACCOUNTS_AUTHENTICATED_BEFORE_MUTATION",
+      "status": "PASS"
+    },
+    {
+      "case": "SCOPED_CUSTOMER_AND_ORDERABLE_ITEM_DISCOVERED",
+      "status": "PASS"
+    },
+    {
+      "case": "RESUME_EXISTING_SALE_DRAFT",
+      "status": "PASS",
+      "documentId": "DMB0826/11"
+    }
+  ],
+  "cleanupPlan": "Keep the two traceable UAT orders for audit; DBA/PMKT may archive the pending and cancelled records by DocumentID after sign-off.",
+  "network": [
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-1",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:22:58.451Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:00.268Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-2",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:00.270Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:00.637Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-3",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:00.790Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:00.951Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-4",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.027Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.411Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-5",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.028Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.600Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-6",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.029Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.497Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-7",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.029Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.469Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-8",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.029Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.547Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-9",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.030Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.601Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-10",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.030Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:02.596Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-11",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.030Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.950Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-12",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:01.501Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:01.741Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-13",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:04.316Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:04.878Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-14",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:04.880Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.155Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-15",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.308Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.465Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-16",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.529Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.684Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-17",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.529Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.814Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-18",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.530Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.730Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-19",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.531Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.790Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-20",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.531Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.816Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-21",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.532Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.842Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-22",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.532Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:06.481Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-23",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.532Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:05.855Z"
+    },
+    {
+      "role": "MANAGER_SAME_BRANCH",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-MANAGER_SAME_BRA-24",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:05.802Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:06.033Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-25",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:08.233Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:08.778Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-26",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:08.779Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.052Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-27",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.199Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.359Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-28",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.419Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.566Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-29",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.419Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.655Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-30",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.421Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.586Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-31",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.421Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.676Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-32",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.421Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.713Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-33",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.421Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.592Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-34",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.422Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:10.249Z"
+    },
+    {
+      "role": "SALE_NON_OWNER",
+      "stage": "LOGIN",
+      "requestId": "req-ui-20260822022257-SALE_NON_OWNER-35",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:09.422Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:09.728Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-36",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:10.992Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.209Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-37",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.182Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.351Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-38",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.183Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.402Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-39",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.183Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.412Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-40",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.184Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.373Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-41",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.206Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:11.479Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "DISCOVER_SCOPED_DATA",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-42",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:11.211Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:13.154Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "OWNER_OPEN_OWN_DRAFT_TRY_1",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-43",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:13.332Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:13.742Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "OWNER_OPEN_OWN_DRAFT_TRY_1",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-44",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:13.332Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:13.644Z"
+    },
+    {
+      "role": "SALE_OWNER",
+      "stage": "OWNER_OPEN_OWN_DRAFT_TRY_1",
+      "requestId": "req-ui-20260822022257-SALE_OWNER-45",
+      "method": "POST",
+      "url": "http://localhost:3103/api/gateway",
+      "idempotencyKey": "",
+      "startedAt": "2026-08-22T02:23:13.333Z",
+      "status": 200,
+      "completedAt": "2026-08-22T02:23:13.587Z"
+    }
+  ],
+  "dialogs": [],
+  "scopedData": {
+    "customerId": "NDB001",
+    "customerName": "NDB001 - Quầy thuốc tân dược",
+    "itemId": "A008",
+    "itemName": "Aquamed Plus (10ml) (Mua 10+2 (<10 ck 10%, KHHĐ 10+2,30+8)",
+    "unitPrice": 75000,
+    "availableStock": 3302
+  },
+  "status": "FAIL",
+  "error": {
+    "name": "TimeoutError",
+    "message": "Waiting failed: 30000ms exceeded",
+    "stack": "TimeoutError: Waiting failed: 30000ms exceeded\n    at new WaitTask (file:///C:/Users/Legion/Desktop/AI%20Nh%C3%A0%20Thu%E1%BB%91c/Medstand/node_modules/puppeteer-core/lib/puppeteer/common/WaitTask.js:46:34)\n    at IsolatedWorld.waitForFunction (file:///C:/Users/Legion/Desktop/AI%20Nh%C3%A0%20Thu%E1%BB%91c/Medstand/node_modules/puppeteer-core/lib/puppeteer/api/Realm.js:49:26)\n    at CdpFrame.waitForFunction (file:///C:/Users/Legion/Desktop/AI%20Nh%C3%A0%20Thu%E1%BB%91c/Medstand/node_modules/puppeteer-core/lib/puppeteer/api/Frame.js:585:43)\n    at CdpFrame.<anonymous> (file:///C:/Users/Legion/Desktop/AI%20Nh%C3%A0%20Thu%E1%BB%91c/Medstand/node_modules/puppeteer-core/lib/puppeteer/util/decorators.js:101:27)\n    at CdpPage.waitForFunction (file:///C:/Users/Legion/Desktop/AI%20Nh%C3%A0%20Thu%E1%BB%91c/Medstand/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:1464:37)\n    at waitForAlertText (C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\.claude\\worktrees\\order-ui-evidence\\scripts\\verify_order_approval_ui_e2e.js:177:14)\n    at assertOwnerCanEditAndSave (C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\.claude\\worktrees\\order-ui-evidence\\scripts\\verify_order_approval_ui_e2e.js:277:27)\n    at async main (C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\.claude\\worktrees\\order-ui-evidence\\scripts\\verify_order_approval_ui_e2e.js:399:23)"
+  },
+  "finishedAt": "2026-08-22T02:23:43.829Z"
+}

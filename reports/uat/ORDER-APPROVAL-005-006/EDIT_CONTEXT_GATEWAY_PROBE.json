@@ -1,0 +1,36 @@
+{
+  "requestId": "req-ui-edit-probe-context",
+  "httpStatus": 200,
+  "documentId": "DMB0826/11",
+  "username": "NAMDINHB.MED",
+  "response": {
+    "code": 0,
+    "msg": "Đơn có thể chỉnh sửa.",
+    "records": [
+      {
+        "DocumentID": "DMB0826/11",
+        "StatusID": "-1",
+        "CanEdit": "1",
+        "BlockCode": "",
+        "BlockMsg": ""
+      }
+    ],
+    "total": 1,
+    "_recordtotal": 1,
+    "pagetotal": 1,
+    "_pagetotal": 1,
+    "page": 1,
+    "_page": 1,
+    "limit": 500,
+    "_limit": 500,
+    "_timestamp": "2026-08-22 09:24:51"
+  },
+  "pageBackgroundUnreadCount": {
+    "requestId": "req-ui-edit-probe-unread-count",
+    "httpStatus": 200,
+    "response": {
+      "code": 1,
+      "msg": "Missing para or Object not support"
+    }
+  }
+}

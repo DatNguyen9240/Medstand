@@ -1,0 +1,58 @@
+{
+  "database": "medtest",
+  "requested": [
+    "DMB0826/11"
+  ],
+  "found": 1,
+  "orders": [
+    {
+      "DocumentID": "DMB0826/11",
+      "StatusID": -1,
+      "BranchID": "MB",
+      "UserCreate": "NAMDINHB.MED",
+      "Memo": "UAT order-ui-20260822012245 SUBMIT",
+      "DetailCount": 1
+    }
+  ],
+  "editContexts": [
+    {
+      "documentId": "DMB0826/11",
+      "username": "NAMDINHB.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": -1,
+        "CanEdit": true,
+        "BlockCode": "",
+        "BlockMsg": "",
+        "Msg": "Đơn có thể chỉnh sửa.",
+        "MsgType": 5
+      }
+    },
+    {
+      "documentId": "DMB0826/11",
+      "username": "QLBH013.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": -1,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_NOT_OWNER",
+        "BlockMsg": "Đơn nháp này không phải của bạn.",
+        "Msg": "Đơn nháp này không phải của bạn.",
+        "MsgType": 1
+      }
+    },
+    {
+      "documentId": "DMB0826/11",
+      "username": "BACNINHA.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": -1,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_NOT_OWNER",
+        "BlockMsg": "Đơn nháp này không phải của bạn.",
+        "Msg": "Đơn nháp này không phải của bạn.",
+        "MsgType": 1
+      }
+    }
+  ]
+}
