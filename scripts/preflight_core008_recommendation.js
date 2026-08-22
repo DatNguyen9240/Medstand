@@ -12,8 +12,8 @@ const sql = require('mssql');
 const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'sql/Migrate_CORE008_Recommendation_Rule_V1_AI.sql',
-  'sql/Module 1 - API_GoiYDonHang_AI.sql',
-  'sql/Module 2 - API_TuyenBanHang_AI.sql',
+  'sql/Module_01_API_GoiYDonHang_AI.sql',
+  'sql/Module_02_API_TuyenBanHang_AI.sql',
 ];
 const ACCOUNTS = [
   ['QLBH013.MED', 'NDB'], ['NAMDINHB.MED', 'NDB'],

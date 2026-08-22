@@ -7,8 +7,8 @@ const sql = require('mssql');
 const root = path.resolve(__dirname, '..');
 const files = [
   'sql/PROMO-002_Active_Promotion_By_User_AI.sql',
-  'sql/Module common - API_HangHoaList_AI.sql',
-  'sql/Module 10 - API_TraCuuSanPham_AI.sql',
+  'sql/Module_Common_API_HangHoaList_AI.sql',
+  'sql/Module_10_API_TraCuuSanPham_AI.sql',
 ];
 
 function readEnv(relativePath) {

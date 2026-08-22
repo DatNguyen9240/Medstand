@@ -5,8 +5,8 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql', 'PROMO-002_Active_Promotion_By_User_AI.sql'), 'utf8');
-const catalog = fs.readFileSync(path.join(root, 'sql', 'Module common - API_HangHoaList_AI.sql'), 'utf8');
-const lookup = fs.readFileSync(path.join(root, 'sql', 'Module 10 - API_TraCuuSanPham_AI.sql'), 'utf8');
+const catalog = fs.readFileSync(path.join(root, 'sql', 'Module_Common_API_HangHoaList_AI.sql'), 'utf8');
+const lookup = fs.readFileSync(path.join(root, 'sql', 'Module_10_API_TraCuuSanPham_AI.sql'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'chatbot-widget', 'js', 'chatbot-product-card.js'), 'utf8');
 
 const fields = ['ActivePromotionCount', 'PromotionSummary', 'ActivePromotionsJson', 'PromotionUpdatedAt', 'PromotionDataSource'];

@@ -19,21 +19,21 @@ $releaseId = 'MEDSTAND-UAT-20260727-11.110-RC2'
 $expectedDatabase = 'medtest'
 
 $deploymentFiles = @(
-    @{ Order = 1;  Path = 'sql/Module 1 - API_GoiYDonHang_AI.sql';                  Object = 'dbo.API_GoiYDonHang_AI';             Hash = '61b859fd343af3930f63b74c3b582e770f0263bb9a375b9c9598747a8c786c19' },
-    @{ Order = 2;  Path = 'sql/Module 10 - API_SanPhamTrongTam_AI.sql';             Object = 'dbo.API_SanPhamTrongTam_AI';        Hash = '3d297fb2585fe9befd57f50ebc839b13f1d4105d0eb088ef2c8ee9d3af5f90fa' },
-    @{ Order = 3;  Path = 'sql/Module 10 - API_TraCuuSanPham_AI.sql';               Object = 'dbo.API_TraCuuSanPham_AI';          Hash = '4bd9a544c9c9c528538206d5790bcaae320160d345c2ef037a33b32ec05186e6' },
-    @{ Order = 4;  Path = 'sql/Module 2 - API_TuyenBanHang_AI.sql';                 Object = 'dbo.API_TuyenBanHang_AI';           Hash = '43221682f047f5a599fe0deeed81e2d71653f751a31f4f0fa7b4ed1f96d2d394' },
-    @{ Order = 5;  Path = 'sql/Module 3 - API_ChamDiemKH_AI.sql';                   Object = 'dbo.API_ChamDiemKH_AI';             Hash = '8ca6d2017971a28e0a242f4fd5ba892817ca9975c17c0cd31c5bb23961329157' },
-    @{ Order = 6;  Path = 'sql/Module 4 - API_TichLuy_AI.sql';                     Object = 'dbo.API_TichLuy_AI';                Hash = 'ade58d5754b513bae92096860dcb1dc627ccb520d58785f119ba35da7c4d6cb8' },
-    @{ Order = 7;  Path = 'sql/Module 5 - API_UpsellGoiY_AI.sql';                   Object = 'dbo.API_UpsellGoiY_AI';             Hash = 'd671b65c2016d67d87045b99cdafe4125fbeebb3f56b5941c3ffe3bab52dd6e0' },
-    @{ Order = 8;  Path = 'sql/Module 6 - API_DeXuatKhuyenMai_AI.sql';              Object = 'dbo.API_DeXuatKhuyenMai_AI';        Hash = '1d8738988c5a1d74ef07c92f743cd3f71eeb83f3c6ba9d224c9210ed9da4688c' },
-    @{ Order = 9;  Path = 'sql/Module common - API_CongNoChiTiet_AI.sql';           Object = 'dbo.API_CongNoChiTiet_AI';          Hash = '2c0513471cf5314541e55a362e85e76cdebc323927a7c23bb2c5d24534710009' },
-    @{ Order = 10; Path = 'sql/Module common - API_CongNoKhachHang_AI.sql';         Object = 'dbo.API_CongNoKhachHang_AI';        Hash = '92c4b6211c27704859117eaba114a976c78c08621a2f13d0345f5c92fd8becaa' },
-    @{ Order = 11; Path = 'sql/Module common - API_DanhMuc_AI.sql';                 Object = 'dbo.API_DanhMuc_Core_AI';           Hash = '308578daba4c41589a3f69c4b871688d152836756434bc7d370facacc3a35901' },
-    @{ Order = 12; Path = 'sql/Module common - API_DoanhSo_AI.sql';                 Object = 'dbo.API_DoanhSo_AI';                Hash = '2ea9566c64b007255507d566b5dfd8c5f8eb2c92690c4f5619fd11d542ef49b8' },
-    @{ Order = 13; Path = 'sql/Module common - API_DonHangChiTiet_Insert_AI.sql';   Object = 'dbo.API_DonHangChiTiet_Insert_AI';  Hash = '3513ad8c33f3be5f3e18686591ba7b3e3220721097d2e28aef9ba1f0ae8ffc05' },
-    @{ Order = 14; Path = 'sql/Module common - API_DonHang_AI.sql';                 Object = 'dbo.API_DonHang_AI';                Hash = 'de59d3c39003d06c88769cce8d8ea2f8e0d1138a2649539aec8ec9cbeb54741b' },
-    @{ Order = 15; Path = 'sql/Module common - API_HoaDon_AI.sql';                 Object = 'dbo.API_HoaDon_AI';                 Hash = 'df497486cccb3c0d193e7840890dd5491992816344f1ff732f253d11e697cee3' },
+    @{ Order = 1;  Path = 'sql/Module_01_API_GoiYDonHang_AI.sql';                  Object = 'dbo.API_GoiYDonHang_AI';             Hash = '61b859fd343af3930f63b74c3b582e770f0263bb9a375b9c9598747a8c786c19' },
+    @{ Order = 2;  Path = 'sql/Module_10_API_SanPhamTrongTam_AI.sql';             Object = 'dbo.API_SanPhamTrongTam_AI';        Hash = '3d297fb2585fe9befd57f50ebc839b13f1d4105d0eb088ef2c8ee9d3af5f90fa' },
+    @{ Order = 3;  Path = 'sql/Module_10_API_TraCuuSanPham_AI.sql';               Object = 'dbo.API_TraCuuSanPham_AI';          Hash = '4bd9a544c9c9c528538206d5790bcaae320160d345c2ef037a33b32ec05186e6' },
+    @{ Order = 4;  Path = 'sql/Module_02_API_TuyenBanHang_AI.sql';                 Object = 'dbo.API_TuyenBanHang_AI';           Hash = '43221682f047f5a599fe0deeed81e2d71653f751a31f4f0fa7b4ed1f96d2d394' },
+    @{ Order = 5;  Path = 'sql/Module_03_API_ChamDiemKH_AI.sql';                   Object = 'dbo.API_ChamDiemKH_AI';             Hash = '8ca6d2017971a28e0a242f4fd5ba892817ca9975c17c0cd31c5bb23961329157' },
+    @{ Order = 6;  Path = 'sql/Module_04_API_TichLuy_AI.sql';                     Object = 'dbo.API_TichLuy_AI';                Hash = 'ade58d5754b513bae92096860dcb1dc627ccb520d58785f119ba35da7c4d6cb8' },
+    @{ Order = 7;  Path = 'sql/Module_05_API_UpsellGoiY_AI.sql';                   Object = 'dbo.API_UpsellGoiY_AI';             Hash = 'd671b65c2016d67d87045b99cdafe4125fbeebb3f56b5941c3ffe3bab52dd6e0' },
+    @{ Order = 8;  Path = 'sql/Module_06_API_DeXuatKhuyenMai_AI.sql';              Object = 'dbo.API_DeXuatKhuyenMai_AI';        Hash = '1d8738988c5a1d74ef07c92f743cd3f71eeb83f3c6ba9d224c9210ed9da4688c' },
+    @{ Order = 9;  Path = 'sql/Module_Common_API_CongNoChiTiet_AI.sql';           Object = 'dbo.API_CongNoChiTiet_AI';          Hash = '2c0513471cf5314541e55a362e85e76cdebc323927a7c23bb2c5d24534710009' },
+    @{ Order = 10; Path = 'sql/Module_Common_API_CongNoKhachHang_AI.sql';         Object = 'dbo.API_CongNoKhachHang_AI';        Hash = '92c4b6211c27704859117eaba114a976c78c08621a2f13d0345f5c92fd8becaa' },
+    @{ Order = 11; Path = 'sql/Module_Common_API_DanhMuc_AI.sql';                 Object = 'dbo.API_DanhMuc_Core_AI';           Hash = '308578daba4c41589a3f69c4b871688d152836756434bc7d370facacc3a35901' },
+    @{ Order = 12; Path = 'sql/Module_Common_API_DoanhSo_AI.sql';                 Object = 'dbo.API_DoanhSo_AI';                Hash = '2ea9566c64b007255507d566b5dfd8c5f8eb2c92690c4f5619fd11d542ef49b8' },
+    @{ Order = 13; Path = 'sql/Module_Common_API_DonHangChiTiet_Insert_AI.sql';   Object = 'dbo.API_DonHangChiTiet_Insert_AI';  Hash = '3513ad8c33f3be5f3e18686591ba7b3e3220721097d2e28aef9ba1f0ae8ffc05' },
+    @{ Order = 14; Path = 'sql/Module_Common_API_DonHang_AI.sql';                 Object = 'dbo.API_DonHang_AI';                Hash = 'de59d3c39003d06c88769cce8d8ea2f8e0d1138a2649539aec8ec9cbeb54741b' },
+    @{ Order = 15; Path = 'sql/Module_Common_API_HoaDon_AI.sql';                 Object = 'dbo.API_HoaDon_AI';                 Hash = 'df497486cccb3c0d193e7840890dd5491992816344f1ff732f253d11e697cee3' },
     @{ Order = 16; Path = 'sql/Bootstrap_API_Metadata_Auto_AI.sql';                Object = 'METADATA_BOOTSTRAP';                Hash = '4ff9cc5d9bebf80ff779f77852db3d457ae596095f16452c507ff7f939ad9194' }
 )
 

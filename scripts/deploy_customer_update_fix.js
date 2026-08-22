@@ -7,7 +7,7 @@ const path = require('path');
 const sql = require('mssql');
 
 const ROOT = path.resolve(__dirname, '..');
-const SQL_FILE = 'sql/Module common - API_KhachHang_Update_AI.sql';
+const SQL_FILE = 'sql/Module_Common_API_KhachHang_Update_AI.sql';
 const TARGET_ID = '4E7E28AF-70A8-4AB8-B594-6DC1E3104E2B';
 const USER = 'QLBH013.MED';
 

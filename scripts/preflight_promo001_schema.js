@@ -6,7 +6,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql', 'PROMO-001_Promotion_Schema_AI.sql'), 'utf8');
 const contract = fs.readFileSync(path.join(root, 'docs', 'PROMO-001_CONTRACT_SCHEMA_CTBH_AI_2026-08-10.md'), 'utf8');
-const orderProc = fs.readFileSync(path.join(root, 'sql', 'Module common - API_DonHangChiTiet_Insert_AI.sql'), 'utf8');
+const orderProc = fs.readFileSync(path.join(root, 'sql', 'Module_Common_API_DonHangChiTiet_Insert_AI.sql'), 'utf8');
 const activeByItems = fs.readFileSync(path.join(root, 'sql', 'PROMO-CFG-002_Active_Promotion_By_Items_AI.sql'), 'utf8');
 const frontend = fs.readFileSync(path.join(root, 'src', 'js', 'utils', 'promotion.js'), 'utf8');
 

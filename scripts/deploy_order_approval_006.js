@@ -10,7 +10,7 @@ const sql = require('mssql');
 
 const root = path.resolve(__dirname, '..');
 const FILES = [
-  'sql/Module common - API_DonHangChiTiet_Insert_AI.sql',
+  'sql/Module_Common_API_DonHangChiTiet_Insert_AI.sql',
   'sql/ORDER-APPROVAL-006_Draft_Restore_AI.sql',
 ];
 

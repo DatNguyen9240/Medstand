@@ -12,9 +12,9 @@ const sql = require('mssql');
 const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'sql/Migrate_API_Mutation_Idempotency_AI.sql',
-  'sql/System - AI_AuditLog_AI.sql',
-  'sql/Module common - API_KhachHang_Insert_AI.sql',
-  'sql/Module common - API_DonHangChiTiet_Insert_AI.sql',
+  'sql/System_AI_AuditLog_AI.sql',
+  'sql/Module_Common_API_KhachHang_Insert_AI.sql',
+  'sql/Module_Common_API_DonHangChiTiet_Insert_AI.sql',
 ];
 
 function readEnv() {

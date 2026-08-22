@@ -3,7 +3,7 @@
 --
 --  [2026-07-31] Đổi NVARCHAR(MAX) -> NVARCHAR(400) và thêm WITH SCHEMABINDING.
 --
---  Vì sao bắt buộc phải đổi: System - Computed_Column_Index_AI.sql tạo cột
+--  Vì sao bắt buộc phải đổi: System_Computed_Column_Index_AI.sql tạo cột
 --  computed PERSISTED CF_ObjectTbl.ObjectNameCleaned từ hàm này, rồi dựng
 --  index lên cột đó. SQL Server có hai ràng buộc chặn việc đó:
 --    1. Mọi hàm trong biểu thức của computed column PERSISTED phải schema-bound.
