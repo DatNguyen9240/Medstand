@@ -51,7 +51,7 @@
   function loadList() {
     $('#promo-list').html('<p class="promo-empty">Đang tải danh sách...</p>');
     Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.LIST, {
-      q: JSON.stringify({ Username: user.UserName || '', Status: '', SearchText: '' })
+      q: JSON.stringify({ Status: '', SearchText: '' })
     }).then(function (res) {
       var body = res && res.data !== undefined ? res.data : res;
       var records = (body && body.records) || body || [];
@@ -118,7 +118,7 @@
 
   function selectProgram(id) {
     Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.DETAIL, {
-      q: JSON.stringify({ PromotionProgramID: id, Username: user.UserName || '' })
+      q: JSON.stringify({ PromotionProgramID: id })
     }).then(function (res) {
       var body = res && res.data !== undefined ? res.data : res;
       var rows = (body && body.records) || body || [];
@@ -309,15 +309,14 @@
       Priority: Number($('#pf-priority').val() || 100),
       SourceDocument: source,
       JsonRules: JSON.stringify(buildRulesPayload()),
-      Username: user.UserName || '',
       Apply: 1
     };
 
     var $btn = $(this).prop('disabled', true);
-    Http.post(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.UPSERT, payload).then(function (res) {
+    Http.post(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.UPSERT, payload, { acceptApplicationError: true }).then(function (res) {
       var body = res && res.data !== undefined ? res.data : res;
       var row = Array.isArray(body) ? body[0] : (body && body.records ? body.records[0] : body);
-      if (row && row.MsgType === 1) { Alert.error(row.Msg || 'Không thể lưu CTBH.'); return; }
+      if (row && Number(row.MsgType) === 1) { Alert.error(row.Msg || 'Không thể lưu CTBH.'); return; }
       Alert.success((row && row.Msg) || 'Đã lưu DRAFT.');
       loadList();
       if (row && row.PromotionProgramID) selectProgram(row.PromotionProgramID);
@@ -343,11 +342,11 @@
     }
 
     Http.post(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.APPROVE, {
-      PromotionProgramID: _selectedProgramId, Action: action, Reason: reason, Username: user.UserName || '', Apply: 1
-    }).then(function (res) {
+      PromotionProgramID: _selectedProgramId, Action: action, Reason: reason, Apply: 1
+    }, { acceptApplicationError: true }).then(function (res) {
       var body = res && res.data !== undefined ? res.data : res;
       var row = Array.isArray(body) ? body[0] : (body && body.records ? body.records[0] : body);
-      if (row && row.MsgType === 1) { Alert.error(row.Msg || 'Thao tác thất bại.'); return; }
+      if (row && Number(row.MsgType) === 1) { Alert.error(row.Msg || 'Thao tác thất bại.'); return; }
       Alert.success((row && row.Msg) || 'Đã cập nhật trạng thái.');
       loadList();
       selectProgram(_selectedProgramId);

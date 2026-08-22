@@ -35,7 +35,49 @@ const READ_IDENTITY_POLICY = Object.freeze({
      * ORDER-APPROVAL-006: API trả lời "bạn có Gửi duyệt/Hủy được đơn nháp này không" — cùng
      * lý do với EditContext ở trên, identity không được tin từ payload.
      */
-    '/api/API_DonHang_OwnerContext_AI': Object.freeze({ identityField: 'Username' })
+    '/api/API_DonHang_OwnerContext_AI': Object.freeze({ identityField: 'Username' }),
+    /*
+     * PROMO-CFG-002: ba API đọc CTBH kiểm quyền/phạm vi theo @Username. Nếu gateway tin
+     * Username trong q thì Sale có thể giả tài khoản quản lý để đọc cả cấu hình nội bộ.
+     */
+    '/api/API_PromotionProgram_List_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_PromotionProgram_Detail_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_PromotionActiveByItems_AI': Object.freeze({ identityField: 'Username' })
+});
+
+/**
+ * Mutation cần identity server-owned nhưng procedure chưa có ledger/idempotency parameters.
+ * Không đưa các endpoint này vào DIRECT_MUTATION_POLICY: policy đó bắt buộc và chuyển tiếp
+ * IdempotencyKey/RequestID, trong khi hai proc Promotion không khai báo hai tham số này.
+ */
+const IDENTITY_ONLY_MUTATION_POLICY = Object.freeze({
+    '/api/API_PromotionProgram_Upsert_AI': Object.freeze({
+        identityField: 'Username',
+        orderedFields: Object.freeze([
+            'PromotionProgramID', 'PromotionCode', 'PromotionName', 'ProgramType',
+            'Description', 'EffectiveFrom', 'EffectiveTo', 'BranchScopeMode',
+            'JsonBranchIDs', 'UserGroupScopeMode', 'JsonUserGroupIDs', 'Priority',
+            'SourceDocument', 'JsonRules', 'Username', 'Apply'
+        ]),
+        defaults: Object.freeze({
+            PromotionProgramID: null,
+            Description: null,
+            BranchScopeMode: 'ALL',
+            JsonBranchIDs: '[]',
+            UserGroupScopeMode: 'ALL',
+            JsonUserGroupIDs: '[]',
+            Priority: 100,
+            JsonRules: '[]',
+            Apply: 0
+        })
+    }),
+    '/api/API_PromotionProgram_Approve_AI': Object.freeze({
+        identityField: 'Username',
+        orderedFields: Object.freeze([
+            'PromotionProgramID', 'Action', 'Username', 'Apply', 'Reason'
+        ]),
+        defaults: Object.freeze({ Apply: 0, Reason: null })
+    })
 });
 
 /**
@@ -144,11 +186,72 @@ const withServerOwnedQueryIdentity = (endpoint, identityField, username) => {
     return parsed.pathname + parsed.search;
 };
 
+/** Gỡ mọi biến thể User/Username do client gửi rồi gắn identity đã xác minh từ token. */
+const withServerOwnedBodyIdentity = (body, identityField, username) => {
+    const rewritten = body && typeof body === 'object' && !Array.isArray(body) ? { ...body } : {};
+    for (const key of Object.keys(rewritten)) {
+        if (['user', 'username'].includes(key.toLowerCase())) delete rewritten[key];
+    }
+    rewritten[identityField] = username;
+    return rewritten;
+};
+
+/**
+ * Dựng lại payload CTBH theo đúng thứ tự tham số procedure.
+ *
+ * ERP đang bind JSON body theo vị trí. Vì vậy không được spread payload của client: field lạ,
+ * field thiếu hoặc thứ tự client gửi đều có thể làm các giá trị trượt sang tham số kế tiếp.
+ * Hàm này canonicalize tên field, loại mọi identity client tự khai, điền default cho tham số
+ * optional và từ chối field lạ/trùng trước khi request rời gateway.
+ */
+const withServerOwnedOrderedBody = (body, policy, username) => {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        throw new Error('INVALID_MUTATION_BODY');
+    }
+    if (!policy || !Array.isArray(policy.orderedFields) || !policy.identityField) {
+        throw new Error('INVALID_MUTATION_POLICY');
+    }
+    if (!String(username || '').trim()) throw new Error('MISSING_SERVER_IDENTITY');
+
+    const canonicalByLowerName = new Map(
+        policy.orderedFields.map((field) => [field.toLowerCase(), field])
+    );
+    const supplied = Object.create(null);
+    for (const [rawKey, value] of Object.entries(body)) {
+        const lowerKey = rawKey.toLowerCase();
+        if (lowerKey === 'user' || lowerKey === 'username') continue;
+        const canonicalKey = canonicalByLowerName.get(lowerKey);
+        if (!canonicalKey) throw new Error('UNKNOWN_MUTATION_FIELD:' + rawKey);
+        if (Object.prototype.hasOwnProperty.call(supplied, canonicalKey)) {
+            throw new Error('DUPLICATE_MUTATION_FIELD:' + canonicalKey);
+        }
+        supplied[canonicalKey] = value;
+    }
+
+    const defaults = policy.defaults || {};
+    const rewritten = {};
+    for (const field of policy.orderedFields) {
+        if (field === policy.identityField) {
+            rewritten[field] = username;
+        } else if (Object.prototype.hasOwnProperty.call(supplied, field) && supplied[field] !== undefined) {
+            rewritten[field] = supplied[field];
+        } else if (Object.prototype.hasOwnProperty.call(defaults, field)) {
+            rewritten[field] = defaults[field];
+        } else {
+            throw new Error('MISSING_MUTATION_FIELD:' + field);
+        }
+    }
+    return rewritten;
+};
+
 module.exports = {
     ORDER_STATUS_WRITE_ENDPOINT,
     READ_IDENTITY_POLICY,
+    IDENTITY_ONLY_MUTATION_POLICY,
     BLOCKED_ERP_ENDPOINTS,
     stripOrderStatusField,
     shouldStripOrderStatus,
-    withServerOwnedQueryIdentity
+    withServerOwnedQueryIdentity,
+    withServerOwnedBodyIdentity,
+    withServerOwnedOrderedBody
 };

@@ -1,6 +1,8 @@
 # ORDER-APPROVAL-005/006 — UI evidence
 
-Status: `PASS_READY_FOR_QA_REVIEW`
+Status: `QA_FUNCTIONAL_PASS_PENDING_REDACTED_EVIDENCE`
+
+QA độc lập ngày 22/08/2026 đã đối chiếu đủ 13/13 ca chức năng và ký `PASS`. Task chưa chuyển `DONE` chỉ vì bộ evidence hiện tại còn dữ liệu nhận diện khách trong JSON/ảnh; cần thu lại hoặc thay bằng bản đã che dữ liệu trước khi push/phát hành.
 
 ## Kết quả
 
@@ -49,3 +51,16 @@ Lượt E2E cuối dùng cơ chế resume có kiểm chứng: ba ca sửa nháp/
 ## Cleanup
 
 Không tự xóa dữ liệu. Sau khi QA/business sign-off, DBA/PMKT có thể archive đúng hai `DocumentID` trên theo quy trình UAT; không xóa ad hoc.
+
+## Independent QA sign-off — 22/08/2026
+
+- UI evidence: **13/13 PASS**.
+- Gateway guard: **16/16 PASS**.
+- Chuẩn hóa quyền sửa: **20/20 PASS**.
+- Edit guard SQL: **11/11 PASS**, transaction rollback.
+- Owner transition: PASS và rollback; một ca trạng thái giao hàng SKIP do không có fixture phù hợp trên môi trường.
+- DB/audit xác nhận đúng hai đơn UAT và đúng một mutation cho submit/cancel.
+
+### Evidence privacy còn mở
+
+Không dùng bộ ảnh/JSON hiện tại làm artifact công khai hoặc đẩy lên remote cho tới khi đã che tên, mã, số điện thoại và địa chỉ khách. Việc này chỉ là vệ sinh evidence; không phải blocker code hay blocker chức năng.

@@ -341,12 +341,9 @@ async function main() {
     console.log(JSON.stringify({
       Task: 'VERIFY-PROMO-CFG-002-PERMISSION-AND-AUDIT', Status: 'PASS',
       Manager: manager.UserName, NonManager: nonManager.UserName, Results: results,
-      KNOWN_GAP_NOT_COVERED_BY_THIS_SCRIPT:
-        'Test quyền âm ở đây gọi thẳng proc SQL với @Username của tài khoản không có quyền — ' +
-        'chứng minh proc tự chặn đúng, KHÔNG chứng minh gateway chặn được người dùng thường sửa ' +
-        'payload thành Username của quản lý (vd. "demo") rồi gọi qua HTTP. Promotion admin APIs ' +
-        'chưa nằm trong READ_IDENTITY_POLICY/identity server-owned ở server.js — P0 còn mở, cần ' +
-        'phối hợp với AI đang sửa server.js (ORDER-APPROVAL-003) để thêm policy cho các API này.',
+      GATEWAY_COVERAGE:
+        'Script này chỉ kiểm SQL trong transaction rollback. Gateway spoofing được kiểm riêng bởi ' +
+        'scripts/verify_promo_cfg002_gateway_identity.js qua HTTP runtime thật (read/write Apply=0).',
     }, null, 2));
   } finally {
     await tx.rollback();

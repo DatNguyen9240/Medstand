@@ -13,6 +13,7 @@ const checks = [
   ['DETAIL_PROC', sqlSource.includes('API_PromotionProgram_Detail_AI')],
   ['UPSERT_PROC', sqlSource.includes('API_PromotionProgram_Upsert_AI')],
   ['APPROVE_PROC', sqlSource.includes('API_PromotionProgram_Approve_AI')],
+  ['APPROVE_POSITIONAL_SIGNATURE', /@PromotionProgramID\s+BIGINT,\s*@Action[\s\S]*?@Username[\s\S]*?@Apply[\s\S]*?@Reason[\s\S]*?\bAS\b/.test(sqlSource)],
   ['MANAGER_GUARD_ALL_PROCS', (sqlSource.match(/Chỉ cấp quản lý trở lên/g) || []).length >= 4],
   ['ACCOUNT_GUARD_ALL_PROCS', (sqlSource.match(/Tài khoản không hợp lệ hoặc đã bị khóa/g) || []).length >= 4],
   ['NO_HARDCODED_THRESHOLD', !/MinimumOrderAmount\s*=\s*\d/.test(sqlSource) && !/MinimumQuantity\s*=\s*\d/.test(sqlSource)],

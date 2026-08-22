@@ -394,9 +394,10 @@ GO
 CREATE OR ALTER PROCEDURE dbo.API_PromotionProgram_Approve_AI
     @PromotionProgramID BIGINT,
     @Action              VARCHAR(20),    -- APPROVE / REJECT / WITHDRAW
-    @Reason               NVARCHAR(500) = NULL,  -- PROMO-CFG-002: bắt buộc khi REJECT/WITHDRAW
     @Username             VARCHAR(50) = '',
-    @Apply                BIT = 0
+    @Apply                BIT = 0,
+    -- Tham số mới phải nằm cuối: ERP gateway bind JSON theo vị trí, không theo tên.
+    @Reason               NVARCHAR(500) = NULL  -- bắt buộc khi REJECT/WITHDRAW
 AS
 BEGIN
     SET NOCOUNT ON;

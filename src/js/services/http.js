@@ -382,7 +382,7 @@ const Http = (() => {
           body: JSON.stringify(body),
           timeoutMs: options.timeoutMs,
         });
-        return _handleResponse(res);
+        return _handleResponse(res, options);
       } finally {
         hideGlobalSpinner();
       }

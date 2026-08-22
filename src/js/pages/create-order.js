@@ -180,7 +180,7 @@ function loadConfigPromoRules(itemId) {
   if (!itemId) return Promise.resolve([]);
   if (_configPromoRulesByItem[itemId]) return Promise.resolve(_configPromoRulesByItem[itemId]);
   return Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.ACTIVE_BY_ITEMS, {
-    q: JSON.stringify({ Username: user.UserName || '', JsonItemIDs: JSON.stringify([itemId]) })
+    q: JSON.stringify({ JsonItemIDs: JSON.stringify([itemId]) })
   }).then(function (res) {
     var body = res && res.data !== undefined ? res.data : res;
     var rows = (body && body.records) || body || [];

@@ -168,4 +168,88 @@ check('OWNER_CONTEXT_IDENTITY_IS_SERVER_OWNED', () => {
   assert.strictEqual(filters.DocumentID, 'DMB0726/1');
 });
 
+// ── PROMO-CFG-002: toàn bộ API cấu hình CTBH phải dùng identity từ token ──────────
+check('PROMOTION_READ_IDENTITY_IS_SERVER_OWNED', () => {
+  const endpoints = [
+    '/api/API_PromotionProgram_List_AI',
+    '/api/API_PromotionProgram_Detail_AI',
+    '/api/API_PromotionActiveByItems_AI'
+  ];
+  for (const endpoint of endpoints) {
+    const policy = guard.READ_IDENTITY_POLICY[endpoint];
+    assert.ok(policy, endpoint + ' thiếu READ_IDENTITY_POLICY');
+    const forged = endpoint + '?Username=manager&q=' + encodeURIComponent(JSON.stringify({
+      USERNAME: 'manager', username: 'manager', PromotionProgramID: 17, JsonItemIDs: '["A008"]'
+    }));
+    const url = new URL(
+      guard.withServerOwnedQueryIdentity(forged, policy.identityField, 'sale01'),
+      'http://x.local'
+    );
+    assert.strictEqual(url.searchParams.get('Username'), null);
+    const filters = JSON.parse(url.searchParams.get('q'));
+    assert.strictEqual(filters.Username, 'sale01');
+    assert.strictEqual(filters.USERNAME, undefined);
+    assert.strictEqual(filters.username, undefined);
+    assert.strictEqual(filters.PromotionProgramID, 17, 'Không được làm rơi field nghiệp vụ');
+  }
+});
+
+check('PROMOTION_MUTATION_IDENTITY_IS_SERVER_OWNED', () => {
+  const policy = guard.IDENTITY_ONLY_MUTATION_POLICY['/api/API_PromotionProgram_Approve_AI'];
+  const rewritten = guard.withServerOwnedOrderedBody({
+    Reason: 'Lý do kiểm thử', Apply: 1, USER: 'manager',
+    Action: 'REJECT', PromotionProgramID: 17, Username: 'manager'
+  }, policy, 'sale01');
+  assert.deepStrictEqual(rewritten, {
+    PromotionProgramID: 17,
+    Action: 'REJECT',
+    Username: 'sale01',
+    Apply: 1,
+    Reason: 'Lý do kiểm thử'
+  });
+  assert.deepStrictEqual(Object.keys(rewritten), policy.orderedFields);
+});
+
+check('PROMOTION_UPSERT_BODY_USES_EXACT_PROCEDURE_ORDER', () => {
+  const policy = guard.IDENTITY_ONLY_MUTATION_POLICY['/api/API_PromotionProgram_Upsert_AI'];
+  const rewritten = guard.withServerOwnedOrderedBody({
+    Apply: 0,
+    JsonRules: '[]',
+    SourceDocument: 'UAT',
+    EffectiveTo: '2026-08-23T00:00:00',
+    EffectiveFrom: '2026-08-22T00:00:00',
+    ProgramType: 'EVENT',
+    PromotionName: 'Kiểm thử',
+    PromotionCode: 'PROMO_TEST',
+    username: 'forged-manager'
+  }, policy, 'manager01');
+  assert.deepStrictEqual(Object.keys(rewritten), policy.orderedFields);
+  assert.strictEqual(rewritten.Username, 'manager01');
+  assert.strictEqual(rewritten.PromotionProgramID, null);
+  assert.strictEqual(rewritten.Description, null);
+  assert.strictEqual(rewritten.BranchScopeMode, 'ALL');
+  assert.strictEqual(rewritten.Priority, 100);
+});
+
+check('PROMOTION_MUTATION_UNKNOWN_FIELD_IS_REJECTED', () => {
+  const policy = guard.IDENTITY_ONLY_MUTATION_POLICY['/api/API_PromotionProgram_Approve_AI'];
+  assert.throws(() => guard.withServerOwnedOrderedBody({
+    PromotionProgramID: 17, Action: 'APPROVE', Apply: 0, InjectedField: 'shift'
+  }, policy, 'manager01'), /UNKNOWN_MUTATION_FIELD:InjectedField/);
+});
+
+check('PROMOTION_MUTATION_DUPLICATE_CASE_VARIANT_IS_REJECTED', () => {
+  const policy = guard.IDENTITY_ONLY_MUTATION_POLICY['/api/API_PromotionProgram_Approve_AI'];
+  assert.throws(() => guard.withServerOwnedOrderedBody({
+    PromotionProgramID: 17, Action: 'APPROVE', action: 'REJECT', Apply: 0
+  }, policy, 'manager01'), /DUPLICATE_MUTATION_FIELD:Action/);
+});
+
+check('PROMOTION_MUTATION_MISSING_REQUIRED_FIELD_IS_REJECTED', () => {
+  const policy = guard.IDENTITY_ONLY_MUTATION_POLICY['/api/API_PromotionProgram_Approve_AI'];
+  assert.throws(() => guard.withServerOwnedOrderedBody({
+    PromotionProgramID: 17, Apply: 0
+  }, policy, 'manager01'), /MISSING_MUTATION_FIELD:Action/);
+});
+
 console.log(JSON.stringify({ Task: 'VERIFY-ORDER-STATUS-GUARD', Status: 'PASS', Results: results }, null, 2));

@@ -115,7 +115,15 @@ async function login(page) {
       page.click('#btn-login')
     ]);
   }
-  await page.waitForFunction(() => document.cookie.includes('auth_token='), { timeout: 20000 });
+  // Puppeteer đọc cookie ở tầng browser nên vẫn hoạt động nếu auth_token được chuyển sang
+  // HttpOnly trong tương lai. Không dùng document.cookie làm điều kiện duy nhất.
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const cookies = await page.cookies();
+    if (cookies.some((cookie) => cookie.name === 'auth_token' && cookie.value)) return;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`Đăng nhập không tạo auth_token sau 20 giây; url=${page.url()}`);
 }
 
 async function pickTwoDistinctCustomers(page, sourceGlobal) {

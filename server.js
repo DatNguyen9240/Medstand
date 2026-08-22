@@ -204,7 +204,8 @@ const getBearerAuthorization = (req) => {
     const authorization = String(req.headers['authorization'] || '').trim();
     if (/^Bearer\s+\S+$/i.test(authorization)) return authorization;
 
-    // Remote login stores the token in an HttpOnly auth_token cookie.
+    // Chấp nhận cookie cùng origin (bản hiện tại do frontend tạo; một deploy tương lai có thể
+    // chuyển sang HttpOnly) để gateway không phụ thuộc duy nhất vào Authorization header.
     const cookieHeader = String(req.headers.cookie || '');
     const match = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/i);
     return match && match[1] ? 'Bearer ' + decodeURIComponent(match[1]) : '';
@@ -335,10 +336,13 @@ const withServerOwnedIdentity = (endpoint, identityField, username) => {
 const {
     ORDER_STATUS_WRITE_ENDPOINT,
     READ_IDENTITY_POLICY,
+    IDENTITY_ONLY_MUTATION_POLICY,
     BLOCKED_ERP_ENDPOINTS,
     stripOrderStatusField,
     shouldStripOrderStatus,
-    withServerOwnedQueryIdentity
+    withServerOwnedQueryIdentity,
+    withServerOwnedBodyIdentity,
+    withServerOwnedOrderedBody
 } = require('./src/server/order-status-guard');
 
 
@@ -546,7 +550,49 @@ app.post('/api/gateway', async (req, res) => {
             // chú thích ở DIRECT_MUTATION_POLICY) — vẫn xác thực + bắt buộc Idempotency-Key ở
             // trên, chỉ bỏ bước chèn field.
             if (mutationPolicy.identityField) {
-                body[mutationPolicy.identityField] = verifiedIdentity.username;
+                body = withServerOwnedBodyIdentity(
+                    body,
+                    mutationPolicy.identityField,
+                    verifiedIdentity.username
+                );
+            }
+        }
+
+        // PROMO-CFG-002: hai proc ghi CTBH chưa có ledger/idempotency parameters, nhưng vẫn
+        // tuyệt đối không được tin Username trong body. Xác minh token rồi gỡ mọi biến thể
+        // User/Username do client gửi trước khi chuyển tiếp.
+        const identityOnlyMutationPolicy = IDENTITY_ONLY_MUTATION_POLICY[endpointPath];
+        if (identityOnlyMutationPolicy) {
+            if (method !== 'POST' || !body || typeof body !== 'object' || Array.isArray(body)) {
+                return sendGatewayError(res, 400, requestId, 'INVALID_MUTATION_REQUEST', 'Yêu cầu ghi dữ liệu không hợp lệ.');
+            }
+            let verifiedIdentity = null;
+            try {
+                verifiedIdentity = await resolveVerifiedGatewayIdentity(authorization);
+            } catch (identityError) {
+                console.error(`[Proxy Gateway Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
+            }
+            if (!verifiedIdentity || !verifiedIdentity.username) {
+                return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản đăng nhập. Vui lòng đăng nhập lại.');
+            }
+            try {
+                body = withServerOwnedOrderedBody(
+                    body,
+                    identityOnlyMutationPolicy,
+                    verifiedIdentity.username
+                );
+            } catch (payloadError) {
+                console.warn(
+                    `[Proxy Gateway] requestId=${requestId}; payload CTBH bị từ chối;`
+                    + ` cause=${String(payloadError.message || 'INVALID_PROMOTION_MUTATION_PAYLOAD')}`
+                );
+                return sendGatewayError(
+                    res,
+                    400,
+                    requestId,
+                    'INVALID_PROMOTION_MUTATION_PAYLOAD',
+                    'Dữ liệu cấu hình chương trình bán hàng không đúng hợp đồng API.'
+                );
             }
         }
 
