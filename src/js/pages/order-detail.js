@@ -163,6 +163,79 @@
       });
     }
 
+    // ORDER-APPROVAL-006: chủ đơn Gửi duyệt / Hủy đơn nháp của chính mình (khách đổi ý
+    // 21/08/2026, khôi phục Lưu nháp). API_DonHang_OwnerContext_AI trả CanSubmit/CanCancel
+    // đúng theo hợp đồng đã APPROVED (chỉ -1->0 và -1->10) — nút chỉ hiện khi thật sự bấm
+    // được, và bấm vào không bao giờ bị SQL từ chối vì lệch với những gì nút thể hiện.
+    function renderOwnerActionArea() {
+      return OrderService.getOwnerContext(orderId).catch(function () { return null; }).then(function (res) {
+        var body = res && (res.data !== undefined ? res.data : res);
+        var rows = body && (body.records || body.Table) || (Array.isArray(body) ? body : (body ? [body] : []));
+        var ctx = rows && rows[0];
+        if (!ctx || ctx.MsgType == 1) return;
+        if (!ctx.CanSubmit && !ctx.CanCancel) return;
+
+        var $bar = $('<div class="action-bar" id="owner-action-bar"></div>');
+        if (ctx.CanSubmit) $bar.append('<button class="btn-edit" id="btn-submit-order">Gửi duyệt</button>');
+        if (ctx.CanCancel) $bar.append('<button class="btn-delete" id="btn-cancel-draft-order">Hủy đơn nháp</button>');
+        if ($('.action-bar').length) $bar.insertBefore($('.action-bar').first());
+        else $('.app-content').append($bar);
+
+        var LABELS = { SUBMIT: 'Gửi duyệt', CANCEL: 'Hủy đơn nháp' };
+        var $allButtons = $bar.find('button');
+        var busy = false;
+
+        function setBusy(isBusy, $activeBtn, busyText) {
+          busy = isBusy;
+          $allButtons.prop('disabled', isBusy);
+          if (isBusy) $activeBtn.text(busyText);
+          else $allButtons.each(function () {
+            var $b = $(this);
+            $b.text(LABELS[$b.attr('id') === 'btn-submit-order' ? 'SUBMIT' : 'CANCEL']);
+          });
+        }
+
+        function runOwnerTransition(action, $btn, busyText, confirmText) {
+          if (busy) return;
+          if (!window.confirm(confirmText)) return;
+
+          var intent = idempotencyKeyFor('OWNER_' + action, ctx.StatusID, '');
+          setBusy(true, $btn, busyText);
+
+          OrderService.ownerTransition({
+            DocumentID: orderId,
+            Action: action,
+            ExpectedStatusID: ctx.StatusID
+          }, { idempotencyKey: intent.key }).then(function (res2) {
+            var body2 = res2 && res2.data !== undefined ? res2.data : res2;
+            var record = Array.isArray(body2) ? body2[0] : (body2 && body2.records ? body2.records[0] : body2);
+            var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
+            if (msgType == 1) {
+              Alert.error((record && record.Msg) || 'Không thể cập nhật trạng thái đơn.');
+              intent.reset();
+              setBusy(false);
+              return;
+            }
+            Alert.success((record && record.Msg) || 'Đã cập nhật trạng thái đơn hàng.');
+            $('#owner-action-bar').remove();
+            setTimeout(function () { location.reload(); }, 800);
+          }).catch(function (err) {
+            Alert.error(err.message || 'Có lỗi xảy ra.');
+            setBusy(false);
+          });
+        }
+
+        $('#btn-submit-order').on('click', function () {
+          runOwnerTransition('SUBMIT', $(this), 'Đang gửi...', 'Gửi duyệt đơn hàng ' + orderId + '?');
+        });
+        $('#btn-cancel-draft-order').on('click', function () {
+          runOwnerTransition('CANCEL', $(this), 'Đang hủy...', 'Hủy đơn nháp ' + orderId + '? Thao tác này không hoàn tác được.');
+        });
+      }).catch(function (err) {
+        console.error('[order-detail] Không đọc được ngữ cảnh chủ đơn', err);
+      });
+    }
+
     if (!orderId) {
       $('#detail-skeleton').hide();
       $('#detail-content').show().prop('hidden', false);
@@ -254,6 +327,7 @@
           );
 
           renderApprovalArea(_statusNameById);
+          renderOwnerActionArea();
         })
         .catch(function (err) {
           console.error('Failed to load order detail', err);
@@ -266,26 +340,9 @@
           $('#btn-edit-order').on('click', function () {
             if (orderId) navigate('#/edit-order?id=' + encodeURIComponent(orderId));
           });
-          // Kết nối nút Xoá
-          $('#btn-delete-order').on('click', function () {
-            if (!orderId) return;
-            if (!confirm('Bạn có chắc muốn xoá đơn hàng ' + orderId + ' không?')) return;
-            var $btn = $(this);
-            $btn.prop('disabled', true).text('Đang xoá...');
-            OrderService.deleteOrder(orderId)
-              .then(function (res) {
-                var data = res.data || res;
-                var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
-                var msg = record && record.Msg ? record.Msg : '';
-                var msgType = record && record.MsgType !== undefined ? record.MsgType : 5;
-                if (msgType == 1) { Alert.error(msg || 'Có lỗi xảy ra.'); $btn.prop('disabled', false).text('Xoá'); return; }
-                Alert.success(msg || 'Xoá đơn hàng thành công!');
-                setTimeout(function () { navigate('#/order-list'); }, 1200);
-              })
-              .catch(function (err) {
-                Alert.error(err.message || 'Có lỗi xảy ra.');
-                $btn.prop('disabled', false).text('Xoá');
-              });
-          });
+          // ORDER-APPROVAL-002: nút "Xoá" cũ (gọi API_DonHang_Delete — proc ERP gốc, chưa rõ
+          // xoá cứng hay đổi trạng thái, không kiểm quyền/trạng thái) đã bỏ hẳn khỏi template,
+          // thay bằng "Hủy đơn" (an toàn, có kiểm quyền/trạng thái, giữ dữ liệu) — xem
+          // renderOwnerActionArea().
         });
     }

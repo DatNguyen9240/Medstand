@@ -59,9 +59,10 @@ async function main() {
   const tx = new sql.Transaction(pool);
   await tx.begin();
   const results = [];
+  let user, scopeRow, items;
   try {
     // ── Dữ liệu test thật: 1 user có đủ EmployeeID/BranchID, 1 khách trong phạm vi, 1 sản phẩm có giá ──
-    const user = (await new sql.Request(tx).query(`
+    user = (await new sql.Request(tx).query(`
       SELECT TOP (1) U.UserName, U.BranchID
       FROM dbo.SY_User U
       WHERE COALESCE(U.Disable,0)=0 AND COALESCE(U.BranchID,'')<>'' AND COALESCE(U.EmployeeID,'')<>''
@@ -70,7 +71,7 @@ async function main() {
     `)).recordset[0];
     assert(user, 'Cần 1 tài khoản có đủ BranchID/EmployeeID VÀ phạm vi kho (AI_WarehouseByUserFnc) trong medtest.');
 
-    const scopeRow = (await new sql.Request(tx)
+    scopeRow = (await new sql.Request(tx)
       .input('UserName', sql.VarChar(50), user.UserName)
       .query(`SELECT TOP (1) ObjectID FROM dbo.AR_GetObjectByUserFnc(@UserName) ORDER BY ObjectID;`)
     ).recordset[0];
@@ -82,10 +83,10 @@ async function main() {
     ).recordset[0];
     assert(custPhone && custPhone.Phone, 'Khách test cần có số điện thoại (proc bắt buộc).');
 
-    const stockRow = (await new sql.Request(tx)
+    const candidates = (await new sql.Request(tx)
       .input('UserName', sql.VarChar(50), user.UserName)
       .query(`
-        SELECT TOP (1) T.ItemID, T.StoreHouseID, P.UnitPrice
+        SELECT T.ItemID, T.StoreHouseID, P.UnitPrice, SUM(T.Quantity) AS Qty
         FROM dbo.IV_StockTransactionTbl T
         JOIN dbo.AI_WarehouseByUserFnc(@UserName, SYSUTCDATETIME()) W ON W.StoreHouseID = T.StoreHouseID
         JOIN dbo.CF_ItemTbl I ON I.ItemID = T.ItemID AND COALESCE(I.IsDisable,0)=0
@@ -94,13 +95,21 @@ async function main() {
         HAVING SUM(T.Quantity) > 5 AND P.UnitPrice > 0
         ORDER BY T.ItemID;
       `)
-    ).recordset[0];
-    assert(stockRow, 'Cần 1 sản phẩm có tồn kho > 5 và có giá hợp lệ cho khách test trong medtest.');
+    ).recordset;
+    assert(candidates.length > 0, 'Cần ít nhất 1 sản phẩm có tồn kho > 5 và giá hợp lệ cho khách test trong medtest.');
 
-    const items = [{ ItemID: stockRow.ItemID, Quantity: 1, SoLuongTang: 0, UnitPrice: stockRow.UnitPrice, DiscountPercent: 0 }];
+    // Dữ liệu thật đa dạng — không phải sản phẩm nào cũng "sạch" CTBH (ExpectedGift/Discount=0
+    // khi mua số lượng nhỏ). Thử lần lượt tới khi có 1 sản phẩm ổn định 1 để dùng xuyên suốt.
+    items = null;
+    let r1 = null;
+    for (const c of candidates) {
+      const candidateItems = [{ ItemID: c.ItemID, Quantity: 1, SoLuongTang: 0, UnitPrice: c.UnitPrice, DiscountPercent: 0 }];
+      const attempt = await callInsert(tx, { username: user.UserName, objectId: scopeRow.ObjectID, items: candidateItems, saveAsDraft: true, requestId: newKey('req-probe') });
+      if (attempt.MsgType === 5) { items = candidateItems; r1 = attempt; break; }
+    }
+    assert(items, 'Không tìm được sản phẩm nào trong ' + candidates.length + ' ứng viên cho ra đơn hợp lệ (mua 1, không giảm giá/tặng) — dữ liệu CTBH của medtest quá đặc thù.');
 
     // ── Ca 1: SaveAsDraft=1 -> StatusID phải là -1 ──────────────────────────────────
-    const r1 = await callInsert(tx, { username: user.UserName, objectId: scopeRow.ObjectID, items, saveAsDraft: true, requestId: newKey('req-draft') });
     assert(r1.MsgType === 5, 'Lưu nháp phải thành công, thực tế: ' + JSON.stringify(r1));
     assert(r1.StatusID === -1, 'SaveAsDraft=1 phải cho StatusID=-1, thực tế: ' + r1.StatusID);
     const liveStatus1 = (await new sql.Request(tx)
@@ -131,18 +140,38 @@ async function main() {
     assert(r4b.IsReplay === true && r4b.DocumentID === r4a.DocumentID, 'Lần gọi 2 (cùng key) phải là replay, cùng DocumentID, thực tế: ' + JSON.stringify(r4b));
     results.push(['REPLAY_WORKS_FOR_DRAFT', true]);
 
-    // ── Ca 5: cùng DocumentID (đã có, StatusID=-1) nhưng gửi SaveAsDraft=0 -> DOCUMENT_ID_CONFLICT ──
-    const explicitDocId = r1.DocumentID;
-    const r5 = await callInsert(tx, { username: user.UserName, objectId: scopeRow.ObjectID, items, documentId: explicitDocId, saveAsDraft: false, requestId: newKey('req-5') });
-    assert(r5.Code === 'DOCUMENT_ID_CONFLICT', 'Cùng DocumentID nhưng lệch SaveAsDraft (khác StatusID hiện có) phải bị DOCUMENT_ID_CONFLICT, thực tế: ' + JSON.stringify(r5));
-    results.push(['DOCUMENT_ID_CONFLICT_ON_DRAFT_FLAG_MISMATCH', true]);
-
-    console.log(JSON.stringify({ Task: 'VERIFY-DONHANGCHITIET-INSERT-AI-DRAFT-FLAG', Status: 'PASS', Results: results }, null, 2));
+    console.log(JSON.stringify({ Task: 'VERIFY-DONHANGCHITIET-INSERT-AI-DRAFT-FLAG (phần 1/2)', Status: 'PASS', Results: results }, null, 2));
   } finally {
     await tx.rollback();
-    console.error('ROLLED_BACK (không tạo đơn hàng/dữ liệu thật nào)');
-    await pool.close();
+    console.error('ROLLED_BACK phần 1 (không tạo đơn hàng/dữ liệu thật nào)');
   }
+
+  // ── Ca 5: proc THROW 51003 (DOCUMENT_ID_CONFLICT) bên trong BEGIN TRANSACTION của chính
+  // nó. SQL Server cấm ROLLBACK trong ngữ cảnh INSERT-EXEC, và driver `sql.Transaction` tự
+  // theo dõi @@TRANCOUNT nên báo lệch nếu proc tự rollback bên trong request của nó — dùng 1
+  // request THƯỜNG (không bọc transaction, không INSERT-EXEC) là cách duy nhất gọi được ca
+  // này. Để không cần "mồi" 1 đơn nháp mới, tái dùng 1 đơn StatusID=0 THẬT đã có sẵn (chỉ ĐỌC
+  // qua UPDLOCK/HOLDLOCK bên trong proc rồi nhả khi rollback, không ghi gì lên đó): gọi với
+  // SaveAsDraft=1 (InitialStatusID=-1) trong khi đơn thật đang StatusID=0 → chắc chắn lệch →
+  // đúng nhánh DOCUMENT_ID_CONFLICT cần kiểm chứng, không cần tạo dữ liệu mới.
+  const existingOrder = (await pool.request().query(`
+    SELECT TOP (1) DocumentID FROM dbo.AR_OrderTbl WHERE StatusID = 0 ORDER BY DocumentID;
+  `)).recordset[0];
+  assert(existingOrder, 'Cần ít nhất 1 đơn StatusID=0 thật trong medtest để test DOCUMENT_ID_CONFLICT.');
+
+  const r5 = await callInsert(pool, {
+    username: user.UserName, objectId: scopeRow.ObjectID, items,
+    documentId: existingOrder.DocumentID, saveAsDraft: true, requestId: newKey('req-ca5-conflict'),
+  });
+  assert(r5.Code === 'DOCUMENT_ID_CONFLICT', 'DocumentID thật đang StatusID=0 nhưng gọi với SaveAsDraft=1 (đòi -1) phải bị DOCUMENT_ID_CONFLICT, thực tế: ' + JSON.stringify(r5));
+  const stillZero = (await pool.request()
+    .input('DocumentID', sql.VarChar(50), existingOrder.DocumentID)
+    .query(`SELECT StatusID FROM dbo.AR_OrderTbl WHERE DocumentID=@DocumentID;`)).recordset[0].StatusID;
+  assert(stillZero === 0, 'Đơn thật không được đổi StatusID chỉ vì bị dùng làm ca test xung đột, thực tế: ' + stillZero);
+  results.push(['DOCUMENT_ID_CONFLICT_ON_DRAFT_FLAG_MISMATCH', true]);
+
+  console.log(JSON.stringify({ Task: 'VERIFY-DONHANGCHITIET-INSERT-AI-DRAFT-FLAG (phần 2/2)', Status: 'PASS', Results: results }, null, 2));
+  await pool.close();
 }
 
 main().catch((error) => {

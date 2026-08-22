@@ -52,7 +52,10 @@ BEGIN
     DECLARE @StoredMsg NVARCHAR(500) = NULL;
     DECLARE @StoredMsgType INT = NULL;
     DECLARE @OrderActorConfig NVARCHAR(200) = NULL;
-    -- ORDER-APPROVAL-002: -1 (Đơn nháp) khi lưu nháp, 0 (Chờ duyệt) khi gửi thẳng — như cũ.
+    -- ORDER-APPROVAL-002: -1 (Đơn nháp) khi lưu nháp, 0 (Chờ duyệt) khi gửi thẳng.
+    /* ORDER-APPROVAL-006 (khách chốt lại 21/08/2026, qua trao đổi với Nguyễn Hoàng Đăng):
+       khôi phục Lưu nháp — ORDER-APPROVAL-005 từng ép StatusID=0 bất kể @SaveAsDraft.
+       Muốn tắt lại thì phải chốt lại với khách, không phải sửa dòng này một mình. */
     DECLARE @InitialStatusID INT = CASE WHEN COALESCE(@SaveAsDraft, 0) = 1 THEN -1 ELSE 0 END;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));

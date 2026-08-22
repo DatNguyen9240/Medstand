@@ -278,6 +278,33 @@ const DIRECT_MUTATION_POLICY = Object.freeze({
     '/api/API_DonHang_ApproveTransition_AI': Object.freeze({
         identityField: 'Username',
         operationCode: 'API_DonHang_ApproveTransition_AI'
+    }),
+    // ORDER-APPROVAL-005 — sửa đơn đi qua 4 proc _AI có kiểm quyền + khoá trạng thái trong
+    // cùng transaction SQL. 5 proc ERP gốc đã bị chặn hẳn ở BLOCKED_ERP_ENDPOINTS: chèn
+    // Idempotency-Key vào body của proc KHÔNG có tham số đó không tạo ra khả năng chống ghi
+    // trùng nào cả, chỉ tạo cảm giác an toàn giả.
+    '/api/API_DonHang_EditHeader_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_EditHeader_AI'
+    }),
+    '/api/API_DonHang_EditItemInsert_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_EditItemInsert_AI'
+    }),
+    '/api/API_DonHang_EditItemUpdate_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_EditItemUpdate_AI'
+    }),
+    '/api/API_DonHang_EditItemDelete_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_EditItemDelete_AI'
+    }),
+    // ORDER-APPROVAL-006 — khách đổi ý (21/08/2026), khôi phục Lưu nháp: chủ đơn Gửi duyệt /
+    // Hủy đơn nháp của chính mình qua proc này. Proc tự kiểm chủ sở hữu + tra hợp đồng
+    // transition (chỉ SUBMIT -1->0 và CANCEL -1->10 đang APPROVED) trong cùng transaction SQL.
+    '/api/API_DonHang_OwnerTransition_AI': Object.freeze({
+        identityField: 'Username',
+        operationCode: 'API_DonHang_OwnerTransition_AI'
     })
 });
 
@@ -313,6 +340,7 @@ const {
     shouldStripOrderStatus,
     withServerOwnedQueryIdentity
 } = require('./src/server/order-status-guard');
+
 
 const authRequiredPayload = (requestId) => ({
     success: false,
@@ -514,8 +542,20 @@ app.post('/api/gateway', async (req, res) => {
                 IdempotencyKey: idempotencyKey,
                 RequestID: requestId
             };
-            body[mutationPolicy.identityField] = verifiedIdentity.username;
+            // identityField: null = proc không có tham số identity nào để ghi đè an toàn (xem
+            // chú thích ở DIRECT_MUTATION_POLICY) — vẫn xác thực + bắt buộc Idempotency-Key ở
+            // trên, chỉ bỏ bước chèn field.
+            if (mutationPolicy.identityField) {
+                body[mutationPolicy.identityField] = verifiedIdentity.username;
+            }
         }
+
+        // ORDER-APPROVAL-005 — khoá sửa đơn ĐÃ CHUYỂN XUỐNG SQL.
+        // Bản cũ hỏi StatusID bằng một lệnh gọi HTTP rồi mới forward mutation bằng lệnh gọi
+        // khác. Giữa hai bước đó đơn có thể vừa được duyệt — trong app, hoặc bên phần mềm kế
+        // toán, vì cả hai cùng ghi trên AR_OrderTbl — và mutation vẫn chạy. Nay 4 proc
+        // API_DonHang_Edit*_AI khoá dòng đơn bằng UPDLOCK/HOLDLOCK rồi mới kiểm quyền và ghi
+        // trong CÙNG transaction, nên không còn khe hở. Các proc CRUD cũ đã bị chặn hẳn.
 
         // Đổi trạng thái đơn chỉ được phép qua endpoint duyệt đơn. Xem ORDER_STATUS_WRITE_ENDPOINT.
         if (shouldStripOrderStatus(method, endpointPath)) {
@@ -540,7 +580,11 @@ app.post('/api/gateway', async (req, res) => {
         }
 
         // API đọc có chính sách identity: Username phải lấy từ token, không tin trình duyệt.
-        const readPolicy = READ_IDENTITY_POLICY[endpointPath];
+        // ORDER-APPROVAL-002: API_DonHang_OwnerContext_AI cũng cần luật này nhưng khai riêng ở
+        // đây (không thêm vào READ_IDENTITY_POLICY của order-status-guard.js) để không sửa file
+        // đó — phiên khác đang phát triển. Tái dùng đúng withServerOwnedQueryIdentity() đã có.
+        const readPolicy = READ_IDENTITY_POLICY[endpointPath]
+            || (endpointPath === '/api/API_DonHang_OwnerContext_AI' ? Object.freeze({ identityField: 'Username' }) : null);
         if (readPolicy) {
             let verifiedIdentity = null;
             try {

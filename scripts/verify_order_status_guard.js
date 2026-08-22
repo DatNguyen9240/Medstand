@@ -121,4 +121,51 @@ check('PRODUCT_CATALOG_IDENTITY_IS_SERVER_OWNED', () => {
   assert.strictEqual(filters.ItemID, 'A008');
 });
 
+// ── ORDER-APPROVAL-005: proc CRUD cũ phải bị chặn hẳn ─────────────────────────
+check('LEGACY_ORDER_CRUD_ENDPOINTS_ARE_BLOCKED', () => {
+  for (const endpoint of ['/api/API_DonHang_Update', '/api/API_DonHang_Delete',
+    '/api/API_DonHangChiTiet_Insert', '/api/API_DonHangChiTiet_Update',
+    '/api/API_DonHangChiTiet_Delete']) {
+    assert.strictEqual(guard.BLOCKED_ERP_ENDPOINTS.has(endpoint), true,
+      endpoint + ' phải bị chặn: proc không nhận identity, không idempotency, không audit');
+  }
+});
+
+check('INTERNAL_STATUS_LOOKUP_IS_BLOCKED', () => {
+  // Proc không nhận @Username nên trả trạng thái của BẤT KỲ DocumentID nào. Mã đơn đánh số
+  // tuần tự nên để hở là cho phép quét sạch đơn của mọi chi nhánh.
+  assert.strictEqual(guard.BLOCKED_ERP_ENDPOINTS.has('/api/API_DonHang_StatusLookup_AI'), true);
+});
+
+check('OWNER_TRANSITION_IS_NOT_BLOCKED_AFTER_DRAFT_RESTORE', () => {
+  // ORDER-APPROVAL-006: khách đổi ý 21/08/2026, khôi phục Lưu nháp — endpoint này đi qua
+  // DIRECT_MUTATION_POLICY trong server.js (identity gắn từ token), không còn bị chặn ở đây.
+  assert.strictEqual(guard.BLOCKED_ERP_ENDPOINTS.has('/api/API_DonHang_OwnerTransition_AI'), false);
+});
+
+check('EDIT_CONTEXT_IDENTITY_IS_SERVER_OWNED', () => {
+  const policy = guard.READ_IDENTITY_POLICY['/api/API_DonHang_EditContext_AI'];
+  assert.ok(policy, 'API ngữ cảnh sửa đơn phải lấy identity từ token');
+  const forged = '/api/API_DonHang_EditContext_AI?q='
+    + encodeURIComponent(JSON.stringify({ Username: 'KE_TOAN_KHAC', DocumentID: 'DMB0726/1' }));
+  const filters = JSON.parse(new URL(
+    guard.withServerOwnedQueryIdentity(forged, policy.identityField, 'sale01'),
+    'http://x.local').searchParams.get('q'));
+  assert.strictEqual(filters.Username, 'sale01');
+  assert.strictEqual(filters.DocumentID, 'DMB0726/1');
+});
+
+// ── ORDER-APPROVAL-006: ngữ cảnh Gửi duyệt/Hủy nháp cũng phải lấy identity từ token ────
+check('OWNER_CONTEXT_IDENTITY_IS_SERVER_OWNED', () => {
+  const policy = guard.READ_IDENTITY_POLICY['/api/API_DonHang_OwnerContext_AI'];
+  assert.ok(policy, 'API ngữ cảnh chủ đơn phải lấy identity từ token');
+  const forged = '/api/API_DonHang_OwnerContext_AI?q='
+    + encodeURIComponent(JSON.stringify({ Username: 'KE_TOAN_KHAC', DocumentID: 'DMB0726/1' }));
+  const filters = JSON.parse(new URL(
+    guard.withServerOwnedQueryIdentity(forged, policy.identityField, 'sale01'),
+    'http://x.local').searchParams.get('q'));
+  assert.strictEqual(filters.Username, 'sale01');
+  assert.strictEqual(filters.DocumentID, 'DMB0726/1');
+});
+
 console.log(JSON.stringify({ Task: 'VERIFY-ORDER-STATUS-GUARD', Status: 'PASS', Results: results }, null, 2));

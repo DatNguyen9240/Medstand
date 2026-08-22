@@ -6,7 +6,10 @@
       var statusClass = {
         'Chờ duyệt': 'waiting', 'Đơn nháp': 'draft', 'Đã chuyển xuống kho': 'transferred',
         'Đơn đã xử lý chưa chuyển kho': 'processed', 'Đã xuất hàng': 'transferred',
-        'Nhận đơn': 'waiting', 'TDV Kiểm tra lại': 'draft'
+        'Nhận đơn': 'waiting', 'TDV Kiểm tra lại': 'draft',
+        // ORDER-APPROVAL-002: "Đã hủy" (StatusID=10) giờ là trạng thái thật có thể tới được
+        // (Hủy đơn) — trước đây thiếu, rơi về class 'waiting' gây hiểu lầm.
+        'Đã hủy': 'cancelled'
       };
 
       function renderOrder(o) {

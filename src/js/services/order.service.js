@@ -20,29 +20,56 @@ const OrderService = (() => {
     return Http.get(EP.THONG_KE_SO_LUONG, filters);
   }
 
-  function update(payload) {
-    return Http.post(EP.UPDATE, payload);
+  // ORDER-APPROVAL-005: sửa đơn đi qua 4 proc API_DonHang_Edit*_AI. Chúng kiểm quyền và khoá
+  // trạng thái đơn trong CÙNG transaction SQL, có idempotency ledger và audit thật.
+  // KHÔNG gửi field User/Username: gateway tự gắn Username từ token, client khai là vô nghĩa.
+  // Bắt buộc truyền options.idempotencyKey, thiếu là gateway trả 422.
+  function update(payload, options) {
+    return Http.post(EP.UPDATE, payload, options);
   }
 
-  function deleteOrder(orderId) {
-    return Http.post(EP.DELETE, { OldKeyID: orderId });
+  // Xoá cả đơn: không còn endpoint nào. API_DonHang_Delete đã bị chặn ở gateway vì không
+  // kiểm chủ sở hữu. Muốn bỏ đơn thì xử lý bên phần mềm kế toán.
+
+  function deleteDetail(userAutoId, options) {
+    return Http.post(EP.DELETE_DETAIL, { UserAutoID: userAutoId }, options);
   }
 
-  function deleteDetail(userAutoId) {
-    return Http.post(EP.DELETE_DETAIL, { UserAutoID: userAutoId });
+  function insertDetail(payload, options) {
+    // Bỏ workaround "Notes: 0". Proc ERP cũ ghi lệch cột (@Notes rơi vào DiemTichLuy kiểu số)
+    // nên trước đây phải truyền số cho SQL convert được. API_DonHang_EditItemInsert_AI ghi
+    // đúng cột nên Notes lại là chuỗi bình thường. UserAutoID cũng bỏ: proc tự sinh và trả về.
+    return Http.post(EP.INSERT_DETAIL, Object.assign({ SoLuongTang: 0, DiemSanPham: 0, Notes: '' }, payload), options);
   }
 
-  function insertDetail(payload) {
-    // Notes=0 workaround: SP bug — @Notes đang map vào cột DiemTichLuy (numeric), truyền 0 để SQL convert được
-    return Http.post(EP.INSERT_DETAIL, Object.assign({ UserAutoID: '', SoLuongTang: 0, DiemSanPham: 0, Notes: 0 }, payload));
+  function updateDetail(payload, options) {
+    // payload: { UserAutoID, ItemID, Quantity, SoLuongTang, UnitPrice, Amount, DiscountPercent, DiscountAmount, DiemSanPham, Notes }
+    return Http.post(EP.UPDATE_DETAIL, Object.assign({ SoLuongTang: 0, DiemSanPham: 0, Notes: '' }, payload), options);
   }
 
-  function updateDetail(payload) {
-    // payload: { OldKeyID (UserAutoID cũ), UserAutoID, ItemID, Quantity, SoLuongTang, UnitPrice, Amount, DiscountPercent, DiscountAmount, DiemSanPham, Notes }
-    return Http.post(EP.UPDATE_DETAIL, Object.assign({ SoLuongTang: 0, DiemSanPham: 0, Notes: '' }, payload));
+  // ORDER-APPROVAL-006: chủ đơn Gửi duyệt / Hủy đơn nháp của chính mình. CanSubmit/CanCancel
+  // trả về đúng theo hợp đồng đã APPROVED (chỉ -1->0 và -1->10) — không cần chặn thêm ở JS.
+  // Identity do gateway gắn từ token, không khai trong payload.
+  function getOwnerContext(documentId) {
+    return Http.get(EP.OWNER_CONTEXT, { q: JSON.stringify({ DocumentID: documentId }) }, { cache: false });
   }
 
-  return { getList, getDetail, create, update, deleteOrder, deleteDetail, insertDetail, updateDetail, getThongKeSoLuong };
+  // payload: { DocumentID, Action: 'SUBMIT'|'CANCEL', ExpectedStatusID }. Bắt buộc truyền
+  // options.idempotencyKey, thiếu là gateway trả 422. KHÔNG gửi Username: gateway tự gắn.
+  function ownerTransition(payload, options) {
+    return Http.post(EP.OWNER_TRANSITION, payload, options);
+  }
+
+  // ORDER-APPROVAL-005: hỏi trước khi mở trang sửa — CanEdit + BlockCode/BlockMsg nói rõ vì sao
+  // không sửa được. Identity do gateway gắn từ token, không khai trong payload.
+  function getEditContext(documentId) {
+    return Http.get(EP.EDIT_CONTEXT, { q: JSON.stringify({ DocumentID: documentId }) }, { cache: false });
+  }
+
+  return {
+    getList, getDetail, create, update, deleteDetail, insertDetail, updateDetail,
+    getThongKeSoLuong, getOwnerContext, ownerTransition, getEditContext
+  };
 })();
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -70,6 +70,21 @@
     return Object.prototype.hasOwnProperty.call(MESSAGES, code) ? MESSAGES[code] : '';
   }
 
+  /*
+     API trung gian của ERP đưa Msg/MsgType/Code lên envelope { code, msg, records }
+     và chỉ để các cột còn lại trong records. Vì vậy response thật qua gateway không còn
+     head.Code dù procedure SQL đã trả cột đó. ReasonCodesJson giữ nguyên thứ tự ưu tiên,
+     nên phần tử đầu chính là mã chính của hợp đồng.
+  */
+  function isDiagnosticEnvelope(res) {
+    var rows = rowsOf(res);
+    var head = rows.length ? rows[0] : {};
+    var isNotOrderable = head.IsOrderable === false || Number(head.IsOrderable) === 0;
+    return String(head.DiagnosticContractVersion || '') === CONTRACT_VERSION
+      && isNotOrderable
+      && parseReasonCodes(head.ReasonCodesJson).length > 0;
+  }
+
   /**
    * Đọc response của API_HangHoaList_AI cho MỘT sản phẩm cụ thể.
    *
@@ -97,6 +112,12 @@
     var code = String(head.Code || '');
     var contractVersion = String(head.DiagnosticContractVersion || '');
     var reasonCodes = parseReasonCodes(head.ReasonCodesJson);
+
+    /* Response trực tiếp từ SQL có Code; response thật qua gateway thì Code đã được
+       chuyển lên envelope số. Lấy mã đầu tiên từ mảng lý do có thứ tự của contract. */
+    if (!code && contractVersion === CONTRACT_VERSION && reasonCodes.length) {
+      code = String(reasonCodes[0] || '');
+    }
 
     /* Không có mã => bản server cũ. Giữ câu chung như trước, vẫn là không bán được. */
     if (!code) {
@@ -137,6 +158,7 @@
     rowsOf: rowsOf,
     parseReasonCodes: parseReasonCodes,
     messageFor: messageFor,
+    isDiagnosticEnvelope: isDiagnosticEnvelope,
     resolve: resolve,
     toError: toError
   };

@@ -150,8 +150,17 @@ const Http = (() => {
       return;
     }
 
+    /* PRODUCT-DIAG-001: ERP đưa Msg/MsgType/Code của procedure lên envelope code=1,
+       còn contract/version/reasons nằm trong records. Đây là kết quả nghiệp vụ cần giao
+       cho helper product-orderability diễn giải, không phải lỗi transport để Http ném sớm. */
+    const isProductOrderabilityDiagnostic = Boolean(
+      window.MedstandProductOrderability
+      && window.MedstandProductOrderability.isDiagnosticEnvelope(data)
+    );
+
     // Server trả code lỗi (chỉ số != 0 mới là lỗi, string code như "A003" = OK)
-    if (data.code !== undefined && typeof data.code === 'number' && data.code !== 0) {
+    if (!isProductOrderabilityDiagnostic
+        && data.code !== undefined && typeof data.code === 'number' && data.code !== 0) {
       const msg = data.msg || data.message || 'Có lỗi xảy ra từ máy chủ.';
       console.warn('[HTTP] Server error code:', data.code, msg);
       _alert('error', msg);
@@ -161,7 +170,12 @@ const Http = (() => {
     if (!res.ok) {
       const msg = data?.msg || data?.message || `Lỗi ${res.status}`;
       _alert('error', msg);
-      throw new Error(msg);
+      const httpError = new Error(msg);
+      // ORDER-APPROVAL-002: lỗi gateway (vd 409 ORDER_LOCKED) cần mã lỗi ổn định để trang gọi
+      // phân biệt được, không phải đoán qua nội dung câu thông báo tiếng Việt.
+      httpError.code = data?.code || data?.errorCode || null;
+      httpError.status = res.status;
+      throw httpError;
     }
 
     return data;

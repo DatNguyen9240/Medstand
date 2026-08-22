@@ -54,16 +54,20 @@ window.API_CONFIG = {
         ORDERS: {
             LIST: '/api/API_DonHang_AI',
             CREATE: '/api/API_DonHangChiTiet_Insert_AI',
-            UPDATE: '/api/API_DonHang_Update',
-            DELETE: '/api/API_DonHang_Delete',
+            UPDATE: '/api/API_DonHang_EditHeader_AI',
+            EDIT_CONTEXT: '/api/API_DonHang_EditContext_AI',
             DETAIL: '/api/API_DonHangChiTiet',
-            DELETE_DETAIL: '/api/API_DonHangChiTiet_Delete',
-            INSERT_DETAIL: '/api/API_DonHangChiTiet_Insert',
-            UPDATE_DETAIL: '/api/API_DonHangChiTiet_Update',
+            DELETE_DETAIL: '/api/API_DonHang_EditItemDelete_AI',
+            INSERT_DETAIL: '/api/API_DonHang_EditItemInsert_AI',
+            UPDATE_DETAIL: '/api/API_DonHang_EditItemUpdate_AI',
             APPROVAL_CONTEXT: '/api/API_DonHang_ApprovalContext_AI',
             APPROVE_TRANSITION: '/api/API_DonHang_ApproveTransition_AI',
+            // ORDER-APPROVAL-002: Gửi duyệt (-1->0) / Hủy đơn (->10) do chủ đơn hoặc kế
+            // toán/quản lý, và ngữ cảnh CanSubmit/CanCancel đi kèm — proc riêng, không gộp vào
+            // APPROVAL_CONTEXT/APPROVE_TRANSITION (đang do luồng Duyệt/Từ chối dùng).
+            OWNER_TRANSITION: '/api/API_DonHang_OwnerTransition_AI',
+            OWNER_CONTEXT: '/api/API_DonHang_OwnerContext_AI',
             THONG_KE_SO_LUONG: '/api/API_ThongKeSoLuong',
-            SAVE_DRAFT: '/api/API_LuuDonNhap',
         },
         INVOICES: { LIST: '/api/API_HoaDon' },
         RETURNS: {

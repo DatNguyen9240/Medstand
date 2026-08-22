@@ -253,6 +253,17 @@ tiếng Việt, dùng chung cho tạo đơn, sửa đơn và panel chatbot:
 2. Mã lạ hoặc `DiagnosticContractVersion` lạ đều fail-closed — hiển thị câu an toàn, KHÔNG coi là hợp lệ.
 3. Response cũ chưa có `Code` vẫn chạy, rơi về câu chung như trước.
 
+### Hình dạng response qua API trung gian
+
+Khi gọi procedure trực tiếp trong SQL, kết quả chẩn đoán có đủ 7 cột hợp đồng. Khi đi qua API trung gian của ERP,
+`Msg`, `MsgType` và `Code` được đưa lên envelope `{code, msg, records}`; trong `records` còn
+`DiagnosticContractVersion`, `IsOrderable`, `ReasonCodesJson`, `EvaluatedAtUtc`. Vì
+`ReasonCodesJson` đã sắp theo ưu tiên cố định, helper lấy phần tử đầu làm mã chính. `Http` phải chuyển envelope này
+cho helper, không được ném sớm chỉ vì envelope có `code = 1`.
+
+Ca hồi quy `HELPER_ACCEPTS_REAL_GATEWAY_ENVELOPE` và `HTTP_PASSES_GATEWAY_DIAGNOSTIC_TO_HELPER` bảo vệ đúng
+đường runtime này. Đây là khác biệt quan trọng giữa test procedure trực tiếp và test giao diện qua gateway.
+
 ### Không lộ dữ liệu ngoài phạm vi
 
 Response chẩn đoán chỉ có 7 cột hợp đồng — không mã kho, không tên kho, không số lượng tồn. Câu hiển thị
@@ -261,5 +272,5 @@ tồn tại" với "khách ngoài phạm vi": cả hai đều trả `CUSTOMER_OU
 xác nhận cho người hỏi biết một `ObjectID` bất kỳ có thật hay không.
 
 ```bash
-node scripts/verify_product_diag_001.js   # 15 ca, đối chiếu API với oracle chẩn đoán
+node scripts/verify_product_diag_001.js   # 17 ca, gồm cả shape gateway và đường Http → helper
 ```

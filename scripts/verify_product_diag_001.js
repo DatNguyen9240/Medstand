@@ -15,6 +15,7 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const sql = require('mssql');
+const vm = require('vm');
 
 const root = path.resolve(__dirname, '..');
 const READINESS_TOOL = path.join(root, 'scripts', 'uat_data_readiness.js');
@@ -67,6 +68,56 @@ function runReadiness(user, customer, item) {
     stdout = error.stdout;
   }
   return JSON.parse(stdout);
+}
+
+function encryptGatewayPayload(value, key = 107) {
+  const b64 = Buffer.from(value, 'utf8').toString('base64');
+  let xor = '';
+  for (let i = 0; i < b64.length; i += 1) xor += String.fromCharCode(b64.charCodeAt(i) ^ key);
+  return Buffer.from(xor, 'binary').toString('base64');
+}
+
+async function runHttpGatewayEnvelopeTest(gatewayEnvelope) {
+  const storage = new Map();
+  const context = {
+    window: null,
+    document: { cookie: 'auth_token=test-token' },
+    location: { href: '' },
+    localStorage: { removeItem() {} },
+    sessionStorage: {
+      get length() { return storage.size; },
+      key(index) { return [...storage.keys()][index] || null; },
+      getItem(key) { return storage.has(key) ? storage.get(key) : null; },
+      setItem(key, value) { storage.set(key, String(value)); },
+      removeItem(key) { storage.delete(key); },
+    },
+    API_CONFIG: { BASE_URL: 'https://business.invalid', GATEWAY_URL: 'https://gateway.invalid/api/gateway' },
+    MedstandProductOrderability: orderability,
+    fetch: async () => new Response(JSON.stringify({
+      data: encryptGatewayPayload(JSON.stringify(gatewayEnvelope)),
+    }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    Response,
+    FormData,
+    Blob,
+    AbortController,
+    URLSearchParams,
+    setTimeout,
+    clearTimeout,
+    encodeURIComponent,
+    decodeURIComponent,
+    escape,
+    unescape,
+    btoa: (value) => Buffer.from(value, 'binary').toString('base64'),
+    atob: (value) => Buffer.from(value, 'base64').toString('binary'),
+    showGlobalSpinner() {},
+    hideGlobalSpinner() {},
+    console: { log() {}, warn() {}, error() {} },
+  };
+  context.window = context;
+  vm.createContext(context);
+  const httpSource = fs.readFileSync(path.join(root, 'src', 'js', 'services', 'http.js'), 'utf8');
+  vm.runInContext(`${httpSource}\n;globalThis.__HttpForProductDiagTest = Http;`, context);
+  return context.__HttpForProductDiagTest.get('/api/API_HangHoaList_AI', { q: '{}' }, { cache: false });
 }
 
 const results = [];
@@ -218,6 +269,34 @@ async function main() {
     check('HELPER_PARSES_BOTH_JSON_SHAPES',
       JSON.stringify(objectForm) === '["A","B"]' && JSON.stringify(arrayForm) === '["A","B"]',
       { ObjectForm: objectForm, ArrayForm: arrayForm });
+
+    /* Response thật qua API trung gian: Msg/MsgType/Code bị đưa lên envelope, records chỉ
+       còn version/isOrderable/reasons. Helper vẫn phải khôi phục mã chính từ reasons[0]. */
+    const gatewayEnvelope = {
+      code: 1,
+      msg: 'câu từ server không dùng để quyết định',
+      records: [{
+        DiagnosticContractVersion: orderability.CONTRACT_VERSION,
+        IsOrderable: false,
+        ReasonCodesJson: '["STOCK_NO_ROW","PRICE_NOT_FOUND"]',
+      }],
+    };
+    const gatewayVerdict = orderability.resolve(gatewayEnvelope, 'B043');
+    check('HELPER_ACCEPTS_REAL_GATEWAY_ENVELOPE',
+      orderability.isDiagnosticEnvelope(gatewayEnvelope)
+      && gatewayVerdict.orderable === false
+      && gatewayVerdict.code === 'STOCK_NO_ROW'
+      && gatewayVerdict.recognized === true
+      && gatewayVerdict.message === orderability.messageFor('STOCK_NO_ROW'),
+      { Result: gatewayVerdict, Note: 'Bao phủ đúng shape runtime, không chỉ shape gọi SQL trực tiếp.' });
+
+    const httpResult = await runHttpGatewayEnvelopeTest(gatewayEnvelope);
+    const httpVerdict = orderability.resolve(httpResult, 'B043');
+    check('HTTP_PASSES_GATEWAY_DIAGNOSTIC_TO_HELPER',
+      httpResult.code === 1
+      && httpVerdict.code === 'STOCK_NO_ROW'
+      && httpVerdict.recognized === true,
+      { Result: httpVerdict, Note: 'Http không được ném sớm ở envelope code=1 của contract sản phẩm.' });
 
     const orderable = orderability.resolve({ records: [{ ItemID: 'A008', UnitPrice: 75000 }] }, 'a008');
     check('HELPER_ACCEPTS_ORDERABLE_ITEM',

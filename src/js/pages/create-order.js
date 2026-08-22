@@ -648,7 +648,12 @@ function removeProductRow(rowId) {
 }
 
 // -- Validate & build payload ----------------------------------------------
-function validateAndBuildPayload() {
+// isDraft=true (ORDER-APPROVAL-002, nút "Lưu nháp"): chỉ bắt buộc đã chọn khách hàng + ít
+// nhất 1 sản phẩm hợp lệ — SĐT/phường-xã/tuyến/ngày vốn để đảm bảo đơn HOÀN CHỈNH trước khi
+// gửi duyệt, không hợp lý khi chỉ đang "lưu tạm việc đang làm dở". Proc phía sau cũng không
+// bắt buộc các field này làm tham số (BranchID/DocumentDate tự điền mặc định nếu để trống;
+// Phone lấy từ hồ sơ khách, không phải field gửi lên).
+function validateAndBuildPayload(isDraft) {
   var v = orderForm.getValues();
   var productError = validateProductRows();
   var productRows = collectProducts();
@@ -656,17 +661,19 @@ function validateAndBuildPayload() {
   if (_productsHydrating) { Alert.warning('Đang đối chiếu giá và tồn sản phẩm với SQL. Vui lòng chờ trong giây lát.'); return null; }
   if (_productsLoadError) { Alert.error('Không thể đối chiếu giá và tồn sản phẩm. Vui lòng tải lại danh sách hàng.'); return null; }
 
-  if (_branchLoadError) {
+  if (!isDraft && _branchLoadError) {
     Alert.error('Không thể tải thông tin chi nhánh. Vui lòng tải lại trang hoặc liên hệ quản trị viên.');
     return null;
   }
 
-  if (!v.orderDate) { Alert.warning('Vui lòng chọn ngày chứng từ.'); return null; }
-  if (!v.branch) { Alert.warning('Vui lòng chọn chi nhánh.'); return null; }
   if (!v.customer) { Alert.warning('Vui lòng chọn khách hàng.'); return null; }
-  if (!v.ward) { Alert.warning('Vui lòng chọn phường/xã.'); return null; }
-  if (!v.route) { Alert.warning('Vui lòng chọn tuyến thứ.'); return null; }
-  if (!v.phone) { Alert.warning('Vui lòng nhập số điện thoại.'); return null; }
+  if (!isDraft) {
+    if (!v.orderDate) { Alert.warning('Vui lòng chọn ngày chứng từ.'); return null; }
+    if (!v.branch) { Alert.warning('Vui lòng chọn chi nhánh.'); return null; }
+    if (!v.ward) { Alert.warning('Vui lòng chọn phường/xã.'); return null; }
+    if (!v.route) { Alert.warning('Vui lòng chọn tuyến thứ.'); return null; }
+    if (!v.phone) { Alert.warning('Vui lòng nhập số điện thoại.'); return null; }
+  }
   if (productError) { Alert.warning(productError); return null; }
   if (productRows.length === 0) { Alert.warning('Vui lòng thêm ít nhất 1 sản phẩm.'); return null; }
 
@@ -682,21 +689,23 @@ function validateAndBuildPayload() {
   });
 
   var docId = v.orderId || 'AUTO_GEN';
-  return {
-    docId: docId,
-    payload: {
-      Username: user.UserName || '',
-      DocumentID: docId,
-      DocumentDate: v.orderDate,
-      BranchID: v.branch,
-      ObjectID: v.customer,
-      Memo: v.memo || '',
-      Notes: v.notes || '',
-      XaPhuong: v.ward || '',
-      ThuDiTuyen: v.route || '',
-      ItemList: JSON.stringify(itemList)
-    }
+  var payload = {
+    Username: user.UserName || '',
+    DocumentID: docId,
+    DocumentDate: v.orderDate,
+    BranchID: v.branch,
+    ObjectID: v.customer,
+    Memo: v.memo || '',
+    Notes: v.notes || '',
+    XaPhuong: v.ward || '',
+    ThuDiTuyen: v.route || '',
+    ItemList: JSON.stringify(itemList)
   };
+  // ORDER-APPROVAL-006: chỉ gắn SaveAsDraft khi thực sự lưu nháp — payload gửi thẳng (Tạo đơn
+  // hàng) giữ nguyên hình dạng cũ, để fingerprint chống gửi lặp không lẫn giữa 2 nút.
+  if (isDraft) payload.SaveAsDraft = true;
+
+  return { docId: docId, payload: payload };
 }
 
 function resetForm() {
@@ -753,10 +762,46 @@ $('#btnSubmitOrder').on('click', function () {
   });
 });
 
-// -- Save Draft ---------------------------------------------------------------
-$('#btnDraftOrder').on('click', function () {
-  Alert.warning('Lưu nháp chưa hỗ trợ trên endpoint AI. Vui lòng tạo đơn sau khi kiểm tra đầy đủ thông tin.');
+// -- Save Draft (ORDER-APPROVAL-006) -------------------------------------------
+$('#btnSaveDraft').on('click', function () {
+  var data = validateAndBuildPayload(true);
+  if (!data) return;
+
+  var $btn = $(this);
+  $btn.prop('disabled', true).text('Đang lưu...');
+
+  var draftKey = getOrderSubmitKey(data.payload);
+  var draftSucceeded = false;
+  Http.post(API_CONFIG.ENDPOINTS.ORDERS.CREATE, data.payload, { idempotencyKey: draftKey }).then(function (res) {
+    var d = res.data || res;
+    var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
+    var msg = record && record.Msg ? record.Msg : '';
+    var msgType = record && record.MsgType !== undefined ? Number(record.MsgType) : NaN;
+    var responseDocumentId = record && record.DocumentID != null ? String(record.DocumentID).trim() : '';
+    if (msgType !== 5 || !responseDocumentId) {
+      Alert.error(msg || 'Phản hồi lưu nháp không hợp lệ. Vui lòng thử lại.');
+      return;
+    }
+    draftSucceeded = true;
+    if (window.MedstandOrderDraft && typeof window.MedstandOrderDraft.markCreated === 'function') {
+      window.MedstandOrderDraft.markCreated(responseDocumentId);
+    }
+    Alert.success((msg || 'Đã lưu nháp đơn hàng!') + ' Mã đơn: ' + responseDocumentId);
+    resetForm();
+  }).catch(function (err) {
+    Alert.error(err.message || 'Có lỗi xảy ra.');
+  }).finally(function () {
+    if (draftSucceeded && _orderSubmitIdempotencyKey === draftKey) {
+      _orderSubmitIdempotencyKey = '';
+      _orderSubmitFingerprint = '';
+    }
+    $btn.prop('disabled', false).text('LƯU NHÁP');
+  });
 });
+
+// Lưu nháp ĐÃ BỎ (khách chốt 21/08/2026): tạo đơn là vào thẳng Chờ duyệt.
+// Kéo theo: gửi đơn xong Sale hết quyền sửa, chỉ kế toán/quản lý sửa được — xem
+// sql/ORDER-APPROVAL-005_Order_Edit_Guard_AI.sql.
 
 // Obsolete promo click handler replaced with reactive auto-promotion
 

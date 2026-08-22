@@ -1,0 +1,65 @@
+{
+  "Task": "CUST-SEARCH-001",
+  "Status": "PASS",
+  "ComparedCommits": {
+    "before": "74f6c53e^ (ca6ce72)",
+    "after": "2e9bfef (contains CORE-011 + gateway request ID)"
+  },
+  "Scenario": "Tìm khách bằng số điện thoại trên màn sửa đơn",
+  "Target": {
+    "ObjectID": "EF7C85D8-8888-4904-8478-6046C09DE258",
+    "ObjectName": "A He",
+    "DisplayName": "EF7C85D8-8888-4904-8478-6046C09DE258 - A He",
+    "Phone": "12312312312",
+    "Address": "12312313",
+    "XaPhuong": "Xã Bum Nưa"
+  },
+  "Before": {
+    "RemoteSearchRequestsAfterTyping": 0,
+    "VisibleSuggestions": 0,
+    "OverlayVisible": true
+  },
+  "After": {
+    "RemoteSearchRequestsAfterTyping": 1,
+    "RequestIDs": [
+      "req-cust-search-001-after"
+    ],
+    "Requests": [
+      {
+        "method": "GET",
+        "endpoint": "/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%2212312312312%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D",
+        "body": null
+      }
+    ],
+    "Responses": [
+      {
+        "code": 0,
+        "msg": "OK",
+        "records": [
+          {
+            "ObjectID": "EF7C85D8-8888-4904-8478-6046C09DE258",
+            "ObjectName": "A He",
+            "DisplayName": "EF7C85D8-8888-4904-8478-6046C09DE258 - A He",
+            "Phone": "12312312312"
+          }
+        ]
+      }
+    ],
+    "Suggestion": {
+      "value": "EF7C85D8-8888-4904-8478-6046C09DE258",
+      "label": "EF7C85D8-8888-4904-8478-6046C09DE258 - A He"
+    },
+    "SelectedAndLoaded": {
+      "ObjectID": "EF7C85D8-8888-4904-8478-6046C09DE258",
+      "label": "EF7C85D8-8888-4904-8478-6046C09DE258 - A He",
+      "phone": "12312312312",
+      "address": "12312313",
+      "ward": "Xã Bum Nưa"
+    }
+  },
+  "RootCause": [
+    "Bản trước sửa: edit-order không cấu hình searchFn cho field customer, nên nhập Phone chỉ lọc local theo label và không gọi API.",
+    "Bản trước sửa: API_KhachHangList chưa đưa Phone vào điều kiện SearchText.",
+    "Bản trước sửa: FormSelect._renderModal return sớm khi remoteOptions rỗng, làm picker biến mất thay vì hiển thị empty-state."
+  ]
+}

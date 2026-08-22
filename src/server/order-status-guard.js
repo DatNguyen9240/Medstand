@@ -24,7 +24,18 @@ const READ_IDENTITY_POLICY = Object.freeze({
      * thì bất kỳ ai cũng đổi tên người khác để dò xem tài khoản đó có quyền kho nào, thấy
      * giá nào. Phải khoá identity từ token TRƯỚC khi bật chẩn đoán chi tiết.
      */
-    '/api/API_HangHoaList_AI': Object.freeze({ identityField: 'Username' })
+    '/api/API_HangHoaList_AI': Object.freeze({ identityField: 'Username' }),
+    /*
+     * ORDER-APPROVAL-005: API này trả lời "bạn có sửa được đơn này không" và lý do vì sao
+     * không. Câu trả lời phụ thuộc vai trò và chi nhánh của người hỏi, nên identity phải do
+     * server quyết định — nếu không thì đổi tên trong payload là dò được quyền của người khác.
+     */
+    '/api/API_DonHang_EditContext_AI': Object.freeze({ identityField: 'Username' }),
+    /*
+     * ORDER-APPROVAL-006: API trả lời "bạn có Gửi duyệt/Hủy được đơn nháp này không" — cùng
+     * lý do với EditContext ở trên, identity không được tin từ payload.
+     */
+    '/api/API_DonHang_OwnerContext_AI': Object.freeze({ identityField: 'Username' })
 });
 
 /**
@@ -40,7 +51,41 @@ const BLOCKED_ERP_ENDPOINTS = new Set([
     '/api/AR_OrderLog_Stp',
     '/api/AR_OrderToInvoiceStp',
     '/api/AR_StockOutStatus_UpdateStp',
-    '/api/API_HoanTatDonHang'
+    '/api/API_HoanTatDonHang',
+
+    /*
+     * ORDER-APPROVAL-005 — 5 proc CRUD đơn hàng của ERP.
+     *
+     * Cả 5 đều KHÔNG nhận identity người gọi (đã đối chiếu INFORMATION_SCHEMA.PARAMETERS thật
+     * trên medtest), không có idempotency, không audit. API_DonHangChiTiet_Delete còn xoá thẳng
+     * theo UserAutoID mà không kiểm cả trạng thái lẫn chủ sở hữu, và API_DonHang_Update có
+     * nhánh "@StatusID > 0 thì đổi thẳng trạng thái rồi thoát" bỏ qua mọi kiểm tra duyệt.
+     * Người đã đăng nhập chỉ cần biết DocumentID/UserAutoID là sửa/xoá được đơn của người khác.
+     *
+     * App đi qua 4 proc thay thế trong sql/ORDER-APPROVAL-005_Order_Edit_Guard_AI.sql: chúng
+     * khoá dòng đơn, kiểm quyền và ghi trong CÙNG một transaction.
+     */
+    '/api/API_DonHang_Update',
+    '/api/API_DonHang_Delete',
+    '/api/API_DonHangChiTiet_Insert',
+    '/api/API_DonHangChiTiet_Update',
+    '/api/API_DonHangChiTiet_Delete',
+
+    /*
+     * Proc đọc nội bộ, không nhận @Username nên không giới hạn theo phạm vi người gọi. Để hở
+     * là ai đăng nhập cũng dò được sự tồn tại và trạng thái của bất kỳ DocumentID nào — mã đơn
+     * lại đánh số tuần tự (DMB0726/1) nên quét sạch là chuyện vài phút.
+     * Từ ORDER-APPROVAL-005 gateway không còn cần nó: việc khoá sửa đã nằm trong SQL.
+     */
+    '/api/API_DonHang_StatusLookup_AI'
+
+    /*
+     * ORDER-APPROVAL-006: API_DonHang_OwnerTransition_AI (Gửi duyệt / Hủy đơn nháp phía chủ
+     * đơn) đã được MỞ LẠI — khách đổi ý, muốn giữ Lưu nháp (21/08/2026). Không còn chặn ở
+     * đây; đi qua DIRECT_MUTATION_POLICY trong server.js (Username do gateway gắn từ token).
+     * Bản thân proc chỉ cho phép đúng 2 transition đã APPROVED trong dữ liệu hợp đồng
+     * (SUBMIT -1->0, CANCEL -1->10) — xem sql/ORDER-APPROVAL-006_Draft_Restore_AI.sql.
+     */
 ]);
 
 /**

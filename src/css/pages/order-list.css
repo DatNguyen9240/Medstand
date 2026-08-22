@@ -65,6 +65,12 @@
       color: var(--color-info-text);
     }
 
+    /* ORDER-APPROVAL-002: "Đã hủy" — tái dùng token màu nguy hiểm/vô hiệu đã có. */
+    .order-card .status.cancelled {
+      background: var(--color-danger-bg);
+      color: var(--color-danger-text);
+    }
+
     .fab {
       bottom: calc(var(--nav-height) + 120px);
     }

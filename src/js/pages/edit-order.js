@@ -5,6 +5,15 @@
     var _productsCache = null;
     var _orderContext = {};
 
+    // ORDER-APPROVAL-002: mỗi lệnh sửa/xoá cần 1 idempotency-key riêng — các endpoint này vừa
+    // được gateway bắt buộc Idempotency-Key, thiếu là bị 422.
+    function newEditIdempotencyKey(prefix) {
+      var randomPart = (window.crypto && window.crypto.randomUUID)
+        ? window.crypto.randomUUID()
+        : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+      return prefix + '-' + randomPart;
+    }
+
     // -- Promotion Helpers ----------------------------------------------------
     function parsePromotions(productName) {
       var promos = [];
@@ -43,9 +52,27 @@
     if (!orderId) {
       $('#loading-state').text('Không có mã đơn hàng.');
     } else {
-      // Load order data
-      OrderService.getDetail(orderId, '')
-        .then(function (res) {
+      // ORDER-APPROVAL-005: quyền sửa hỏi API_DonHang_EditContext_AI — cùng một hàm guard mà
+      // 4 proc ghi dùng, nên UI và server không thể nói khác nhau. Chặn THẬT nằm trong SQL
+      // (khoá dòng đơn rồi mới kiểm, trong cùng transaction); đây chỉ là UX để người dùng biết
+      // ngay vì sao không sửa được thay vì sửa xong mới bị từ chối.
+      Promise.all([
+        OrderService.getDetail(orderId, ''),
+        OrderService.getEditContext(orderId).catch(function () { return null; })
+      ])
+        .then(function (results) {
+          var res = results[0];
+          var editCtxRes = results[1];
+          var editCtx = editCtxRes && (editCtxRes.data || editCtxRes);
+          editCtx = (editCtx && editCtx.records && editCtx.records[0]) || editCtx || null;
+          var liveStatusId = editCtx && editCtx.StatusID !== undefined && editCtx.StatusID !== null
+            ? Number(editCtx.StatusID) : null;
+          // Không đọc được ngữ cảnh => coi như KHÔNG được sửa (fail-closed), không mở form ra
+          // rồi để người dùng gõ xong mới báo lỗi.
+          var canEdit = Boolean(editCtx && (editCtx.CanEdit === true || editCtx.CanEdit === 1));
+          var blockMsg = (editCtx && editCtx.BlockMsg)
+            || 'Không kiểm tra được quyền sửa đơn. Vui lòng tải lại trang.';
+
           var data = res.data || res;
           // API_DonHangChiTiet trả:
           //   records   = chi tiết sản phẩm (cũng chứa order header)
@@ -66,7 +93,7 @@
 
           // Build summary object từ p0 (order header) + records3 (địa chỉ)
           var summary = {
-            StatusID:     undefined,          // sẽ fetch riêng
+            StatusID:     liveStatusId,
             DocumentDate: rawDate,
             BranchID:     p0.BranchID     || '',
             BranchName:   p0.BranchName   || '',
@@ -87,6 +114,11 @@
             ThuTrongTuan: p0.ThuDiTuyen   || ''
           };
           _orderContext = summary;
+
+          if (!canEdit) {
+            $('#loading-state').text(blockMsg);
+            return;
+          }
 
           $('#loading-state').hide();
           $('#edit-form-wrap').prop('hidden', false);
@@ -469,7 +501,6 @@
       var amount = data.price * data.qty;
       var discAmt = Math.round(amount * (data.discount / 100));
       OrderService.insertDetail({
-        User: user.UserName || '',
         DocumentID: orderId,
         ItemID: data.itemId,
         Quantity: data.qty,
@@ -480,7 +511,7 @@
         DiscountAmount: discAmt,
         DiemSanPham: 0,
         Notes: 0
-      }).then(function (res) {
+      }, { idempotencyKey: newEditIdempotencyKey('insertdetail') }).then(function (res) {
         var d = res.data || res;
         var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
         var msg = record && record.Msg ? record.Msg : '';
@@ -496,7 +527,11 @@
           .html('&#x270E;');
         Alert.success(msg || 'Đã thêm sản phẩm!');
       }).catch(function (err) {
-        Alert.error(err.message || 'Lỗi thêm sản phẩm.');
+        if (err && err.code === 'ORDER_LOCKED') {
+          Alert.error('Đơn hàng đã được duyệt/xử lý, không thể chỉnh sửa. Vui lòng tải lại trang.');
+        } else {
+          Alert.error(err.message || 'Lỗi thêm sản phẩm.');
+        }
         $saveBtn.prop('disabled', false).text('✓');
       });
     }
@@ -521,7 +556,6 @@
       var amount = data.price * data.qty;
       var discAmt = Math.round(amount * (data.discount / 100));
       OrderService.updateDetail({
-        OldKeyID: autoId,
         UserAutoID: autoId,
         ItemID: data.itemId,
         Quantity: data.qty,
@@ -532,7 +566,7 @@
         DiscountAmount: discAmt,
         DiemSanPham: 0,
         Notes: ''
-      }).then(function (res) {
+      }, { idempotencyKey: newEditIdempotencyKey('updatedetail') }).then(function (res) {
         var d = res.data || res;
         var record = Array.isArray(d) ? d[0] : (d.records ? d.records[0] : d);
         var msg = record && record.Msg ? record.Msg : '';
@@ -542,7 +576,11 @@
         setTimeout(function () { $saveBtn.css('background', ''); }, 800);
         Alert.success(msg || 'Đã cập nhật sản phẩm!');
       }).catch(function (err) {
-        Alert.error(err.message || 'Lỗi cập nhật sản phẩm.');
+        if (err && err.code === 'ORDER_LOCKED') {
+          Alert.error('Đơn hàng đã được duyệt/xử lý, không thể chỉnh sửa. Vui lòng tải lại trang.');
+        } else {
+          Alert.error(err.message || 'Lỗi cập nhật sản phẩm.');
+        }
         $saveBtn.prop('disabled', false).html('&#x270E;');
       });
     }
@@ -554,13 +592,17 @@
         // Row có UserAutoID → gọi SP xóa trước
         var $btn = $row.find('.btn-remove-row');
         $btn.prop('disabled', true).text('…');
-        OrderService.deleteDetail(autoId)
+        OrderService.deleteDetail(autoId, { idempotencyKey: newEditIdempotencyKey('deletedetail') })
           .then(function () {
             $row.remove();
             updateLiveTotal();
           })
           .catch(function (err) {
-            Alert.error(err.message || 'Không thể xóa sản phẩm.');
+            if (err && err.code === 'ORDER_LOCKED') {
+              Alert.error('Đơn hàng đã được duyệt/xử lý, không thể chỉnh sửa. Vui lòng tải lại trang.');
+            } else {
+              Alert.error(err.message || 'Không thể xóa sản phẩm.');
+            }
             $btn.prop('disabled', false).text('✕');
           });
       } else {
@@ -607,9 +649,8 @@
         Memo: v.memo || '',
         Notes: v.notes || '',
         ThuDiTuyen: v.route || '',
-        ItemList: JSON.stringify(itemList),
-        User: user.UserName || ''
-      }).then(function (res) {
+        ItemList: JSON.stringify(itemList)
+      }, { idempotencyKey: newEditIdempotencyKey('updateorder') }).then(function (res) {
         var data = res.data || res;
         var record = Array.isArray(data) ? data[0] : (data.records ? data.records[0] : data);
         var msg = record && record.Msg ? record.Msg : '';
@@ -620,7 +661,11 @@
           navigate('#/order-detail?id=' + encodeURIComponent(orderId));
         }, 1200);
       }).catch(function (err) {
-        Alert.error(err.message || 'Có lỗi xảy ra.');
+        if (err && err.code === 'ORDER_LOCKED') {
+          Alert.error('Đơn hàng đã được duyệt/xử lý, không thể chỉnh sửa. Vui lòng tải lại trang.');
+        } else {
+          Alert.error(err.message || 'Có lỗi xảy ra.');
+        }
       }).finally(function () {
         $btn.prop('disabled', false).text('CẬP NHẬT ĐƠN');
       });
