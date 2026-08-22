@@ -327,6 +327,6 @@ SET OperationType       = 'DENY',
     OwnershipRule       = 'DENY',
     IsActive            = 0,
     ContractUpdatedAt   = SYSUTCDATETIME(),
-    ContractUpdatedBy   = 'System - API_Capability_AutoGrant_AI.sql'
+    ContractUpdatedBy   = 'System_API_Capability_AutoGrant_AI.sql'
 WHERE StoredProcedure = 'API_Capability_AutoGrant_AI';
 GO

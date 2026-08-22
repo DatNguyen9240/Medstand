@@ -9,7 +9,7 @@ const sql = require('mssql');
 const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'sql/Migrate_CORE006_Tier_Rule_V2_AI.sql',
-  'sql/Module 3 - API_ChamDiemKH_AI.sql',
+  'sql/Module_03_API_ChamDiemKH_AI.sql',
 ];
 
 function readEnv() {

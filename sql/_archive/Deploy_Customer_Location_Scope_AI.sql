@@ -7,9 +7,9 @@ SET XACT_ABORT ON;
 BEGIN TRANSACTION;
 GO
 
-:r "sql\Module common - API_TinhThanhByUser_AI.sql"
-:r "sql\Module common - API_PhuongXa_AI.sql"
-:r "sql\Module common - API_KhachHang_Insert_AI.sql"
+:r "sql\Module_Common_API_TinhThanhByUser_AI.sql"
+:r "sql\Module_Common_API_PhuongXa_AI.sql"
+:r "sql\Module_Common_API_KhachHang_Insert_AI.sql"
 :r "sql\Migrate_API_Capability_Customer_Location_AI.sql"
 
 IF (SELECT COUNT(*) FROM dbo.AI_GetTinhThanhByUserFnc('QLBH013.MED')) <> 5

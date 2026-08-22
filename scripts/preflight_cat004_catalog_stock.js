@@ -4,8 +4,8 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const catalogSql = fs.readFileSync(path.join(root, 'sql', 'Module common - API_HangHoaList_AI.sql'), 'utf8');
-const lookupSql = fs.readFileSync(path.join(root, 'sql', 'Module 10 - API_TraCuuSanPham_AI.sql'), 'utf8');
+const catalogSql = fs.readFileSync(path.join(root, 'sql', 'Module_Common_API_HangHoaList_AI.sql'), 'utf8');
+const lookupSql = fs.readFileSync(path.join(root, 'sql', 'Module_10_API_TraCuuSanPham_AI.sql'), 'utf8');
 const renderer = fs.readFileSync(path.join(root, 'chatbot-widget', 'js', 'chatbot-product-card.js'), 'utf8');
 
 const requiredFields = ['AvailableStock', 'StoreHouseID', 'StoreHouseName', 'StockUpdatedAt', 'StockAsOfAt', 'WarehouseScope', 'StockDataStatus'];

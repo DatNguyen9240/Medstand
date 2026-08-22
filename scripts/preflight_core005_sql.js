@@ -14,8 +14,8 @@ const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'sql/Migrate_API_Mutation_Idempotency_AI.sql',
   'sql/Migrate_Demo_Order_Actor_AI.sql',
-  'sql/Module common - API_HangHoaList_AI.sql',
-  'sql/Module common - API_DonHangChiTiet_Insert_AI.sql',
+  'sql/Module_Common_API_HangHoaList_AI.sql',
+  'sql/Module_Common_API_DonHangChiTiet_Insert_AI.sql',
 ];
 
 function readEnv() {

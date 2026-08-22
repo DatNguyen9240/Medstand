@@ -7,17 +7,17 @@ const sql = require('mssql');
 const ROOT = path.resolve(__dirname, '..');
 const SQL_FILES = [
   'Migrate_STOCK001_Stock_Availability_AI.sql',
-  'Module common - API_DanhMuc_AI.sql',
-  'Module common - API_DanhsachTonKho_AI.sql',
-  'Module common - API_HangHoaList_AI.sql',
-  'Module 10 - API_TraCuuSanPham_AI.sql',
-  'Module 10 - API_TimSanPhamTheoTrieuChung_AI.sql',
-  'Module 8 - API_GoiYDonThuoc_AI.sql',
-  'Module 5 - API_UpsellGoiY_AI.sql',
-  'Module 1 - API_GoiYDonHang_AI.sql',
-  'Module 10 - API_SanPhamTrongTam_AI.sql',
-  'Module 6 - API_DeXuatKhuyenMai_AI.sql',
-  'Module common - API_DonHangChiTiet_Insert_AI.sql',
+  'Module_Common_API_DanhMuc_AI.sql',
+  'Module_Common_API_DanhsachTonKho_AI.sql',
+  'Module_Common_API_HangHoaList_AI.sql',
+  'Module_10_API_TraCuuSanPham_AI.sql',
+  'Module_10_API_TimSanPhamTheoTrieuChung_AI.sql',
+  'Module_08_API_GoiYDonThuoc_AI.sql',
+  'Module_05_API_UpsellGoiY_AI.sql',
+  'Module_01_API_GoiYDonHang_AI.sql',
+  'Module_10_API_SanPhamTrongTam_AI.sql',
+  'Module_06_API_DeXuatKhuyenMai_AI.sql',
+  'Module_Common_API_DonHangChiTiet_Insert_AI.sql',
 ];
 
 function readEnv() {

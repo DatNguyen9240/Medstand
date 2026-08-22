@@ -7,8 +7,8 @@ const sql = require('mssql');
 
 const ROOT = path.resolve(__dirname, '..');
 const FILES = [
-  'sql/Module common - API_PhuongXa_AI.sql',
-  'sql/Module common - API_KhachHang_Insert_AI.sql',
+  'sql/Module_Common_API_PhuongXa_AI.sql',
+  'sql/Module_Common_API_KhachHang_Insert_AI.sql',
 ];
 
 function readEnv() {

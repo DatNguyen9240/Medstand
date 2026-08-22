@@ -178,7 +178,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 
     **Kiểm chứng sau khi sửa:** mức 1 → 7 quản lý nhận 50 dòng, 6 sale nhận thông báo có nghĩa. Mức 2 → **13/13 tài khoản đều xem được**. Mức 3 → sale bị từ chối, quản lý nhận bảng xem trước; đếm `AR_SanPhamTrongTamTbl` trước/sau = **3/3, không ghi gì**.
 
-    File: `sql/Module 6 - API_DeXuatKhuyenMai_AI.sql`, `sql/Module 10 - API_SanPhamTrongTam_Import_AI.sql`.
+    File: `sql/Module_06_API_DeXuatKhuyenMai_AI.sql`, `sql/Module_10_API_SanPhamTrongTam_Import_AI.sql`.
 
     Còn tồn tại, chưa chặn demo: `AR_KeHoachDiTuyenTbl` chỉ có 3 dòng của `ADS001`, không tài khoản UAT nào có kế hoạch tuyến. `API_TuyenBanHang_AI` **không đọc bảng này** (nó tính gợi ý chăm sóc từ lịch sử đơn) nên `@tuyen_ban_hang` vẫn chạy đủ 13/13; chỉ màn hình kế hoạch tuyến của ERP là trống.
 
@@ -299,7 +299,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Hai API tra cứu phục vụ contract đã hoàn tất, deploy lên `medtest`, kiểm chứng và cấp quyền `READ` ngày 31/07/2026:
     - `API_ObjectGroupByUser_AI` — chép nguyên nhánh phân quyền của `AR_GetObjectByUserFnc`, chỉ nhận `@User` và tự suy `EmployeeID` phía server. Đối chiếu số nhóm trả về với số nhóm thực sự nhìn thấy: 7/7 tài khoản khớp tuyệt đối. Lưu ý bảo trì: `LevelSub` nằm ở bảng cha `AR_OpListTbl`, **không phải** `AR_OpListDetailTbl`.
     - `API_EmployeeByManager_AI` — bắt buộc `GROUP BY` (QLMN2 trả 122 dòng thô → 38 nhân viên); tên lấy qua `COALESCE` vì một số nhân viên không có dòng `SY_User`.
-    - File: `sql/Module common - API_ObjectGroupByUser_AI.sql`, `sql/Module common - API_EmployeeByManager_AI.sql`, cấp quyền qua `sql/Migrate_API_Capability_CORE001_AI.sql`.
+    - File: `sql/Module_Common_API_ObjectGroupByUser_AI.sql`, `sql/Module_Common_API_EmployeeByManager_AI.sql`, cấp quyền qua `sql/Migrate_API_Capability_CORE001_AI.sql`.
   - Ngoại lệ `QLMD1` và `QLBH024.MED` đã được xử lý và kiểm chứng lại trong UAT-007; hai API hiện trả đúng nhóm và nhân viên dưới quyền.
   - Còn chờ team ERP làm rõ nhưng không chặn contract hiện tại: mapping `@LoaiKhachHang` → `LoaiHopDong` và `@KenhBan` → `PhanLoaiKhach`. Cơ chế chuyển `StatusID` từ `0` sang `6` không áp dụng cho luồng chat tạo trực tiếp.
 
@@ -626,7 +626,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 - [ ] **SEC-002 — Test phân quyền âm** · `P0` · `TODO`
   - Cố ý truy vấn khách, kho, chi nhánh và API ngoài quyền để xác nhận bị chặn.
   - **Bổ sung 31/07/2026 — cái bẫy danh sách trắng viết tay đã được bịt.** `Migrate_API_Capability_Metadata_AI.sql` nâng API lên `READ` theo một danh sách gõ tay, nên mọi API chỉ-đọc mới do `API_Metadata_AutoBootstrap_AI` sinh ra đều rơi xuống `DENY` rồi **kẹt ở đó im lặng** cho tới khi có người nhớ thêm tên nó vào. Đúng chuyện đã xảy ra với `@hang_hoa_list`.
-    - Đã viết `sql/System - API_Capability_AutoGrant_AI.sql`: tự tìm và cấp `READ`, nhưng chỉ khi chứng minh được cả ba điều — (1) không ghi bảng thật, xác định bằng `sys.dm_sql_referenced_entities` chứ không dò từ khoá; (2) không có SQL động và không gọi procedure lồng; (3) có tham số `IsSystemParam = 1` để server điền danh tính.
+    - Đã viết `sql/System_API_Capability_AutoGrant_AI.sql`: tự tìm và cấp `READ`, nhưng chỉ khi chứng minh được cả ba điều — (1) không ghi bảng thật, xác định bằng `sys.dm_sql_referenced_entities` chứ không dò từ khoá; (2) không có SQL động và không gọi procedure lồng; (3) có tham số `IsSystemParam = 1` để server điền danh tính.
     - Vì sao không dò từ khoá: đã thử, nó gắn cờ "có ghi" cho **21/28** API đang là `READ` vì các procedure báo cáo dùng bảng tạm. Dùng DMV thì khớp 100% với danh sách người duyệt — 28/28 `READ` ghi 0 bảng, 3/3 `MUTATION` ghi đúng bảng nghiệp vụ.
     - Chạy 31/07/2026: cấp `READ` cho `@audit_log`, `@read_request_audit`, `@tra_cuu_tong_hop`; giữ `DENY` cho 5 API ghi dữ liệu, 3 API thiếu tham số phân quyền và 1 dòng đăng ký mồ côi (`@cap_nhat_ket_qua_khao_sat` trỏ tới procedure không tồn tại — nên xoá hoặc sửa tên).
     - **Giới hạn còn lại, cần kiểm tay khi làm SEC-002:** cửa số 3 chỉ chứng minh tham số phân quyền *tồn tại*, không chứng minh procedure *thực sự dùng* nó để lọc. Ba API còn `DENY` vì thiếu tham số (`API_ChiTietBaiKhaoSat`, `API_KetQuaBaiKhaoSat`, `API_KiemTraKhaoSatNgay`) là ứng viên rõ ràng cho test phân quyền âm: chúng không nhận danh tính người dùng nên chưa có gì giới hạn phạm vi.

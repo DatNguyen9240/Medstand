@@ -63,7 +63,7 @@ BEGIN TRY
     -- Guard 1: procedure phải tồn tại. Không cấp quyền cho thứ chưa được tạo.
     IF OBJECT_ID('dbo.API_ObjectGroupByUser_AI', 'P') IS NULL
        OR OBJECT_ID('dbo.API_EmployeeByManager_AI', 'P') IS NULL
-        THROW 51301, N'Chưa tạo đủ hai stored procedure của CORE-001. Chạy hai file Module common - API_ObjectGroupByUser_AI.sql và API_EmployeeByManager_AI.sql trước.', 1;
+        THROW 51301, N'Chưa tạo đủ hai stored procedure của CORE-001. Chạy hai file Module_Common_API_ObjectGroupByUser_AI.sql và API_EmployeeByManager_AI.sql trước.', 1;
 
     -- Guard 2: registry phải đã tự đăng ký đủ hai dòng.
     IF (SELECT COUNT(*) FROM dbo.API_Definition

@@ -6,7 +6,7 @@ const path = require('path');
 const sql = require('mssql');
 
 const ROOT = path.resolve(__dirname, '..');
-const SQL_FILE = 'sql/Module common - API_KhachHangList_AI.sql';
+const SQL_FILE = 'sql/Module_Common_API_KhachHangList_AI.sql';
 
 function readEnv() {
   const values = {};

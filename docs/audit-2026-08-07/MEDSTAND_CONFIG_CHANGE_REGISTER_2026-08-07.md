@@ -58,7 +58,7 @@
 
 | Trường | Nội dung |
 |---|---|
-| **Vị trí** | `chatbot-api-engine.js`:3316 (client) + `sql/Module common - API_KhachHangList_AI.sql` (server) |
+| **Vị trí** | `chatbot-api-engine.js`:3316 (client) + `sql/Module_Common_API_KhachHangList_AI.sql` (server) |
 | **Giá trị hiện tại** | Client `slice(0,30)`; **server không giới hạn** |
 | **Giá trị đề xuất** | Truyền `SearchText` thật; cân nhắc `TOP (50)` phía SQL |
 | **Lý do** | Cắt ở client nghĩa là đã trả 11.571 dòng qua mạng rồi mới bỏ đi |

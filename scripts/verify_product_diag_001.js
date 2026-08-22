@@ -21,7 +21,7 @@ const root = path.resolve(__dirname, '..');
 const READINESS_TOOL = path.join(root, 'scripts', 'uat_data_readiness.js');
 const orderability = require(path.join(root, 'src', 'js', 'utils', 'product-orderability.js'));
 
-/* Mã do procedure phát ra. Phải khớp bảng trong sql/Module common - API_HangHoaList_AI.sql. */
+/* Mã do procedure phát ra. Phải khớp bảng trong sql/Module_Common_API_HangHoaList_AI.sql. */
 const CONTRACT_CODES = [
   'INVALID_USER', 'CUSTOMER_OUT_OF_SCOPE',
   'ITEM_NOT_FOUND', 'ITEM_DISABLED_AT_BRANCH',

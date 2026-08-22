@@ -34,7 +34,7 @@ Request nghiệm thu sau sửa:
 ## 3. Nguyên nhân gốc
 
 1. `src/js/pages/edit-order.js` trước sửa không truyền `searchFn` cho field `customer`. Vì vậy nhập số điện thoại chỉ lọc danh sách đã tải theo label, không gọi API.
-2. `sql/Module common - API_KhachHangList_AI.sql` trước sửa chưa đưa `A.Phone` vào điều kiện `SearchText`, nên backend chưa hỗ trợ đầy đủ cách tìm này.
+2. `sql/Module_Common_API_KhachHangList_AI.sql` trước sửa chưa đưa `A.Phone` vào điều kiện `SearchText`, nên backend chưa hỗ trợ đầy đủ cách tìm này.
 3. `src/js/components/FormSelect.js` trước sửa thoát sớm khi `options` rỗng sau khi overlay cũ đã bị gỡ, khiến picker biến mất và không hiển thị trạng thái không có kết quả.
 
 Thay đổi `CORE-011` tại commit `74f6c53e` xử lý đủ ba điểm: thêm remote search cho màn sửa đơn, tìm theo số điện thoại ở SQL và giữ modal với empty-state an toàn.

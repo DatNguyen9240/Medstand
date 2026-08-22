@@ -130,7 +130,7 @@ Bốn task này có chung một hình dạng: **kỹ thuật đã xong, bằng c
 - **Business objective:** Mở panel lập đơn phải nhanh, không phụ thuộc số khách của tài khoản.
 - **Current implementation:** `loadCustomers()` gọi `API_KhachHangList_AI` với `SearchText: ''` ⇒ SQL trả **toàn bộ** khách trong scope. Với tài khoản 11.571 khách, đây là một truy vấn nặng chạy ngay khi mở panel, rồi lọc phía client bằng `fold()`.
 - **Confirmed gaps:** Không có ngưỡng ký tự tối thiểu, không debounce, không giới hạn số dòng, không TTL.
-- **Evidence:** `chatbot-api-engine.js`:3313–3324; `sql/Module common - API_KhachHangList_AI.sql` (không có `TOP`/`OFFSET-FETCH`).
+- **Evidence:** `chatbot-api-engine.js`:3313–3324; `sql/Module_Common_API_KhachHangList_AI.sql` (không có `TOP`/`OFFSET-FETCH`).
 - **Đối chiếu:** Ngay trong **cùng file**, hàm `attachProductCombo` (dòng 3425) đã làm đúng: min 2 ký tự, debounce 300ms, `requestSeq` chống race, `slice(0,20)`. Fix chỉ là áp cùng khuôn mẫu cho khách hàng.
 - **Risks:** Trung bình — thay đổi hành vi UI quen thuộc.
 - **Configuration changes:** CONFIG-01, CONFIG-02 (xem Config Register).

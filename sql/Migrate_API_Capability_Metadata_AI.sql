@@ -4,7 +4,7 @@
 
    [2026-07-31] Danh sách trắng dưới đây VIẾT TAY, nên mọi API chỉ-đọc mới sinh
    ra đều im lặng kẹt ở DENY cho tới khi có người thêm tên nó vào. Đã có
-   sql/System - API_Capability_AutoGrant_AI.sql để tự tìm và cấp cho những API
+   sql/System_API_Capability_AutoGrant_AI.sql để tự tìm và cấp cho những API
    như vậy: nó chứng minh procedure không ghi bảng nào bằng
    sys.dm_sql_referenced_entities, không có SQL động, và có tham số phân quyền
    do server điền. Chạy nó SAU script này mỗi lần bootstrap sinh procedure mới.

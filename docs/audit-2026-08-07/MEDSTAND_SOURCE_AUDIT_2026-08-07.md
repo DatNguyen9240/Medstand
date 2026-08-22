@@ -107,7 +107,7 @@ Lines:             3247 (khai báo _orderCustomers), 3313–3324 (loadCustomers)
 Call path:         _openOrderCreatePanel → attachCombo(custInput,…, loadCustomers)
                    → Http.get(FILTER.CUSTOMERS, {SearchText:''}) → /api/gateway
                    → API_KhachHangList_AI
-SQL đối chiếu:     sql/Module common - API_KhachHangList_AI.sql — mệnh đề
+SQL đối chiếu:     sql/Module_Common_API_KhachHangList_AI.sql — mệnh đề
                    "ISNULL(@SearchText,'')='' OR ... LIKE '%'+@SearchText+'%'"
                    ⇒ rỗng nghĩa là trả hết; không có TOP/OFFSET-FETCH.
 Affected tasks:    CORE-004, CORE-005, UAT-018, UAT-020
@@ -178,7 +178,7 @@ Frontend ĐÃ ĐÚNG:  attachProductCombo (dòng 3425–3482) — min 2 ký tự
                    chỉ gọi API_HangHoaList_AI cho ĐÚNG MỘT ItemID, có cache theo
                    username|objectId|itemId. Không có N+1, không tải toàn catalog.
                    ⇒ Đây chính là phương án mục tiêu mà prompt mô tả. Không cần sửa.
-Nghi vấn còn lại:  sql/Module common - API_HangHoaList_AI.sql chạy trên CF_ItemTbl với
+Nghi vấn còn lại:  sql/Module_Common_API_HangHoaList_AI.sql chạy trên CF_ItemTbl với
                    HAI OUTER APPLY cho MỖI dòng sản phẩm:
                      · AR_LayGiaSanPhamFnc(@ToDate, @ObjectID, I.ItemID)
                      · AI_StockAvailableByUserFnc(@Username, I.ItemID, @StockAsOfUtc)
