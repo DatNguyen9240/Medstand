@@ -30,16 +30,11 @@
 
 ## 2. Workflow Sale tạo đơn → Kế toán duyệt
 
-> `ORDER-APPROVAL-005/006` đã hoàn tất code, merge và evidence E2E; chi tiết đã chuyển sang hồ sơ
+> `ORDER-APPROVAL-005/006` đã hoàn tất code, merge và QA chức năng; chi tiết đã chuyển sang hồ sơ
 > nghiệm thu. Quyết định hiện hành: Sale được lưu/sửa nháp của chính mình; gửi duyệt là thao tác riêng;
 > sau khi gửi Sale bị khóa sửa; chỉ người có vai trò phù hợp cùng chi nhánh được sửa đơn chờ duyệt;
 > chỉ đơn nháp mới được chủ đơn hủy. Kế toán không dùng app, chỉ làm bên PMKT.
-
-- [ ] **ORDER-APPROVAL-005/006 — Vệ sinh evidence sau QA chức năng** · `P0` · `QA_FUNCTIONAL_PASS_PENDING_REDACTED_EVIDENCE`
-  - **Đã có:** code đã merge vào `hoangdang` tại `fb85981`; QA độc lập đã xác nhận 13/13 ca UI PASS trên Chrome thật qua gateway/`medtest`. Đối soát lại ngày 22/08/2026 xác nhận `DMB0826/11` ở `StatusID=0`, `DMB0826/12` ở `StatusID=10`, các request submit/manager-update/cancel có đúng một audit mutation. Verifier hiện hành PASS: gateway guard `16/16`, chuẩn hóa quyền `20/20`, edit guard `11/11`; owner-transition PASS và rollback an toàn (một ca trạng thái giao hàng SKIP do không có fixture phù hợp).
-  - **Không còn việc code đã biết:** contract lưu/sửa nháp, gửi duyệt/hủy riêng, phân quyền và idempotency đã đạt. QA chức năng đã ký `PASS`.
-  - **Cần làm:** thu lại hoặc thay thế bộ ảnh/JSON công khai bằng evidence đã che tên, mã, số điện thoại và địa chỉ khách; loại bản chưa che khỏi tập tin dự kiến push/phát hành. Bộ hiện tại còn `customerId/customerName` trong JSON và ảnh form có dữ liệu khách đọc được, chưa đạt quy tắc evidence tại hồ sơ nghiệm thu.
-  - **Điều kiện đóng:** bộ evidence chuẩn vẫn giữ đủ request ID, mã đơn, trạng thái trước/sau và kết quả 13 ca nhưng không lộ dữ liệu khách/token; sau đó chuyển cả hai task sang `DONE` mà không cần sửa thêm code.
+> Ngày 22/08/2026, chủ dự án quyết định không lưu bộ ảnh/JSON E2E thô trong repo. Đã xóa 19 artifact cũ có dữ liệu nhận diện khách; QA 13/13 PASS vẫn được lưu dưới dạng kết luận tổng hợp không chứa PII. Hai task đã chuyển `DONE`, không còn nằm trong backlog cần làm.
 
 ## 3. Test bằng dữ liệu mới
 
@@ -88,9 +83,8 @@
 
 1. `PROMO-CFG-002` sửa lớp ERP chuyển tiếp đủ `Reason`, chạy REJECT/WITHDRAW qua UI, đối soát audit actor và xử lý 18 fixture `REJECTED`; identity + ordered payload qua HTTP đã PASS.
 2. `PRODUCT-DIAG-001` hoàn tất Chatbot E2E và live identity evidence.
-3. Vệ sinh/thu lại evidence đã che dữ liệu cho `ORDER-APPROVAL-005/006`; phần QA chức năng đã PASS.
-4. Business chốt phần còn lại của `PROMO-CFG-001`, sau đó chạy `PROMO-CFG-003`.
-5. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
+3. Business chốt phần còn lại của `PROMO-CFG-001`, sau đó chạy `PROMO-CFG-003`.
+4. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
    Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
-6. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-7. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
+5. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
+6. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.

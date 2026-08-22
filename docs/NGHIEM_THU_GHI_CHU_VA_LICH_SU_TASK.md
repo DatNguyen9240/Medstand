@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 22/08/2026 (đối chiếu lại tại `hoangdang@8a1bff7` sau khi làm sạch evidence trước lúc push)
+**Cập nhật:** 22/08/2026 (đối chiếu trên nhánh `hoangdang` sau khi làm sạch evidence)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -28,8 +28,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
 | `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
 | `ORDER-APPROVAL-004` | `SUPERSEDED_BY_ORDER_APPROVAL_005_006` | Phạm vi cũ đã được quyết định mới và 005/006 thay thế; UAT Sale/Kế toán trong app không còn phù hợp |
-| `ORDER-APPROVAL-005` | `QA_FUNCTIONAL_PASS_PENDING_REDACTED_EVIDENCE` | QA độc lập xác nhận 13/13 ca chức năng PASS; còn thay bộ evidence chưa che dữ liệu khách trước khi `DONE` |
-| `ORDER-APPROVAL-006` | `QA_FUNCTIONAL_PASS_PENDING_REDACTED_EVIDENCE` | Gửi duyệt/hủy riêng và chống double-click đã PASS; còn vệ sinh evidence, không còn lỗi code đã biết |
+| `ORDER-APPROVAL-005` | `DONE` | QA độc lập xác nhận 13/13 ca chức năng PASS; artifact thô có PII đã xóa theo quyết định chủ dự án |
+| `ORDER-APPROVAL-006` | `DONE` | Gửi duyệt/hủy riêng và chống double-click PASS; không lưu ảnh/JSON thô trong repo |
 | `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
 | `PRODUCT-DIAG-001` | `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY` | Code 17/17; UI hợp lệ 2/3, thiếu Chatbot thao tác như người dùng thật và live gateway identity |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
@@ -120,12 +120,12 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 
 ### ORDER-APPROVAL-005/006
 
-- **Trạng thái thực tế:** code/evidence từ `order-ui-evidence-work` đã merge vào `hoangdang` tại commit merge `fb85981`; không còn trạng thái “worktree chưa merge”.
+- **Trạng thái thực tế:** code từ `order-ui-evidence-work` đã merge vào `hoangdang` tại commit merge `fb85981`; không còn trạng thái “worktree chưa merge”. Artifact E2E thô đã được loại khỏi cây file hiện hành.
 - **Kết quả QA độc lập ngày 22/08/2026:** `13/13 PASS` trên Chrome thật qua local gateway và `medtest` với ba tài khoản Owner/Manager/Sale khác. Đã chứng minh tạo–sửa nháp, sửa không tự gửi, gửi duyệt riêng, khóa Sale sau gửi, quản lý cùng chi nhánh sửa được, Sale khác bị chặn, chỉ hủy nháp và double-click không tạo hai mutation.
-- **Đối soát DB/audit độc lập:** đơn UAT `DMB0826/11` kết thúc ở `StatusID=0`, `DMB0826/12` ở `StatusID=10`, mỗi đơn có đúng một dòng chi tiết. Audit khớp CREATE/EDIT/SUBMIT/MANAGER-EDIT/CREATE/CANCEL; request submit `req-ui-20260822023313-SALE_OWNER-51` và cancel `req-ui-20260822024907-SALE_OWNER-63` mỗi thao tác chỉ có một mutation.
-- **Verify chạy lại:** `verify_order_status_guard.js` **16/16 PASS**; `verify_order_edit_permission_normalization.js` **20/20 PASS**; `verify_order_edit_guard_ai.js` **11/11 PASS**, rollback; `verify_donhang_ownertransition_ai.js` PASS và rollback, một ca `CANCEL_BLOCKED_FROM_DELIVERED_STATUS` SKIP vì môi trường không có fixture `StatusID=7`. Lượt đầu của edit-guard gặp lỗi trạng thái connection pool tạm thời; chạy riêng lại ngay sau đó PASS đầy đủ và không có mutation tồn dư.
-- **Giới hạn evidence:** QA chức năng đã ký `PASS`, nhưng chưa chuyển `DONE` vì bộ evidence hiện tại còn `customerId/customerName` trong JSON và ảnh UI đọc được số điện thoại/địa chỉ khách. Điều này vi phạm quy tắc mục 1 yêu cầu che dữ liệu nhạy cảm.
-- **Còn lại:** thu lại hoặc thay thế ảnh/JSON bằng bản đã che dữ liệu khách, đồng thời loại bản chưa che khỏi tập tin dự kiến push/phát hành. Không còn lỗi code đã biết trong phạm vi 005/006; trạng thái đúng là `QA_FUNCTIONAL_PASS_PENDING_REDACTED_EVIDENCE`.
+- **Đối soát DB/audit độc lập:** hai đơn UAT kết thúc đúng trạng thái gửi duyệt và hủy; mỗi đơn có đúng một dòng chi tiết. Audit khớp toàn bộ chuỗi CREATE/EDIT/SUBMIT/MANAGER-EDIT/CREATE/CANCEL và mỗi thao tác chuyển trạng thái chỉ có một mutation.
+- **Verify chạy lại:** `verify_order_status_guard.js` **22/22 PASS**; `verify_order_edit_permission_normalization.js` **20/20 PASS**; `verify_order_edit_guard_ai.js` **11/11 PASS**, rollback; `verify_donhang_ownertransition_ai.js` PASS và rollback, một ca `CANCEL_BLOCKED_FROM_DELIVERED_STATUS` SKIP vì môi trường không có fixture `StatusID=7`. Lượt đầu của edit-guard gặp lỗi trạng thái connection pool tạm thời; chạy riêng lại ngay sau đó PASS đầy đủ và không có mutation tồn dư.
+- **Quyết định evidence ngày 22/08/2026:** chủ dự án không yêu cầu thu lại bộ ảnh/JSON công khai. Toàn bộ 19 artifact thô có dữ liệu nhận diện khách đã bị xóa khỏi cây file hiện hành; hồ sơ chỉ giữ kết luận QA tổng hợp không chứa tài khoản, mã đơn, request ID hoặc dữ liệu khách.
+- **Kết luận:** không còn lỗi code đã biết; QA chức năng 13/13 PASS và yêu cầu vệ sinh evidence đã hoàn tất bằng cách loại artifact thô. `ORDER-APPROVAL-005/006` chuyển `DONE`.
 
 ### CUSTOMER-UAT-001
 
