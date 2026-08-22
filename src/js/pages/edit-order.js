@@ -69,7 +69,11 @@
             ? Number(editCtx.StatusID) : null;
           // Không đọc được ngữ cảnh => coi như KHÔNG được sửa (fail-closed), không mở form ra
           // rồi để người dùng gõ xong mới báo lỗi.
-          var canEdit = Boolean(editCtx && (editCtx.CanEdit === true || editCtx.CanEdit === 1));
+          var canEdit = Boolean(
+            editCtx
+            && window.MedstandOrderPermission
+            && window.MedstandOrderPermission.isGranted(editCtx.CanEdit)
+          );
           var blockMsg = (editCtx && editCtx.BlockMsg)
             || 'Không kiểm tra được quyền sửa đơn. Vui lòng tải lại trang.';
 
