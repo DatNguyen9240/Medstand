@@ -1,6 +1,8 @@
 (function (root) {
   'use strict';
 
+  var CONTRACT_VERSION = 'PROMOTION_BENEFIT_V2';
+
   function normalizeNote(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
   }
@@ -106,11 +108,27 @@
     var price = Number(unitPrice);
     if (!Array.isArray(rules) || !rules.length || !Number.isInteger(qty) || qty <= 0) return null;
 
+    // Server cũ chưa trả version vẫn được đọc để tránh làm gãy UAT theo thứ tự deploy.
+    // Version có mặt nhưng khác contract hiện hành thì không tự đoán công thức.
+    var hasUnknownVersion = rules.some(function (r) {
+      var version = String(r.PromotionBenefitContractVersion || '');
+      return version && version !== CONTRACT_VERSION;
+    });
+    if (hasUnknownVersion) return null;
+
     var lineAmount = Number.isFinite(price) ? qty * price : 0;
     var candidates = rules.filter(function (r) {
-      if (r.RuleType === 'QUANTITY_DISCOUNT' || r.RuleType === 'QUANTITY_GIFT') {
+      if (r.RuleType === 'QUANTITY_DISCOUNT') {
         return r.MinimumQuantity != null && qty >= Number(r.MinimumQuantity)
           && (r.MaximumQuantity == null || qty <= Number(r.MaximumQuantity));
+      }
+      if (r.RuleType === 'QUANTITY_GIFT') {
+        var purchaseBase = Number(r.MinimumQuantity);
+        var giftBase = Number(r.GiftQuantity);
+        var maximumQuantity = r.MaximumQuantity == null ? null : Number(r.MaximumQuantity);
+        var eligibleQty = Number.isFinite(maximumQuantity) ? Math.min(qty, maximumQuantity) : qty;
+        return purchaseBase > 0 && giftBase > 0
+          && Math.floor(eligibleQty * giftBase / purchaseBase) >= 1;
       }
       if (r.RuleType === 'AMOUNT_DISCOUNT' || r.RuleType === 'AMOUNT_GIFT') {
         return r.MinimumOrderAmount != null && lineAmount >= Number(r.MinimumOrderAmount)
@@ -137,9 +155,20 @@
     });
 
     var best = candidates[0];
-    var result = { discountPercent: 0, giftQuantity: 0, giftItemID: '', giftItemName: '', matchedRule: best };
+    var result = {
+      contractVersion: CONTRACT_VERSION,
+      discountPercent: 0,
+      giftQuantity: 0,
+      giftItemID: '',
+      giftItemName: '',
+      matchedRule: best
+    };
     if (best.RuleType === 'QUANTITY_GIFT') {
-      result.giftQuantity = Math.floor(qty / Number(best.MinimumQuantity)) * Number(best.GiftQuantity || 0);
+      var maxQty = best.MaximumQuantity == null ? null : Number(best.MaximumQuantity);
+      var eligibleQuantity = Number.isFinite(maxQty) ? Math.min(qty, maxQty) : qty;
+      result.giftQuantity = Math.floor(
+        eligibleQuantity * Number(best.GiftQuantity || 0) / Number(best.MinimumQuantity)
+      );
       result.giftItemID = best.GiftItemID || '';
       result.giftItemName = best.GiftItemName || '';
     } else if (best.RuleType === 'AMOUNT_GIFT') {
@@ -153,6 +182,7 @@
   }
 
   var api = {
+    CONTRACT_VERSION: CONTRACT_VERSION,
     parse: parse,
     calculate: calculate,
     generalPromotionText: generalPromotionText,

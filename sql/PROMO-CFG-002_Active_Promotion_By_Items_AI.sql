@@ -33,7 +33,7 @@ BEGIN
     END
     IF OBJECT_ID(N'dbo.AI_ActivePromotionByUserFnc', N'IF') IS NULL RETURN;
 
-    SELECT F.*
+    SELECT CAST('PROMOTION_BENEFIT_V2' AS VARCHAR(40)) AS PromotionBenefitContractVersion, F.*
     FROM OPENJSON(@JsonItemIDs) WITH (ItemID VARCHAR(50) '$') J
     CROSS APPLY dbo.AI_ActivePromotionByUserFnc(@Username, J.ItemID, SYSUTCDATETIME()) F
     ORDER BY F.ItemID, F.Priority ASC, F.PromotionItemRuleID ASC;

@@ -21,7 +21,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUST-SEARCH-001` | `DONE` | Đã tái hiện trước/sau, xác định nguyên nhân gốc và nghiệm thu E2E bằng Chrome thật |
 | `CORE-011` | `DONE` | Đã nghiệm thu chọn khách ở màn lập/sửa đơn |
 | `CUST-SEARCH-003` | `PARTIAL_PASS` | Có sequence guard; thiếu race E2E và các ca lỗi/scope |
-| `PROMO-CFG-001` | `PENDING_BUSINESS_SIGN_OFF` | Contract kỹ thuật có, semantics business chưa ký |
+| `PROMO-CFG-001` | `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E` | Đã chốt và code `QUANTITY_GIFT` tỷ lệ + clamp max; các semantics tài chính còn mở |
 | `PROMO-CFG-002` | `PARTIAL_VERIFIED` | Code/DB guard có; thiếu quyền âm, audit và API/UI E2E |
 | `PROMO-CFG-003` | `BLOCKED` | Chờ contract và E2E tạo đơn thật |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
@@ -72,10 +72,10 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 
 ### PROMO-CFG-001/002/003
 
-- Runtime đã có `MaximumQuantity`, `MaximumOrderAmount`, `Priority`, tie-break `PromotionItemRuleID ASC` và guard quà khác SKU.
-- `verify_promo_cfg001_fixes.js` đã rollback và PASS các ca cận trên, deterministic tie-break và chặn quà khác SKU.
+- Business chốt ngày 22/08/2026 cho `QUANTITY_GIFT`: gói `10+2` mua `5` tặng `1`; vượt `MaximumQuantity` thì clamp quyền lợi tại max (`80→8`, mua `100` vẫn tặng `8`), không loại rule/fallback note-text.
+- Frontend, API đọc rule và SQL tạo đơn đã dùng contract `PROMOTION_BENEFIT_V2`; `verify_promo_cfg001_fixes.js` rollback PASS 6 nhóm: ma trận tỷ lệ, clamp max, giữ nguyên discount, deterministic tie-break và chặn quà khác SKU.
 - Chưa được coi là E2E tạo đơn: script hiện kiểm helper/CTE, chưa có mutation API/UI thật với request ID.
-- Điểm business còn mở: khi rule config tồn tại nhưng vượt `max`, có được fallback sang CTBH note-text ERP hay phải không hưởng CTBH nào.
+- Điểm business còn mở: VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quà tính ra bằng `0`.
 
 ### ORDER-APPROVAL-002/003/004
 

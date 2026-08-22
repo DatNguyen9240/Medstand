@@ -18,9 +18,10 @@
 
 ## 2. Cấu hình giá trị tối thiểu CTBH
 
-- [ ] **PROMO-CFG-001 — Chốt contract giá trị tối thiểu CTBH** · `P1` · `PENDING_BUSINESS_SIGN_OFF`
-  - **Cần làm:** business chốt cách tính `min/max`, VAT, chiết khấu, hàng tặng, trả hàng, làm tròn, ưu tiên, múi giờ và hành vi fallback sang ghi chú ERP.
-  - **Điều kiện đóng:** có sign-off và bảng ví dụ dưới/bằng/trên ngưỡng; frontend, API và SQL dùng cùng một contract có version.
+- [ ] **PROMO-CFG-001 — Chốt contract giá trị tối thiểu CTBH** · `P1` · `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E`
+  - **Đã chốt 22/08/2026:** `QUANTITY_GIFT` tính theo tỷ lệ (gói `10+2`, mua `5` tặng `1`); vượt `MaximumQuantity` thì clamp lượng tính quyền lợi tại max (`80→8`, mua `100` vẫn tặng `8`), không loại rule/fallback note-text. Frontend + SQL dùng `PROMOTION_BENEFIT_V2`; verifier rollback PASS 6 nhóm kiểm tra.
+  - **Cần làm:** business còn phải chốt VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quyền lợi tính ra bằng `0`; sau đó chạy E2E tạo đơn thật có request ID.
+  - **Điều kiện đóng:** có sign-off phần còn lại và bảng ví dụ đầy đủ; preview frontend, API/SQL và dòng đơn thực tế cho cùng kết quả.
 
 - [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P1` · `PENDING_SIGN_OFF_AND_E2E`
   - **Cần làm:** bổ sung test quyền âm, audit trước/sau, config tương lai/hết hạn/sai scope và mutation thật qua API/UI có request ID.

@@ -57,8 +57,11 @@ RETURN
             WHEN P.RuleType = 'QUANTITY_DISCOUNT' THEN
                 CONCAT(N'Mua từ ', CONVERT(NVARCHAR(30), P.MinimumQuantity), N': giảm ', CONVERT(NVARCHAR(30), P.DiscountPercent), N'%')
             WHEN P.RuleType = 'QUANTITY_GIFT' THEN
-                CONCAT(N'Mua từ ', CONVERT(NVARCHAR(30), P.MinimumQuantity), N': tặng ', CONVERT(NVARCHAR(30), P.GiftQuantity),
-                       CASE WHEN P.GiftItemName IS NOT NULL THEN N' ' + P.GiftItemName ELSE N'' END)
+                CONCAT(N'Tỷ lệ mua ', CONVERT(NVARCHAR(30), P.MinimumQuantity), N' tặng ', CONVERT(NVARCHAR(30), P.GiftQuantity),
+                       CASE WHEN P.GiftItemName IS NOT NULL THEN N' ' + P.GiftItemName ELSE N'' END,
+                       CASE WHEN P.MaximumQuantity IS NOT NULL
+                            THEN N'; tính quyền lợi tối đa trên ' + CONVERT(NVARCHAR(30), P.MaximumQuantity) + N' sản phẩm'
+                            ELSE N'' END)
             WHEN P.RuleType = 'AMOUNT_DISCOUNT' THEN
                 CONCAT(N'Đơn từ ', CONVERT(NVARCHAR(30), P.MinimumOrderAmount), N'đ: giảm ', CONVERT(NVARCHAR(30), P.DiscountPercent), N'%')
             WHEN P.RuleType = 'AMOUNT_GIFT' THEN

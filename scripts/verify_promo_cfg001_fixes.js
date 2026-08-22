@@ -1,14 +1,17 @@
 'use strict';
 
-/* Kiểm chứng có assertion thật (throw khi sai, exit code != 0) cho 3 lỗi P0/P1 mà QA phát
-   hiện ở vòng review trước:
-     1. Giới hạn tối đa (MaximumQuantity/MaximumOrderAmount) phải được tôn trọng.
-     2. Hai rule trùng Priority + mốc phải chọn ổn định cùng 1 rule mỗi lần (tie-break bằng
-        PromotionItemRuleID), qua nhiều lần chạy liên tiếp.
-     3. Quà tặng khác SKU (GiftItemID khác ItemID) phải bị Upsert từ chối ngay khi lưu.
+/* Kiểm chứng có assertion thật (throw khi sai, exit code != 0) cho PROMOTION_BENEFIT_V2:
+     1. QUANTITY_GIFT tính tỷ lệ (10+2 thì mua 5 tặng 1) giống nhau ở frontend và SQL.
+     2. Vượt MaximumQuantity phải clamp quyền lợi, không loại rule cấu hình.
+     3. Semantics max của QUANTITY_DISCOUNT chưa được business chốt nên phải giữ nguyên.
+     4. Hai rule trùng Priority + mốc phải tie-break ổn định bằng PromotionItemRuleID.
+     5. Quà tặng khác SKU tiếp tục bị Upsert từ chối ngay khi lưu.
    Tất cả chạy trong 1 transaction luôn rollback ở cuối — không để lại dữ liệu test. */
 const fs = require('fs');
 const sql = require('mssql');
+const promotion = require('../src/js/utils/promotion.js');
+
+const CONTRACT_VERSION = 'PROMOTION_BENEFIT_V2';
 
 function readEnv() {
   const values = {};
@@ -67,7 +70,7 @@ async function runOrderConfigCandidate(tx, { manager, item, quantity, unitPrice 
     DECLARE @StockAsOfUtc DATETIME2(0) = SYSUTCDATETIME();
     ;WITH ConfigCandidate AS (
         SELECT
-            T.ItemID, F.RuleType, F.MinimumQuantity, F.MinimumOrderAmount,
+            T.ItemID, F.RuleType, F.MinimumQuantity, F.MaximumQuantity, F.MinimumOrderAmount,
             F.DiscountPercent, F.GiftQuantity, F.Priority, F.PromotionItemRuleID,
             ROW_NUMBER() OVER (
                 PARTITION BY T.ItemID
@@ -76,9 +79,19 @@ async function runOrderConfigCandidate(tx, { manager, item, quantity, unitPrice 
         FROM #Items T
         CROSS APPLY dbo.AI_ActivePromotionByUserFnc(@Username, T.ItemID, @StockAsOfUtc) F
         WHERE (
-                F.RuleType IN ('QUANTITY_DISCOUNT','QUANTITY_GIFT') AND F.MinimumQuantity IS NOT NULL
+                F.RuleType = 'QUANTITY_DISCOUNT' AND F.MinimumQuantity IS NOT NULL
                 AND T.Quantity >= F.MinimumQuantity
                 AND (F.MaximumQuantity IS NULL OR T.Quantity <= F.MaximumQuantity)
+              )
+           OR (
+                F.RuleType = 'QUANTITY_GIFT'
+                AND F.MinimumQuantity > 0
+                AND COALESCE(F.GiftQuantity, 0) > 0
+                AND FLOOR(
+                    (CASE WHEN F.MaximumQuantity IS NOT NULL AND T.Quantity > F.MaximumQuantity
+                          THEN F.MaximumQuantity ELSE T.Quantity END)
+                    * COALESCE(F.GiftQuantity, 0) / NULLIF(F.MinimumQuantity, 0)
+                ) >= 1
               )
            OR (
                 F.RuleType IN ('AMOUNT_DISCOUNT','AMOUNT_GIFT') AND F.MinimumOrderAmount IS NOT NULL
@@ -88,7 +101,11 @@ async function runOrderConfigCandidate(tx, { manager, item, quantity, unitPrice 
     )
     UPDATE T
     SET T.ExpectedGiftQuantity = CASE
-            WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(T.Quantity / C.MinimumQuantity) * COALESCE(C.GiftQuantity, 0)
+            WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(
+                (CASE WHEN C.MaximumQuantity IS NOT NULL AND T.Quantity > C.MaximumQuantity
+                      THEN C.MaximumQuantity ELSE T.Quantity END)
+                * COALESCE(C.GiftQuantity, 0) / NULLIF(C.MinimumQuantity, 0)
+            )
             WHEN C.RuleType = 'AMOUNT_GIFT' THEN COALESCE(C.GiftQuantity, 0)
             ELSE 0 END,
         T.ExpectedDiscountPercent = CASE
@@ -128,8 +145,74 @@ async function main() {
     const items = (await new sql.Request(tx).query(`SELECT TOP (2) ItemID FROM dbo.CF_ItemTbl WHERE COALESCE(isDisable,0)=0 ORDER BY ItemID;`)).recordset;
     const [itemA, itemB] = items.map((r) => r.ItemID);
 
-    // ── Test 1: Maximum bound phải được tôn trọng ─────────────────────────
-    const code1 = 'VERIFY_MAX_' + Date.now();
+    // ── Test 1: frontend helper tính tỷ lệ 10+2 và clamp max ──────────────
+    assert(promotion.CONTRACT_VERSION === CONTRACT_VERSION,
+      'Frontend helper phải công bố đúng contract ' + CONTRACT_VERSION);
+    const helperRule = [{
+      PromotionBenefitContractVersion: CONTRACT_VERSION,
+      PromotionItemRuleID: 1,
+      Priority: 100,
+      RuleType: 'QUANTITY_GIFT',
+      MinimumQuantity: 10,
+      GiftQuantity: 2,
+      GiftItemID: itemA,
+    }];
+    const proportionalCases = [[4, 0], [5, 1], [9, 1], [10, 2], [15, 3], [20, 4]];
+    for (const [quantity, expectedGift] of proportionalCases) {
+      const result = promotion.calculateFromConfigRules(helperRule, quantity, 1000);
+      const actualGift = result ? result.giftQuantity : 0;
+      assert(actualGift === expectedGift,
+        `Frontend 10+2 với SL=${quantity} phải tặng ${expectedGift}, thực tế ${actualGift}`);
+    }
+    const helperCappedRule = [{ ...helperRule[0], GiftQuantity: 1, MaximumQuantity: 80 }];
+    assert(promotion.calculateFromConfigRules(helperCappedRule, 80, 1000).giftQuantity === 8,
+      'Frontend tại max 80 phải tặng 8');
+    assert(promotion.calculateFromConfigRules(helperCappedRule, 100, 1000).giftQuantity === 8,
+      'Frontend vượt max 100 phải clamp tại 80 và vẫn chỉ tặng 8');
+    const unknownVersionRule = [{ ...helperRule[0], PromotionBenefitContractVersion: 'PROMOTION_BENEFIT_V999' }];
+    assert(promotion.calculateFromConfigRules(unknownVersionRule, 10, 1000) === null,
+      'Frontend phải từ chối contract version lạ');
+    results.push(['FRONTEND_RATIO_AND_MAX_CLAMP', true, '4/5/9/10/15/20 + 80/100']);
+
+    // ── Test 2: SQL candidate tính tỷ lệ 10+2 ─────────────────────────────
+    const codeRatio = 'VERIFY_RATIO_' + Date.now();
+    const upRatio = await upsertProgram(tx, {
+      manager, promotionCode: codeRatio,
+      rules: [{ RuleOrder: 1, ItemID: itemA, RuleType: 'QUANTITY_GIFT', MinimumQuantity: 10, GiftQuantity: 2, GiftItemID: itemA }],
+    });
+    await approveProgram(tx, { manager, promotionProgramID: upRatio.recordset[0].PromotionProgramID });
+    for (const [quantity, expectedGift] of proportionalCases) {
+      const result = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity, unitPrice: 1000 });
+      assert(Number(result.ExpectedGiftQuantity) === expectedGift,
+        `SQL 10+2 với SL=${quantity} phải tặng ${expectedGift}, thực tế: ${JSON.stringify(result)}`);
+      assert(result.HasConfigRule === (expectedGift > 0),
+        `SQL chỉ đánh dấu config rule khi quà nguyên >= 1, SL=${quantity}: ${JSON.stringify(result)}`);
+    }
+    await new sql.Request(tx)
+      .input('id', sql.BigInt, upRatio.recordset[0].PromotionProgramID)
+      .query("UPDATE dbo.AI_PromotionProgramTbl SET Status='WITHDRAWN' WHERE PromotionProgramID=@id;");
+    results.push(['SQL_PROPORTIONAL_GIFT_10_PLUS_2', true]);
+
+    // ── Test 3: vượt MaximumQuantity phải clamp, không loại rule ──────────
+    const codeCap = 'VERIFY_CAP_' + Date.now();
+    const upCap = await upsertProgram(tx, {
+      manager, promotionCode: codeCap,
+      rules: [{ RuleOrder: 1, ItemID: itemA, RuleType: 'QUANTITY_GIFT', MinimumQuantity: 10, MaximumQuantity: 80, GiftQuantity: 1, GiftItemID: itemA }],
+    });
+    await approveProgram(tx, { manager, promotionProgramID: upCap.recordset[0].PromotionProgramID });
+    const atMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 80, unitPrice: 1000 });
+    const overMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 100, unitPrice: 1000 });
+    assert(atMax.HasConfigRule === true && Number(atMax.ExpectedGiftQuantity) === 8,
+      'SQL tại MaximumQuantity=80 phải áp rule và tặng 8: ' + JSON.stringify(atMax));
+    assert(overMax.HasConfigRule === true && Number(overMax.ExpectedGiftQuantity) === 8,
+      'SQL SL=100 phải giữ config rule, clamp tại 80 và tặng 8: ' + JSON.stringify(overMax));
+    await new sql.Request(tx)
+      .input('id', sql.BigInt, upCap.recordset[0].PromotionProgramID)
+      .query("UPDATE dbo.AI_PromotionProgramTbl SET Status='WITHDRAWN' WHERE PromotionProgramID=@id;");
+    results.push(['SQL_MAXIMUM_QUANTITY_CLAMPED', true, '80=>8; 100=>8']);
+
+    // ── Test 4: semantics max của QUANTITY_DISCOUNT giữ nguyên ────────────
+    const code1 = 'VERIFY_DISCOUNT_MAX_' + Date.now();
     const up1 = await upsertProgram(tx, {
       manager, promotionCode: code1,
       rules: [{ RuleOrder: 1, ItemID: itemA, RuleType: 'QUANTITY_DISCOUNT', MinimumQuantity: 5, MaximumQuantity: 10, DiscountPercent: 7 }],
@@ -140,12 +223,12 @@ async function main() {
     assert(withinBound.HasConfigRule === true && Math.abs(withinBound.ExpectedDiscountPercent - 7) < 0.001,
       'SL=7 (trong khoảng 5-10) phải được áp 7%, thực tế: ' + JSON.stringify(withinBound));
 
-    const overMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 12, unitPrice: 1000 });
-    assert(overMax.HasConfigRule === false,
-      'SL=12 (vượt Maximum=10) KHÔNG được áp rule này, thực tế: ' + JSON.stringify(overMax));
-    results.push(['MAX_BOUND_RESPECTED', true]);
+    const discountOverMax = await runOrderConfigCandidate(tx, { manager, item: itemA, quantity: 12, unitPrice: 1000 });
+    assert(discountOverMax.HasConfigRule === false,
+      'SL=12 (vượt Maximum=10) KHÔNG được áp rule này, thực tế: ' + JSON.stringify(discountOverMax));
+    results.push(['DISCOUNT_MAX_SEMANTICS_UNCHANGED', true]);
 
-    // ── Test 2: Tie-break ổn định khi 2 rule cùng Priority + cùng mốc ─────
+    // ── Test 5: Tie-break ổn định khi 2 rule cùng Priority + cùng mốc ─────
     const code2a = 'VERIFY_TIE_A_' + Date.now();
     const code2b = 'VERIFY_TIE_B_' + Date.now();
     const up2a = await upsertProgram(tx, {
@@ -176,7 +259,7 @@ async function main() {
       'DiscountPercent phải giống nhau qua 3 lần chạy khi cùng tie-break');
     results.push(['TIE_BREAK_DETERMINISTIC', true, 'winningRuleID=' + run1.SoLuongTang]);
 
-    // ── Test 3: Quà tặng khác SKU phải bị Upsert từ chối ──────────────────
+    // ── Test 6: Quà tặng khác SKU phải bị Upsert từ chối ──────────────────
     const code3 = 'VERIFY_CROSS_SKU_' + Date.now();
     const up3 = await new sql.Request(tx)
       .input('PromotionCode', sql.VarChar(50), code3)

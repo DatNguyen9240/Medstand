@@ -423,7 +423,8 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
-    /* PROMO-CFG-001: CTBH cấu hình qua AI_PromotionProgramTbl (đã duyệt, còn hiệu lực) được
+    /* PROMO-CFG-001 — PROMOTION_BENEFIT_V2:
+       CTBH cấu hình qua AI_PromotionProgramTbl (đã duyệt, còn hiệu lực) được
        ưu tiên tuyệt đối cho ItemID nào đã có rule — ghi đè hoàn toàn cách tính bằng ghi chú
        (note-text) bên dưới cho đúng sản phẩm đó. Sản phẩm chưa cấu hình rule mới rơi vào
        nhánh note-text cũ, không đổi hành vi. Khi nhiều rule/nhiều chương trình cùng khớp một
@@ -432,13 +433,11 @@ BEGIN
        MinimumOrderAmount là giá trị của DÒNG sản phẩm này (Quantity * UnitPrice), không phải
        tổng giá trị đơn hàng — khớp đúng lựa chọn "Giá trị theo từng sản phẩm" khi cấu hình.
 
-       QUYẾT ĐỊNH NGHIỆP VỤ (đã chốt với business): khi số lượng/giá trị VƯỢT MaximumQuantity
-       hoặc MaximumOrderAmount của rule cấu hình, ConfigCandidate không khớp item đó nữa
-       (HasConfigRule vẫn = 0) và ITEM ĐÓ rơi về cursor note-text bên dưới NHƯ KHÔNG CÓ CẤU
-       HÌNH GÌ — KHÔNG chặn hẳn mọi CTBH của item đó. Đây là lựa chọn có chủ đích, không phải
-       thiếu sót: chỉ rule cấu hình mới bị giới hạn đúng theo Maximum đã khai; khuyến mãi cũ
-       đang chạy bằng ghi chú sản phẩm không bị ảnh hưởng bởi việc ai đó cấu hình thêm rule mới
-       có giới hạn hẹp hơn. */
+       QUYẾT ĐỊNH NGHIỆP VỤ ngày 22/08/2026, chỉ áp dụng cho QUANTITY_GIFT:
+       - MinimumQuantity/GiftQuantity là tỷ lệ mua X tặng Y; quà = FLOOR(SL đủ điều kiện * Y / X).
+       - MaximumQuantity là trần lượng dùng để tính quà. Vượt max vẫn áp rule với lượng đã clamp,
+         không loại rule và không fallback về note-text.
+       QUANTITY_DISCOUNT và các rule theo giá trị giữ nguyên semantics cũ vì chưa được business chốt. */
     IF OBJECT_ID(N'dbo.AI_ActivePromotionByUserFnc', N'IF') IS NOT NULL
     BEGIN
         ;WITH ConfigCandidate AS (
@@ -446,6 +445,7 @@ BEGIN
                 T.ItemID,
                 F.RuleType,
                 F.MinimumQuantity,
+                F.MaximumQuantity,
                 F.MinimumOrderAmount,
                 F.DiscountPercent,
                 F.GiftQuantity,
@@ -460,9 +460,19 @@ BEGIN
             FROM #Items T
             CROSS APPLY dbo.AI_ActivePromotionByUserFnc(@Username, T.ItemID, @StockAsOfUtc) F
             WHERE (
-                    F.RuleType IN ('QUANTITY_DISCOUNT', 'QUANTITY_GIFT') AND F.MinimumQuantity IS NOT NULL
+                    F.RuleType = 'QUANTITY_DISCOUNT' AND F.MinimumQuantity IS NOT NULL
                     AND T.Quantity >= F.MinimumQuantity
                     AND (F.MaximumQuantity IS NULL OR T.Quantity <= F.MaximumQuantity)
+                  )
+               OR (
+                    F.RuleType = 'QUANTITY_GIFT'
+                    AND F.MinimumQuantity > 0
+                    AND COALESCE(F.GiftQuantity, 0) > 0
+                    AND FLOOR(
+                        (CASE WHEN F.MaximumQuantity IS NOT NULL AND T.Quantity > F.MaximumQuantity
+                              THEN F.MaximumQuantity ELSE T.Quantity END)
+                        * COALESCE(F.GiftQuantity, 0) / NULLIF(F.MinimumQuantity, 0)
+                    ) >= 1
                   )
                OR (
                     F.RuleType IN ('AMOUNT_DISCOUNT', 'AMOUNT_GIFT') AND F.MinimumOrderAmount IS NOT NULL
@@ -472,7 +482,11 @@ BEGIN
         )
         UPDATE T
         SET T.ExpectedGiftQuantity = CASE
-                WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(T.Quantity / C.MinimumQuantity) * COALESCE(C.GiftQuantity, 0)
+                WHEN C.RuleType = 'QUANTITY_GIFT' THEN FLOOR(
+                    (CASE WHEN C.MaximumQuantity IS NOT NULL AND T.Quantity > C.MaximumQuantity
+                          THEN C.MaximumQuantity ELSE T.Quantity END)
+                    * COALESCE(C.GiftQuantity, 0) / NULLIF(C.MinimumQuantity, 0)
+                )
                 WHEN C.RuleType = 'AMOUNT_GIFT' THEN COALESCE(C.GiftQuantity, 0)
                 ELSE 0
             END,

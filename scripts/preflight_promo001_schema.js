@@ -6,6 +6,9 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql', 'PROMO-001_Promotion_Schema_AI.sql'), 'utf8');
 const contract = fs.readFileSync(path.join(root, 'docs', 'PROMO-001_CONTRACT_SCHEMA_CTBH_AI_2026-08-10.md'), 'utf8');
+const orderProc = fs.readFileSync(path.join(root, 'sql', 'Module common - API_DonHangChiTiet_Insert_AI.sql'), 'utf8');
+const activeByItems = fs.readFileSync(path.join(root, 'sql', 'PROMO-CFG-002_Active_Promotion_By_Items_AI.sql'), 'utf8');
+const frontend = fs.readFileSync(path.join(root, 'src', 'js', 'utils', 'promotion.js'), 'utf8');
 
 const checks = [
   ['PROGRAM_TABLE', sql.includes('AI_PromotionProgramTbl')],
@@ -25,6 +28,12 @@ const checks = [
   ['NO_ERP_MUTATION', !/(INSERT\s+(?:INTO\s+)?|UPDATE|DELETE\s+FROM|MERGE\s+(?:INTO\s+)?)dbo\.AR_Promotion/i.test(sql)],
   ['NO_ERP_ALTER', !/ALTER\s+(?:TABLE|VIEW|PROCEDURE)\s+dbo\.AR_/i.test(sql)],
   ['CONTRACT_SHADOW_BOUNDARY', contract.includes('Không `ALTER`') && contract.includes('không được mặc định xem là chương trình đã duyệt')],
+  ['BENEFIT_CONTRACT_V2_SHARED', [contract, orderProc, activeByItems, frontend].every((source) => source.includes('PROMOTION_BENEFIT_V2'))],
+  ['PROPORTIONAL_GIFT_FRONTEND', frontend.includes('eligibleQuantity * Number(best.GiftQuantity || 0) / Number(best.MinimumQuantity)')],
+  ['PROPORTIONAL_GIFT_SQL', orderProc.includes('* COALESCE(C.GiftQuantity, 0) / NULLIF(C.MinimumQuantity, 0)')],
+  ['MAXIMUM_QUANTITY_CLAMP_FRONTEND', frontend.includes('Math.min(qty, maxQty)')],
+  ['MAXIMUM_QUANTITY_CLAMP_SQL', orderProc.includes('T.Quantity > C.MaximumQuantity') && orderProc.includes('THEN C.MaximumQuantity ELSE T.Quantity END')],
+  ['ACTIVE_API_EXPOSES_CONTRACT', activeByItems.includes('AS PromotionBenefitContractVersion')],
 ];
 
 const failed = checks.filter(([, pass]) => !pass);
