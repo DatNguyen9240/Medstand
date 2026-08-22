@@ -326,11 +326,24 @@
     }).finally(function () { $btn.prop('disabled', false); });
   });
 
-  function runApproveAction(action, confirmText) {
+  // PROMO-CFG-002: REJECT/WITHDRAW bắt buộc lý do — server (API_PromotionProgram_Approve_AI)
+  // đã chặn nếu Reason rỗng; UI hỏi lý do trước để tránh round-trip báo lỗi vô ích.
+  function runApproveAction(action, promptText, opts) {
+    opts = opts || {};
     if (!_selectedProgramId) return;
-    if (!window.confirm(confirmText)) return;
+
+    var reason = null;
+    if (opts.requireReason) {
+      reason = window.prompt(promptText, '');
+      if (reason === null) return; // người dùng bấm Cancel
+      reason = reason.trim();
+      if (!reason) { Alert.error('Phải nhập lý do.'); return; }
+    } else if (!window.confirm(promptText)) {
+      return;
+    }
+
     Http.post(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.APPROVE, {
-      PromotionProgramID: _selectedProgramId, Action: action, Username: user.UserName || '', Apply: 1
+      PromotionProgramID: _selectedProgramId, Action: action, Reason: reason, Username: user.UserName || '', Apply: 1
     }).then(function (res) {
       var body = res && res.data !== undefined ? res.data : res;
       var row = Array.isArray(body) ? body[0] : (body && body.records ? body.records[0] : body);
@@ -342,8 +355,8 @@
   }
 
   $(document).on('click', '#btn-approve-promo', function () { runApproveAction('APPROVE', 'Duyệt chương trình này? CTBH sẽ có hiệu lực thật ngay khi nằm trong khoảng thời gian hiệu lực.'); });
-  $(document).on('click', '#btn-reject-promo', function () { runApproveAction('REJECT', 'Từ chối bản DRAFT này?'); });
-  $(document).on('click', '#btn-withdraw-promo', function () { runApproveAction('WITHDRAW', 'Thu hồi chương trình đã duyệt này? CTBH sẽ ngừng hiệu lực ngay.'); });
+  $(document).on('click', '#btn-reject-promo', function () { runApproveAction('REJECT', 'Nhập lý do từ chối bản DRAFT này:', { requireReason: true }); });
+  $(document).on('click', '#btn-withdraw-promo', function () { runApproveAction('WITHDRAW', 'Nhập lý do thu hồi chương trình đã duyệt này:', { requireReason: true }); });
 
   $(document).on('click', '#btn-new-promo', resetForm);
   $(document).on('click', '#btn-refresh-promo-list', loadList);

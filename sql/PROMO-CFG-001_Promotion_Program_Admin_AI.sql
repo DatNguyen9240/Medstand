@@ -252,6 +252,18 @@ BEGIN
         RETURN;
     END
 
+    -- PROMO-CFG-002: audit là bắt buộc cho mutation cấu hình CTBH, không phải tuỳ chọn.
+    -- Fail-closed: nếu hạ tầng audit chưa sẵn sàng thì KHÔNG ghi gì, kể cả nghiệp vụ chính,
+    -- để tránh CTBH bị đổi mà không có dấu vết ai/khi nào/lý do gì.
+    IF OBJECT_ID(N'dbo.AI_WriteAuditLog', N'P') IS NULL
+    BEGIN
+        SELECT N'AUDIT_UNAVAILABLE: Hạ tầng ghi audit chưa sẵn sàng trên máy chủ này. Không thể lưu cấu hình CTBH khi chưa ghi được audit.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+
+    DECLARE @AuditBeforeJson NVARCHAR(MAX) = NULL;
+    DECLARE @AuditAfterJson NVARCHAR(MAX) = NULL;
+
     BEGIN TRY
         BEGIN TRANSACTION;
 
@@ -269,6 +281,24 @@ BEGIN
         END
         ELSE
         BEGIN
+            SET @AuditBeforeJson = (
+                SELECT PromotionName, ProgramType, Description, EffectiveFrom, EffectiveTo,
+                       BranchScopeMode, UserGroupScopeMode, Priority, SourceDocument, Status,
+                       (SELECT STRING_AGG(BranchID, ',') FROM dbo.AI_PromotionBranchScopeTbl WHERE PromotionProgramID = @TargetID) AS BranchIDs,
+                       (SELECT STRING_AGG(UserGroupID, ',') FROM dbo.AI_PromotionUserGroupScopeTbl WHERE PromotionProgramID = @TargetID) AS UserGroupIDs,
+                       (SELECT COUNT(*) FROM dbo.AI_PromotionItemRuleTbl WHERE PromotionProgramID = @TargetID) AS RuleCount,
+                       JSON_QUERY((
+                           SELECT RuleOrder, ItemID, RuleType, MinimumQuantity, MaximumQuantity,
+                                  MinimumOrderAmount, MaximumOrderAmount, DiscountPercent,
+                                  GiftItemID, GiftQuantity, BenefitDescription
+                           FROM dbo.AI_PromotionItemRuleTbl WHERE PromotionProgramID = @TargetID
+                           ORDER BY RuleOrder, PromotionItemRuleID
+                           FOR JSON PATH
+                       )) AS Rules
+                FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID = @TargetID
+                FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+            );
+
             UPDATE dbo.AI_PromotionProgramTbl
             SET PromotionName = @PromotionName, ProgramType = @ProgramType, Description = @Description,
                 EffectiveFrom = @EffectiveFrom, EffectiveTo = @EffectiveTo,
@@ -313,6 +343,41 @@ BEGIN
             BenefitDescription NVARCHAR(1000) '$.BenefitDescription'
         ) J;
 
+        -- PROMO-CFG-002: audit trước/sau cho mọi lần tạo version mới hoặc sửa DRAFT — bao gồm
+        -- CẢ nội dung rule (không chỉ RuleCount), vì đổi DiscountPercent/MinimumQuantity... mà
+        -- giữ nguyên số rule vẫn phải thấy được trong audit.
+        -- @AuditBeforeJson được chụp TRƯỚC UPDATE/DELETE rule ở nhánh sửa DRAFT phía trên; NULL khi tạo mới.
+        SET @AuditAfterJson = (
+            SELECT PromotionName, ProgramType, Description, EffectiveFrom, EffectiveTo,
+                   BranchScopeMode, UserGroupScopeMode, Priority, SourceDocument, Status,
+                   (SELECT STRING_AGG(BranchID, ',') FROM dbo.AI_PromotionBranchScopeTbl WHERE PromotionProgramID = @TargetID) AS BranchIDs,
+                   (SELECT STRING_AGG(UserGroupID, ',') FROM dbo.AI_PromotionUserGroupScopeTbl WHERE PromotionProgramID = @TargetID) AS UserGroupIDs,
+                   (SELECT COUNT(*) FROM dbo.AI_PromotionItemRuleTbl WHERE PromotionProgramID = @TargetID) AS RuleCount,
+                   JSON_QUERY((
+                       SELECT RuleOrder, ItemID, RuleType, MinimumQuantity, MaximumQuantity,
+                              MinimumOrderAmount, MaximumOrderAmount, DiscountPercent,
+                              GiftItemID, GiftQuantity, BenefitDescription
+                       FROM dbo.AI_PromotionItemRuleTbl WHERE PromotionProgramID = @TargetID
+                       ORDER BY RuleOrder, PromotionItemRuleID
+                       FOR JSON PATH
+                   )) AS Rules
+            FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID = @TargetID
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+        );
+        DECLARE @UpsertAuditExtraInfo NVARCHAR(MAX) = (
+            SELECT JSON_QUERY(@AuditBeforeJson) AS [Before], JSON_QUERY(@AuditAfterJson) AS [After]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+        );
+        DECLARE @UpsertAuditActionType VARCHAR(100) = CASE WHEN @IsNewVersion = 1 THEN 'PROMOTION_CREATE_VERSION' ELSE 'PROMOTION_UPDATE_DRAFT' END;
+        DECLARE @UpsertAuditTargetID VARCHAR(30) = CONVERT(VARCHAR(30), @TargetID);
+        EXEC dbo.AI_WriteAuditLog
+            @Username     = @Username,
+            @ActionType   = @UpsertAuditActionType,
+            @TargetEntity = 'API_PromotionProgram_Upsert_AI',
+            @TargetID     = @UpsertAuditTargetID,
+            @TargetName   = @PromotionName,
+            @ExtraInfo    = @UpsertAuditExtraInfo;
+
         COMMIT TRANSACTION;
         SELECT @TargetID AS PromotionProgramID, N'Đã lưu DRAFT thành công.' AS Msg, 0 AS MsgType;
     END TRY
@@ -329,6 +394,7 @@ GO
 CREATE OR ALTER PROCEDURE dbo.API_PromotionProgram_Approve_AI
     @PromotionProgramID BIGINT,
     @Action              VARCHAR(20),    -- APPROVE / REJECT / WITHDRAW
+    @Reason               NVARCHAR(500) = NULL,  -- PROMO-CFG-002: bắt buộc khi REJECT/WITHDRAW
     @Username             VARCHAR(50) = '',
     @Apply                BIT = 0
 AS
@@ -358,6 +424,11 @@ BEGIN
         SELECT N'Hành động không hợp lệ.' AS Msg, 1 AS MsgType;
         RETURN;
     END
+    IF @Action IN ('REJECT', 'WITHDRAW') AND COALESCE(LTRIM(RTRIM(@Reason)), '') = ''
+    BEGIN
+        SELECT N'Phải nhập lý do khi từ chối hoặc thu hồi CTBH.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
 
     DECLARE @CurrentStatus VARCHAR(20);
     SELECT @CurrentStatus = Status FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID = @PromotionProgramID;
@@ -383,6 +454,13 @@ BEGIN
         RETURN;
     END
 
+    -- PROMO-CFG-002: fail-closed — không đổi trạng thái CTBH nếu không ghi được audit.
+    IF OBJECT_ID(N'dbo.AI_WriteAuditLog', N'P') IS NULL
+    BEGIN
+        SELECT N'AUDIT_UNAVAILABLE: Hạ tầng ghi audit chưa sẵn sàng trên máy chủ này. Không thể duyệt/từ chối/thu hồi CTBH khi chưa ghi được audit.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+
     BEGIN TRY
         BEGIN TRANSACTION;
         UPDATE dbo.AI_PromotionProgramTbl
@@ -391,6 +469,26 @@ BEGIN
             ApprovedAt = CASE WHEN @Action = 'APPROVE' THEN SYSUTCDATETIME() ELSE ApprovedAt END,
             UpdatedAt = SYSUTCDATETIME()
         WHERE PromotionProgramID = @PromotionProgramID;
+
+        -- PROMO-CFG-002: audit trước/sau + lý do cho mọi lần duyệt/từ chối/thu hồi.
+        -- Hạ tầng audit đã được xác nhận tồn tại ở bước fail-closed phía trên trong cùng lần gọi.
+        DECLARE @ApprovalTargetName NVARCHAR(300) = (
+            SELECT PromotionName FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID = @PromotionProgramID
+        );
+        DECLARE @ApproveAuditExtraInfo NVARCHAR(MAX) = (
+            SELECT @CurrentStatus AS FromStatus, @NewStatus AS ToStatus, @Reason AS Reason
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
+        );
+        DECLARE @ApproveAuditActionType VARCHAR(100) = 'PROMOTION_' + @Action;
+        DECLARE @ApproveAuditTargetID VARCHAR(30) = CONVERT(VARCHAR(30), @PromotionProgramID);
+        EXEC dbo.AI_WriteAuditLog
+            @Username     = @Username,
+            @ActionType   = @ApproveAuditActionType,
+            @TargetEntity = 'API_PromotionProgram_Approve_AI',
+            @TargetID     = @ApproveAuditTargetID,
+            @TargetName   = @ApprovalTargetName,
+            @ExtraInfo    = @ApproveAuditExtraInfo;
+
         COMMIT TRANSACTION;
         SELECT @PromotionProgramID AS PromotionProgramID, @NewStatus AS Status, N'Đã cập nhật trạng thái.' AS Msg, 0 AS MsgType;
     END TRY
