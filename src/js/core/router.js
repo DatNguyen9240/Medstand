@@ -211,7 +211,9 @@ const Router = (() => {
     if (!$badge) return;
     if (typeof Http === 'undefined' || typeof API_CONFIG === 'undefined') return;
 
-    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.UNREAD_COUNT, {}, { cache: false })
+    // Badge is optional page chrome. A missing/not-yet-deployed notification API must
+    // never raise a global modal that blocks the active business form.
+    Http.get(API_CONFIG.ENDPOINTS.NOTIFICATION.UNREAD_COUNT, {}, { cache: false, silent: true })
       .then(res => {
         const record = res?.records?.[0] || res?.data || res || {};
         const unreadCount = Math.max(0, Number(record.UnreadCount ?? record.unreadCount ?? 0) || 0);

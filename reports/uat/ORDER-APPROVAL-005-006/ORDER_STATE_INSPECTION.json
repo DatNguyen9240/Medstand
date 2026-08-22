@@ -1,0 +1,106 @@
+{
+  "database": "medtest",
+  "requested": [
+    "DMB0826/11",
+    "DMB0826/12"
+  ],
+  "found": 2,
+  "orders": [
+    {
+      "DocumentID": "DMB0826/11",
+      "StatusID": 0,
+      "BranchID": "MB",
+      "UserCreate": "NAMDINHB.MED",
+      "Memo": "UAT order-ui-20260822012245 SUBMIT MANAGER_EDITED",
+      "DetailCount": 1
+    },
+    {
+      "DocumentID": "DMB0826/12",
+      "StatusID": 10,
+      "BranchID": "MB",
+      "UserCreate": "NAMDINHB.MED",
+      "Memo": "UAT order-ui-20260822024907 CANCEL",
+      "DetailCount": 1
+    }
+  ],
+  "editContexts": [
+    {
+      "documentId": "DMB0826/11",
+      "username": "NAMDINHB.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": 0,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_ROLE_REQUIRED",
+        "BlockMsg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.",
+        "Msg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.",
+        "MsgType": 1
+      }
+    },
+    {
+      "documentId": "DMB0826/11",
+      "username": "QLBH013.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": 0,
+        "CanEdit": true,
+        "BlockCode": "",
+        "BlockMsg": "",
+        "Msg": "Đơn có thể chỉnh sửa.",
+        "MsgType": 5
+      }
+    },
+    {
+      "documentId": "DMB0826/11",
+      "username": "BACNINHA.MED",
+      "context": {
+        "DocumentID": "DMB0826/11",
+        "StatusID": 0,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_ROLE_REQUIRED",
+        "BlockMsg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.",
+        "Msg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.",
+        "MsgType": 1
+      }
+    },
+    {
+      "documentId": "DMB0826/12",
+      "username": "NAMDINHB.MED",
+      "context": {
+        "DocumentID": "DMB0826/12",
+        "StatusID": 10,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_LOCKED",
+        "BlockMsg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "Msg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "MsgType": 1
+      }
+    },
+    {
+      "documentId": "DMB0826/12",
+      "username": "QLBH013.MED",
+      "context": {
+        "DocumentID": "DMB0826/12",
+        "StatusID": 10,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_LOCKED",
+        "BlockMsg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "Msg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "MsgType": 1
+      }
+    },
+    {
+      "documentId": "DMB0826/12",
+      "username": "BACNINHA.MED",
+      "context": {
+        "DocumentID": "DMB0826/12",
+        "StatusID": 10,
+        "CanEdit": false,
+        "BlockCode": "ORDER_EDIT_LOCKED",
+        "BlockMsg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "Msg": "Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.",
+        "MsgType": 1
+      }
+    }
+  ]
+}

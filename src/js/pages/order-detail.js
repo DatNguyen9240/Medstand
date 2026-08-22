@@ -70,10 +70,17 @@
           '<div class="info-row"><span class="info-label">Trạng thái:</span><span class="info-value" id="order-status-badge">' + statusLabel + '</span></div>'
         );
 
-        if (!ctx.CanApprove && !ctx.CanReject) {
+        var canApprove = Boolean(window.MedstandOrderPermission
+          && window.MedstandOrderPermission.isGranted(ctx.CanApprove));
+        var canReject = Boolean(window.MedstandOrderPermission
+          && window.MedstandOrderPermission.isGranted(ctx.CanReject));
+        var hasApprovalRole = Boolean(window.MedstandOrderPermission
+          && window.MedstandOrderPermission.isGranted(ctx.HasApprovalRole));
+
+        if (!canApprove && !canReject) {
           // Người có vai trò duyệt cần biết VÌ SAO không bấm được (hợp đồng chưa chốt, đơn của
           // chính mình, sai chi nhánh...). Người không có vai trò duyệt thì không hiện gì.
-          if (ctx.HasApprovalRole && ctx.BlockMsg) {
+          if (hasApprovalRole && ctx.BlockMsg) {
             $('#order-header').append(
               '<div class="info-row"><span class="info-label">Duyệt đơn:</span>' +
               '<span class="info-value" style="color:var(--color-text-muted)">' + ctx.BlockMsg + '</span></div>'
@@ -83,8 +90,8 @@
         }
 
         var $bar = $('<div class="action-bar" id="approval-action-bar"></div>');
-        if (ctx.CanApprove) $bar.append('<button class="btn-edit" id="btn-approve-order">Duyệt</button>');
-        if (ctx.CanReject) $bar.append('<button class="btn-delete" id="btn-reject-order">Từ chối</button>');
+        if (canApprove) $bar.append('<button class="btn-edit" id="btn-approve-order">Duyệt</button>');
+        if (canReject) $bar.append('<button class="btn-delete" id="btn-reject-order">Từ chối</button>');
         if ($('.action-bar').length) $bar.insertBefore($('.action-bar').first());
         else $('.app-content').append($bar);
 
@@ -173,11 +180,15 @@
         var rows = body && (body.records || body.Table) || (Array.isArray(body) ? body : (body ? [body] : []));
         var ctx = rows && rows[0];
         if (!ctx || ctx.MsgType == 1) return;
-        if (!ctx.CanSubmit && !ctx.CanCancel) return;
+        var canSubmit = Boolean(window.MedstandOrderPermission
+          && window.MedstandOrderPermission.isGranted(ctx.CanSubmit));
+        var canCancel = Boolean(window.MedstandOrderPermission
+          && window.MedstandOrderPermission.isGranted(ctx.CanCancel));
+        if (!canSubmit && !canCancel) return;
 
         var $bar = $('<div class="action-bar" id="owner-action-bar"></div>');
-        if (ctx.CanSubmit) $bar.append('<button class="btn-edit" id="btn-submit-order">Gửi duyệt</button>');
-        if (ctx.CanCancel) $bar.append('<button class="btn-delete" id="btn-cancel-draft-order">Hủy đơn nháp</button>');
+        if (canSubmit) $bar.append('<button class="btn-edit" id="btn-submit-order">Gửi duyệt</button>');
+        if (canCancel) $bar.append('<button class="btn-delete" id="btn-cancel-draft-order">Hủy đơn nháp</button>');
         if ($('.action-bar').length) $bar.insertBefore($('.action-bar').first());
         else $('.app-content').append($bar);
 

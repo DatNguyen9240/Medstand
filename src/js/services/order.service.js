@@ -63,7 +63,14 @@ const OrderService = (() => {
   // ORDER-APPROVAL-005: hỏi trước khi mở trang sửa — CanEdit + BlockCode/BlockMsg nói rõ vì sao
   // không sửa được. Identity do gateway gắn từ token, không khai trong payload.
   function getEditContext(documentId) {
-    return Http.get(EP.EDIT_CONTEXT, { q: JSON.stringify({ DocumentID: documentId }) }, { cache: false });
+    // A denied edit is a valid business result: SQL returns code=1 together with
+    // CanEdit=0 and a safe BlockCode/BlockMsg. Preserve that envelope so the page
+    // can explain the denial; transport/session failures still reject normally.
+    return Http.get(EP.EDIT_CONTEXT, { q: JSON.stringify({ DocumentID: documentId }) }, {
+      cache: false,
+      silent: true,
+      acceptApplicationError: true
+    });
   }
 
   return {
