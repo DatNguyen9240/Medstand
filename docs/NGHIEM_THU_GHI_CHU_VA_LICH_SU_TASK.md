@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 22/08/2026 (đối chiếu lại với `git log hoangdang` sau các lần merge worktree `promo-cfg-002-work`, `sql-cleanup-work`, `cust-search-003-work`)
+**Cập nhật:** 22/08/2026 (đối chiếu lại với `git log hoangdang` sau các lần merge worktree `promo-cfg-002-work`, `sql-cleanup-work`, `cust-search-003-work`, `order-ui-evidence-work`)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -20,16 +20,18 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | --- | --- | --- |
 | `CUST-SEARCH-001` | `DONE` | Đã tái hiện trước/sau, xác định nguyên nhân gốc và nghiệm thu E2E bằng Chrome thật |
 | `CORE-011` | `DONE` | Đã nghiệm thu chọn khách ở màn lập/sửa đơn |
-| `CUST-SEARCH-003` | `PARTIAL_PASS_CREATE_ORDER_RACE_FIXED_EDIT_ORDER_BLOCKED` | Race + stale-error ở màn lập đơn đã fix và có bằng chứng CDP thật; màn sửa đơn không test được vì 1 lỗi khác chặn hẳn form render |
+| `CUST-SEARCH-003` | `PARTIAL_PASS_CREATE_ORDER_FIXED_EDIT_ORDER_READY_FOR_RETEST` | Race + stale-error ở màn lập đơn đã fix và có CDP evidence; blocker render màn sửa đơn đã được sửa/merge, còn phải chạy ma trận regression riêng trên màn này và các ca lỗi/scope/account |
 | `PROMO-CFG-001` | `CODE_DONE_PENDING_REMAINING_BUSINESS_SIGN_OFF_AND_E2E` | Đã chốt và code `QUANTITY_GIFT` tỷ lệ + clamp max; các semantics tài chính còn mở |
 | `PROMO-CFG-002` | `AUDIT_PERMISSION_MERGED_PENDING_GATEWAY_IDENTITY_AND_E2E` | Quyền âm + audit before/after (kể cả scope/rule) đã merge, 16/16 PASS; P0 giả `Username` qua gateway vẫn mở, chưa có API/UI E2E thật |
 | `PROMO-CFG-003` | `BLOCKED` | Chờ contract và E2E tạo đơn thật |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
-| `ORDER-APPROVAL-002` | `READY_FOR_BUSINESS_SIGN_OFF` | Ma trận quyết định chưa được business ký |
-| `ORDER-APPROVAL-003` | `MOSTLY_ADDRESSED_PENDING_IDEMPOTENCY_LEDGER_CHECK_AND_BUSINESS_SIGNOFF` | 4/5 lỗ hổng review trước đã vá và merge (ownership CRUD, race check/mutation, hủy đơn sau duyệt, `StatusLookup` hở); idempotency-key có ledger thật hay chưa vẫn chưa xác nhận lại |
-| `ORDER-APPROVAL-004` | `PARTIAL_TECHNICAL_WORK_MERGED` | `OwnerContext`/`OwnerTransition`/`StatusLookup` + guard sửa/khóa đơn (005/006) đã merge, 11/11 PASS; vẫn chờ hợp đồng `ORDER-APPROVAL-002` ký thật và UAT hai tài khoản |
+| `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
+| `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
+| `ORDER-APPROVAL-004` | `SUPERSEDED_BY_ORDER_APPROVAL_005_006` | Phạm vi cũ đã được quyết định mới và 005/006 thay thế; UAT Sale/Kế toán trong app không còn phù hợp |
+| `ORDER-APPROVAL-005` | `PASS_READY_FOR_QA_REVIEW` | Code và UI evidence đã merge; 13 ca E2E qua gateway/`medtest` PASS, còn QA độc lập ký xác nhận cuối |
+| `ORDER-APPROVAL-006` | `PASS_READY_FOR_QA_REVIEW` | Lưu/sửa nháp, gửi duyệt/hủy riêng và chống double-click đã có evidence; còn QA độc lập ký xác nhận cuối |
 | `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
-| `PRODUCT-DIAG-001` | `TECHNICALLY_ACCEPTED_PENDING_EVIDENCE` | Code 17/17; UI hợp lệ 2/3, thiếu Chatbot thật và live identity |
+| `PRODUCT-DIAG-001` | `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY` | Code 17/17; UI hợp lệ 2/3, thiếu Chatbot thao tác như người dùng thật và live gateway identity |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
 | `CUSTOMER-DOC-001` | `BLOCKED` | Chờ runtime UAT ổn định |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn và core fixes |
@@ -70,8 +72,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Cập nhật 22/08/2026 — nguyên nhân gốc thật khác dự đoán trước đó:** sequence guard ở `customer-management.js`/`contract-point.js` không bảo vệ được bộ chọn khách ở màn lập/sửa đơn — hai màn đó dùng component dùng chung [FormSelect.js](../src/js/components/FormSelect.js), và `_openPicker`'s remote `searchFn` không có cơ chế kiểm request nào cả (không phải "đã có guard, thiếu bằng chứng" như ghi trước đây).
 - **Đã fix và merge** (`4f288b5`): thêm bộ đếm generation trong `_openPicker`, chỉ áp kết quả của request còn là request mới nhất; đồng thời bỏ `Alert.error` vô điều kiện ở nhánh lỗi `searchFn` của `create-order.js`/`edit-order.js` (lỗi của request đã bị bỏ qua không nên hiện toast).
 - **Bằng chứng màn lập đơn (create-order) — PASS thật bằng Chrome DevTools Protocol**, không phải suy luận từ code: giữ response request chậm (gõ trước) lại 354ms cho tới sau khi response request nhanh (gõ sau) đã render xong, rồi mới thả ra — kết quả cuối cùng vẫn giữ đúng danh sách của request nhanh, không bị request chậm ghi đè. Ca lỗi trễ (request bị hủy bỏ nhưng sau đó mới báo lỗi) cũng không hiện toast và không xóa kết quả đang hiển thị. Ảnh/JSON tại `reports/uat/CUST-SEARCH-003/`.
-- **Màn sửa đơn (edit-order): SKIPPED, không phải PASS/FAIL** — phát hiện `edit-order.js` không render được form vì lỗi đọc response `API_DonHang_EditContext_AI` có sẵn từ trước, không liên quan tới race condition. Lỗi này chặn hẳn `#fs-trigger-customer` xuất hiện nên không test được. Đã ghi nhận thuộc phạm vi `ORDER-APPROVAL-005/006`, chưa ai sửa.
-- **Chưa làm:** API lỗi/retry có chủ đích (ngoài ca lỗi trễ ở trên), đổi tài khoản 2 người dùng thật, khách ngoài scope, ma trận regression đầy đủ theo yêu cầu backlog gốc. `CrossAccountCacheScope` trong bằng chứng mới chỉ chụp 1 mẫu cache key có gắn username, chưa phải test chuyển tài khoản thật.
+- **Màn sửa đơn (edit-order): lần kiểm CUST-SEARCH trước đã SKIP, nhưng blocker nay đã được sửa và merge.** `order-ui-evidence-work` chuẩn hóa cờ `CanEdit`, giữ envelope nghiệp vụ/`BlockMsg` và được merge vào `hoangdang` tại `fb85981`; E2E ORDER-APPROVAL-005/006 đã chứng minh form sửa đơn render được. Điều này chỉ gỡ blocker, chưa thay thế bài test race riêng của CUST-SEARCH-003.
+- **Chưa làm:** race/stale-response trên màn sửa đơn; API lỗi/retry có chủ đích (ngoài ca lỗi trễ ở trên); đổi tài khoản 2 người dùng thật; khách ngoài scope; ma trận regression đầy đủ theo yêu cầu backlog gốc. `CrossAccountCacheScope` trong bằng chứng mới chỉ chụp 1 mẫu cache key có gắn username, chưa phải test chuyển tài khoản thật.
 
 ### PROMO-CFG-001/002/003
 
@@ -80,7 +82,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - Chưa được coi là E2E tạo đơn: script hiện kiểm helper/CTE, chưa có mutation API/UI thật với request ID.
 - Điểm business còn mở: VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quà tính ra bằng `0`.
 - **Cập nhật 22/08/2026 — PROMO-CFG-002 (quyền âm + audit) đã merge:** `API_PromotionProgram_Upsert_AI` ghi audit trước/sau (gồm cả nội dung rule, `BranchIDs`, `UserGroupIDs`, không chỉ đếm số dòng) qua `AI_WriteAuditLog`, fail-closed nếu hạ tầng audit thiếu; `API_PromotionProgram_Approve_AI` thêm `@Reason`, bắt buộc khi REJECT/WITHDRAW. Verify `verify_promo_cfg002_permission_and_audit.js`: **16/16 PASS** trên `medtest` (rollback), gồm quyền âm tạo/duyệt, khóa sửa bản đã duyệt, audit trước/sau (rule + scope), bắt buộc lý do, config tương lai/hết hạn/sai scope bị loại đúng.
-- **P0 còn mở, chưa ai sửa:** test quyền âm ở trên chỉ gọi thẳng proc SQL với `@Username` giả — **không** chứng minh gateway chặn được người dùng thường sửa payload thành `Username` của quản lý rồi gọi qua HTTP thật. Promotion admin APIs chưa nằm trong identity-server-owned policy của `server.js` (khác với `API_DonHang_ApprovalContext_AI`/`API_HangHoaList_AI` đã có). Cần AI đang phụ trách `server.js` (nhóm ORDER-APPROVAL) bổ sung, không tự làm riêng để tránh đụng file đang sửa dở.
+- **P0 còn mở, chưa sửa:** test quyền âm ở trên chỉ gọi thẳng proc SQL với `@Username` giả — **không** chứng minh gateway chặn được người dùng thường sửa payload thành `Username` của quản lý rồi gọi qua HTTP thật. Promotion admin APIs chưa nằm trong identity-server-owned policy của `server.js` (khác với `API_DonHang_ApprovalContext_AI`/`API_HangHoaList_AI` đã có). Cần bổ sung policy tại gateway và kiểm thử spoofing qua HTTP runtime thật.
 - Chưa có mutation API/UI thật với request ID cho phần quyền/audit này.
 
 ### ORDER-APPROVAL-002/003/004
@@ -100,9 +102,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
   2. **Race giữa tra trạng thái và mutation** → đã vá: gộp vào cùng transaction ở proc mới, không còn 2 request riêng.
   3. **Chủ đơn hủy được đơn đã duyệt** → đã giới hạn: hợp đồng dữ liệu mới (`ORDER-APPROVAL-006_Draft_Restore_AI.sql`) chỉ cho `CANCEL` từ `StatusID=-1` (nháp) sang `10`, không còn đường từ trạng thái đã duyệt.
   4. **`API_DonHang_StatusLookup_AI` hở qua gateway** → đã vá: thêm vào `BLOCKED_ERP_ENDPOINTS`, không expose ra generic gateway nữa.
-  5. **Idempotency-Key không có ledger thật** → **chưa xác nhận lại**, không có trong phạm vi review lần này.
-  - Verify: `scripts/verify_order_edit_guard_ai.js` — **11 PASS / 0 FAIL / 0 SKIPPED** trên `medtest` (rollback), gồm chủ đơn không sửa được sau khi gửi, người duyệt cùng chi nhánh sửa được, khác chi nhánh bị chặn, đơn đã duyệt khóa với tất cả, chủ đơn sửa được nháp của mình, người khác không sửa được nháp người khác. `verify_order_status_guard.js` cũng PASS với các ca chặn mới.
-  - Vẫn còn mở: hợp đồng `ORDER-APPROVAL-002` chưa được business ký thật; idempotency-key #5 ở trên chưa re-verify; UAT hai tài khoản Sale/Kế toán thật chưa chạy.
+  5. **Idempotency-Key không có ledger thật** → đã xác nhận: proc mới có ledger replay/conflict; `verify_order_edit_guard_ai.js` và `verify_donhang_ownertransition_ai.js` có ca replay không ghi lần hai và conflict khi cùng khóa/khác payload. E2E double-click gửi duyệt/hủy cũng chỉ phát đúng một mutation.
+  - Verify kỹ thuật: `scripts/verify_order_edit_guard_ai.js` — **11 PASS / 0 FAIL / 0 SKIPPED** trên `medtest` (rollback); `verify_order_status_guard.js`, `verify_donhang_ownertransition_ai.js` và build đều PASS trong lượt nghiệm thu liên quan.
+  - Quyết định business ngày 21/08/2026 đã làm phạm vi cũ của 002/004 hết hiệu lực: kế toán không dùng app, chỉ làm bên PMKT. Các mục 002/003/004 được giữ làm lịch sử, không dùng làm điều kiện đóng cho workflow hiện hành.
+
+### ORDER-APPROVAL-005/006
+
+- **Trạng thái thực tế:** code/evidence từ `order-ui-evidence-work` đã merge vào `hoangdang` tại commit merge `fb85981`; không còn trạng thái “worktree chưa merge”.
+- **Kết quả E2E:** `PASS_READY_FOR_QA_REVIEW`, gồm 13 ca trên Chrome thật qua local gateway và `medtest` với ba tài khoản Owner/Manager/Sale khác. Đã chứng minh tạo–sửa nháp, sửa không tự gửi, gửi duyệt riêng, khóa Sale sau gửi, quản lý cùng chi nhánh sửa được, Sale khác bị chặn, chỉ hủy nháp và double-click không tạo hai mutation.
+- **Đối soát:** đơn UAT `DMB0826/11` kết thúc ở `StatusID=0`, `DMB0826/12` ở `StatusID=10`; request ID và trạng thái DB nằm tại [bộ evidence ORDER-APPROVAL-005/006](../reports/uat/ORDER-APPROVAL-005-006/README.md).
+- **Còn lại:** QA độc lập đối chiếu evidence và ký xác nhận cuối. Không còn lỗi code đã biết trong phạm vi 005/006.
 
 ### CUSTOMER-UAT-001
 
@@ -119,7 +128,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - Bằng chứng UI hợp lệ hiện tại:
   - Tạo đơn: PASS.
   - Sửa đơn: PASS.
-  - Chatbot: **không chấp nhận**. Script tự gọi `Http/helper`, gán `textContent` và CSS vào DOM rồi chụp ảnh; ảnh còn hiện “Vui lòng chọn khách hàng trước.” nên state khách chưa được chọn thật.
+  - Chatbot: **chưa chấp nhận là E2E người dùng thật**. Script hiện gọi trực tiếp `window.ApiEngine.selectApi(...)` để mở/prefill flow rồi chờ engine tải dữ liệu; dù không còn tự gán kết quả chẩn đoán vào DOM, thao tác này vẫn bỏ qua chuỗi click/nhập/chọn mà người dùng thực hiện trên UI.
 - Trạng thái `DONE` ghi trước đây bị thu hồi. Trạng thái đúng là `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY`.
 - Biên bản kỹ thuật hiện còn mâu thuẫn giữa `PENDING_UI_EVIDENCE` và `DONE`; chỉ cập nhật lại sau khi có bằng chứng hợp lệ.
 
@@ -144,7 +153,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `.claude/worktrees/promo-cfg-002` | `promo-cfg-002-work` | Merged |
 | `.claude/worktrees/sql-cleanup` | `sql-cleanup-work` | Merged |
 | `.claude/worktrees/cust-search-003` | `cust-search-003-work` | Merged |
-| `.claude/worktrees/order-ui-evidence` | `order-ui-evidence-work` | **Chưa merge** — 2 commit (`aef8e37` sửa response quyền sửa đơn, `eacbb8d` bằng chứng UI + notification blocker cho ORDER-APPROVAL-005/006) và còn đang sửa dở lúc kiểm tra |
+| `.claude/worktrees/order-ui-evidence` | `order-ui-evidence-work` | Merged vào `hoangdang` tại `fb85981` (gồm commit hoàn thiện `ed09c48`) |
 
 ## 6. Tài liệu liên quan
 

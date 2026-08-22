@@ -1,0 +1,33 @@
+{
+  "Task": "CUST-SEARCH-003",
+  "Status": "PASS",
+  "Timestamp": "2026-08-22T03:52:01.834Z",
+  "Screens": {
+    "create-order": {
+      "screenName": "create-order",
+      "status": "PASS",
+      "slowHeldMs": 208,
+      "afterStalePreserved": true,
+      "staleErrorNoToast": true,
+      "customerMapped": true,
+      "customerFieldText": "HNBV356 - 2 Gà Con Shop",
+      "screenshot": "c:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\uat\\CUST-SEARCH-003\\FINAL_UAT_create-order.png"
+    },
+    "edit-order": {
+      "screenName": "edit-order",
+      "status": "PASS",
+      "slowHeldMs": 234,
+      "afterStalePreserved": true,
+      "staleErrorNoToast": true,
+      "customerMapped": true,
+      "customerFieldText": "HNBV356 - 2 Gà Con Shop",
+      "screenshot": "c:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\reports\\uat\\CUST-SEARCH-003\\FINAL_UAT_edit-order.png"
+    }
+  },
+  "CrossAccountCacheScope": {
+    "status": "PASS",
+    "searchCacheKeyCount": 1,
+    "allEmbedUsername": true,
+    "sample": "_hc_/api/API_KhachHangList?q=%7B%22User%22%3A%22demo%22%2C%22ManagerID%22%3A%22%22%2C%22EmployeeID%22%3A%22%22%2C%22ObjectID%22%3A%22%22%2C%22LoaiKhachHang%22%3A%22%22%2C%22KenhBan%22%3A%22%22%2C%22SearchText%22%3A%22%22%2C%22SYSManagerID%22%3A%22%22%2C%22SYSEmployeeID%22%3A%22%22%7D"
+  }
+}

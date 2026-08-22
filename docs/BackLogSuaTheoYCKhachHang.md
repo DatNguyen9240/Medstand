@@ -12,10 +12,10 @@
 
 ## 1. Tìm kiếm và chọn khách hàng
 
-- [ ] **CUST-SEARCH-003 — Regression các màn hình dùng bộ chọn khách** · `P0` · `PARTIAL_PASS_CREATE_ORDER_RACE_FIXED_EDIT_ORDER_BLOCKED`
+- [ ] **CUST-SEARCH-003 — Regression các màn hình dùng bộ chọn khách** · `P0` · `PARTIAL_PASS_CREATE_ORDER_FIXED_EDIT_ORDER_READY_FOR_RETEST`
   - **Đã xong 22/08/2026:** race + stale-error ở màn lập đơn (`create-order`) đã fix tại `FormSelect.js` dùng chung (gốc rễ thật: picker này không có guard nào, không phải chỗ đã đoán trước đó) và có bằng chứng CDP intercept trước/sau tại `reports/uat/CUST-SEARCH-003/`.
-  - **Chặn mới phát hiện, chưa sửa (trên `hoangdang`):** màn sửa đơn (`edit-order`) không test được vì `edit-order.js` không render được form — lỗi đọc response `API_DonHang_EditContext_AI` có sẵn từ trước, không liên quan race condition. **Khả năng đã được vá** trong worktree `order-ui-evidence-work` chưa merge (mục "Giữ envelope nghiệp vụ code=1 của edit-context" ở ORDER-APPROVAL-005) — cần xác nhận lại sau khi worktree đó merge, không mặc định coi là đã xong.
-  - **Cần làm:** sửa lỗi render `edit-order.js` ở trên; sau đó test lại race trên màn sửa đơn; bổ sung API lỗi/retry có chủ đích, đổi tài khoản 2 người dùng thật, khách ngoài scope, và ma trận regression đầy đủ các màn còn lại.
+  - **Đã gỡ blocker 22/08/2026:** lỗi render `edit-order.js` đã được sửa trong `order-ui-evidence-work` và merge vào `hoangdang` qua commit merge `fb85981`; form sửa đơn đã chạy được trong bộ E2E ORDER-APPROVAL-005/006.
+  - **Cần làm:** chạy riêng ma trận race/stale-response trên màn sửa đơn; bổ sung API lỗi/retry có chủ đích, đổi tài khoản 2 người dùng thật, khách ngoài scope, và regression đầy đủ trên cả hai màn.
   - **Điều kiện đóng:** 100% ca P0/P1 pass trên cả 2 màn, có Network timeline hoặc request ID và không giữ dữ liệu khách của phiên trước.
 
 ## 2. Cấu hình giá trị tối thiểu CTBH
@@ -25,7 +25,7 @@
   - **Cần làm:** business còn phải chốt VAT, rule chiết khấu/giá trị, `MaximumOrderAmount`, trả hàng, làm tròn tiền và fallback khi quyền lợi tính ra bằng `0`; sau đó chạy E2E tạo đơn thật có request ID.
   - **Điều kiện đóng:** có sign-off phần còn lại và bảng ví dụ đầy đủ; preview frontend, API/SQL và dòng đơn thực tế cho cùng kết quả.
 
-- [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P1` · `AUDIT_PERMISSION_MERGED_PENDING_GATEWAY_IDENTITY_AND_E2E`
+- [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P0` · `AUDIT_PERMISSION_MERGED_PENDING_GATEWAY_IDENTITY_AND_E2E`
   - **Đã xong 22/08/2026:** quyền âm (tạo/duyệt), khóa sửa bản đã duyệt, audit trước/sau (gồm nội dung rule, `BranchIDs`, `UserGroupIDs`, không chỉ đếm dòng), bắt buộc lý do khi từ chối/thu hồi, và loại đúng config tương lai/hết hạn/sai scope — đã merge, verify 16/16 PASS trên `medtest` (rollback).
   - **Cần làm (P0 còn mở):** Promotion admin APIs chưa nằm trong identity-server-owned policy của `server.js` — người dùng thường sửa `Username` trong payload gọi qua gateway hiện chưa bị chặn (test hiện có chỉ gọi thẳng proc SQL, không phải qua gateway thật). Sau khi vá xong: chạy mutation thật qua API/UI có request ID.
   - **Điều kiện đóng:** đổi config không cần build code; user ngoài quyền bị chặn **kể cả khi gọi qua gateway với `Username` giả trong payload**; payload giả không vượt kiểm tra server.
@@ -36,48 +36,15 @@
 
 ## 3. Workflow Sale tạo đơn → Kế toán duyệt
 
-> **21/08/2026 — khách xác nhận qua chat: kế toán không dùng app, chỉ làm bên PMKT; app chỉ
-> theo dõi đơn.** 3 bullet `ORDER-APPROVAL-002/003/004` bên dưới mô tả thiết kế TRƯỚC quyết
-> định này và đã bị `ORDER-APPROVAL-005`/`ORDER-APPROVAL-006` thay thế phần lớn — giữ lại để
-> có lịch sử, KHÔNG dùng làm điều kiện đóng nữa. Việc cần làm thật nằm ở 2 mục ngay dưới đây.
+> `ORDER-APPROVAL-005/006` đã hoàn tất code, merge và evidence E2E; chi tiết đã chuyển sang hồ sơ
+> nghiệm thu. Quyết định hiện hành: Sale được lưu/sửa nháp của chính mình; gửi duyệt là thao tác riêng;
+> sau khi gửi Sale bị khóa sửa; chỉ người có vai trò phù hợp cùng chi nhánh được sửa đơn chờ duyệt;
+> chỉ đơn nháp mới được chủ đơn hủy. Kế toán không dùng app, chỉ làm bên PMKT.
 
-- [x] **ORDER-APPROVAL-005 — Khóa sửa đơn về đúng vai trò/trạng thái** · `P0` · `CODE_DONE_PENDING_UI_EVIDENCE`
-  - **Quyết định khách (21/08/2026):** giữ nút duyệt trong app (chưa nối PMKT thật); bỏ đơn
-    nháp — tạo đơn vào thẳng Chờ duyệt; Sale gửi xong hết quyền sửa, chỉ người duyệt sửa được
-    khi còn Chờ duyệt.
-  - **Đã làm:** khóa sửa chuyển hẳn vào SQL (`AI_OrderEditGuardFnc`, `sql/ORDER-APPROVAL-005_Order_Edit_Guard_AI.sql`)
-    — khóa dòng đơn bằng `UPDLOCK/HOLDLOCK` rồi mới kiểm quyền và ghi trong CÙNG transaction,
-    không còn race giữa bước hỏi trạng thái và bước ghi. 5 proc CRUD ERP gốc
-    (`API_DonHang_Update/_Delete`, `API_DonHangChiTiet_Insert/_Update/_Delete`) và
-    `API_DonHang_StatusLookup_AI` bị chặn hẳn ở gateway. `scripts/verify_order_edit_guard_ai.js`
-    (11/11 PASS) và `scripts/verify_order_status_guard.js` (16/16 PASS) chạy trên dữ liệu thật,
-    luôn rollback.
-  - **Cập nhật 22/08/2026:** ảnh/video UI thật đã có trong worktree `.claude/worktrees/order-ui-evidence`
-    (branch `order-ui-evidence-work`, **chưa merge vào `hoangdang`**) — `reports/uat/ORDER-APPROVAL-005-006/`
-    ghi `PASS_READY_FOR_QA_REVIEW`, gồm double-click gửi duyệt/hủy chỉ phát một mutation, Sale bị khóa
-    sửa sau khi gửi, quản lý cùng chi nhánh sửa được. Worktree đó còn tự sửa thêm vài lỗi UI khác (chuẩn
-    hóa cờ quyền từ API, giữ đúng `BlockMsg` thay vì lỗi chung chung).
-  - **Còn thiếu để đóng:** merge worktree trên vào `hoangdang` và có người ngoài (QA) xác nhận lại.
-
-- [x] **ORDER-APPROVAL-006 — Khôi phục Lưu nháp + Sale sửa đơn nháp** · `P0` · `CODE_DONE_PENDING_UI_EVIDENCE`
-  - **Quyết định khách (21/08/2026, đổi ý sau ORDER-APPROVAL-005):** giữ lại nút "Lưu nháp";
-    Sale sửa được đơn của chính mình khi còn là Đơn nháp (StatusID=-1); Gửi duyệt là nút riêng
-    trên trang chi tiết đơn (không tự gộp vào Sửa); Hủy đơn nháp chỉ áp dụng cho `-1 → Đã hủy`
-    — KHÔNG mở lại việc chủ đơn hủy đơn đã gửi/đã duyệt (giữ nguyên phần đã sửa ở
-    ORDER-APPROVAL-005/004).
-  - **Đã làm:** `sql/ORDER-APPROVAL-006_Draft_Restore_AI.sql` mở rộng `AI_OrderEditGuardFnc`
-    cho StatusID=-1 (chỉ chủ đơn) và bật đúng 2 dòng hợp đồng
-    (`SUBMIT -1→0`, `CANCEL -1→10`) trong `AI_OrderApprovalTransitionTbl` — 6 dòng CANCEL còn
-    lại (0,1,2,3,4,6→10) vẫn `RETIRED`. Sửa `@InitialStatusID` hard-code trong
-    `API_DonHangChiTiet_Insert_AI` (đang ép StatusID=0 bất kể `@SaveAsDraft`). Mở lại gateway
-    cho `API_DonHang_OwnerTransition_AI`/`API_DonHang_OwnerContext_AI` (identity từ token, không
-    tin client). Nút "LƯU NHÁP" khôi phục ở `create-order.html`; nút "Gửi duyệt"/"Hủy đơn nháp"
-    khôi phục ở `order-detail.js`. `scripts/verify_donhang_ownertransition_ai.js` (11/11 PASS,
-    viết lại đúng phạm vi mới — không còn ca chủ đơn hủy đơn Chờ duyệt) và
-    `scripts/verify_order_edit_guard_ai.js` (thêm 2 ca chủ-đơn-sửa-được/không-sửa-được-đơn-
-    nháp-người-khác) chạy trên dữ liệu thật, luôn rollback.
-  - **Còn thiếu để đóng:** giống ORDER-APPROVAL-005 — bằng chứng đã có trong worktree
-    `order-ui-evidence-work` chưa merge (`SUBMIT_01..09`, `CANCEL_01..06`); merge rồi mới tính đóng.
+- [ ] **ORDER-APPROVAL-005/006 — QA độc lập ký xác nhận cuối** · `P0` · `PASS_READY_FOR_QA_REVIEW`
+  - **Đã có:** code đã merge vào `hoangdang` tại `fb85981`; E2E Chrome thật qua gateway/`medtest` PASS các ca tạo–sửa nháp, chặn Sale khác, gửi duyệt riêng, khóa Sale sau gửi, quản lý cùng chi nhánh sửa, hủy nháp và chống double-click. Evidence nằm tại `reports/uat/ORDER-APPROVAL-005-006/`.
+  - **Cần làm:** QA độc lập đối chiếu evidence và ký `PASS`; không còn hạng mục code nào đã biết trong phạm vi 005/006.
+  - **Điều kiện đóng:** QA xác nhận tài khoản, request ID, trạng thái DB trước/sau và kết quả 13 ca E2E; sau đó chuyển cả hai task sang hồ sơ `DONE`.
 
 ## 4. Test bằng dữ liệu mới
 
@@ -85,8 +52,10 @@
   - **Cần làm:** khách chốt tài khoản/chi nhánh UAT và người nhập sản phẩm, giá, tồn, CTBH; chạy bằng tài khoản có `EmployeeID` thật, không dùng cấu hình riêng của `demo` làm bằng chứng.
   - **Điều kiện đóng:** dữ liệu mới có manifest nguồn gốc; các nhánh có CTBH cấu hình, CTBH note-text và không CTBH đều được kiểm; thiếu giá/tồn/quyền trả đúng mã.
 
-- [x] **PRODUCT-DIAG-001 — Hoàn tất bằng chứng UI chẩn đoán sản phẩm** · `P1` · `DONE`
-  - **Kết quả:** 3/3 bằng chứng UI thuần E2E đạt chuẩn tại `reports/uat/` (Tạo đơn, Sửa đơn, Chatbot panel); 17/17 cases test nghiệp vụ & gateway PASS; server-side identity policy 11/11 PASS; bundle app (94.98 KB) & chatbot (314.56 KB) hoàn chỉnh.
+- [ ] **PRODUCT-DIAG-001 — Hoàn tất bằng chứng UI chẩn đoán sản phẩm** · `P1` · `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY`
+  - **Đã có:** contract/code 17/17 PASS; guard tĩnh và build PASS; bằng chứng UI Tạo đơn và Sửa đơn hợp lệ.
+  - **Cần làm:** chạy Chatbot bằng chuỗi thao tác UI mà người dùng thật có thể thực hiện, không gọi trực tiếp `ApiEngine.selectApi`/helper để dựng trạng thái; đồng thời gọi gateway runtime thật để chứng minh `Username` giả bị thay bằng identity từ phiên đăng nhập. Test dùng `fetch`/envelope giả chỉ được tính là unit test.
+  - **Điều kiện đóng:** Chatbot hiển thị chẩn đoán sau khi khách và sản phẩm được chọn thật; có ảnh/video, Network/request ID và response gateway đã che dữ liệu nhạy cảm.
 
 - [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `BLOCKED_BY_CUSTOMER_UAT_001`
   - **Cần làm:** chạy chuỗi tạo dữ liệu → chọn khách/sản phẩm → giá/tồn/CTBH → lập đơn → gửi duyệt → duyệt/từ chối, gồm các ca âm.
@@ -122,12 +91,12 @@
 
 ## 7. Thứ tự thực hiện
 
-1. ~~`ORDER-APPROVAL-003` sửa các điểm an toàn song song với việc chốt `ORDER-APPROVAL-002`~~ —
-   thay bằng `ORDER-APPROVAL-005`/`ORDER-APPROVAL-006` (xem mục 3), code xong, còn chờ ảnh UI.
-2. `PRODUCT-DIAG-001` hoàn tất Chatbot E2E và live identity evidence.
-3. `CUST-SEARCH-003`.
-4. `PROMO-CFG-001` → `PROMO-CFG-002` → `PROMO-CFG-003`.
-5. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
+1. `PROMO-CFG-002` vá identity server-owned ở gateway và chạy ca giả `Username` qua HTTP thật.
+2. `CUST-SEARCH-003` chạy phần regression còn thiếu; blocker render màn sửa đơn đã được gỡ.
+3. `PRODUCT-DIAG-001` hoàn tất Chatbot E2E và live identity evidence.
+4. QA độc lập ký xác nhận `ORDER-APPROVAL-005/006`.
+5. Business chốt phần còn lại của `PROMO-CFG-001`, sau đó chạy `PROMO-CFG-003`.
+6. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
    Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
-6. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-7. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
+7. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
+8. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
