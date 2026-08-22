@@ -35,6 +35,7 @@ const OTHER_SALE = {
 };
 const EXISTING_SUBMIT_ORDER = String(process.env.ORDER_UI_EXISTING_SUBMIT_ORDER || '').trim();
 const EXISTING_SUBMIT_MARKER = String(process.env.ORDER_UI_EXISTING_SUBMIT_MARKER || '').trim();
+const EXISTING_SUBMIT_STAGE = String(process.env.ORDER_UI_EXISTING_SUBMIT_STAGE || 'DRAFT').trim().toUpperCase();
 const EXISTING_CANCEL_ORDER = String(process.env.ORDER_UI_EXISTING_CANCEL_ORDER || '').trim();
 const EXISTING_CANCEL_MARKER = String(process.env.ORDER_UI_EXISTING_CANCEL_MARKER || '').trim();
 
@@ -174,6 +175,13 @@ async function closeAlert(page) {
   await delay(250);
 }
 
+async function waitForGlobalIdle(page, timeout = 45000) {
+  await page.waitForFunction(() => {
+    const spinner = document.querySelector('#global-spinner');
+    return !spinner || spinner.hidden || getComputedStyle(spinner).display === 'none';
+  }, { timeout });
+}
+
 async function waitForAlertText(page, pattern, timeout = 30000) {
   await page.waitForFunction(source => {
     const popup = document.querySelector('.swal2-popup');
@@ -249,6 +257,7 @@ async function createDraft(page, data, suffix) {
     return form && form.getValue('customer') === customerId && picker && picker.getAttribute('data-value') === itemId;
   }, { timeout: 40000 }, data.customerId, data.itemId);
   await delay(2300); // let the informational prefill toast close before saving
+  await waitForGlobalIdle(page);
   await page.screenshot({ path: path.join(REPORT_DIR, `${suffix}_01_READY_TO_SAVE.png`), fullPage: true });
 
   page.setEvidenceStage(`CREATE_DRAFT_${suffix}`);
@@ -317,6 +326,28 @@ async function doubleClickTransition(page, selector, stage, screenshotName) {
   return mutations[0];
 }
 
+async function assertOwnerActionsStayClosed(page, documentId, stage, screenshotName) {
+  page.setEvidenceStage(stage);
+  await page.goto(`${BASE_URL}/index.html#/order-detail?id=${encodeURIComponent(documentId)}`, {
+    waitUntil: 'networkidle0',
+    timeout: 30000
+  });
+  await page.waitForFunction(() => {
+    const detail = document.querySelector('#detail-content');
+    return Boolean(detail && !detail.hidden);
+  }, { timeout: 30000 });
+  await delay(1500);
+  const state = await page.evaluate(() => ({
+    ownerBar: Boolean(document.querySelector('#owner-action-bar')),
+    submit: Boolean(document.querySelector('#btn-submit-order')),
+    cancel: Boolean(document.querySelector('#btn-cancel-draft-order'))
+  }));
+  assert.deepStrictEqual(state, { ownerBar: false, submit: false, cancel: false },
+    `Owner actions reopened after terminal transition: ${JSON.stringify(state)}`);
+  await page.screenshot({ path: path.join(REPORT_DIR, screenshotName), fullPage: true });
+  return state;
+}
+
 async function assertOwnerLockedAfterSubmit(page, documentId) {
   await loadBlockedOrder(page, documentId, 'OWNER_LOCKED_AFTER_SUBMIT');
   const message = await page.$eval('#loading-state', el => el.innerText.trim());
@@ -335,7 +366,15 @@ async function assertNonOwnerBlocked(page, documentId) {
 
 async function assertManagerCanEdit(page, documentId, marker) {
   await loadEditableOrder(page, documentId, 'MANAGER_OPEN_PENDING_ORDER');
+  await waitForGlobalIdle(page);
   await page.screenshot({ path: path.join(REPORT_DIR, 'SUBMIT_08_MANAGER_CAN_EDIT_PENDING.png'), fullPage: true });
+  const managerFormState = await page.evaluate(() => ({
+    customer: window._orderForm && window._orderForm.getValue('customer'),
+    route: window._orderForm && window._orderForm.getValue('route'),
+    context: window._orderContext || null
+  }));
+  assert.ok(managerFormState.customer,
+    `Authorized manager form lost the order customer: ${JSON.stringify(managerFormState)}`);
   await page.evaluate(value => {
     const input = document.querySelector('#fs-memo');
     if (!input) throw new Error('memo input not found');
@@ -355,6 +394,21 @@ async function main() {
   assert.ok(SALE.password && MANAGER.password && OTHER_SALE.password,
     'UAT passwords must be supplied through ORDER_UI_PASSWORD or role-specific environment variables.');
   fs.mkdirSync(REPORT_DIR, { recursive: true });
+  let priorSubmitEvidence = null;
+  if (EXISTING_SUBMIT_ORDER && EXISTING_SUBMIT_STAGE.indexOf('PENDING') === 0) {
+    const evidencePath = path.join(REPORT_DIR, 'ORDER-APPROVAL-005-006_UI_EVIDENCE.json');
+    assert.ok(fs.existsSync(evidencePath), 'Pending resume requires the previous partial evidence file.');
+    priorSubmitEvidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+    const priorOrder = (priorSubmitEvidence.createdOrders || [])
+      .find(order => order.documentId === EXISTING_SUBMIT_ORDER);
+    assert.ok(priorOrder, `Previous evidence does not contain ${EXISTING_SUBMIT_ORDER}.`);
+    const requiredPriorCases = ['SALE_EDITS_OWN_DRAFT', 'SUBMIT_IS_SEPARATE_FROM_EDIT_AND_CANCEL', 'SUBMIT_DOUBLE_CLICK_ONE_REQUEST'];
+    if (EXISTING_SUBMIT_STAGE === 'PENDING_MANAGER_EDITED') requiredPriorCases.push('SAME_BRANCH_MANAGER_EDITS_PENDING');
+    for (const caseName of requiredPriorCases) {
+      const priorCase = (priorSubmitEvidence.cases || []).find(testCase => testCase.case === caseName);
+      assert.ok(priorCase && priorCase.status === 'PASS', `Previous evidence has no PASS for ${caseName}.`);
+    }
+  }
   const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
     headless: 'new',
@@ -373,6 +427,14 @@ async function main() {
     network,
     dialogs
   };
+  if (priorSubmitEvidence) {
+    evidence.priorRun = {
+      runId: priorSubmitEvidence.runId,
+      documentId: EXISTING_SUBMIT_ORDER,
+      carriedCases: ['SALE_EDITS_OWN_DRAFT', 'SUBMIT_IS_SEPARATE_FROM_EDIT_AND_CANCEL', 'SUBMIT_DOUBLE_CLICK_ONE_REQUEST']
+        .concat(EXISTING_SUBMIT_STAGE === 'PENDING_MANAGER_EDITED' ? ['SAME_BRANCH_MANAGER_EDITS_PENDING'] : [])
+    };
+  }
 
   let saleSession;
   let managerSession;
@@ -395,30 +457,57 @@ async function main() {
       : await createDraft(saleSession.page, scopedData, 'SUBMIT');
     evidence.createdOrders.push({ documentId: submitDraft.documentId, intendedFinalStatus: 'PENDING', marker: submitDraft.marker });
     evidence.cases.push({
-      case: EXISTING_SUBMIT_ORDER ? 'RESUME_EXISTING_SALE_DRAFT' : 'SALE_SAVES_DRAFT',
+      case: EXISTING_SUBMIT_ORDER
+        ? (EXISTING_SUBMIT_STAGE.indexOf('PENDING') === 0 ? 'RESUME_EXISTING_PENDING_ORDER' : 'RESUME_EXISTING_SALE_DRAFT')
+        : 'SALE_SAVES_DRAFT',
       status: 'PASS', documentId: submitDraft.documentId
     });
 
-    const ownerEdit = await assertOwnerCanEditAndSave(saleSession.page, submitDraft);
-    evidence.cases.push({ case: 'SALE_EDITS_OWN_DRAFT', status: 'PASS', detail: ownerEdit.alertText });
+    if (EXISTING_SUBMIT_STAGE.indexOf('PENDING') === 0) {
+      for (const caseName of ['SALE_EDITS_OWN_DRAFT', 'SUBMIT_IS_SEPARATE_FROM_EDIT_AND_CANCEL', 'SUBMIT_DOUBLE_CLICK_ONE_REQUEST']) {
+        const priorCase = priorSubmitEvidence.cases.find(testCase => testCase.case === caseName);
+        evidence.cases.push(Object.assign({}, priorCase, {
+          evidenceSource: `prior-run:${priorSubmitEvidence.runId}`
+        }));
+      }
+    } else {
+      const ownerEdit = await assertOwnerCanEditAndSave(saleSession.page, submitDraft);
+      evidence.cases.push({ case: 'SALE_EDITS_OWN_DRAFT', status: 'PASS', detail: ownerEdit.alertText });
 
-    const submitActions = await openOwnerActions(saleSession.page, submitDraft.documentId, 'SUBMIT_05');
-    evidence.cases.push({ case: 'SUBMIT_IS_SEPARATE_FROM_EDIT_AND_CANCEL', status: 'PASS', detail: submitActions.text });
+      const submitActions = await openOwnerActions(saleSession.page, submitDraft.documentId, 'SUBMIT_05');
+      evidence.cases.push({ case: 'SUBMIT_IS_SEPARATE_FROM_EDIT_AND_CANCEL', status: 'PASS', detail: submitActions.text });
 
-    const submitMutation = await doubleClickTransition(
+      const submitMutation = await doubleClickTransition(
+        saleSession.page,
+        '#btn-submit-order',
+        'OWNER_SUBMIT_DOUBLE_CLICK',
+        'SUBMIT_06_DOUBLE_CLICK_ONE_TRANSITION.png'
+      );
+      evidence.cases.push({ case: 'SUBMIT_DOUBLE_CLICK_ONE_REQUEST', status: 'PASS', requestId: submitMutation.requestId,
+        idempotencyKey: submitMutation.idempotencyKey });
+    }
+
+    await assertOwnerActionsStayClosed(
       saleSession.page,
-      '#btn-submit-order',
-      'OWNER_SUBMIT_DOUBLE_CLICK',
-      'SUBMIT_06_DOUBLE_CLICK_ONE_TRANSITION.png'
+      submitDraft.documentId,
+      'OWNER_ACTIONS_CLOSED_AFTER_SUBMIT',
+      'SUBMIT_06B_OWNER_ACTIONS_STAY_CLOSED.png'
     );
-    evidence.cases.push({ case: 'SUBMIT_DOUBLE_CLICK_ONE_REQUEST', status: 'PASS', requestId: submitMutation.requestId,
-      idempotencyKey: submitMutation.idempotencyKey });
+    evidence.cases.push({ case: 'SUBMITTED_ORDER_CANNOT_BE_CANCELLED_OR_RESUBMITTED', status: 'PASS' });
 
     const ownerBlockMessage = await assertOwnerLockedAfterSubmit(saleSession.page, submitDraft.documentId);
     evidence.cases.push({ case: 'SALE_LOCKED_AFTER_SUBMIT', status: 'PASS', detail: ownerBlockMessage });
 
-    const managerEditMessage = await assertManagerCanEdit(managerSession.page, submitDraft.documentId, submitDraft.marker);
-    evidence.cases.push({ case: 'SAME_BRANCH_MANAGER_EDITS_PENDING', status: 'PASS', detail: managerEditMessage });
+    if (EXISTING_SUBMIT_STAGE === 'PENDING_MANAGER_EDITED') {
+      const priorManagerCase = priorSubmitEvidence.cases
+        .find(testCase => testCase.case === 'SAME_BRANCH_MANAGER_EDITS_PENDING');
+      evidence.cases.push(Object.assign({}, priorManagerCase, {
+        evidenceSource: `prior-run:${priorSubmitEvidence.runId}`
+      }));
+    } else {
+      const managerEditMessage = await assertManagerCanEdit(managerSession.page, submitDraft.documentId, submitDraft.marker);
+      evidence.cases.push({ case: 'SAME_BRANCH_MANAGER_EDITS_PENDING', status: 'PASS', detail: managerEditMessage });
+    }
 
     const cancelDraft = EXISTING_CANCEL_ORDER
       ? { documentId: EXISTING_CANCEL_ORDER, marker: EXISTING_CANCEL_MARKER || `UAT RESUMED ${EXISTING_CANCEL_ORDER}` }
@@ -438,6 +527,14 @@ async function main() {
     );
     evidence.cases.push({ case: 'CANCEL_DOUBLE_CLICK_ONE_REQUEST', status: 'PASS', requestId: cancelMutation.requestId,
       idempotencyKey: cancelMutation.idempotencyKey });
+
+    await assertOwnerActionsStayClosed(
+      saleSession.page,
+      cancelDraft.documentId,
+      'OWNER_ACTIONS_CLOSED_AFTER_CANCEL',
+      'CANCEL_06_OWNER_ACTIONS_STAY_CLOSED.png'
+    );
+    evidence.cases.push({ case: 'CANCELLED_ORDER_ACTIONS_STAY_CLOSED', status: 'PASS' });
 
     evidence.status = 'PASS';
   } catch (error) {

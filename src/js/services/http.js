@@ -99,7 +99,8 @@ const Http = (() => {
   }
 
   /** Xử lý response tập trung */
-  async function _handleResponse(res) {
+  async function _handleResponse(res, options = {}) {
+    const silent = options.silent === true;
     console.log('[HTTP] Response:', res.status, res.url);
 
     if (res.status === 401) {
@@ -130,7 +131,7 @@ const Http = (() => {
     if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
       const msg = 'Không nhận được dữ liệu từ máy chủ.';
       console.warn('[HTTP]', msg);
-      _alert('error', msg);
+      if (!silent) _alert('error', msg);
       throw new Error(msg);
     }
 
@@ -160,16 +161,17 @@ const Http = (() => {
 
     // Server trả code lỗi (chỉ số != 0 mới là lỗi, string code như "A003" = OK)
     if (!isProductOrderabilityDiagnostic
+        && options.acceptApplicationError !== true
         && data.code !== undefined && typeof data.code === 'number' && data.code !== 0) {
       const msg = data.msg || data.message || 'Có lỗi xảy ra từ máy chủ.';
       console.warn('[HTTP] Server error code:', data.code, msg);
-      _alert('error', msg);
+      if (!silent) _alert('error', msg);
       throw new Error(msg);
     }
 
     if (!res.ok) {
       const msg = data?.msg || data?.message || `Lỗi ${res.status}`;
-      _alert('error', msg);
+      if (!silent) _alert('error', msg);
       const httpError = new Error(msg);
       // ORDER-APPROVAL-002: lỗi gateway (vd 409 ORDER_LOCKED) cần mã lỗi ổn định để trang gọi
       // phân biệt được, không phải đoán qua nội dung câu thông báo tiếng Việt.
@@ -302,7 +304,7 @@ const Http = (() => {
             : isTimeout
               ? 'Kết nối quá thời gian chờ (Timeout). Vui lòng thử lại sau.'
               : 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.';
-          _alert('error', msg);
+          if (options.silent !== true) _alert('error', msg);
           throw new Error(msg);
         }
         await new Promise(r => setTimeout(r, RETRY_DELAY_MS * Math.pow(2, attempt - 1)));
@@ -339,8 +341,12 @@ const Http = (() => {
         const res = await _fetchWithTimeout(url, {
           method: 'GET',
           headers: _headers(),
+          silent: options.silent === true,
         });
-        const data = await _handleResponse(res);
+        const data = await _handleResponse(res, {
+          silent: options.silent === true,
+          acceptApplicationError: options.acceptApplicationError === true,
+        });
 
         // Chỉ lưu cache khi response thành công (code === 0) VÀ có dữ liệu
         const recs = data?.records || data?.data?.records;

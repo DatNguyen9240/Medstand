@@ -4,15 +4,15 @@
   "documentId": "DMB0826/11",
   "username": "NAMDINHB.MED",
   "response": {
-    "code": 0,
-    "msg": "Đơn có thể chỉnh sửa.",
+    "code": 1,
+    "msg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.",
     "records": [
       {
         "DocumentID": "DMB0826/11",
-        "StatusID": "-1",
-        "CanEdit": "1",
-        "BlockCode": "",
-        "BlockMsg": ""
+        "StatusID": "0",
+        "CanEdit": "0",
+        "BlockCode": "ORDER_EDIT_ROLE_REQUIRED",
+        "BlockMsg": "Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh."
       }
     ],
     "total": 1,
@@ -23,7 +23,7 @@
     "_page": 1,
     "limit": 500,
     "_limit": 500,
-    "_timestamp": "2026-08-22 09:24:51"
+    "_timestamp": "2026-08-22 09:35:56"
   },
   "pageBackgroundUnreadCount": {
     "requestId": "req-ui-edit-probe-unread-count",
@@ -31,6 +31,16 @@
     "response": {
       "code": 1,
       "msg": "Missing para or Object not support"
+    }
+  },
+  "supportedNotificationApiUnreadCount": {
+    "requestId": "req-ui-edit-probe-unread-fallback",
+    "httpStatus": 200,
+    "responseSummary": {
+      "code": 0,
+      "msg": "OK",
+      "recordCount": 8,
+      "hasUnreadCount": false
     }
   }
 }

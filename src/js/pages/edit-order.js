@@ -110,12 +110,15 @@
             Memo:         p0.Memo         || '',
             Notes:        p0.Notes        || '',
             // Thông tin khách hàng
-            ObjectID:     p0.ObjectID     || '',
-            ObjectName:   p0.ObjectName   || '',
+            // Customer data is returned in records3/Table2 for approvers who do
+            // not own the customer's sales route. Keep the order's current
+            // customer selectable without adding it to that user's search scope.
+            ObjectID:     customer.ObjectID   || p0.ObjectID   || '',
+            ObjectName:   customer.ObjectName || p0.ObjectName || '',
             Address:      customer.Address    || p0.Address    || '',
-            Phone:        p0.Phone        || '',
+            Phone:        customer.Phone      || p0.Phone      || '',
             XaPhuong:     customer.XaPhuong   || p0.XaPhuong   || '',
-            ThuTrongTuan: p0.ThuDiTuyen   || ''
+            ThuTrongTuan: customer.ThuDiTuyen || p0.ThuDiTuyen || ''
           };
           _orderContext = summary;
 
@@ -204,11 +207,18 @@
               })
             }).then(function (res) {
               var records = (res.data || res).records || res.data || res || [];
-              window._customerRecords = records;
+              window._customerRecords = records.slice();
               var opts = records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; });
               // Đảm bảo khách hiện tại luôn có trong options
               if (summary.ObjectID && !opts.find(function(o){ return o.value === summary.ObjectID; })) {
                 opts.unshift({ value: summary.ObjectID, label: summary.ObjectName || summary.ObjectID });
+                window._customerRecords.unshift({
+                  ObjectID: summary.ObjectID,
+                  ObjectName: summary.ObjectName || summary.ObjectID,
+                  Address: summary.Address || '',
+                  Phone: summary.Phone || '',
+                  XaPhuong: summary.XaPhuong || ''
+                });
               }
               done(opts);
               if (summary.ObjectID) {
@@ -268,6 +278,16 @@
         })
         .addInput({ id: 'phone', label: 'Số điện thoại', type: 'tel', value: summary.Phone || '', placeholder: 'Số điện thoại', readonly: true })
         .addInput({ id: 'memo', label: 'Ghi chú', placeholder: 'Ghi chú thêm', value: summary.Memo || '' });
+
+      // Set the current values synchronously as well as in the async loaders.
+      // This prevents a scoped/slow option request from leaving an authorized
+      // approver with an empty required field for the order they may edit.
+      if (summary.ObjectID) {
+        orderForm.setListValue('customer', summary.ObjectID, summary.ObjectName || summary.ObjectID);
+      }
+      if (summary.ThuTrongTuan) {
+        orderForm.setListValue('route', summary.ThuTrongTuan, summary.ThuTrongTuan);
+      }
 
       // Khi chọn lại khách hàng → tự cập nhật Phường/Xã, Địa chỉ, SĐT
       orderForm.onListChange('customer', function (val) {

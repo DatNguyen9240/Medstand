@@ -65,6 +65,11 @@ async function main() {
     token,
     'req-ui-edit-probe-unread-count'
   );
+  const unreadViaSupportedApi = await gateway(
+    { method: 'GET', endpoint: '/api/API_ThongBao_AI?Action=UNREAD_COUNT' },
+    token,
+    'req-ui-edit-probe-unread-fallback'
+  );
   const evidence = {
     requestId: 'req-ui-edit-probe-context',
     httpStatus: context.status,
@@ -75,6 +80,21 @@ async function main() {
       requestId: 'req-ui-edit-probe-unread-count',
       httpStatus: unread.status,
       response: unread.body
+    },
+    supportedNotificationApiUnreadCount: {
+      requestId: 'req-ui-edit-probe-unread-fallback',
+      httpStatus: unreadViaSupportedApi.status,
+      responseSummary: {
+        code: unreadViaSupportedApi.body?.code,
+        msg: unreadViaSupportedApi.body?.msg,
+        recordCount: Array.isArray(unreadViaSupportedApi.body?.records)
+          ? unreadViaSupportedApi.body.records.length
+          : 0,
+        hasUnreadCount: Boolean(
+          unreadViaSupportedApi.body?.records?.[0]
+          && Object.prototype.hasOwnProperty.call(unreadViaSupportedApi.body.records[0], 'UnreadCount')
+        )
+      }
     }
   };
   const reportDir = path.resolve(__dirname, '..', 'reports', 'uat', 'ORDER-APPROVAL-005-006');
