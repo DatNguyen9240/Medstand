@@ -219,6 +219,10 @@
               if (summary.ObjectID) orderForm.setListValue('customer', summary.ObjectID, summary.ObjectName || summary.ObjectID);
             });
           },
+          // CUST-SEARCH-003: catch bên dưới KHÔNG gọi Alert.error — searchFn của picker chạy
+          // theo từng lượt gõ, và FormSelect._openPicker chỉ render response còn là lượt mới
+          // nhất. Bật toast ở đây cho cả lượt đã bị bỏ qua sẽ doạ người dùng bằng lỗi của thứ
+          // họ không còn xem. done([]) đủ để picker tự hiện "Không tìm thấy kết quả".
           searchFn: function (keyword, done) {
             Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
               q: JSON.stringify({
@@ -234,7 +238,6 @@
               });
               done(records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; }));
             }).catch(function () {
-              Alert.error('Không thể tải danh sách khách hàng. Vui lòng thử lại.');
               done([]);
             });
           }

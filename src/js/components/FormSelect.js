@@ -116,6 +116,16 @@ var FormSelect = (function () {
     var $trigger = $('#fs-trigger-' + id);
     var self = this;
 
+    // CUST-SEARCH-003: đếm "thế hệ" tìm kiếm, dùng CHUNG cho mọi lần gọi _renderModal trong
+    // suốt phiên mở picker này (không khai báo cục bộ trong _renderModal — hàm đó tự tạo lại
+    // toàn bộ overlay/handler mỗi lần render, nên biến cục bộ sẽ "quên" các lượt gõ trước đó
+    // thuộc một thế hệ DOM khác). Nhờ vậy, nếu người dùng gõ "a" rồi gõ nhanh "ab", response
+    // chậm của "a" tới sau vẫn nhận ra mình đã lỗi thời (searchSeq đã tăng) và không được phép
+    // gọi lại _renderModal đè lên kết quả "ab" đang hiển thị — tránh cả hai lỗi: (1) UI nhảy
+    // ngược về kết quả cũ, (2) tạo ra một overlay thứ hai chồng lên overlay đang mở.
+    var searchTimer = null;
+    var searchSeq = 0;
+
     function _renderModal(options) {
       var $text = $trigger.find('.filter-value-text');
       $text.text(field.labelText || field.placeholder);
@@ -155,12 +165,12 @@ var FormSelect = (function () {
         $sheet.addClass('active');
       }, 10);
 
-      // Close
-      $overlay.find('#picker-close').on('click', function () { $overlay.remove(); });
-      $overlay.on('click', function (e) { if (e.target === $overlay[0]) $overlay.remove(); });
+      // Close — hủy luôn tìm kiếm đang chờ/đang bay, không cho response cũ mở lại một picker
+      // mà người dùng đã đóng.
+      $overlay.find('#picker-close').on('click', function () { searchSeq++; $overlay.remove(); });
+      $overlay.on('click', function (e) { if (e.target === $overlay[0]) { searchSeq++; $overlay.remove(); } });
 
       // Search
-      var searchTimer = null;
       $overlay.find('#picker-search').on('input', function () {
         var kw = Format.removeAccents($(this).val());
         var rawKw = $(this).val().trim();
@@ -170,8 +180,12 @@ var FormSelect = (function () {
         });
         if (field.searchFn && rawKw.length >= 2) {
           clearTimeout(searchTimer);
+          var requestSeq = ++searchSeq;
           searchTimer = setTimeout(function () {
             field.searchFn(rawKw, function (remoteOptions) {
+              // Một lượt gõ mới hơn (hoặc đóng picker) đã vượt qua lượt này — bỏ qua response
+              // cũ, không đè lên UI người dùng đang thấy.
+              if (requestSeq !== searchSeq) return;
               $overlay.remove();
               _renderModal(remoteOptions || []);
               setTimeout(function () { $('#picker-search').val(rawKw).focus(); }, 0);
@@ -180,7 +194,7 @@ var FormSelect = (function () {
         }
       });
 
-      // Select
+      // Select — chọn xong cũng phải hủy tìm kiếm đang chờ, lý do như Close ở trên.
       $overlay.find('#picker-list li[data-value]').on('click', function () {
         var val = $(this).attr('data-value');
         var lbl = $(this).text();
@@ -188,6 +202,7 @@ var FormSelect = (function () {
         field.labelText = lbl;
         $text.text(lbl);
         $trigger.addClass('has-value');
+        searchSeq++;
         $overlay.remove();
 
         if (field.onChange) field.onChange(val, lbl);

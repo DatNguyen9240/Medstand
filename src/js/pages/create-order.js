@@ -153,6 +153,11 @@ function mapCustomerOptions(records) {
   });
 }
 
+// CUST-SEARCH-003: KHÔNG gọi Alert.error ở đây. Đây là searchFn của picker — mỗi lượt gõ có
+// thể tạo một request riêng, và FormSelect._openPicker chỉ render response nào còn là lượt
+// tìm mới nhất. Nếu request của một lượt gõ đã bị bỏ qua (lượt sau đến trước) lại lỗi mạng,
+// bật toast ở đây vẫn cứ hiện — người dùng bị doạ bởi lỗi của thứ họ không còn xem nữa.
+// done([]) là đủ: picker (đã được bảo vệ theo thứ tự) sẽ tự hiện "Không tìm thấy kết quả".
 function loadCustomers(searchText, done) {
   Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
     q: JSON.stringify({ User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: searchText || '', SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || '' })
@@ -160,7 +165,6 @@ function loadCustomers(searchText, done) {
     var records = (res.data || res).records || res.data || res || [];
     done(mapCustomerOptions(records));
   }).catch(function () {
-    Alert.error('Không thể tải danh sách khách hàng. Vui lòng thử lại.');
     done([]);
   });
 }
