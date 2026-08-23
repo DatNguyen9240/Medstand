@@ -1,6 +1,6 @@
 # BACKLOG VIỆC CẦN LÀM THEO YÊU CẦU KHÁCH HÀNG
 
-**Cập nhật:** 22/08/2026 (rà soát trên nhánh `hoangdang` sau khi làm sạch lịch sử)
+**Cập nhật:** 23/08/2026 (rà soát merge-readiness giữa `hoangdang` và `origin/develop`)
 **Mục đích:** file này chỉ liệt kê việc còn phải làm. Kết quả đã chạy, ghi chú dài, task đã hoàn thành và lịch sử trạng thái nằm tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md).
 
 ## Cách đọc
@@ -15,7 +15,7 @@
 - [ ] **PROMO-CFG-002 — Cấu hình min có phân quyền và audit** · `P0` · `CODE_AND_GATEWAY_PREVIEW_PASS_PENDING_REASON_TRANSPORT_AND_UI_E2E`
   - **Đã xong 22/08/2026:** quyền âm (tạo/duyệt), khóa sửa bản đã duyệt, audit trước/sau (gồm nội dung rule, `BranchIDs`, `UserGroupIDs`), bắt buộc lý do khi từ chối/thu hồi và lọc config theo thời gian/scope — verify SQL `16/16 PASS` trên `medtest`, rollback. Proc runtime đã có đủ tham số `@Reason`.
   - **P0 identity + positional binding đã vá và kiểm qua HTTP thật:** List/Detail/ActiveByItems lấy identity từ token; Upsert/Approve dựng lại body bằng allowlist đúng thứ tự chữ ký proc, điền default cho tham số optional, gỡ mọi biến thể `User`/`Username`, chặn field lạ, field trùng khác hoa/thường và field bắt buộc bị thiếu. `verify_order_status_guard.js` PASS `22/22`; `verify_promo_cfg002_gateway_identity.js` PASS `14/14`, gồm Sale giả Manager, token hỏng/thiếu, payload đảo thứ tự, payload cố làm lệch positional binding và response nghiệp vụ của frontend. Toàn bộ probe write dùng `Apply=0`, không mutation.
-  - **Frontend đã bỏ gửi Username** ở toàn bộ năm Promotion API; gateway là nguồn sự thật duy nhất. Worktree cũ `promo-cfg-002-complete-work` bám `176cd9b` không được merge nguyên branch; thay đổi sạch hiện nằm trực tiếp trên `hoangdang` working tree.
+  - **Frontend đã bỏ gửi Username** ở toàn bộ năm Promotion API; gateway là nguồn sự thật duy nhất. Worktree cũ `promo-cfg-002-complete-work` bám `176cd9b` không được merge nguyên branch; thay đổi sạch hiện nằm trực tiếp trong merge candidate `hoangdang`.
   - **Cần làm còn lại:** xử lý lớp ERP live để tham số thứ năm `Reason` thực sự tới proc; sau đó chạy qua UI các luồng DRAFT → REJECT và APPROVED → WITHDRAW, đối soát request ID/audit actor. Evidence phải được tạo lại ở dạng tối giản và che toàn bộ credential/PII; không nhập bộ evidence của worktree cũ. `medtest` hiện còn 18 fixture `E2E_UI_MUT_*` ở trạng thái `REJECTED`, cần kế hoạch dọn UAT được phê duyệt hoặc ghi nhận rõ, không được mô tả là “không còn dữ liệu test”.
   - **Điều kiện đóng:** đổi config qua UI không cần build lại code; user ngoài quyền bị chặn kể cả payload giả; mutation hợp lệ ghi đúng actor/audit và có kế hoạch phục hồi dữ liệu.
 
@@ -37,11 +37,6 @@
 - [ ] **CUSTOMER-UAT-001 — Xác minh readiness bằng dữ liệu người dùng tạo** · `P0` · `PENDING_USER_CREATED_DATA_E2E`
   - **Cần làm:** khách chốt tài khoản/chi nhánh UAT và người nhập sản phẩm, giá, tồn, CTBH; chạy bằng tài khoản có `EmployeeID` thật, không dùng cấu hình riêng của `demo` làm bằng chứng.
   - **Điều kiện đóng:** dữ liệu mới có manifest nguồn gốc; các nhánh có CTBH cấu hình, CTBH note-text và không CTBH đều được kiểm; thiếu giá/tồn/quyền trả đúng mã.
-
-- [ ] **PRODUCT-DIAG-001 — Hoàn tất bằng chứng UI chẩn đoán sản phẩm** · `P1` · `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY`
-  - **Đã có:** contract/code 17/17 PASS; `API_HangHoaList_AI` đã nằm trong `READ_IDENTITY_POLICY`; guard tĩnh và build PASS; bằng chứng UI Tạo đơn và Sửa đơn hợp lệ. Không còn lỗ hổng code identity đã biết trong phạm vi task này, nhưng chưa có bằng chứng spoofing qua gateway runtime thật.
-  - **Cần làm:** chạy Chatbot bằng chuỗi thao tác UI mà người dùng thật có thể thực hiện, không gọi trực tiếp `ApiEngine.selectApi`/helper để dựng trạng thái; đồng thời gọi gateway runtime thật để chứng minh `Username` giả bị thay bằng identity từ phiên đăng nhập. Test dùng `fetch`/envelope giả chỉ được tính là unit test.
-  - **Điều kiện đóng:** Chatbot hiển thị chẩn đoán sau khi khách và sản phẩm được chọn thật; có ảnh/video, Network/request ID và response gateway đã che dữ liệu nhạy cảm.
 
 - [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `BLOCKED_BY_CUSTOMER_UAT_001`
   - **Cần làm:** chạy chuỗi tạo dữ liệu → chọn khách/sản phẩm → giá/tồn/CTBH → lập đơn → gửi duyệt → duyệt/từ chối, gồm các ca âm.
@@ -78,9 +73,8 @@
 ## 6. Thứ tự thực hiện
 
 1. `PROMO-CFG-002` sửa lớp ERP chuyển tiếp đủ `Reason`, chạy REJECT/WITHDRAW qua UI, đối soát audit actor và xử lý 18 fixture `REJECTED`; identity + ordered payload qua HTTP đã PASS.
-2. `PRODUCT-DIAG-001` hoàn tất Chatbot E2E và live identity evidence.
-3. `PROMO-CFG-003` hoàn tất UI preview, double-click/retry và config đổi giữa preview/xác nhận; contract `PROMO-CFG-001` đã `DONE`.
-4. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
+2. `PROMO-CFG-003` hoàn tất UI preview, double-click/retry và config đổi giữa preview/xác nhận; contract `PROMO-CFG-001` và `PRODUCT-DIAG-001` đã `DONE`.
+3. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
    Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
-5. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-6. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
+4. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
+5. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.

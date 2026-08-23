@@ -16,13 +16,14 @@ const fs = require('fs');
 const path = require('path');
 const sql = require('mssql');
 const puppeteer = require('puppeteer-core');
+const { getRequiredUatPassword } = require('./lib/uat-test-config');
 
 const ROOT = path.resolve(__dirname, '..');
 const REPORT_DIR = path.join(ROOT, 'reports', 'uat', 'CUST-SEARCH-003');
 const EVIDENCE_PATH = path.join(REPORT_DIR, 'CUST-SEARCH-003_REMAINING_E2E_EVIDENCE.json');
 const BASE_URL = process.env.CUST_SEARCH_URL || 'http://localhost:3000';
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const COMMON_PASSWORD = process.env.CUST_SEARCH_PASSWORD || process.env.APP_PASSWORD || '123456';
+const COMMON_PASSWORD = getRequiredUatPassword(['CUST_SEARCH_PASSWORD']);
 
 const RETRY_ACCOUNT = {
   user: process.env.CUST_SEARCH_RETRY_USER || 'demo',

@@ -4,10 +4,11 @@
  * Luồng: Đăng nhập demo -> Lấy Context -> Duyệt đơn (APPROVE) -> Kiểm tra kết quả -> Replay test.
  */
 const http = require('http');
+const { getRequiredUatPassword } = require('./lib/uat-test-config');
 
 const BASE = 'http://localhost:3000';
 const USERNAME = 'demo';
-const PASSWORD = '123456';
+const PASSWORD = getRequiredUatPassword();
 const ORDER_ID = 'UATORD-mscnvgnccb64aj1j91sbr'; // Đơn StatusID=0, BranchID=MB
 
 function encrypt(str, key = 107) {

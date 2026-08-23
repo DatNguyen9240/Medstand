@@ -1,5 +1,0 @@
-{
-  "Task": "CUST-SEARCH-003",
-  "Status": "FAIL",
-  "Error": "AssertionError [ERR_ASSERTION]: [create-order] Sau khi response cũ hoàn tất trễ: UI vẫn phải giữ kết quả \"Shop\", không bị đè về \"Tech\".\n    at runOnScreen (C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\.claude\\worktrees\\cust-search-003\\scripts\\verify_cust_search_003_e2e.js:218:3)\n    at async main (C:\\Users\\Legion\\Desktop\\AI Nhà Thuốc\\Medstand\\.claude\\worktrees\\cust-search-003\\scripts\\verify_cust_search_003_e2e.js:276:25)"
-}

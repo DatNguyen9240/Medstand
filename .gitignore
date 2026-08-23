@@ -29,10 +29,22 @@ node_modules/
 # ── Scratch / temp files (tạo bởi AI tools) ──
 scratch*
 *.scratch.*
+.tmp/
 .env.uat.local
 playwright-report/
 test-results/
 tests/.auth/
+
+# Raw UAT/runtime evidence may contain customer or account data. Keep only
+# reviewed Markdown summaries in Git; generated artifacts stay local.
+reports/**/*.json
+reports/**/*.png
+reports/**/*.jpg
+reports/**/*.jpeg
+reports/**/*.webp
+reports/**/*.har
+reports/**/*.mp4
+reports/**/*.webm
 
 # ?? n8n-system binaries (node, cloudflared) ??
 n8n-system/.bin/

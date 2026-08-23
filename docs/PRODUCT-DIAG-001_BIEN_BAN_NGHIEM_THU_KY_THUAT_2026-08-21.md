@@ -1,62 +1,63 @@
-# PRODUCT-DIAG-001 — Biên bản nghiệm thu kỹ thuật ngày 21/08/2026
+# PRODUCT-DIAG-001 — Biên bản nghiệm thu kỹ thuật
+
+**Nghiệm thu ban đầu:** 21/08/2026
+
+**Xác minh đóng task và vệ sinh evidence:** 23/08/2026
+
+**Trạng thái:** `DONE`
 
 ## Kết luận
 
-- **Gói code:** `PASS` sau khi hoàn tất sửa lỗi transport và đồng bộ helper chẩn đoán 3 luồng.
-- **Gói bảng test:** `PASS` với kết quả **17 PASS / 0 FAIL / 0 SKIPPED**.
-- **Task tổng:** `DONE` — Đã hoàn thành nghiệm thu kỹ thuật và toàn bộ 3/3 bằng chứng UI thực tế qua test E2E tự nhiên.
+- Contract `PRODUCT_ORDERABILITY_V1` đã đồng bộ SQL, gateway, helper frontend và ba luồng UI.
+- Verifier chính: **17 PASS / 0 FAIL / 0 SKIPPED**.
+- Live Gateway identity: **5/5 PASS**; identity luôn lấy từ phiên đăng nhập, không tin `Username` do client gửi.
+- Gateway guard: **22/22 PASS**.
+- UI tạo đơn, sửa đơn và Chatbot: **3/3 PASS** qua chuỗi thao tác người dùng.
+- Network Chatbot lấy `X-Request-ID` trực tiếp từ Gateway response và đối chiếu được với server log.
+- Build production: **PASS**.
+- Các kiểm tra chỉ đọc hoặc dùng transaction rollback; không để lại mutation test.
 
-## Lỗi tìm thấy khi review độc lập & Giải pháp
+## Lỗi gốc và bản sửa
 
-Procedure SQL trả đủ `Msg`, `MsgType`, `Code`, version và mảng nguyên nhân. Tuy nhiên API trung gian của ERP đưa
-`Msg/MsgType/Code` lên envelope `{code: 1, msg, records}`. Bản ban đầu của `Http` coi `code = 1` là lỗi transport
-và ném ngay, nên helper chưa bao giờ xử lý response chẩn đoán thật. Vì verifier ban đầu gọi procedure trực tiếp,
-15 ca cũ không phát hiện được chênh lệch này.
+Procedure trả đủ `Msg`, `MsgType`, `Code`, version và mảng nguyên nhân, nhưng ERP đưa mã nghiệp vụ lên envelope. Lớp HTTP cũ coi envelope này là lỗi transport và ném trước khi helper chẩn đoán xử lý.
 
-Đã sửa như sau:
+Bản sửa gồm:
 
-1. `Http` nhận diện envelope `PRODUCT_ORDERABILITY_V1` và không ném sớm.
-2. Helper lấy mã chính từ phần tử đầu của `ReasonCodesJson` khi API trung gian đã tách cột `Code` khỏi record.
-3. Thêm hai ca unit/integration `HELPER_ACCEPTS_REAL_GATEWAY_ENVELOPE` và `HTTP_PASSES_GATEWAY_DIAGNOSTIC_TO_HELPER`.
-4. Build lại bundle app và chatbot.
+1. Lớp HTTP nhận diện đúng envelope `PRODUCT_ORDERABILITY_V1`.
+2. Helper chuẩn hóa mã chính và danh sách nguyên nhân ở cả shape SQL lẫn Gateway.
+3. Mã/version lạ fail-closed; server cũ vẫn dùng thông báo fallback.
+4. `API_HangHoaList_AI` dùng server-owned identity.
+5. Ba luồng frontend dùng chung helper; bundle production đã được build lại.
 
-## Kết quả kiểm định đã chạy lại
+## Kết quả kiểm định ngày 23/08/2026
 
-| Hạng mục | Kết quả | Ghi chú |
+| Lệnh | Kết quả |
+| --- | --- |
+| `node scripts/verify_product_diag_001.js` | `17/17 PASS` |
+| `node scripts/verify_product_diag_001_gateway_identity.js` | `5/5 PASS` |
+| `node scripts/verify_order_status_guard.js` | `22/22 PASS` |
+| `node scripts/verify_order_approval_transition.js` | `25/25 PASS`, rollback |
+| `node scripts/scan_fixture_hardcode.js` | `PASS`, không có runtime finding |
+| `node scripts/build.js` | `PASS` |
+
+Các nhánh nghiệp vụ chính vẫn đúng: sản phẩm hợp lệ giữ schema cũ; tìm rộng không đổi; thiếu giá/tồn, đa nguyên nhân, item không tồn tại, khách ngoài scope và thiếu quyền kho đều trả đúng contract; response ngoài scope không lộ mã kho hoặc số lượng tồn.
+
+## Nghiệm thu UI
+
+| Luồng | Kết quả | Cách kiểm |
 | --- | --- | --- |
-| `node scripts/verify_product_diag_001.js` | **17/17 PASS** | Không fail, không skip; bao phủ gateway envelope và `Http → helper` |
-| Gateway identity runtime | **PASS** | Đăng nhập `demo`, giả `AnGiangA` ở query và `q`; server vẫn override trả `A008`, giá 75.000, kho `CTY` của `demo` |
-| `node scripts/verify_order_status_guard.js` | **11/11 PASS** | Có `PRODUCT_CATALOG_IDENTITY_IS_SERVER_OWNED` |
-| `node scripts/verify_order_approval_transition.js` | **25/25 PASS** | Kết thúc `ROLLED_BACK`, không commit dữ liệu kiểm thử |
-| `node scripts/scan_fixture_hardcode.js` | **PASS / 530 files** | `RuntimeFindings: []`; 1 review finding trong n8n workflow |
-| `node scripts/build.js` | **PASS** | `app.bundle.min.js` 94.98 KB; `chatbot.bundle.min.js` 314.56 KB |
+| Tạo đơn | PASS | Chọn khách và sản phẩm qua picker thật; UI hiển thị đúng câu chẩn đoán từ Gateway. |
+| Sửa đơn | PASS | Mở form sửa, chọn sản phẩm qua picker và nhận đúng chẩn đoán; không bypass permission guard. |
+| Chatbot | PASS | Click chip UI, nhập/chọn khách và sản phẩm trên panel; không gọi trực tiếp `ApiEngine.selectApi()` từ automation và không tự gán kết quả vào DOM. |
 
-Các ca DB chính vẫn đúng: `A008` giữ schema cũ; tìm rộng trả 20 dòng; `B043` trả
-`STOCK_NO_ROW + PRICE_NOT_FOUND`; `A003` trả ba nguyên nhân ổn định; `ZZZ999` trả `ITEM_NOT_FOUND`;
-khách lạ được che bằng `CUSTOMER_OUT_OF_SCOPE`; tài khoản không có kho trả
-`WAREHOUSE_SCOPE_REQUIRED + STOCK_BLOCKED_BY_WAREHOUSE_SCOPE`.
+## Chính sách evidence
 
-## Phạm vi đã nghiệm thu
+Ảnh, Network dump và JSON runtime có thể chứa tài khoản, mã khách hoặc dữ liệu giao dịch. Các artifact thô đã được review để nghiệm thu nhưng không được lưu trong Git:
 
-- Không nới điều kiện bán, giá, tồn, nhóm hàng hoặc phạm vi kho.
-- Identity danh mục là server-owned; giá trị `Username` từ client bị ghi đè.
-- Không lộ mã kho, tên kho hoặc số lượng tồn ngoài phạm vi.
-- Ba luồng frontend dùng cùng helper và bundle production chứa bản sửa.
-- Mã/version lạ fail-closed; server cũ chưa có contract vẫn có fallback.
+- `.gitignore` loại JSON/ảnh/HAR/video dưới `reports/`.
+- Server chặn truy cập trực tiếp `/reports/` và `/.tmp/`.
+- Script live identity chỉ ghi nhãn vai trò đã khử định danh vào evidence cục bộ.
+- Gateway trả correlation ID không chứa dữ liệu nghiệp vụ/định danh để ghép Network với log chính xác.
+- Repo chỉ giữ biên bản Markdown tổng hợp này và verifier có thể chạy lại.
 
-## Review bằng chứng UI thực tế (3/3 Pure E2E PASS)
-
-Tất cả 3 ảnh được chụp hoàn toàn tự động bằng kịch bản thuần Puppeteer E2E (`scripts/capture_product_diag_screenshots.js`) tương tác người dùng thực (không can thiệp DOM / mock / text injection), kiểm tra assert chuỗi chẩn đoán nghiệp vụ trước khi ghi nhận thành công:
-
-| Luồng | File ảnh (`reports/uat/`) | Kết luận | Quan sát thực tế |
-| --- | --- | --- | --- |
-| **1. Tạo đơn** (`#/create-order`) | `PRODUCT-DIAG-001_UI_CREATE_ORDER.png` | **PASS** | Chọn khách hàng `HNBV356`, mở popup chọn hàng, tìm `B043`, click chọn `B043`. Modal Alert hiển thị tự nhiên câu chẩn đoán: *"Chưa có dữ liệu tồn trong các kho được cấp quyền."* |
-| **2. Sửa đơn** (`#/edit-order`) | `PRODUCT-DIAG-001_UI_EDIT_ORDER.png` | **PASS** | Mở đơn `DMB0826/10`, mở picker dòng 1, tìm `B043`, click chọn. Danh mục sửa đơn tự động kích hoạt `loadProductDetail(B043)` và cập nhật text dòng thành: *"Chưa có dữ liệu tồn trong các kho được cấp quyền."* |
-| **3. Chatbot** (`#/chatbot`) | `PRODUCT-DIAG-001_UI_CHATBOT.png` | **PASS** | Kích hoạt `@lap_don_hang` cho khách `HNBV356` và item `B043`. Chatbot engine tự động nạp khách hàng, map thông tin, gửi `loadProductDetail('B043')` qua gateway và hiển thị lỗi chẩn đoán tự nhiên vào `#ae-order-error`: *"Chưa có dữ liệu tồn trong các kho được cấp quyền."* |
-
-## Kết luận chung
-
-- Nghiệm thu kỹ thuật: **PASS (17/17 cases)**
-- Guard bảo mật phân quyền & Identity: **PASS (11/11 cases)**
-- Bằng chứng UI chụp thực tế: **PASS (3/3 luồng)**
-- Task `PRODUCT-DIAG-001` đã chính thức hoàn thành nghiệm thu (**DONE**).
+Task `PRODUCT-DIAG-001` đủ điều kiện đóng `DONE`.

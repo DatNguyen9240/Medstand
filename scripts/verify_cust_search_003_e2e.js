@@ -27,13 +27,14 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const { getRequiredUatPassword } = require('./lib/uat-test-config');
 
 const ROOT = path.resolve(__dirname, '..');
 const REPORT_DIR = path.join(ROOT, 'reports', 'uat', 'CUST-SEARCH-003');
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const BASE_URL = process.env.CUST_SEARCH_URL || 'http://localhost:3410';
 const USERNAME = process.env.APP_USER || 'demo';
-const PASSWORD = process.env.APP_PASSWORD || '123456';
+const PASSWORD = getRequiredUatPassword();
 const ORDER_ID = process.env.CUST_SEARCH_ORDER_ID || 'DMB0826/10';
 
 function decrypt(cipherText, key = 107) {

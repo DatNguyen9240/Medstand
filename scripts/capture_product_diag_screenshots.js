@@ -5,6 +5,7 @@ const fs = require('fs');
 const assert = require('assert');
 const { spawn } = require('child_process');
 const http = require('http');
+const { getRequiredUatPassword } = require('./lib/uat-test-config');
 
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const REPORTS_DIR = path.join(__dirname, '..', 'reports', 'uat');
@@ -12,12 +13,11 @@ const ROOT = path.join(__dirname, '..');
 const PORT = Number(process.env.PRODUCT_DIAG_UI_TEST_PORT || 3411);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const USERNAME = process.env.APP_USER || 'demo';
-const PASSWORD = process.env.APP_PASSWORD || '123456';
+const PASSWORD = getRequiredUatPassword();
 
-/* Gateway (server.js) không trả x-request-id qua response header cho ca thành công —
- * chỉ ghi vào console log của chính server. Muốn có request ID thật cho một luồng UI
- * thật (không phải HTTP giả) thì phải tự chạy server.js và đọc lại log của nó, đúng
- * cách một người vận hành thật đối chiếu Network với server log. */
+/* Gateway trả X-Request-ID cho mọi response và đồng thời ghi cùng ID vào server log.
+ * Script tự chạy server.js để đối chiếu chính xác Network của luồng UI thật với log,
+ * kể cả khi nhiều request ERP/n8n hoàn tất không theo thứ tự gửi. */
 function decryptGatewayBody(value, key = 107) {
   const xor = Buffer.from(String(value || ''), 'base64').toString('latin1');
   let base64 = '';
@@ -90,7 +90,13 @@ async function main() {
         const reqJson = JSON.parse(reqPostData || '{}');
         decodedRequest = reqJson.data ? JSON.parse(decryptGatewayBody(reqJson.data)) : reqJson;
       } catch (_) { /* ignore */ }
-      gatewayCalls.push({ at: Date.now(), status, decodedRequest, decodedResponse });
+      gatewayCalls.push({
+        at: Date.now(),
+        status,
+        requestId: response.headers()['x-request-id'] || null,
+        decodedRequest,
+        decodedResponse
+      });
     } catch (_) { /* best effort, không chặn luồng UI */ }
   });
 
@@ -259,6 +265,7 @@ async function main() {
     // KHÔNG truyền sẵn params/items — chỉ click nút thật rồi gõ/click khách và sản phẩm như
     // người dùng thật.
     console.log('\n4. LUỒNG 3: Chatbot (#/chatbot) - thao tác UI thật, không gọi API nội bộ...');
+    const chatbotGatewayStartIndex = gatewayCalls.length;
     await page.goto(`${BASE_URL}/index.html#/chatbot`, { waitUntil: 'networkidle0' });
     await page.waitForSelector('.chat-suggestions .chat-chip', { timeout: 15000 });
     // Nút chip có onclick fallback sang gõ "@" (đường cần n8n) nếu window.ApiEngine chưa init
@@ -320,8 +327,15 @@ async function main() {
     });
     assert.ok(customerItemIndex !== null, 'Không tìm thấy gợi ý khách hàng nào cho HNBV356 trong dropdown thật.');
     console.log('   Click kết quả khách hàng khớp HNBV356 (data-i=' + customerItemIndex + ')...');
-    await page.click(`#ae-order-customer-drop .ae-order-drop-item[data-i="${customerItemIndex}"]`);
-    await page.waitForSelector('#ae-order-mapped:not([hidden])', { timeout: 15000 });
+    const customerItem = await page.waitForSelector(
+      `#ae-panel.active #ae-order-customer-drop .ae-order-drop-item[data-i="${customerItemIndex}"]`,
+      { visible: true, timeout: 5000 }
+    );
+    // pointerdown của dropdown chủ động preventDefault để giữ focus. Với Chrome headless,
+    // chuỗi mouse vật lý có thể dừng ở pointerdown và không phát click; HTMLElement.click()
+    // vẫn phát đúng event click mà người dùng kích hoạt, chạy chính handler attachCombo.
+    await customerItem.evaluate((el) => el.click());
+    await page.waitForSelector('#ae-panel.active #ae-order-mapped:not([hidden])', { timeout: 15000 });
     console.log('   ✅ Đã click chọn khách hàng thật, #ae-order-mapped hiển thị.');
 
     // Chatbot tự lọc client-side: searchProducts() chỉ hiện sản phẩm có tồn>0, giá>0 và
@@ -351,9 +365,15 @@ async function main() {
     }, productInputSelector);
     assert.ok(productItemIndex !== null, 'Không tìm thấy gợi ý sản phẩm nào cho A008 trong dropdown thật.');
     console.log('   Click kết quả sản phẩm khớp A008 (data-i=' + productItemIndex + ')...');
-    await page.click(`#ae-order-items .ae-order-row:first-child .ae-order-drop .ae-order-drop-item[data-i="${productItemIndex}"]`);
+    const productItem = await page.waitForSelector(
+      `#ae-panel.active #ae-order-items .ae-order-row:first-child .ae-order-drop .ae-order-drop-item[data-i="${productItemIndex}"]`,
+      { visible: true, timeout: 5000 }
+    );
+    // The dropdown keeps input focus with pointerdown.preventDefault(). Triggering the
+    // DOM click directly makes Chrome headless run the same selection handler reliably.
+    await productItem.evaluate((el) => el.click());
 
-    console.log('   Đang chờ chatbot-api-engine.js gọi loadProductDetail(A008) tự nhiên sau click...');
+    console.log('   Đang chờ handler chọn A008 cập nhật dòng sản phẩm từ danh mục thật...');
     await page.waitForFunction((sel) => {
       const row = document.querySelector(sel);
       return row && row.classList.contains('has-product');
@@ -380,41 +400,22 @@ async function main() {
     await page.screenshot({ path: shot3Path, fullPage: false });
     console.log('   📸 Đã lưu ảnh Luồng 3:', shot3Path);
 
-    // Đối chiếu Network thật: tìm lệnh gọi API_HangHoaList_AI cuối cùng (ItemID=B043, ObjectID
-    // của khách vừa chọn) trong các gateway call đã ghi nhận, khớp với dòng log
-    // "Forwarding GET" của server.js để lấy request ID thật — evidence chỉ giữ dữ liệu chẩn
-    // đoán công khai, bỏ Username/ObjectID/mọi trường định danh khách trước khi ghi ra đĩa.
-    const productDetailCalls = gatewayCalls.filter((c) => {
+    // Đối chiếu Network thật: Chatbot tải danh mục đủ điều kiện một lần rồi lọc A008 ở client.
+    // Chỉ xét request phát sinh trong luồng Chatbot và giữ evidence đã loại định danh khách.
+    const chatbotCatalogCalls = gatewayCalls.slice(chatbotGatewayStartIndex).filter((c) => {
       const req = c.decodedRequest;
       if (!req || typeof req.endpoint !== 'string') return false;
-      if (!req.endpoint.startsWith('/api/API_HangHoaList_AI')) return false;
-      return req.endpoint.includes('ItemID%22%3A%22A008') || decodeURIComponent(req.endpoint).includes('"ItemID":"A008"');
+      return req.endpoint.startsWith('/api/API_HangHoaList_AI');
     });
-    const lastDetailCall = productDetailCalls[productDetailCalls.length - 1] || null;
+    const lastCatalogCall = chatbotCatalogCalls[chatbotCatalogCalls.length - 1] || null;
 
-    // Log server.js không gắn requestId vào chính dòng "Forwarding GET" — chỉ dòng "Response
-    // metadata" kế tiếp mới có. Định vị theo VỊ TRÍ TRONG LOG (dòng Forwarding A008 cuối cùng,
-    // rồi tìm "Response metadata" kế tiếp ngay sau nó) để không nhận nhầm request ID của một
-    // lệnh gọi khác đang chạy song song.
-    const forwardingRegex = /\[Proxy Gateway\] Forwarding GET to https?:\/\/[^/]+(\/api\/API_HangHoaList_AI\?q=[^\s]+)/g;
-    let lastForwardMatch = null;
-    let m;
-    while ((m = forwardingRegex.exec(serverLog)) !== null) {
-      if (decodeURIComponent(m[1]).includes('"ItemID":"A008"')) lastForwardMatch = m;
-    }
-    const lastForwardedQuery = lastForwardMatch ? decodeURIComponent(lastForwardMatch[1]) : null;
-    let lastRequestIdLine = null;
-    if (lastForwardMatch) {
-      const after = serverLog.slice(lastForwardMatch.index);
-      const idMatch = after.match(/\[Proxy Gateway\] Response metadata: requestId=([^;]+); status=(\d+); durationMs=(\d+)/);
-      if (idMatch) lastRequestIdLine = idMatch;
-    }
-
+    // X-Request-ID do Gateway trả về cho phép ghép chính xác Network response với server log,
+    // kể cả khi nhiều request n8n/ERP đang chạy song song.
     let redactedDiagnosticRow = null;
-    if (lastDetailCall && lastDetailCall.decodedResponse) {
-      const body = lastDetailCall.decodedResponse;
+    if (lastCatalogCall && lastCatalogCall.decodedResponse) {
+      const body = lastCatalogCall.decodedResponse;
       const rows = Array.isArray(body) ? body : (body.records || []);
-      const row = rows[0] || {};
+      const row = rows.find((entry) => String(entry && entry.ItemID || '').toUpperCase() === 'A008') || {};
       redactedDiagnosticRow = {
         ItemID: row.ItemID || null,
         Code: row.Code || null,
@@ -426,19 +427,26 @@ async function main() {
 
     const networkEvidence = {
       task: 'PRODUCT-DIAG-001',
-      scope: 'Chatbot real-UI E2E — Network capture cho lệnh gọi API_HangHoaList_AI do click UI thật kích hoạt',
+      scope: 'Chatbot real-UI E2E — Network capture cho API_HangHoaList_AI do chuỗi nhập/chọn UI thật kích hoạt',
       note: 'Username/ObjectID và mọi trường định danh khách đã được loại khỏi evidence; chỉ giữ mã sản phẩm và kết quả chẩn đoán công khai.',
-      httpStatus: lastDetailCall ? lastDetailCall.status : null,
-      requestIdFromServerLog: lastRequestIdLine ? lastRequestIdLine[1] : null,
+      httpStatus: lastCatalogCall ? lastCatalogCall.status : null,
+      requestIdFromGatewayResponseHeader: lastCatalogCall ? lastCatalogCall.requestId : null,
       diagnostic: redactedDiagnosticRow,
-      forwardedQueryHadRealCustomerAndItem: Boolean(lastForwardedQuery)
+      catalogResponseContainedSelectedItem: Boolean(redactedDiagnosticRow && redactedDiagnosticRow.ItemID === 'A008'),
+      requestIdConfirmedInServerLog: Boolean(
+        lastCatalogCall
+        && lastCatalogCall.requestId
+        && serverLog.includes(`requestId=${lastCatalogCall.requestId};`)
+      )
     };
     fs.writeFileSync(
       path.join(REPORTS_DIR, 'PRODUCT-DIAG-001_CHATBOT_NETWORK_EVIDENCE.json'),
       JSON.stringify(networkEvidence, null, 2) + '\n'
     );
     console.log('   📄 Đã lưu reports/uat/PRODUCT-DIAG-001_CHATBOT_NETWORK_EVIDENCE.json');
-    assert.ok(networkEvidence.requestIdFromServerLog, 'Không lấy được request ID thật từ server log cho lệnh gọi Chatbot.');
+    assert.ok(networkEvidence.requestIdFromGatewayResponseHeader, 'Không lấy được request ID từ response của Gateway.');
+    assert.ok(networkEvidence.requestIdConfirmedInServerLog, 'Request ID của Network không khớp server log.');
+    assert.ok(networkEvidence.catalogResponseContainedSelectedItem, 'Response danh mục Chatbot không chứa A008 đã chọn.');
 
     console.log('\n════════════════════════════════════════════════════════════════');
     console.log('🎉 TẤT CẢ 3/3 LUỒNG PURE E2E ĐỀU ĐÃ ĐẠT ASSERTION VÀ LƯU ẢNH THÀNH CÔNG!');

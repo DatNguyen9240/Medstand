@@ -7,7 +7,7 @@
 ## 1. Môi trường và cách đối chiếu
 
 - Trình duyệt Google Chrome thật, điều khiển headless trên local gateway kết nối `medtest`.
-- Màn hình: `#/edit-order?id=DMB0826%2F10`.
+- Màn hình: `#/edit-order?id=[UAT_ORDER]`.
 - Bản trước sửa: commit `ca6ce72` (`74f6c53e^`).
 - Bản sau sửa dùng để nghiệm thu: commit `2e9bfef`, có thay đổi sửa lỗi `CORE-011` từ commit `74f6c53e` và log request ID tại gateway.
 - Dữ liệu khách mục tiêu được verifier tìm động trong scope của tài khoản test, không hard-code kết quả API.
@@ -29,7 +29,7 @@ Request nghiệm thu sau sửa:
 - Payload giải mã có `SearchText` bằng số điện thoại đã nhập.
 - HTTP status: `200`; response `code = 0`, `msg = OK`.
 - Request ID: `req-cust-search-001-after`, trùng giữa request do trình duyệt phát và metadata trong gateway log.
-- JSON bằng chứng lưu chi tiết request/response đã rút gọn, không lưu token xác thực.
+- JSON/ảnh runtime đã được review trong lúc nghiệm thu và sau đó loại khỏi Git theo chính sách evidence.
 
 ## 3. Nguyên nhân gốc
 
@@ -41,13 +41,9 @@ Thay đổi `CORE-011` tại commit `74f6c53e` xử lý đủ ba điểm: thêm 
 
 ## 4. Bằng chứng
 
-- [JSON đối chiếu Network và UI](../reports/uat/CUST-SEARCH-001/CUST-SEARCH-001_EVIDENCE.json)
-- [Ảnh trước sửa — nhập số điện thoại nhưng không có gợi ý](../reports/uat/CUST-SEARCH-001/CUST-SEARCH-001_BEFORE_PHONE_NO_SUGGESTION.png)
-- [Ảnh sau sửa — remote suggestion hiển thị đúng](../reports/uat/CUST-SEARCH-001/CUST-SEARCH-001_AFTER_REMOTE_SUGGESTION.png)
-- [Ảnh sau chọn — dữ liệu khách được tải vào form](../reports/uat/CUST-SEARCH-001/CUST-SEARCH-001_AFTER_SELECTED_AND_LOADED.png)
-- Gateway log: `reports/uat/CUST-SEARCH-001/CUST-SEARCH-001_AFTER_SERVER.log` (request ID và HTTP status; không có token).
 - Verifier tái chạy: `node scripts/verify_cust_search_001_e2e.js`.
+- Biên bản này giữ kết luận đã khử định danh. JSON, screenshot và gateway log chỉ được tạo cục bộ dưới `reports/`, bị Git ignore và không đưa vào nhánh phát hành.
 
 ## 5. Phạm vi chưa đóng bởi task này
 
-`CUST-SEARCH-001` chỉ yêu cầu tái hiện và chỉ ra nguyên nhân cụ thể của lỗi chọn gợi ý. Các ca response cũ ghi đè response mới, API chậm/lỗi/retry, đổi tài khoản, khách ngoài scope và regression trên toàn bộ màn hình vẫn thuộc `CUST-SEARCH-003` và tiếp tục nằm trong backlog.
+`CUST-SEARCH-001` chỉ yêu cầu tái hiện và chỉ ra nguyên nhân cụ thể của lỗi chọn gợi ý. Các ca response cũ ghi đè response mới, API chậm/lỗi/retry, đổi tài khoản, khách ngoài scope và regression toàn màn hình đã được tách sang `CUST-SEARCH-003`; task đó đã nghiệm thu `DONE` ngày 22/08/2026.

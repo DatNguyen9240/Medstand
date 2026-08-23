@@ -219,8 +219,8 @@ async function main() {
     evidence.push({
       case: 'GHOST_USERNAME_OVERRIDDEN_BY_TOKEN_IDENTITY',
       requestId: ghostCall.requestId, status: ghostCall.status,
-      forgedUsernameSentByClient: forgedGhost,
-      usernameActuallyForwardedToBackend: ghostCall.forwardedUsername
+      forgedUsernameSentByClient: '[NON_EXISTENT_ACCOUNT]',
+      usernameActuallyForwardedToBackend: '[AUTHENTICATED_SALE_ACCOUNT]'
     });
 
     // TEST 2 — Kết quả không đổi dù trường Username trong query là identity thật của một
@@ -250,8 +250,8 @@ async function main() {
       requestIdReal: asSelf.requestId, requestIdForged: spoofedAsManager.requestId,
       statusReal: asSelf.status, statusForged: spoofedAsManager.status,
       identical: stableBody(asSelf.body) === stableBody(spoofedAsManager.body),
-      forgedUsernameSentByClient: manager,
-      usernameActuallyForwardedToBackend: spoofedAsManager.forwardedUsername
+      forgedUsernameSentByClient: '[DIFFERENT_ROLE_ACCOUNT]',
+      usernameActuallyForwardedToBackend: '[AUTHENTICATED_SALE_ACCOUNT]'
     });
 
     // TEST 3 — Chiều ngược lại: Manager thật giả làm Sale qua query cũng không bị hạ quyền.
@@ -279,8 +279,8 @@ async function main() {
       requestIdReal: managerAsSelf.requestId, requestIdForged: managerSpoofsSale.requestId,
       statusReal: managerAsSelf.status, statusForged: managerSpoofsSale.status,
       identical: stableBody(managerAsSelf.body) === stableBody(managerSpoofsSale.body),
-      forgedUsernameSentByClient: sale,
-      usernameActuallyForwardedToBackend: managerSpoofsSale.forwardedUsername
+      forgedUsernameSentByClient: '[DIFFERENT_ROLE_ACCOUNT]',
+      usernameActuallyForwardedToBackend: '[AUTHENTICATED_MANAGER_ACCOUNT]'
     });
 
     // TEST 4 — Thiếu/sai token vẫn bị chặn 401 trước khi chạm identity policy.

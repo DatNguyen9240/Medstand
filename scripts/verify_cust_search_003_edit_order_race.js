@@ -19,12 +19,13 @@
 const fs = require('fs');
 const path = require('path');
 const puppeteer = require('puppeteer-core');
+const { getRequiredUatPassword } = require('./lib/uat-test-config');
 
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const REPORTS_DIR = path.join(__dirname, '..', 'reports', 'uat', 'CUST-SEARCH-003');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const USERNAME = process.env.APP_USER || 'demo';
-const PASSWORD = process.env.APP_PASSWORD || '123456';
+const PASSWORD = getRequiredUatPassword();
 const ORDER_ID = process.env.ORDER_ID || 'DMB0826/6';
 
 function assert(cond, msg) {

@@ -80,6 +80,7 @@ app.use((req, res, next) => {
         '/sql/',
         '/n8n/',
         '/reports/',
+        '/.tmp/',
         '/config/',
         '/docs/',
         '/.runtime-backups/'
@@ -434,6 +435,9 @@ const buildGatewayMultipartBody = (multipart) => {
 
 app.post('/api/gateway', async (req, res) => {
     const requestId = requestIdOf(req);
+    // Expose the correlation ID to same-origin clients and E2E tooling. The value is
+    // generated/validated by requestIdOf(); it contains no business or identity data.
+    res.setHeader('X-Request-ID', requestId);
     let targetUrl = '';
     const startedAt = Date.now();
     try {
@@ -906,8 +910,8 @@ app.get('/api/sheet-data', async (req, res) => {
 
         // 1. Kiểm tra API Key bảo mật để tránh người ngoài truy cập trái phép
         const apiKey = req.query.apiKey || req.headers['x-api-key'];
-        const validKey = process.env.CHAT_API_KEY || 'test123456';
-        if (apiKey !== validKey) {
+        const validKey = process.env.CHAT_API_KEY;
+        if (!validKey || apiKey !== validKey) {
             return res.status(401).json({ error: 'Không có quyền truy cập. Vui lòng cung cấp apiKey hợp lệ.' });
         }
 

@@ -5,6 +5,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "build": "node scripts/build.js",
+    "verify:git-hygiene": "node scripts/verify_git_hygiene.js",
     "noti:preflight": "node scripts/preflight_noti001_distribution.js",
     "noti:deploy": "node scripts/deploy_noti001_schema.js",
     "noti:deploy:apply": "node scripts/deploy_noti001_schema.js --apply",

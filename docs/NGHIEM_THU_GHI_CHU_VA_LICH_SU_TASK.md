@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 22/08/2026 (đối chiếu trên nhánh `hoangdang` sau khi làm sạch evidence)
+**Cập nhật:** 23/08/2026 (đối chiếu merge-readiness với `origin/develop` sau khi loại raw evidence)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -31,7 +31,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `ORDER-APPROVAL-005` | `DONE` | QA độc lập xác nhận 13/13 ca chức năng PASS; artifact thô có PII đã xóa theo quyết định chủ dự án |
 | `ORDER-APPROVAL-006` | `DONE` | Gửi duyệt/hủy riêng và chống double-click PASS; không lưu ảnh/JSON thô trong repo |
 | `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
-| `PRODUCT-DIAG-001` | `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY` | Code 17/17; UI hợp lệ 2/3, thiếu Chatbot thao tác như người dùng thật và live gateway identity |
+| `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
 | `CUSTOMER-DOC-001` | `BLOCKED` | Chờ runtime UAT ổn định |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn và core fixes |
@@ -48,7 +48,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Kết quả trước sửa:** nhập số điện thoại không phát request tìm kiếm khách hàng và không có gợi ý (`0` request, `0` option).
 - **Kết quả sau sửa:** phát đúng một request `API_KhachHangList` với `SearchText` là số điện thoại; gateway trả HTTP 200 với request ID `req-cust-search-001-after`; `data-value` bằng `ObjectID`, label bằng `DisplayName`; sau khi chọn, form tải đúng số điện thoại, địa chỉ và phường/xã.
 - **Nguyên nhân gốc:** màn sửa đơn chưa cấu hình remote `searchFn`; SQL chưa tìm `SearchText` theo `Phone`; `FormSelect` trả sớm khi kết quả rỗng nên picker biến mất thay vì giữ empty-state.
-- **Bằng chứng:** [biên bản chi tiết](CUST-SEARCH-001_BIEN_BAN_TAI_HIEN_VA_NGHIEM_THU_2026-08-21.md), JSON/ảnh/log tại `reports/uat/CUST-SEARCH-001/`; verifier `scripts/verify_cust_search_001_e2e.js` PASS.
+- **Bằng chứng:** [biên bản chi tiết](CUST-SEARCH-001_BIEN_BAN_TAI_HIEN_VA_NGHIEM_THU_2026-08-21.md) và verifier `scripts/verify_cust_search_001_e2e.js` PASS. JSON/ảnh/log thô chỉ lưu cục bộ, bị Git ignore và không phải artifact phát hành.
 - **Giới hạn lúc đóng task:** race giữa nhiều request, API lỗi/retry, stale response và regression các màn hình khác được tách sang `CUST-SEARCH-003`; phạm vi đó đã được nghiệm thu hoàn tất ngày 22/08/2026.
 
 ### CORE-011 — Sửa tìm kiếm và chọn khách hàng từ gợi ý
@@ -69,16 +69,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 
 - **Cập nhật 22/08/2026 — nguyên nhân gốc thật khác dự đoán trước đó:** sequence guard ở `customer-management.js`/`contract-point.js` không bảo vệ được bộ chọn khách ở màn lập/sửa đơn — hai màn đó dùng component dùng chung [FormSelect.js](../src/js/components/FormSelect.js), và `_openPicker`'s remote `searchFn` không có cơ chế kiểm request nào cả (không phải "đã có guard, thiếu bằng chứng" như ghi trước đây).
 - **Đã fix và merge** (`4f288b5`): thêm bộ đếm generation trong `_openPicker`, chỉ áp kết quả của request còn là request mới nhất; đồng thời bỏ `Alert.error` vô điều kiện ở nhánh lỗi `searchFn` của `create-order.js`/`edit-order.js` (lỗi của request đã bị bỏ qua không nên hiện toast).
-- **Bằng chứng màn lập đơn (create-order) — PASS thật bằng Chrome DevTools Protocol**, không phải suy luận từ code: giữ response request chậm (gõ trước) lại 354ms cho tới sau khi response request nhanh (gõ sau) đã render xong, rồi mới thả ra — kết quả cuối cùng vẫn giữ đúng danh sách của request nhanh, không bị request chậm ghi đè. Ca lỗi trễ (request bị hủy bỏ nhưng sau đó mới báo lỗi) cũng không hiện toast và không xóa kết quả đang hiển thị. Ảnh/JSON tại `reports/uat/CUST-SEARCH-003/`.
-- **Màn sửa đơn (edit-order): blocker đã được sửa và merge, sau đó đã chạy lại race/stale-response riêng — PASS 22/08/2026.** `order-ui-evidence-work` chuẩn hóa cờ `CanEdit`, giữ envelope nghiệp vụ/`BlockMsg` và được merge vào `hoangdang` tại `fb85981`; E2E ORDER-APPROVAL-005/006 đã chứng minh form sửa đơn render được. Sau đó viết `scripts/verify_cust_search_003_edit_order_race.js`, chạy PASS ổn định 2 lần liên tiếp trên `medtest`: request cũ (gõ trước) về trễ sau request mới không làm render lại và không lộ dữ liệu của nó vào danh sách; request bị bỏ dở sau đó lỗi không hiện toast, không xóa kết quả đang có. Bằng chứng: `reports/uat/CUST-SEARCH-003/AFTER_edit-order_RUN_OUTPUT.json`.
+- **Bằng chứng màn lập đơn (create-order) — PASS thật bằng Chrome DevTools Protocol**, không phải suy luận từ code: giữ response request chậm (gõ trước) lại cho tới sau khi response request nhanh (gõ sau) đã render xong, rồi mới thả ra — kết quả cuối cùng vẫn giữ đúng danh sách của request nhanh, không bị request chậm ghi đè. Ca lỗi trễ cũng không hiện toast và không xóa kết quả đang hiển thị. Raw ảnh/JSON đã được review rồi loại khỏi Git.
+- **Màn sửa đơn (edit-order): blocker đã được sửa và merge, sau đó đã chạy lại race/stale-response riêng — PASS 22/08/2026.** `order-ui-evidence-work` chuẩn hóa cờ `CanEdit`, giữ envelope nghiệp vụ/`BlockMsg` và được merge vào `hoangdang` tại `fb85981`; verifier `scripts/verify_cust_search_003_edit_order_race.js` chứng minh request cũ về trễ không ghi đè request mới, stale error không hiện toast và không xóa kết quả đang có.
 - **Sự cố kỹ thuật khi viết test edit-order, tự phát hiện và tự sửa trong cùng phiên:**
   1. CDP network interception (`page.setRequestInterception`) không bắt được đều các request `fetch()` qua gateway trong môi trường này (nghi Service Worker) — chuyển sang giữ request ở tầng JS bằng cách patch `Http.get` trong trang, đọc `SearchText` trực tiếp trước khi mã hóa.
   2. **Phiên bản đầu của test tự cho PASS giả**: đồng bộ "đợi request nhanh render xong" bằng cách đoán qua nội dung (`có thấy khách kỳ vọng trong DOM chưa`) — nhưng list gốc (autoload lúc mở picker, ~500 khách) đã chứa sẵn hầu hết khách mẫu nên phép đoán này đúng ngay từ đầu, trước khi bất kỳ tìm kiếm nào thực sự chạy. Phát hiện qua việc "kết quả tìm 'Shop'" ban đầu có tới 500 dòng và cả "Techcombank" — vô lý cho một tìm kiếm đã lọc. Sửa lại bằng tín hiệu đáng tin cậy hơn: đếm số lần `_renderModal` thực sự chạy (MutationObserver trên số overlay mới được thêm vào DOM), chỉ coi là "đã render kết quả tìm kiếm" khi đếm tăng đúng 1 lần. Sau khi sửa, kết quả tìm "Shop" thật ra 466 dòng (nhiều công ty có chữ "Shop" trong tên là hợp lý), không có Techcombank — khớp đúng kỳ vọng.
   3. **Nghi vấn cũ đã được xử lý ở lượt nghiệm thu cuối:** bằng chứng GỐC của `create-order` từng ghi `visibleOptions count: 500` vì đếm cả option ẩn. Verifier hợp nhất đã được sửa để chỉ tính node thực sự hiển thị và chạy lại cả hai màn: mỗi màn có 6 kết quả `Shop` đang hiển thị, không có `Techcombank`, kể cả sau khi response `Tech` cũ được thả ra.
   4. **Phát hiện phụ, không phải bug chặn vĩnh viễn:** loading spinner toàn cục (`#global-spinner`, dùng chung 1 bộ đếm cho MỌI request đang chạy trên trang, kể cả các gọi nền không liên quan như đếm thông báo) có thể còn che và chặn click vài giây sau khi nội dung đã hiển thị xong — tự hết sau khi mọi request nền hoàn tất, nhưng là điểm UX gồ ghề nên ghi lại.
 - **Nghiệm thu cuối 22/08/2026:** siết `scripts/verify_cust_search_003_e2e.js` để chỉ tính option thực sự đang hiển thị, không tính 500 option ẩn của danh sách preload. Chạy lại Chrome thật: cả `create-order` và `edit-order` đều PASS; giữa race chỉ có 6 option `Shop` hiển thị, `Techcombank` không xuất hiện; sau khi thả response `Tech` cũ, kết quả vẫn giữ nguyên, không toast và chỉ có một overlay.
-- **Ma trận bổ sung:** `scripts/verify_cust_search_003_remaining_e2e.js` PASS `5/5`, `0 FAIL`, `0 SKIPPED`: request hiện tại HTTP 500 rồi retry HTTP 200 trên cả hai màn; logout tài khoản A rồi login B trong cùng browser context đã xóa cache/auth phiên A; scope hai chiều được đối chiếu bằng `AR_GetObjectByUserFnc`; màn sửa đơn kiểm riêng khách ngoài scope; chọn khách map đúng các trường từ record API. Ba tài khoản thật được dùng là `NAMDINHB.MED`, `BACNINHA.MED`, `QLBH013.MED`.
-- **Bằng chứng:** `reports/uat/CUST-SEARCH-003/CUST-SEARCH-003_EVIDENCE.json`, `CUST-SEARCH-003_REMAINING_E2E_EVIDENCE.json` và ảnh cùng thư mục. Evidence có request ID/HTTP status, không lưu token/password; ảnh supplemental đã che dữ liệu khách nhạy cảm.
+- **Ma trận bổ sung:** `scripts/verify_cust_search_003_remaining_e2e.js` PASS `5/5`, `0 FAIL`, `0 SKIPPED`: request hiện tại HTTP 500 rồi retry HTTP 200 trên cả hai màn; logout tài khoản A rồi login B trong cùng browser context đã xóa cache/auth phiên A; scope hai chiều được đối chiếu bằng `AR_GetObjectByUserFnc`; màn sửa đơn kiểm riêng khách ngoài scope; chọn khách map đúng các trường từ record API.
+- **Chính sách evidence:** kết luận và tên verifier được giữ trong tài liệu; JSON, Network dump và ảnh có dữ liệu tài khoản/khách chỉ được tạo cục bộ dưới `reports/`, bị Git ignore và không đưa vào nhánh phát hành.
 - **Artifact QA bị bác và đã loại trước khi push:** commit local cũ `176cd9b` từng thêm `EDIT_ORDER_8_CASES_EVIDENCE.json` và `E2E_8_CASES_EDIT_ORDER_VERIFIED.png`. Bộ này bị kết luận `REJECTED_INVALID_EVIDENCE` vì đếm cả 500 option ẩn, không đổi hai tài khoản thật, dùng mã không tồn tại cho ca ngoài scope, thiếu request ID/HTTP timeline, mapping không assert đủ và còn để lộ thông tin khách. Lịch sử `hoangdang` đã được viết lại an toàn: HEAD mới `8a1bff7`, `176cd9b` không còn là ancestor và hai file không còn trong tree dự kiến push. Kết luận `DONE` vẫn dựa trên hai verifier chuẩn ở trên.
 - **Kết luận:** `DONE`; toàn bộ điều kiện đóng P0/P1 của task đã đạt, không phát sinh mutation trên `medtest`.
 
@@ -136,30 +136,29 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 
 - `uat_data_readiness.js` phân biệt các lỗi item, customer, giá, tồn, kho và ba trạng thái CTBH; không seed dữ liệu.
 - Kết quả được ghi nhận: 13 PASS / 0 FAIL / 2 SKIPPED. Hai ca skip là thiếu CTBH config active và thiếu actor-config user không phải manager global; không được tính là PASS.
-- Hard-code scan gần nhất quét 529 file, `RuntimeFindings: []`; phạm vi scan chỉ bao phủ các token fixture đã khai báo.
+- Hard-code scan gần nhất quét 554 file, `RuntimeFindings: []`; phạm vi scan chỉ bao phủ các token fixture đã khai báo.
 - Chưa nghiệm thu E2E vì cấu hình actor/customer hiện gắn với `demo`; phải dùng tài khoản có `EmployeeID` và dữ liệu do người dùng tạo.
 
 ### PRODUCT-DIAG-001
 
 - SQL/runtime có contract `PRODUCT_ORDERABILITY_V1`; các ca `B043`, `A003`, `ZZZ999`, customer ngoài scope và thiếu quyền kho trả đúng mã đã định nghĩa.
-- `verify_product_diag_001.js`: 17 PASS / 0 FAIL / 0 SKIPPED. Hai ca mới về gateway là unit test dùng `fetch` giả và envelope dựng sẵn, không phải request gateway runtime.
-- `verify_order_status_guard.js`: 11/11 PASS; build production PASS.
-- Bằng chứng UI hợp lệ hiện tại:
-  - Tạo đơn: PASS.
-  - Sửa đơn: PASS.
-  - Chatbot: **chưa chấp nhận là E2E người dùng thật**. Script hiện gọi trực tiếp `window.ApiEngine.selectApi(...)` để mở/prefill flow rồi chờ engine tải dữ liệu; dù không còn tự gán kết quả chẩn đoán vào DOM, thao tác này vẫn bỏ qua chuỗi click/nhập/chọn mà người dùng thực hiện trên UI.
-- Trạng thái `DONE` ghi trước đây bị thu hồi. Trạng thái đúng là `TECHNICALLY_ACCEPTED_PENDING_CHATBOT_E2E_AND_LIVE_IDENTITY`.
-- Biên bản kỹ thuật hiện còn mâu thuẫn giữa `PENDING_UI_EVIDENCE` và `DONE`; chỉ cập nhật lại sau khi có bằng chứng hợp lệ.
+- `verify_product_diag_001.js`: **17 PASS / 0 FAIL / 0 SKIPPED**; `verify_product_diag_001_gateway_identity.js`: **5/5 PASS** qua encrypted live Gateway, gồm giả identity hai chiều và token thiếu/hỏng.
+- `verify_order_status_guard.js`: **22/22 PASS**; build production PASS.
+- Script UI hiện thao tác đúng chuỗi người dùng ở cả ba luồng. Với Chatbot, script click chip UI thật, nhập/chọn khách và sản phẩm trên panel; không gọi trực tiếp `ApiEngine.selectApi()` từ `page.evaluate` và không tự gán kết quả vào DOM.
+- Tạo đơn, sửa đơn và Chatbot đều PASS. Raw screenshot/Network JSON đã được review rồi loại khỏi Git; biên bản chỉ giữ kết luận khử định danh.
+- Lượt chốt merge-readiness dùng `X-Request-ID` từ chính Gateway response để ghép request danh mục Chatbot với server log; tránh suy diễn theo thứ tự response khi n8n và ERP chạy song song.
+- **Kết luận:** `DONE` ngày 23/08/2026.
 
 ## 5. Ghi chú vận hành và bằng chứng
 
 - Không lưu mật khẩu đăng nhập thật trong script test; dùng biến môi trường hoặc phiên đăng nhập do người kiểm thử chuẩn bị.
-- Không ghi/copy artifact sang đường dẫn cá nhân ngoài workspace. Bằng chứng chuẩn nằm trong `reports/uat/`.
+- Raw evidence được tạo cục bộ trong `reports/`, không commit. Repo chỉ giữ biên bản Markdown đã review và khử định danh; các định dạng JSON/ảnh/HAR/video dưới `reports/` bị Git ignore.
 - Test UI không được tự gán nội dung hoặc style vào phần tử cần assert; phải thao tác qua cùng event/handler mà người dùng thật sử dụng.
 - Tên test phải phản ánh đúng phạm vi: mock/fake envelope là unit test, không gọi là gateway runtime.
 - Mọi mutation test trên `medtest` phải rollback hoặc có manifest dọn dữ liệu rõ ràng.
-- Không dùng hai artifact `EDIT_ORDER_8_CASES_EVIDENCE.json` và `E2E_8_CASES_EDIT_ORDER_VERIFIED.png` làm căn cứ nghiệm thu. Hai file đã được loại khỏi tree và ancestry của `hoangdang` trước khi push; chỉ branch/worktree PROMO local cũ còn bám ref `176cd9b` và tuyệt đối không được push hoặc merge nguyên ancestry đó.
-- `src/` không có file sửa/xóa/untracked trong lần rà soát này. Canonical evidence của `CUST-SEARCH-003` nằm trong commit sạch `8a1bff7`; thay đổi tài liệu vệ sinh Git được commit riêng ngay sau đó.
+- Không dùng hai artifact `EDIT_ORDER_8_CASES_EVIDENCE.json` và `E2E_8_CASES_EDIT_ORDER_VERIFIED.png` làm căn cứ nghiệm thu. Hai file không còn trong tree phát hành.
+- Ngày 23/08/2026 đã loại toàn bộ `.tmp` và 77 raw evidence JSON/ảnh khỏi Git, bổ sung ignore rule, chặn `/.tmp/` ở static server và bỏ fallback mật khẩu UAT khỏi script E2E.
+- Biên bản [merge-readiness 23/08/2026](MERGE_READINESS_2026-08-23.md) xác nhận build/regression/hygiene đạt; các task còn mở trong backlog không bị ghi nhận sai thành `DONE`.
 
 ### `sql/` — dọn dẹp cấu trúc (22/08/2026, không liên quan nghiệm thu nghiệp vụ)
 
@@ -167,14 +166,9 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - Đổi tên 35 file kiểu `Module N - API_X_AI.sql` sang chuẩn gạch dưới `Module_NN_API_X_AI.sql`; **không đổi tên procedure/function bên trong** nên không ảnh hưởng endpoint đang chạy. Đã cập nhật hết tham chiếu trong `scripts/`, `docs/` và các file `.sql` khác, sweep cuối 0 tham chiếu cũ còn sót.
 - Đã merge vào `hoangdang` (`89464f9`). Chi tiết đầy đủ và bảng đổi tên xem lịch sử hội thoại hoặc `git show 7b90fe9`.
 
-### Trạng thái worktree (22/08/2026)
+### Trạng thái worktree (23/08/2026)
 
-| Worktree | Branch | Đã merge vào `hoangdang`? |
-| --- | --- | --- |
-| `.claude/worktrees/promo-cfg-002` | `promo-cfg-002-work` | Merged |
-| `.claude/worktrees/sql-cleanup` | `sql-cleanup-work` | Merged |
-| `.claude/worktrees/cust-search-003` | `cust-search-003-work` | Merged |
-| `.claude/worktrees/order-ui-evidence` | `order-ui-evidence-work` | Merged vào `hoangdang` tại `fb85981` (gồm commit hoàn thiện `ed09c48`) |
+Chỉ còn worktree chính `Medstand` trên nhánh `hoangdang`; không còn worktree/branch phụ cần merge.
 
 ## 6. Tài liệu liên quan
 
@@ -183,4 +177,4 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - [Biên bản kỹ thuật PRODUCT-DIAG-001](PRODUCT-DIAG-001_BIEN_BAN_NGHIEM_THU_KY_THUAT_2026-08-21.md)
 - [Hướng dẫn chốt contract duyệt đơn](ORDER-APPROVAL-002_HUONG_DAN_CHOT_HOP_DONG_DUYET_DON.md)
 - [Chuỗi dữ liệu tối thiểu CUSTOMER-UAT-001](CUSTOMER-UAT-001_CHUOI_DU_LIEU_TOI_THIEU.md)
-- Bằng chứng race condition CUST-SEARCH-003 (trước/sau CDP intercept): `reports/uat/CUST-SEARCH-003/`
+- [Biên bản merge-readiness 23/08/2026](MERGE_READINESS_2026-08-23.md)
