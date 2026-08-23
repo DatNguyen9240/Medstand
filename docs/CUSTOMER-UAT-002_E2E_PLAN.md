@@ -1,8 +1,8 @@
-# CUSTOMER-UAT-002 — Kế hoạch E2E (`PLAN_ONLY`)
+# CUSTOMER-UAT-002 — Kế hoạch thực thi E2E
 
 **Trạng thái:** `READY_FOR_E2E_PENDING_BROWSER_CONNECTION`
 **Ngày lập kế hoạch:** 23/08/2026  
-**Môi trường dự kiến:** runtime UAT đã deploy  
+**Môi trường mục tiêu:** `https://medtest.bms7.net/`; chỉ bắt đầu sau khi ghi nhận release/commit thực tế đã deploy
 **Tài khoản/dữ liệu:** đã chốt bằng `CUSTOMER-UAT-001`; raw manifest cục bộ bị Git ignore, không chép thông tin khách vào tài liệu phát hành
 
 ## Test Flow
@@ -12,9 +12,9 @@
 2. Chọn khách thuộc dữ liệu UAT mới.
 3. Chọn sản phẩm có CTBH cấu hình đang hoạt động theo oracle.
 4. Đối chiếu giá, tồn và CTBH với API/DB.
-7. Lập đơn
-8. Gửi duyệt
-9. Thu request ID, mã đơn, ảnh đã che dữ liệu và audit.
+5. Lập đơn.
+6. Gửi duyệt.
+7. Thu request ID, mã đơn, ảnh đã che dữ liệu và audit.
 
 ### Case 2: CTBH note-text (`PENDING`)
 1. Chọn dữ liệu có note-text hợp lệ theo oracle.
@@ -40,6 +40,13 @@
 - Ảnh thao tác màn hình
 - Log server (X-Request-ID)
 - Biên bản dry-run
+
+## Gate trước khi chạy
+
+- Ghi đúng release/commit đang chạy trên UAT; không suy ra từ HEAD local.
+- Xác nhận `CUSTOMER-SEC-001` đã deploy và `CUSTOMER-SEC-002 --live` PASS nếu vòng UAT này dùng policy mới.
+- Browser phải được kết nối với phiên đăng nhập thật; không thay bằng mock hoặc script chèn response.
+- Dùng raw manifest mới nhất của `CUSTOMER-UAT-001`; không đưa mã khách, token hoặc cookie vào artifact commit.
 
 **Kết luận hiện tại:** đầu vào readiness đã đủ nhưng chưa chạy UI E2E. Cần Browser được kết nối với runtime local/UAT; không được dùng tài liệu này để kết luận `PASS` hoặc `DONE`.
 
