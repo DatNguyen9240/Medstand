@@ -136,6 +136,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Quyết định evidence ngày 22/08/2026:** chủ dự án không yêu cầu thu lại bộ ảnh/JSON công khai. Toàn bộ 19 artifact thô có dữ liệu nhận diện khách đã bị xóa khỏi cây file hiện hành; hồ sơ chỉ giữ kết luận QA tổng hợp không chứa tài khoản, mã đơn, request ID hoặc dữ liệu khách.
 - **Kết luận:** không còn lỗi code đã biết; QA chức năng 13/13 PASS và yêu cầu vệ sinh evidence đã hoàn tất bằng cách loại artifact thô. `ORDER-APPROVAL-005/006` chuyển `DONE`.
 - **PROMO-UAT-CLEANUP-001 (23/08/2026):** Đối chiếu DB xác nhận `AR_OrderTbl.StatusID` của `DMB0826/17` đã chuyển `-1 → 10`. `AI_AuditLog` LogID 3567 ghi `ActionType=ORDER_OWNER_TRANSITION`, `Username=demo`, `TargetID=DMB0826/17`; nội dung audit thể hiện `action=CANCEL`, `fromStatusID=-1`, `toStatusID=10`, `outcome=COMPLETED`. Screenshot không đủ điều kiện evidence và đã bị loại; không dùng ảnh hoặc tuyên bố replay chưa tái lập làm căn cứ nghiệm thu. `PROMO-UAT-CLEANUP-001` chuyển `DONE`.
+- **Hiệu chỉnh báo cáo QA (23/08/2026):** loại kết luận `IsReplay=True` khỏi phần tóm tắt cleanup vì không có idempotency key hoặc ledger query được lưu để tái lập độc lập. Ca replay của `PROMO-CFG-003` và các verifier chuyển trạng thái khác không được dùng thay bằng chứng cho cleanup `/17`; trạng thái `DONE` của cleanup chỉ dựa trên DB và audit nêu trên.
 
 ### CUSTOMER-UAT-001
 
