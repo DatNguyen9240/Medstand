@@ -73,6 +73,18 @@ BEGIN
         GOTO ReturnFailure;
     END;
 
+    IF EXISTS
+    (
+        SELECT 1 FROM dbo.SY_User
+        WHERE UserName = @Username
+          AND UPPER(COALESCE(UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH')
+    )
+    BEGIN
+        SET @ResultCode = 'ORDER_APP_ROLE_RETIRED';
+        SET @ResultMsg = N'Kế toán thao tác đơn hàng trên PMKT, không thực hiện tạo đơn trong ứng dụng này.';
+        GOTO ReturnFailure;
+    END;
+
     SELECT @UserBranchID = COALESCE(BranchID, ''),
            @ManagerID = COALESCE(ManagerID, ''),
            @EmployeeID = COALESCE(EmployeeID, ''),

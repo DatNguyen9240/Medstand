@@ -68,6 +68,17 @@ BEGIN
         SET @ResultMsg = N'Tài khoản không tồn tại hoặc đã bị khóa.';
         GOTO ReturnFailure;
     END;
+    IF EXISTS
+    (
+        SELECT 1 FROM dbo.SY_User
+        WHERE UserName = @Username
+          AND UPPER(COALESCE(UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH')
+    )
+    BEGIN
+        SET @ResultCode = 'ORDER_APP_ROLE_RETIRED';
+        SET @ResultMsg = N'Kế toán thao tác đơn hàng trên PMKT, không gửi duyệt hoặc hủy đơn trong ứng dụng này.';
+        GOTO ReturnFailure;
+    END;
     IF @Action NOT IN ('SUBMIT', 'CANCEL')
     BEGIN
         SET @ResultCode = 'INVALID_ACTION';
@@ -156,8 +167,8 @@ BEGIN
     BEGIN
         SET @ResultCode = 'FORBIDDEN_ROLE';
         SET @ResultMsg = CASE WHEN @Action = 'SUBMIT'
-            THEN N'Chỉ người tạo đơn hoặc kế toán/quản lý cùng chi nhánh mới được gửi duyệt.'
-            ELSE N'Chỉ người tạo đơn hoặc kế toán/quản lý cùng chi nhánh mới được hủy đơn.' END;
+            THEN N'Chỉ người tạo đơn mới được gửi duyệt đơn nháp của mình.'
+            ELSE N'Chỉ người tạo đơn mới được hủy đơn nháp của mình.' END;
         GOTO ReturnFailure;
     END;
 
@@ -257,6 +268,87 @@ BEGIN
             THROW 53002, @ResultMsg, 1;
         END;
 
+        /* CUSTOMER-SEC-001: config revoke phải thắng context cũ. Shared policy lock được giữ
+           tới COMMIT; deploy/rollback dùng Exclusive lock trên cùng resource. */
+        DECLARE @PolicyLockResult INT;
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY',
+            @LockMode = 'Shared',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN
+            SET @ResultCode = 'APPROVAL_POLICY_BUSY';
+            SET @ResultMsg = N'Chính sách đơn hàng đang được cập nhật. Vui lòng tải lại và thử lại.';
+            THROW 53005, N'APPROVAL_POLICY_BUSY', 1;
+        END;
+
+        SELECT @OrderBranchID = COALESCE(BranchID, ''), @CurrentStatusID = StatusID,
+               @OrderUserCreate = COALESCE(UserCreate, '')
+        FROM dbo.AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
+        WHERE DocumentID = @DocumentID;
+        SELECT @ActorBranchID = COALESCE(BranchID, '')
+        FROM dbo.SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
+
+        IF EXISTS
+        (
+            SELECT 1 FROM dbo.SY_User
+            WHERE UserName = @Username
+              AND UPPER(COALESCE(UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH')
+        )
+        BEGIN
+            SET @ResultCode = 'ORDER_APP_ROLE_RETIRED';
+            SET @ResultMsg = N'Kế toán thao tác đơn hàng trên PMKT, không gửi duyệt hoặc hủy đơn trong ứng dụng này.';
+            THROW 53006, N'ORDER_APP_ROLE_RETIRED', 1;
+        END;
+
+        SET @AsOf = SYSUTCDATETIME();
+        SET @IsOwner = CASE WHEN UPPER(@OrderUserCreate) = UPPER(@Username) THEN 1 ELSE 0 END;
+        SET @ScopeRule = NULL;
+        SELECT TOP (1) @ScopeRule = ScopeRule
+        FROM dbo.AI_OrderApprovalRoleFnc(@Username, @Action, @AsOf);
+        SET @RoleAllows = CASE
+            WHEN @ScopeRule IS NULL THEN 0
+            WHEN @ScopeRule = 'GLOBAL' THEN 1
+            WHEN @ScopeRule = 'BRANCH_MATCH' AND @ActorBranchID <> '' AND @ActorBranchID = @OrderBranchID THEN 1
+            ELSE 0 END;
+        IF @IsOwner = 0 AND @RoleAllows = 0
+        BEGIN
+            SET @ResultCode = 'FORBIDDEN_ROLE';
+            SET @ResultMsg = CASE WHEN @Action = 'SUBMIT'
+                THEN N'Chỉ người tạo đơn mới được gửi duyệt đơn nháp của mình.'
+                ELSE N'Chỉ người tạo đơn mới được hủy đơn nháp của mình.' END;
+            THROW 53007, N'FORBIDDEN_ROLE', 1;
+        END;
+
+        SET @NewStatusID = NULL; SET @RequireReason = 0;
+        SET @TransitionContractVersion = NULL; SET @TransitionMatchCount = 0;
+        SELECT @NewStatusID = ToStatusID, @RequireReason = RequireReason,
+               @TransitionContractVersion = ContractVersion, @TransitionMatchCount = MatchCount
+        FROM dbo.AI_OrderApprovalTransitionFnc(@Action, @ExpectedStatusID, @AsOf);
+        IF @TransitionMatchCount > 1
+        BEGIN
+            SET @ResultCode = 'APPROVAL_CONTRACT_AMBIGUOUS';
+            SET @ResultMsg = N'Chính sách đơn hàng đang mâu thuẫn. Không có thay đổi nào được lưu.';
+            THROW 53008, N'APPROVAL_CONTRACT_AMBIGUOUS', 1;
+        END;
+        IF @NewStatusID IS NULL OR @RequireReason = 1
+        BEGIN
+            SET @ResultCode = CASE WHEN @NewStatusID IS NULL THEN 'INVALID_TRANSITION' ELSE 'REASON_NOT_SUPPORTED' END;
+            SET @ResultMsg = N'Chính sách không còn cho phép thao tác này. Vui lòng tải lại trang.';
+            THROW 53009, N'INVALID_TRANSITION', 1;
+        END;
+        IF @CurrentStatusID <> @ExpectedStatusID
+        BEGIN
+            SET @ResultCode = 'STATUS_CHANGED';
+            SET @ResultMsg = N'Trạng thái đơn đã thay đổi. Vui lòng tải lại trang.';
+            THROW 53010, N'STATUS_CHANGED', 1;
+        END;
+
+        SET @RequestFingerprintHash = LOWER(CONVERT(CHAR(64), HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX),
+            CONCAT(LOWER(@Username), '|', @DocumentID, '|', @Action, '|', @ExpectedStatusID, '|', @NewStatusID,
+                   '|', COALESCE(@TransitionContractVersion, '')))), 2));
+
         INSERT dbo.AI_API_MutationIdempotency
             (IdempotencyKeyHash, VerifiedUserHash, ApiCode, RequestFingerprintHash, Status, FirstRequestID, LastRequestID)
         VALUES
@@ -324,7 +416,7 @@ BEGIN
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS';
             SET @ResultMsg = N'Yêu cầu trùng đang được xử lý. Vui lòng chờ và tải lại trang.';
         END
-        ELSE IF ERROR_NUMBER() BETWEEN 53001 AND 53004
+        ELSE IF ERROR_NUMBER() BETWEEN 53001 AND 53010
         BEGIN
             IF @ResultCode = '' SET @ResultCode = 'TRANSITION_FAILED';
             IF @ResultMsg = N'' SET @ResultMsg = @InternalError;

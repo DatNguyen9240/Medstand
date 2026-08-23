@@ -815,7 +815,7 @@ $('#btnSaveDraft').on('click', function () {
 });
 
 // Lưu nháp ĐÃ BỎ (khách chốt 21/08/2026): tạo đơn là vào thẳng Chờ duyệt.
-// Kéo theo: gửi đơn xong Sale hết quyền sửa, chỉ kế toán/quản lý sửa được — xem
+// Kéo theo: gửi đơn xong Sale hết quyền sửa, chỉ quản lý có quyền cùng chi nhánh sửa được — xem
 // sql/ORDER-APPROVAL-005_Order_Edit_Guard_AI.sql.
 
 // Obsolete promo click handler replaced with reactive auto-promotion

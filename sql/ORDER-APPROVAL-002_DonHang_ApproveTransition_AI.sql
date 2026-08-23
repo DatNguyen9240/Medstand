@@ -326,6 +326,97 @@ BEGIN
             THROW 52002, N'IDEMPOTENCY_IN_PROGRESS', 1;
         END;
 
+        /* CUSTOMER-SEC-001: giữ shared policy lock tới COMMIT và tái kiểm quyền/transition
+           sau khi khóa dòng đơn. Config bị thu hồi giữa context và mutation không được dùng tiếp. */
+        DECLARE @PolicyLockResult INT;
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY',
+            @LockMode = 'Shared',
+            @LockOwner = 'Transaction',
+            @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN
+            SET @ResultCode = 'APPROVAL_POLICY_BUSY';
+            SET @ResultMsg = N'Chính sách duyệt đơn đang được cập nhật. Vui lòng tải lại và thử lại.';
+            THROW 52005, N'APPROVAL_POLICY_BUSY', 1;
+        END;
+
+        SELECT @OrderBranchID = COALESCE(BranchID, ''),
+               @CurrentStatusID = StatusID,
+               @OrderUserCreate = COALESCE(UserCreate, ''),
+               @OrderEmployeeID = COALESCE(EmployeeID, '')
+        FROM dbo.AR_OrderTbl WITH (UPDLOCK, HOLDLOCK)
+        WHERE DocumentID = @DocumentID;
+        SELECT @ActorBranchID = COALESCE(BranchID, ''), @ActorEmployeeID = COALESCE(EmployeeID, '')
+        FROM dbo.SY_User WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
+
+        SET @AsOf = SYSUTCDATETIME();
+        SET @RoleRuleID = NULL; SET @ScopeRule = NULL; SET @AllowSelfApproval = 0; SET @RoleContractVersion = NULL;
+        SET @NewStatusID = NULL; SET @RequireReason = 0; SET @TransitionContractVersion = NULL; SET @TransitionMatchCount = 0;
+
+        IF dbo.AI_OrderApprovalContractIsLiveFnc(@AsOf) = 0
+        BEGIN
+            SET @ResultCode = 'APPROVAL_CONTRACT_NOT_APPROVED';
+            SET @ResultMsg = N'Chính sách duyệt đơn đã bị thu hồi. Vui lòng tải lại trang.';
+            THROW 52006, N'APPROVAL_CONTRACT_NOT_APPROVED', 1;
+        END;
+
+        SELECT TOP (1) @RoleRuleID = RoleRuleID, @ScopeRule = ScopeRule,
+               @AllowSelfApproval = AllowSelfApproval, @RoleContractVersion = ContractVersion
+        FROM dbo.AI_OrderApprovalRoleFnc(@Username, @Action, @AsOf);
+        IF @ScopeRule IS NULL
+        BEGIN
+            SET @ResultCode = 'FORBIDDEN_ROLE';
+            SET @ResultMsg = N'Quyền duyệt/từ chối đã thay đổi. Vui lòng tải lại trang.';
+            THROW 52007, N'FORBIDDEN_ROLE', 1;
+        END;
+
+        SELECT @NewStatusID = ToStatusID, @RequireReason = RequireReason,
+               @TransitionContractVersion = ContractVersion, @TransitionMatchCount = MatchCount
+        FROM dbo.AI_OrderApprovalTransitionFnc(@Action, @ExpectedStatusID, @AsOf);
+        IF @TransitionMatchCount > 1
+        BEGIN
+            SET @ResultCode = 'APPROVAL_CONTRACT_AMBIGUOUS';
+            SET @ResultMsg = N'Chính sách duyệt đơn đang mâu thuẫn. Không có thay đổi nào được lưu.';
+            THROW 52008, N'APPROVAL_CONTRACT_AMBIGUOUS', 1;
+        END;
+        IF @NewStatusID IS NULL
+        BEGIN
+            SET @ResultCode = 'INVALID_TRANSITION';
+            SET @ResultMsg = N'Chính sách không còn cho phép thao tác này. Vui lòng tải lại trang.';
+            THROW 52009, N'INVALID_TRANSITION', 1;
+        END;
+        IF @RequireReason = 1 AND @Reason IS NULL
+        BEGIN
+            SET @ResultCode = 'REASON_REQUIRED';
+            SET @ResultMsg = N'Thao tác này bắt buộc nhập lý do.';
+            THROW 52010, N'REASON_REQUIRED', 1;
+        END;
+        IF @CurrentStatusID <> @ExpectedStatusID
+        BEGIN
+            SET @ResultCode = 'STATUS_CHANGED';
+            SET @ResultMsg = N'Trạng thái đơn đã thay đổi. Vui lòng tải lại trang.';
+            THROW 52011, N'STATUS_CHANGED', 1;
+        END;
+        IF @ScopeRule = 'BRANCH_MATCH' AND (@ActorBranchID = '' OR @OrderBranchID <> @ActorBranchID)
+        BEGIN
+            SET @ResultCode = CASE WHEN @ActorBranchID = '' THEN 'APPROVER_BRANCH_MISSING' ELSE 'ORDER_OUT_OF_BRANCH_SCOPE' END;
+            SET @ResultMsg = N'Đơn không còn thuộc phạm vi được duyệt của tài khoản này.';
+            THROW 52012, N'ORDER_OUT_OF_BRANCH_SCOPE', 1;
+        END;
+        IF @AllowSelfApproval = 0 AND
+           (UPPER(@OrderUserCreate) = UPPER(@Username)
+            OR (@ActorEmployeeID <> '' AND UPPER(@ActorEmployeeID) = UPPER(@OrderEmployeeID)))
+        BEGIN
+            SET @ResultCode = 'SELF_APPROVAL_BLOCKED';
+            SET @ResultMsg = N'Không được duyệt/từ chối đơn do chính mình lập.';
+            THROW 52013, N'SELF_APPROVAL_BLOCKED', 1;
+        END;
+
+        SET @RequestFingerprintHash = LOWER(CONVERT(CHAR(64), HASHBYTES('SHA2_256', CONVERT(VARBINARY(MAX),
+            CONCAT(LOWER(@Username), '|', @DocumentID, '|', @Action, '|', @ExpectedStatusID, '|', @NewStatusID,
+                   '|', COALESCE(@TransitionContractVersion, ''), '|', COALESCE(@Reason, N'')))), 2));
+
         INSERT dbo.AI_API_MutationIdempotency
             (IdempotencyKeyHash, VerifiedUserHash, ApiCode, RequestFingerprintHash, Status, FirstRequestID, LastRequestID)
         VALUES
@@ -408,7 +499,7 @@ BEGIN
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS';
             SET @ResultMsg = N'Yêu cầu trùng đang được xử lý. Vui lòng chờ và tải lại trang.';
         END
-        ELSE IF ERROR_NUMBER() BETWEEN 52001 AND 52004
+        ELSE IF ERROR_NUMBER() BETWEEN 52001 AND 52013
         BEGIN
             /* @ResultCode/@ResultMsg đã được set ngay trước THROW; biến vẫn giữ giá trị sau
                ROLLBACK nên không cần suy đoán lại từ thông điệp lỗi. */

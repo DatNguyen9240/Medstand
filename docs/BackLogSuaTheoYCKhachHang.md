@@ -45,13 +45,13 @@
 
 ## 3. Khóa quyền/chức năng sau nghiệm thu
 
-- [ ] **CUSTOMER-BIZ-001 — Làm rõ yêu cầu “khóa chức năng”** · `P1` · `AWAITING_BUSINESS_SIGN_OFF`
-  - **Đã có:** ma trận đề xuất và gap analysis tại [CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md](CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md); chưa được tự coi là quyết định của khách hàng.
-  - **Cần làm:** business chốt chức năng cần khóa, vai trò, thời điểm, ngoại lệ, cách mở lại và rollback.
-  - **Điều kiện đóng:** có sign-off và ma trận `vai trò × chức năng × trước/sau nghiệm thu`.
+- [x] **CUSTOMER-BIZ-001 — Làm rõ yêu cầu “khóa chức năng”** · `P1` · `DONE`
+  - **Đã chốt:** ma trận `vai trò × chức năng × trạng thái` và rollback fail-closed tại [CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md](CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md).
+  - **Sign-off:** chủ yêu cầu xác nhận trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal.
 
-- [ ] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `BLOCKED_BY_CUSTOMER_BIZ_001`
-  - **Cần làm:** triển khai capability/role/config có version và audit; không hard-code account hoặc xóa dữ liệu.
+- [ ] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `CODE_COMPLETE_PENDING_MEDTEST_DEPLOY`
+  - **Đã code:** retire wildcard/role kế toán, cấp riêng `EDIT/APPROVE/REJECT` cho `QL/QLMN`, chặn owner-path của kế toán, khóa race thu hồi policy, audit before/after và rollback fail-closed. Verifier ứng viên chạy rollback `15/15 PASS`.
+  - **Còn làm:** được chủ môi trường cho phép deploy lâu dài lên `medtest`, sau đó chạy `CUSTOMER-SEC-002 --live`.
   - **Điều kiện đóng:** đúng vai trò bị chặn, đúng vai trò còn quyền và có thể rollback bằng config. Phần QA âm được theo dõi riêng tại `CUSTOMER-SEC-002` trong file QA/UAT.
 
 ## 4. Thứ tự phát triển

@@ -44,10 +44,12 @@ RETURN
         COALESCE(O.UserCreate, '') AS OrderUserCreate,
         COALESCE(U.BranchID, '')   AS ActorBranchID,
         R.ScopeRule,
-        CAST(CASE WHEN R.ScopeRule IS NULL THEN 0 ELSE 1 END AS BIT) AS HasEditRole,
+        CAST(CASE WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 0
+                  WHEN R.ScopeRule IS NULL THEN 0 ELSE 1 END AS BIT) AS HasEditRole,
         CanEdit = CAST(CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 0
             /* Đơn nháp: chỉ chính chủ đơn sửa được — chưa gửi duyệt thì chưa tới lượt
-               kế toán/quản lý. Không xét ScopeRule ở nhánh này. */
+               quản lý. Không xét ScopeRule ở nhánh này. */
             WHEN O.StatusID = -1 THEN
                 CASE WHEN UPPER(O.UserCreate) = UPPER(@Username) THEN 1 ELSE 0 END
             WHEN O.StatusID <> 0 THEN 0
@@ -60,6 +62,7 @@ RETURN
         /* Thứ tự ưu tiên có chủ ý: trạng thái trước, quyền sau. Đơn đã duyệt mà báo
            "bạn thiếu quyền" là nói sai nguyên nhân — kể cả kế toán cũng không sửa được nữa. */
         BlockCode = CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 'ORDER_APP_ROLE_RETIRED'
             WHEN O.StatusID = -1 AND UPPER(O.UserCreate) <> UPPER(@Username) THEN 'ORDER_EDIT_NOT_OWNER'
             WHEN O.StatusID = -1 THEN ''
             WHEN O.StatusID <> 0 THEN 'ORDER_EDIT_LOCKED'
@@ -69,10 +72,11 @@ RETURN
                  AND COALESCE(U.BranchID, '') <> COALESCE(O.BranchID, '') THEN 'ORDER_OUT_OF_BRANCH_SCOPE'
             ELSE '' END,
         BlockMsg = CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN N'Kế toán thao tác đơn hàng trên PMKT, không sửa đơn trong ứng dụng này.'
             WHEN O.StatusID = -1 AND UPPER(O.UserCreate) <> UPPER(@Username) THEN N'Đơn nháp này không phải của bạn.'
             WHEN O.StatusID = -1 THEN N''
             WHEN O.StatusID <> 0 THEN N'Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.'
-            WHEN R.ScopeRule IS NULL THEN N'Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.'
+            WHEN R.ScopeRule IS NULL THEN N'Đơn đã gửi. Chỉ quản lý có quyền trong cùng chi nhánh mới sửa được, vui lòng liên hệ để điều chỉnh.'
             WHEN R.ScopeRule = 'BRANCH_MATCH' AND COALESCE(U.BranchID, '') = '' THEN N'Tài khoản của bạn chưa được gán chi nhánh.'
             WHEN R.ScopeRule = 'BRANCH_MATCH'
                  AND COALESCE(U.BranchID, '') <> COALESCE(O.BranchID, '') THEN N'Đơn thuộc chi nhánh khác.'
@@ -80,9 +84,8 @@ RETURN
     FROM dbo.AR_OrderTbl O
     LEFT JOIN dbo.SY_User U
            ON U.UserName = @Username AND COALESCE(U.Disable, 0) = 0
-    /* Quyền sửa lấy từ CÙNG hợp đồng vai trò với quyền duyệt: ai duyệt được thì sửa được.
-       Các dòng đang có đều là ActionCode='*' nên khớp 'EDIT' mà không cần seed thêm.
-       Muốn tách riêng quyền sửa thì thêm dòng ActionCode='EDIT' — không phải sửa code. */
+    /* Quyền sửa lấy từ CÙNG hợp đồng vai trò với quyền duyệt. CUSTOMER-SEC-001 cấp riêng
+       ActionCode='EDIT'; không dùng wildcard để tránh mở nhầm SUBMIT/CANCEL. */
     OUTER APPLY dbo.AI_OrderApprovalRoleFnc(@Username, 'EDIT', @AsOf) R
     WHERE O.DocumentID = @DocumentID
 );

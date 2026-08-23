@@ -37,9 +37,9 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
-| `CUSTOMER-BIZ-001` | `AWAITING_BUSINESS_SIGN_OFF` | Đã có ma trận đề xuất và gap analysis; chờ business xác nhận 6 quyết định, không dùng file report tự ghi sign-off |
-| `CUSTOMER-SEC-001` | `BLOCKED` | Chờ CUSTOMER-BIZ-001 |
-| `CUSTOMER-SEC-002` | `BLOCKED` | Chờ CUSTOMER-SEC-001 |
+| `CUSTOMER-BIZ-001` | `DONE` | Chủ yêu cầu đã xác nhận ma trận mặc định an toàn trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal |
+| `CUSTOMER-SEC-001` | `CODE_COMPLETE_PENDING_MEDTEST_DEPLOY` | SQL/deploy/rollback đã hoàn tất; candidate rollback verifier 15/15 PASS; deploy lâu dài lên DB dùng chung chưa được cấp quyền thực thi |
+| `CUSTOMER-SEC-002` | `CANDIDATE_PASS_PENDING_LIVE_DEPLOY` | Ca âm policy/race/audit 15/15 PASS trong transaction rollback; còn live DB và Browser E2E sau deploy |
 
 ## 3. Task đã nghiệm thu `DONE`
 

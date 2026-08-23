@@ -46,8 +46,10 @@ RETURN
         COALESCE(O.UserCreate, '') AS OrderUserCreate,
         COALESCE(U.BranchID, '')   AS ActorBranchID,
         R.ScopeRule,
-        CAST(CASE WHEN R.ScopeRule IS NULL THEN 0 ELSE 1 END AS BIT) AS HasEditRole,
+        CAST(CASE WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 0
+                  WHEN R.ScopeRule IS NULL THEN 0 ELSE 1 END AS BIT) AS HasEditRole,
         CanEdit = CAST(CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 0
             WHEN O.StatusID <> 0 THEN 0
             WHEN R.ScopeRule IS NULL THEN 0
             WHEN R.ScopeRule = 'GLOBAL' THEN 1
@@ -58,6 +60,7 @@ RETURN
         /* Thứ tự ưu tiên có chủ ý: trạng thái trước, quyền sau. Đơn đã duyệt mà báo
            "bạn thiếu quyền" là nói sai nguyên nhân — kể cả kế toán cũng không sửa được nữa. */
         BlockCode = CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN 'ORDER_APP_ROLE_RETIRED'
             WHEN O.StatusID <> 0 THEN 'ORDER_EDIT_LOCKED'
             WHEN R.ScopeRule IS NULL THEN 'ORDER_EDIT_ROLE_REQUIRED'
             WHEN R.ScopeRule = 'BRANCH_MATCH' AND COALESCE(U.BranchID, '') = '' THEN 'EDITOR_BRANCH_MISSING'
@@ -65,8 +68,9 @@ RETURN
                  AND COALESCE(U.BranchID, '') <> COALESCE(O.BranchID, '') THEN 'ORDER_OUT_OF_BRANCH_SCOPE'
             ELSE '' END,
         BlockMsg = CASE
+            WHEN UPPER(COALESCE(U.UserGroupID, '')) IN ('KTDH', 'KTDH2', 'TN KTDH') THEN N'Kế toán thao tác đơn hàng trên PMKT, không sửa đơn trong ứng dụng này.'
             WHEN O.StatusID <> 0 THEN N'Đơn không còn ở trạng thái Chờ duyệt nên không sửa được nữa.'
-            WHEN R.ScopeRule IS NULL THEN N'Đơn đã gửi. Chỉ kế toán/quản lý mới sửa được, vui lòng liên hệ để điều chỉnh.'
+            WHEN R.ScopeRule IS NULL THEN N'Đơn đã gửi. Chỉ quản lý có quyền trong cùng chi nhánh mới sửa được, vui lòng liên hệ để điều chỉnh.'
             WHEN R.ScopeRule = 'BRANCH_MATCH' AND COALESCE(U.BranchID, '') = '' THEN N'Tài khoản của bạn chưa được gán chi nhánh.'
             WHEN R.ScopeRule = 'BRANCH_MATCH'
                  AND COALESCE(U.BranchID, '') <> COALESCE(O.BranchID, '') THEN N'Đơn thuộc chi nhánh khác.'
@@ -74,9 +78,8 @@ RETURN
     FROM dbo.AR_OrderTbl O
     LEFT JOIN dbo.SY_User U
            ON U.UserName = @Username AND COALESCE(U.Disable, 0) = 0
-    /* Quyền sửa lấy từ CÙNG hợp đồng vai trò với quyền duyệt: ai duyệt được thì sửa được.
-       Các dòng đang có đều là ActionCode='*' nên khớp 'EDIT' mà không cần seed thêm.
-       Muốn tách riêng quyền sửa thì thêm dòng ActionCode='EDIT' — không phải sửa code. */
+    /* Quyền sửa lấy từ CÙNG hợp đồng vai trò với quyền duyệt. CUSTOMER-SEC-001 cấp riêng
+       ActionCode='EDIT'; không dùng wildcard để tránh mở nhầm SUBMIT/CANCEL. */
     OUTER APPLY dbo.AI_OrderApprovalRoleFnc(@Username, 'EDIT', @AsOf) R
     WHERE O.DocumentID = @DocumentID
 );
@@ -150,6 +153,7 @@ BEGIN
     DECLARE @AuditInfo NVARCHAR(MAX);
     /* 1 = proc tự mở transaction; 0 = đang nằm trong transaction của người gọi. */
     DECLARE @OwnTran BIT = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @PolicyLockResult INT;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @OldKeyID = LTRIM(RTRIM(COALESCE(@OldKeyID, '')));
@@ -204,6 +208,15 @@ BEGIN
             END;
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS'; SET @ResultMsg = N'Yêu cầu trùng đang được xử lý.';
             THROW 53002, N'IDEMPOTENCY_IN_PROGRESS', 1;
+        END;
+
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY', @LockMode = 'Shared',
+            @LockOwner = 'Transaction', @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN
+            SET @ResultCode = 'APPROVAL_POLICY_BUSY'; SET @ResultMsg = N'Chính sách quyền sửa đang được cập nhật. Vui lòng tải lại.';
+            THROW 53006, N'APPROVAL_POLICY_BUSY', 1;
         END;
 
         /* KHOÁ dòng đơn TRƯỚC khi kiểm. Từ đây tới COMMIT, không ai — kể cả PMKT — đổi được
@@ -326,6 +339,7 @@ BEGIN
     DECLARE @AuditInfo NVARCHAR(MAX);
     /* 1 = proc tự mở transaction; 0 = đang nằm trong transaction của người gọi. */
     DECLARE @OwnTran BIT = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @PolicyLockResult INT;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @DocumentID = LTRIM(RTRIM(COALESCE(@DocumentID, '')));
@@ -368,6 +382,12 @@ BEGIN
             END;
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS'; SET @ResultMsg = N'Yêu cầu trùng đang được xử lý.'; THROW 53102, N'X', 1;
         END;
+
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY', @LockMode = 'Shared',
+            @LockOwner = 'Transaction', @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN SET @ResultCode = 'APPROVAL_POLICY_BUSY'; SET @ResultMsg = N'Chính sách quyền sửa đang được cập nhật. Vui lòng tải lại.'; THROW 53105, N'X', 1; END;
 
         SELECT @StatusID = StatusID FROM dbo.AR_OrderTbl WITH (UPDLOCK, HOLDLOCK) WHERE DocumentID = @DocumentID;
         IF @StatusID IS NULL
@@ -464,6 +484,7 @@ BEGIN
     DECLARE @AuditInfo NVARCHAR(MAX);
     /* 1 = proc tự mở transaction; 0 = đang nằm trong transaction của người gọi. */
     DECLARE @OwnTran BIT = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @PolicyLockResult INT;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @UserAutoID = LTRIM(RTRIM(COALESCE(@UserAutoID, '')));
@@ -506,6 +527,12 @@ BEGIN
             END;
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS'; SET @ResultMsg = N'Yêu cầu trùng đang được xử lý.'; THROW 53202, N'X', 1;
         END;
+
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY', @LockMode = 'Shared',
+            @LockOwner = 'Transaction', @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN SET @ResultCode = 'APPROVAL_POLICY_BUSY'; SET @ResultMsg = N'Chính sách quyền sửa đang được cập nhật. Vui lòng tải lại.'; THROW 53207, N'X', 1; END;
 
         /* Dòng sản phẩm chỉ có ý nghĩa khi biết nó thuộc đơn nào — resolve rồi mới khoá đơn. */
         SELECT TOP (1) @DocumentID = DocumentID FROM dbo.AR_OrderDetailTbl WHERE UserAutoID = @UserAutoID;
@@ -595,6 +622,7 @@ BEGIN
     DECLARE @AuditInfo NVARCHAR(MAX);
     /* 1 = proc tự mở transaction; 0 = đang nằm trong transaction của người gọi. */
     DECLARE @OwnTran BIT = CASE WHEN @@TRANCOUNT = 0 THEN 1 ELSE 0 END;
+    DECLARE @PolicyLockResult INT;
 
     SET @Username = LTRIM(RTRIM(COALESCE(@Username, '')));
     SET @UserAutoID = LTRIM(RTRIM(COALESCE(@UserAutoID, '')));
@@ -633,6 +661,12 @@ BEGIN
             END;
             SET @ResultCode = 'IDEMPOTENCY_IN_PROGRESS'; SET @ResultMsg = N'Yêu cầu trùng đang được xử lý.'; THROW 53302, N'X', 1;
         END;
+
+        EXEC @PolicyLockResult = sys.sp_getapplock
+            @Resource = 'AI_ORDER_APPROVAL_POLICY', @LockMode = 'Shared',
+            @LockOwner = 'Transaction', @LockTimeout = 15000;
+        IF @PolicyLockResult < 0
+        BEGIN SET @ResultCode = 'APPROVAL_POLICY_BUSY'; SET @ResultMsg = N'Chính sách quyền sửa đang được cập nhật. Vui lòng tải lại.'; THROW 53307, N'X', 1; END;
 
         SELECT TOP (1) @DocumentID = DocumentID FROM dbo.AR_OrderDetailTbl WHERE UserAutoID = @UserAutoID;
         IF @DocumentID IS NULL

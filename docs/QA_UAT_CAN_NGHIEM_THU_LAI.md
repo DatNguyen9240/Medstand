@@ -35,8 +35,9 @@
 
 ## 3. Nghiệm thu chính sách khóa
 
-- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `BLOCKED_BY_CUSTOMER_SEC_001`
-  - **QA còn làm:** gọi UI/API bị khóa, sửa payload, dùng context cũ và retry; xác nhận server chặn thật.
+- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `CANDIDATE_PASS_PENDING_LIVE_DEPLOY`
+  - **Đã kiểm ứng viên:** `scripts/verify_customer_sec002_policy.js` chạy toàn bộ SQL trong transaction rollback, `15/15 PASS`; bao phủ Admin không ăn theo `Manager=1`, kế toán bị chặn cả owner-path, quản lý không `SUBMIT/CANCEL` nháp người khác, stale context và concurrent revoke.
+  - **QA còn làm:** sau khi deploy chính sách lên `medtest`, chạy lại với `--live`, rồi kiểm UI/HTTP bằng Browser được kết nối (identity giả, token thiếu/hỏng, ảnh và request ID).
   - **Điều kiện đóng:** 100% ca âm bị chặn, có Network/request ID/audit và DB chứng minh không phát sinh mutation.
 
 ## 4. Nghiệm thu lại chức năng tồn kho khách hàng báo `Done`

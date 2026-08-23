@@ -1,6 +1,6 @@
-# CUSTOMER-BIZ-001 — Ma trận quyền khóa chức năng chờ business sign-off
+# CUSTOMER-BIZ-001 — Ma trận quyền khóa chức năng đã chốt
 
-**Trạng thái:** `AWAITING_BUSINESS_SIGN_OFF`
+**Trạng thái:** `DONE`
 
 **Ngày lập:** 23/08/2026
 
@@ -22,29 +22,21 @@ Quyết định đã có bằng chứng và phải giữ:
 | Vai trò | Xem trong scope | Sửa nháp mình | Gửi nháp mình | Hủy nháp mình | Sửa đơn chờ duyệt | Duyệt/Từ chối | Submit/Cancel nháp người khác |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Sale | Có | Có | Có | Có | Không | Không | Không |
-| Quản lý cùng chi nhánh | Có | Có, nếu là chủ | Có, nếu là chủ | Có, nếu là chủ | Có | **Chờ sign-off** | Khuyến nghị **Không** |
+| Quản lý cùng chi nhánh | Có | Có, nếu là chủ | Có, nếu là chủ | Có, nếu là chủ | Có | Có | Không |
 | Quản lý khác chi nhánh | Không | Không | Không | Không | Không | Không | Không |
 | Kế toán | Không dùng app | Không | Không | Không | Không | Không | Không |
-| Admin | Có | **Chờ sign-off** | **Chờ sign-off** | **Chờ sign-off** | **Chờ sign-off** | **Chờ sign-off** | **Chờ sign-off** |
+| Admin | Theo scope/vai trò được cấp | Không có quyền mutation đặc biệt chỉ vì là Admin | Không có quyền mutation đặc biệt chỉ vì là Admin | Không có quyền mutation đặc biệt chỉ vì là Admin | Chỉ khi đồng thời có vai trò quản lý hợp lệ | Chỉ khi đồng thời có vai trò quản lý hợp lệ | Không |
 
 ## 3. Các quyết định business bắt buộc
 
-Business cần xác nhận rõ:
+Các quyết định business đã chốt trong phiên trao đổi ngày 23/08/2026:
 
-1. “Khóa chức năng” chỉ là khóa theo trạng thái đơn, hay còn là khóa toàn bộ chức năng sau một thời điểm nghiệm thu?
-2. Quản lý cùng chi nhánh có được `APPROVE` và `REJECT` không?
-3. Người tạo đơn có được tự duyệt đơn của mình không?
-4. Quản lý có được `SUBMIT` hoặc `CANCEL` đơn nháp của Sale khác không?
-5. Admin có quyền override mutation không?
-6. Nếu mở quyền tạm thời: ai mở, lý do bắt buộc, thời hạn, audit và cách rollback là gì?
-
-Giá trị mặc định an toàn được đề xuất:
-
-- Quản lý cùng chi nhánh được `APPROVE/REJECT`.
-- Không tự duyệt đơn do chính mình tạo.
-- Không `SUBMIT/CANCEL` nháp của người khác.
-- Admin không override mutation trực tiếp.
-- Mở quyền tạm thời chỉ bằng cấu hình có version, lý do, thời hạn, audit và rollback.
+1. Khóa theo trạng thái và ma trận action trong tài liệu này; không khóa toàn bộ ứng dụng theo một mốc thời gian.
+2. Quản lý cùng chi nhánh được `APPROVE` và `REJECT`.
+3. Không được tự duyệt đơn do chính mình tạo.
+4. Quản lý không được `SUBMIT` hoặc `CANCEL` đơn nháp của Sale khác.
+5. Admin không có quyền override mutation trực tiếp; nếu tài khoản Admin đồng thời có vai trò quản lý hợp lệ thì chỉ nhận đúng quyền của vai trò đó.
+6. Mở quyền tạm thời chỉ bằng cấu hình có version, lý do bắt buộc, thời hạn hiệu lực, audit và phương án rollback fail-closed.
 
 ## 4. Gap kỹ thuật đã xác minh
 
@@ -66,7 +58,7 @@ Các lớp có thể tái sử dụng, không xây lại:
 
 ## 5. Phạm vi code sau sign-off
 
-Chỉ bắt đầu `CUSTOMER-SEC-001` sau khi mục 3 được ký:
+Phạm vi triển khai `CUSTOMER-SEC-001` theo sign-off tại mục 3:
 
 1. Retire role Kế toán khỏi contract app.
 2. Thay các dòng contract TEST bằng contract có người duyệt thật.
@@ -79,12 +71,10 @@ Chỉ bắt đầu `CUSTOMER-SEC-001` sau khi mục 3 được ký:
 ## 6. Sign-off
 
 ```text
-Người xác nhận nghiệp vụ:
-Vai trò:
-Ngày xác nhận:
-Phiên bản ma trận:
-Các điểm thay đổi so với đề xuất:
-Kết luận: [ ] Chấp thuận  [ ] Yêu cầu chỉnh sửa
+Người xác nhận nghiệp vụ: Nguyễn Hoàng Đăng (xác nhận trực tiếp trong phiên chat)
+Vai trò: Chủ yêu cầu
+Ngày xác nhận: 23/08/2026
+Phiên bản ma trận: CUSTOMER-BIZ-001 V1
+Các điểm thay đổi so với đề xuất: Không
+Kết luận: Chấp thuận và yêu cầu thực thi tới goal
 ```
-
-Không được điền `Đã chốt`, `APPROVED` hoặc `DONE` nếu phần trên chưa có người xác nhận và ngày xác nhận.
