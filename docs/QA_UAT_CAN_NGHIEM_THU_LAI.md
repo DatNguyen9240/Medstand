@@ -13,13 +13,8 @@
 
 ## 1. Chuỗi dữ liệu và E2E khách hàng
 
-- [ ] **CUSTOMER-UAT-001 — Xác minh readiness bằng dữ liệu người dùng tạo** · `P0` · `PARTIAL_PASS_PENDING_REAL_ACCOUNT_AND_NEW_DATA`
-  - **Đã có:** lượt readiness ngày 23/08/2026 cho `demo`/MB với khách `DL011` và sản phẩm `A008` trả `READINESS_PASS_WITH_WARNINGS`; giá, tồn, phạm vi kho, danh mục và nhánh CTBH note-text đủ để tiếp tục kiểm tra kỹ thuật.
-  - **Giới hạn:** tài khoản `demo` không có `EmployeeID`, khách `DL011` được tạo từ năm 2020 và không phải chuỗi dữ liệu mới do người dùng UAT tạo. Manifest raw nằm cục bộ dưới `reports/uat/`, bị Git ignore và chứa dữ liệu không dùng làm artifact phát hành.
-  - **QA còn làm:** dùng tài khoản thật có `EmployeeID`; tạo manifest nguồn gốc; kiểm ba nhánh CTBH cấu hình/note-text/không CTBH và các ca thiếu giá/tồn/quyền.
-  - **Điều kiện đóng:** không còn warning cấu hình mượn từ `demo`; dữ liệu mới có `DataCreatedBy`, `DataSource`, `CleanupPlan`; kết quả có account/branch/release và không chứa credential/PII trong artifact commit.
-
-- [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `BLOCKED_BY_CUSTOMER_UAT_001`
+- [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `READY_FOR_E2E_PENDING_BROWSER_CONNECTION`
+  - **Đầu vào đã có:** `CUSTOMER-UAT-001` đã PASS bằng Manager/Sale có `EmployeeID`, khách do tài khoản thật tạo, đủ ba nhánh CTBH và bốn ca âm. Raw manifest nằm cục bộ dưới `reports/uat/` và bị Git ignore.
   - **QA còn làm:** chạy tạo dữ liệu → chọn khách/sản phẩm → giá/tồn/CTBH → lập đơn → gửi duyệt → duyệt/từ chối, gồm ca âm và retry.
   - **Điều kiện đóng:** luồng chính không phụ thuộc fixture; có manifest, ảnh/video đã che dữ liệu, request ID, mã thực thể và kế hoạch dọn dữ liệu.
 
@@ -54,6 +49,6 @@
 ## 5. Thứ tự QA
 
 1. `STOCK-QA-001` có thể chạy độc lập ngay.
-2. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002`.
+2. `CUSTOMER-UAT-002` chạy từ manifest đã chốt của `CUSTOMER-UAT-001`.
 3. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
 4. `CUSTOMER-SEC-002` chỉ chạy sau khi `CUSTOMER-SEC-001` được triển khai và deploy.

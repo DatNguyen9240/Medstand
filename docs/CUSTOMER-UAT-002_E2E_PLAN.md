@@ -1,9 +1,9 @@
 # CUSTOMER-UAT-002 — Kế hoạch E2E (`PLAN_ONLY`)
 
-**Trạng thái:** `PLAN_ONLY_BLOCKED_BY_CUSTOMER_UAT_001`  
+**Trạng thái:** `READY_FOR_E2E_PENDING_BROWSER_CONNECTION`
 **Ngày lập kế hoạch:** 23/08/2026  
 **Môi trường dự kiến:** runtime UAT đã deploy  
-**Tài khoản/dữ liệu:** chờ tài khoản có `EmployeeID` và dữ liệu mới từ `CUSTOMER-UAT-001`  
+**Tài khoản/dữ liệu:** đã chốt bằng `CUSTOMER-UAT-001`; raw manifest cục bộ bị Git ignore, không chép thông tin khách vào tài liệu phát hành
 
 ## Test Flow
 
@@ -29,6 +29,11 @@
 ### Ca âm (Negative)
 - Giá hết hiệu lực → FAIL đúng kỳ vọng
 - Tồn = 0 → FAIL đúng kỳ vọng
+- Khách ngoài scope → không trả dữ liệu khách
+- Giả `Username` hoặc chi nhánh trong payload → Gateway vẫn dùng identity từ token
+- Sale khác sửa đơn → bị chặn, DB không mutation
+- Double-click/retry → một mutation; replay/conflict đúng contract
+- Cấu hình CTBH đổi giữa preview/xác nhận → `PROMOTION_CHANGED`, không tạo đơn theo preview cũ
 
 ## Bằng chứng cần thu thập
 - Request ID từ header
@@ -36,7 +41,7 @@
 - Log server (X-Request-ID)
 - Biên bản dry-run
 
-**Kết luận hiện tại:** chưa chạy E2E. Tài liệu này chỉ là kế hoạch và bị chặn bởi `CUSTOMER-UAT-001`; không được dùng để kết luận `PASS`, `DONE` hoặc sẵn sàng nghiệm thu.
+**Kết luận hiện tại:** đầu vào readiness đã đủ nhưng chưa chạy UI E2E. Cần Browser được kết nối với runtime local/UAT; không được dùng tài liệu này để kết luận `PASS` hoặc `DONE`.
 
 ---
 

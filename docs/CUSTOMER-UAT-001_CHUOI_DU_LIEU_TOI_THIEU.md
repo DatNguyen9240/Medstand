@@ -43,6 +43,13 @@ tới cùng một kết luận, nên dùng để canh xem API có nói thật kh
 
 ## 3. Hai lệnh cần chạy
 
+Lượt chốt bằng tài khoản thật và ba nhánh CTBH dùng verifier sau. Script chỉ chạy trên `medtest`, không ghi credential vào output, và tự `WITHDRAW`/xóa CTBH tạm theo marker:
+
+```bash
+node scripts/verify_customer_uat001_real_data.js
+node scripts/verify_customer_uat001_real_data.js --check-residue
+```
+
 ### 3.1 Chẩn đoán chuỗi dữ liệu
 
 ```bash

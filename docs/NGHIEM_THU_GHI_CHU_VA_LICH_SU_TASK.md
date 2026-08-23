@@ -31,9 +31,9 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `ORDER-APPROVAL-004` | `SUPERSEDED_BY_ORDER_APPROVAL_005_006` | Phạm vi cũ đã được quyết định mới và 005/006 thay thế; UAT Sale/Kế toán trong app không còn phù hợp |
 | `ORDER-APPROVAL-005` | `DONE` | QA độc lập xác nhận 13/13 ca chức năng PASS; artifact thô có PII đã xóa theo quyết định chủ dự án |
 | `ORDER-APPROVAL-006` | `DONE` | Gửi duyệt/hủy riêng và chống double-click PASS; không lưu ảnh/JSON thô trong repo |
-| `CUSTOMER-UAT-001` | `PARTIAL_PASS_PENDING_REAL_ACCOUNT_AND_NEW_DATA` | Readiness bằng `demo`/MB cho `DL011` × `A008` pass với warning; chưa có tài khoản `EmployeeID` thật hoặc chuỗi dữ liệu mới để nghiệm thu cuối |
+| `CUSTOMER-UAT-001` | `DONE` | Tài khoản Manager/Sale MB có `EmployeeID`, khách do tài khoản thật tạo; ba nhánh CTBH và bốn ca âm PASS; CTBH tạm được WITHDRAW/xóa, residue 0 |
 | `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
-| `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
+| `CUSTOMER-UAT-002` | `READY_FOR_E2E_PENDING_BROWSER_CONNECTION` | Đầu vào readiness đã đủ; chờ chạy UI thật và thu evidence qua Browser được kết nối |
 | `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
@@ -142,8 +142,12 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 
 - `uat_data_readiness.js` phân biệt các lỗi item, customer, giá, tồn, kho và ba trạng thái CTBH; không seed dữ liệu.
 - Kết quả được ghi nhận: 13 PASS / 0 FAIL / 2 SKIPPED. Hai ca skip là thiếu CTBH config active và thiếu actor-config user không phải manager global; không được tính là PASS.
-- Hard-code scan gần nhất quét 554 file, `RuntimeFindings: []`; phạm vi scan chỉ bao phủ các token fixture đã khai báo.
-- Chưa nghiệm thu E2E vì cấu hình actor/customer hiện gắn với `demo`; phải dùng tài khoản có `EmployeeID` và dữ liệu do người dùng tạo.
+- Lượt chốt dùng `QLBH013.MED` và `NAMDINHB.MED`, cùng chi nhánh MB và đều có `EmployeeID`; khách trong manifest được chính tài khoản quản lý tạo qua API ngày 05/08/2026 và nằm đúng scope Sale.
+- `verify_customer_uat001_real_data.js` tạo–duyệt tạm CTBH cấu hình qua live Gateway, sau đó xác nhận đủ `PROMOTION_NOTE_TEXT_ONLY`, `NO_PROMOTION`, `PROMOTION_CONFIG_AVAILABLE`; bốn ca âm xác nhận `PRICE_NOT_FOUND`, `ITEM_GROUP_NOT_SELLABLE`, `ITEM_NOT_FOUND`, `CUSTOMER_OUT_OF_SCOPE`.
+- Gateway request ID khớp server log, audit actor khớp token Manager; CTBH tạm được `WITHDRAW` rồi xóa bằng marker guard. Hậu kiểm `--check-residue` trả `ResidueCount=0`.
+- Raw manifest có dữ liệu chi tiết chỉ lưu cục bộ dưới `reports/uat/CUSTOMER-UAT-001/`, bị Git ignore. Hồ sơ commit chỉ giữ kết luận khử định danh; không chứa credential/token/PII.
+- Hard-code scan gần nhất quét 566 file, `RuntimeFindings: []`; mã fixture trong verifier nằm đúng vùng TEST.
+- **Kết luận:** `CUSTOMER-UAT-001` `DONE`. Kết quả readiness không thay cho UI E2E; phần đó tiếp tục ở `CUSTOMER-UAT-002`.
 
 ### CUSTOMER-DOC-001
 
