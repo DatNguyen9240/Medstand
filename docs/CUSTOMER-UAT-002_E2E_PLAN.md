@@ -3,7 +3,7 @@
 **Trạng thái:** `READY_FOR_E2E_PENDING_BROWSER_CONNECTION`
 **Ngày lập kế hoạch:** 23/08/2026  
 **Môi trường mục tiêu:** `https://medtest.bms7.net/`; chỉ bắt đầu sau khi ghi nhận release/commit thực tế đã deploy
-**Tài khoản/dữ liệu:** đã chốt bằng `CUSTOMER-UAT-001`; raw manifest cục bộ bị Git ignore, không chép thông tin khách vào tài liệu phát hành
+**Tài khoản/dữ liệu:** `CUSTOMER-UAT-001` đã chốt tài khoản, khách và sản phẩm ứng viên. CTBH cấu hình dùng ở lượt readiness là fixture tạm đã được WITHDRAW/xóa; phải provision lại ngay trước E2E và cleanup ngay sau. Raw manifest cục bộ bị Git ignore, không chép thông tin khách vào tài liệu phát hành.
 
 ## Test Flow
 
@@ -46,7 +46,10 @@
 - Ghi đúng release/commit đang chạy trên UAT; không suy ra từ HEAD local.
 - Xác nhận `CUSTOMER-SEC-001` đã deploy và `CUSTOMER-SEC-002 --live` PASS nếu vòng UAT này dùng policy mới.
 - Browser phải được kết nối với phiên đăng nhập thật; không thay bằng mock hoặc script chèn response.
-- Dùng raw manifest mới nhất của `CUSTOMER-UAT-001`; không đưa mã khách, token hoặc cookie vào artifact commit.
+- Dùng raw manifest mới nhất của `CUSTOMER-UAT-001` để chọn tài khoản/khách/sản phẩm; không giả định CTBH tạm trong manifest vẫn còn hiệu lực.
+- Provision CTBH cấu hình có marker riêng ngay trước Case 1; ghi `PromotionProgramID`, người tạo, thời điểm và kế hoạch cleanup trong raw evidence.
+- Sau lượt chạy, WITHDRAW qua proc nghiệp vụ rồi chỉ xóa fixture nếu marker và ID đều khớp; xác nhận residue bằng 0.
+- Không đưa mã khách, token hoặc cookie vào artifact commit.
 
 **Kết luận hiện tại:** đầu vào readiness đã đủ nhưng chưa chạy UI E2E. Cần Browser được kết nối với runtime local/UAT; không được dùng tài liệu này để kết luận `PASS` hoặc `DONE`.
 

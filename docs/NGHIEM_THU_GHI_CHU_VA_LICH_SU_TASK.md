@@ -33,7 +33,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `ORDER-APPROVAL-006` | `DONE` | Gửi duyệt/hủy riêng và chống double-click PASS; không lưu ảnh/JSON thô trong repo |
 | `CUSTOMER-UAT-001` | `DONE` | Tài khoản Manager/Sale MB có `EmployeeID`, khách do tài khoản thật tạo; ba nhánh CTBH và bốn ca âm PASS; CTBH tạm được WITHDRAW/xóa, residue 0 |
 | `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
-| `CUSTOMER-UAT-002` | `READY_FOR_E2E_PENDING_BROWSER_CONNECTION` | Đầu vào readiness đã đủ; chờ chạy UI thật và thu evidence qua Browser được kết nối |
+| `CUSTOMER-UAT-002` | `READY_FOR_E2E_PENDING_BROWSER_CONNECTION` | Tài khoản/khách/sản phẩm ứng viên đã đủ; CTBH cấu hình tạm đã cleanup và phải provision lại có marker ngay trước Browser E2E |
 | `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |

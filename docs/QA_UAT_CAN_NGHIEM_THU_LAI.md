@@ -14,7 +14,7 @@
 ## 1. Chuỗi dữ liệu và E2E khách hàng
 
 - [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `READY_FOR_E2E_PENDING_BROWSER_CONNECTION`
-  - **Đầu vào đã có:** `CUSTOMER-UAT-001` đã PASS bằng Manager/Sale có `EmployeeID`, khách do tài khoản thật tạo, đủ ba nhánh CTBH và bốn ca âm. Raw manifest nằm cục bộ dưới `reports/uat/` và bị Git ignore.
+  - **Đầu vào đã có:** `CUSTOMER-UAT-001` đã PASS bằng Manager/Sale có `EmployeeID`, khách do tài khoản thật tạo, đủ ba nhánh CTBH và bốn ca âm. Raw manifest nằm cục bộ dưới `reports/uat/` và bị Git ignore. CTBH cấu hình của lượt readiness đã được cleanup; QA phải provision fixture có marker ngay trước E2E và dọn theo ID/marker sau lượt chạy.
   - **QA còn làm:** chạy tạo dữ liệu → chọn khách/sản phẩm → giá/tồn/CTBH → lập đơn → gửi duyệt → duyệt/từ chối, gồm ca âm và retry.
   - **Điều kiện đóng:** luồng chính không phụ thuộc fixture; có manifest, ảnh/video đã che dữ liệu, request ID, mã thực thể và kế hoạch dọn dữ liệu.
 

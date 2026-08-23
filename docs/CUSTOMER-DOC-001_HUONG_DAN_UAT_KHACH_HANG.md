@@ -26,10 +26,12 @@ Khách hàng tự thực hiện được chuỗi:
 ## 3. Test case chính cần thực hiện
 
 ### 3.1 Nhánh 1: CTBH cấu hình (`PENDING`)
-1. Chọn khách và sản phẩm thuộc bộ dữ liệu UAT mới.
-2. Xác nhận API trả CTBH cấu hình đang hoạt động.
-3. Lập đơn → Gửi duyệt.
-4. Thu request ID, mã đơn, ảnh đã che dữ liệu và đối chiếu DB/audit.
+1. Điều phối viên provision CTBH cấu hình tạm có marker riêng ngay trước lượt chạy; không dùng lại ID CTBH trong manifest readiness vì fixture đó đã được cleanup.
+2. Chọn khách và sản phẩm thuộc bộ dữ liệu UAT mới.
+3. Xác nhận API trả CTBH cấu hình đang hoạt động.
+4. Lập đơn → Gửi duyệt.
+5. Thu request ID, mã đơn, ảnh đã che dữ liệu và đối chiếu DB/audit.
+6. Sau lượt chạy, WITHDRAW CTBH qua proc nghiệp vụ và cleanup theo đúng marker/ID; xác nhận residue bằng 0.
 
 Không dùng `A008` làm bằng chứng cho nhánh này: manifest hiện có ghi `ActivePromotionCount = 0`.
 
