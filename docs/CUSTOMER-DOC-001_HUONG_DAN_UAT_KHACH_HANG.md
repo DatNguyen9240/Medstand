@@ -18,7 +18,7 @@ Khách hàng tự thực hiện được chuỗi:
 
 ## 2. Chuẩn bị
 1. Mở browser → `http://localhost:3000` (hoặc URL UAT)
-2. Login bằng tài khoản UAT (demo → sau này thay)
+2. Đăng nhập bằng tài khoản UAT có `EmployeeID`, đúng vai trò và chi nhánh đã được cấp cho đợt kiểm thử.
 3. Môi trường: medtest
 
 ---
