@@ -3,7 +3,7 @@
   "scope": "live gateway HTTP proof — /api/API_HangHoaList_AI Username identity override",
   "endpoint": "/api/API_HangHoaList_AI",
   "policySource": "src/server/order-status-guard.js READ_IDENTITY_POLICY",
-  "generatedAt": "2026-08-22T13:32:19.964Z",
+  "generatedAt": "2026-08-22T17:06:43.919Z",
   "results": [
     "GHOST_USERNAME_OVERRIDDEN_BY_TOKEN_IDENTITY",
     "TOKEN_IDENTITY_WINS_REGARDLESS_OF_QUERY_USERNAME",
@@ -16,7 +16,7 @@
       "case": "GHOST_USERNAME_OVERRIDDEN_BY_TOKEN_IDENTITY",
       "requestId": "req-diag001-ghost-username",
       "status": 200,
-      "forgedUsernameSentByClient": "ACCOUNT_DOES_NOT_EXIST_1787405531376",
+      "forgedUsernameSentByClient": "ACCOUNT_DOES_NOT_EXIST_1787418395936",
       "usernameActuallyForwardedToBackend": "NAMDINHB.MED"
     },
     {
