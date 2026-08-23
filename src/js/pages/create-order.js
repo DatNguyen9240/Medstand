@@ -181,7 +181,7 @@ function loadConfigPromoRules(itemId) {
   if (_configPromoRulesByItem[itemId]) return Promise.resolve(_configPromoRulesByItem[itemId]);
   return Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.ACTIVE_BY_ITEMS, {
     q: JSON.stringify({ JsonItemIDs: JSON.stringify([itemId]) })
-  }).then(function (res) {
+  }, { cache: false }).then(function (res) {
     var body = res && res.data !== undefined ? res.data : res;
     var rows = (body && body.records) || body || [];
     if (rows.length && rows[0].MsgType === 1) rows = [];

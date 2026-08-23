@@ -146,23 +146,31 @@
     });
     if (hasUnknownVersion) return emptyConfigResult('UNSUPPORTED_PROMOTION_CONTRACT');
 
+    function parseOptNum(val) {
+      if (val == null || val === '') return null;
+      var n = Number(val);
+      return Number.isFinite(n) ? n : null;
+    }
+
     var lineAmount = Number.isFinite(price) ? qty * price : 0;
     var candidates = rules.filter(function (r) {
       if (r.RuleType === 'QUANTITY_DISCOUNT') {
-        return r.MinimumQuantity != null && qty >= Number(r.MinimumQuantity)
-          && (r.MaximumQuantity == null || qty <= Number(r.MaximumQuantity));
+        var minQ = parseOptNum(r.MinimumQuantity);
+        var maxQ = parseOptNum(r.MaximumQuantity);
+        return minQ != null && qty >= minQ && (maxQ == null || qty <= maxQ);
       }
       if (r.RuleType === 'QUANTITY_GIFT') {
-        var purchaseBase = Number(r.MinimumQuantity);
-        var giftBase = Number(r.GiftQuantity);
-        var maximumQuantity = r.MaximumQuantity == null ? null : Number(r.MaximumQuantity);
-        var eligibleQty = Number.isFinite(maximumQuantity) ? Math.min(qty, maximumQuantity) : qty;
+        var purchaseBase = parseOptNum(r.MinimumQuantity) || 0;
+        var giftBase = parseOptNum(r.GiftQuantity) || 0;
+        var maxQ = parseOptNum(r.MaximumQuantity);
+        var eligibleQty = maxQ != null ? Math.min(qty, maxQ) : qty;
         return purchaseBase > 0 && giftBase > 0
           && Math.floor(eligibleQty * giftBase / purchaseBase) >= 1;
       }
       if (r.RuleType === 'AMOUNT_DISCOUNT' || r.RuleType === 'AMOUNT_GIFT') {
-        return r.MinimumOrderAmount != null && lineAmount >= Number(r.MinimumOrderAmount)
-          && (r.MaximumOrderAmount == null || lineAmount <= Number(r.MaximumOrderAmount));
+        var minA = parseOptNum(r.MinimumOrderAmount);
+        var maxA = parseOptNum(r.MaximumOrderAmount);
+        return minA != null && lineAmount >= minA && (maxA == null || lineAmount <= maxA);
       }
       return false;
     });
@@ -173,14 +181,14 @@
     // xem trước một rule khác với rule server thực sự áp dụng khi hai rule trùng cả priority
     // lẫn mốc.
     candidates.sort(function (a, b) {
-      var pa = Number(a.Priority != null ? a.Priority : 100);
-      var pb = Number(b.Priority != null ? b.Priority : 100);
+      var pa = Number(a.Priority != null && a.Priority !== '' ? a.Priority : 100);
+      var pb = Number(b.Priority != null && b.Priority !== '' ? b.Priority : 100);
       if (pa !== pb) return pa - pb;
-      var ta = Number(a.MinimumOrderAmount != null ? a.MinimumOrderAmount : a.MinimumQuantity);
-      var tb = Number(b.MinimumOrderAmount != null ? b.MinimumOrderAmount : b.MinimumQuantity);
+      var ta = Number(a.MinimumOrderAmount != null && a.MinimumOrderAmount !== '' ? a.MinimumOrderAmount : a.MinimumQuantity);
+      var tb = Number(b.MinimumOrderAmount != null && b.MinimumOrderAmount !== '' ? b.MinimumOrderAmount : b.MinimumQuantity);
       if (ta !== tb) return tb - ta;
-      var ida = Number(a.PromotionItemRuleID != null ? a.PromotionItemRuleID : Infinity);
-      var idb = Number(b.PromotionItemRuleID != null ? b.PromotionItemRuleID : Infinity);
+      var ida = Number(a.PromotionItemRuleID != null && a.PromotionItemRuleID !== '' ? a.PromotionItemRuleID : Infinity);
+      var idb = Number(b.PromotionItemRuleID != null && b.PromotionItemRuleID !== '' ? b.PromotionItemRuleID : Infinity);
       return ida - idb;
     });
 
@@ -197,8 +205,8 @@
       matchedRule: best
     };
     if (best.RuleType === 'QUANTITY_GIFT') {
-      var maxQty = best.MaximumQuantity == null ? null : Number(best.MaximumQuantity);
-      var eligibleQuantity = Number.isFinite(maxQty) ? Math.min(qty, maxQty) : qty;
+      var maxQty = parseOptNum(best.MaximumQuantity);
+      var eligibleQuantity = maxQty != null ? Math.min(qty, maxQty) : qty;
       result.giftQuantity = Math.floor(
         eligibleQuantity * Number(best.GiftQuantity || 0) / Number(best.MinimumQuantity)
       );

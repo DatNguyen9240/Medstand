@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 23/08/2026 (đối chiếu merge-readiness với `origin/develop` sau khi loại raw evidence)
+**Cập nhật:** 23/08/2026 (nghiệm thu cuối `PROMO-CFG-002/003` và dọn fixture UAT)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -22,8 +22,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CORE-011` | `DONE` | Đã nghiệm thu chọn khách ở màn lập/sửa đơn |
 | `CUST-SEARCH-003` | `DONE` | Race/stale, lỗi hiện tại + retry, đổi tài khoản thật, cô lập cache, khách ngoài scope và mapping đều PASS trên màn lập/sửa đơn; 0 mutation |
 | `PROMO-CFG-001` | `DONE` | Contract V3 đã đồng bộ frontend/API/SQL, deploy `medtest`, actual-order verifier và live Gateway đều PASS |
-| `PROMO-CFG-002` | `CODE_AND_GATEWAY_PREVIEW_PASS_PENDING_REASON_TRANSPORT_AND_UI_E2E` | SQL 16/16, gateway live 14/14 và guard 22/22 PASS; còn ERP chuyển `Reason`, UI REJECT/WITHDRAW, evidence sạch và QA |
-| `PROMO-CFG-003` | `PARTIAL_PASS_PENDING_UI_AND_CONCURRENCY_E2E` | Actual proc V3 đã PASS; còn UI preview, double-click/retry và đổi config giữa preview/xác nhận |
+| `PROMO-CFG-002` | `DONE` | UI REJECT/WITHDRAW qua live Gateway có request ID; actor/lý do audit khớp; identity, positional binding và regression đều PASS |
+| `PROMO-CFG-003` | `DONE` | UI preview lấy config mới, config cũ bị chặn `PROMOTION_CHANGED`, double-click chỉ tạo một mutation, retry là replay; đơn test đã hủy |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
 | `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
 | `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
@@ -87,20 +87,22 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Nghiệm thu:** 22/08/2026; nhánh `hoangdang`, commit nền `46eeb9b`; môi trường local Gateway kết nối `medtest`.
 - **Contract:** `PROMOTION_BENEFIT_V3`; quà tỷ lệ, clamp `MaximumQuantity`, discount theo khoảng số lượng/giá trị dòng, một rule thắng theo tie-break xác định, config active là nguồn chuẩn, version lạ fail-closed và tiền giảm làm tròn đến 1 đồng.
 - **Deploy đồng bộ:** `scripts/deploy_promo_cfg001_v3.js --apply` triển khai schema, active-rule function, admin proc, order proc và ActiveByItems trong một transaction; đọc lại đủ 6 object và chữ ký Upsert khớp Gateway.
-- **Verifier:** preflight contract `26/26`, admin `18/18`, catalog `12/12`; `verify_promo_cfg001_fixes.js` PASS `7/7`; `verify_promo_cfg001_v3_order_e2e.js` gọi proc tạo đơn thật và đối chiếu `AR_OrderDetailTbl` PASS quà 0, tỷ lệ, clamp, chặn quà sai, discount theo số lượng/giá trị và rounding; toàn bộ transaction rollback, `0` mutation tồn lưu.
+- **Verifier:** preflight contract `26/26`, admin `18/18`, catalog `12/12`; `verify_promo_cfg001_fixes.js` PASS `8/8`; `verify_promo_cfg001_v3_order_e2e.js` gọi proc tạo đơn thật và đối chiếu `AR_OrderDetailTbl` PASS quà 0, tỷ lệ, clamp, chặn quà sai, discount theo số lượng/giá trị và rounding; toàn bộ transaction rollback, `0` mutation tồn lưu.
 - **Gateway:** `verify_promo_cfg002_gateway_identity.js` gọi encrypted live Gateway PASS `14/14`, gồm identity server-owned, token thiếu/hỏng, payload đảo thứ tự và chữ ký proc; probe ghi dùng `Apply=0`.
 - **Regression:** build production PASS; order status guard `22/22`; order approval transition `25/25`, rollback.
 - **Kết luận:** `DONE`. UI preview/double-click/config thay đổi trong lúc xác nhận thuộc `PROMO-CFG-003`, không còn là điều kiện đóng contract `PROMO-CFG-001`.
 
-## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
+### PROMO-CFG-002/003 — Phân quyền/audit và UAT CTBH trên đơn thật
 
-### PROMO-CFG-002/003
-- **Cập nhật 22/08/2026 — PROMO-CFG-002 (quyền âm + audit) đã merge:** `API_PromotionProgram_Upsert_AI` ghi audit trước/sau (gồm cả nội dung rule, `BranchIDs`, `UserGroupIDs`, không chỉ đếm số dòng) qua `AI_WriteAuditLog`, fail-closed nếu hạ tầng audit thiếu; `API_PromotionProgram_Approve_AI` thêm `@Reason`, bắt buộc khi REJECT/WITHDRAW. Verify `verify_promo_cfg002_permission_and_audit.js`: **16/16 PASS** trên `medtest` (rollback), gồm quyền âm tạo/duyệt, khóa sửa bản đã duyệt, audit trước/sau (rule + scope), bắt buộc lý do, config tương lai/hết hạn/sai scope bị loại đúng.
-- **P0 gateway identity và positional binding đã sửa, kiểm chứng live ngày 22/08/2026:** ba API đọc List/Detail/ActiveByItems dùng `READ_IDENTITY_POLICY`; hai API ghi Upsert/Approve dùng policy mutation không chèn idempotency giả. Gateway dựng mới body bằng allowlist theo đúng thứ tự tham số proc, canonicalize field, điền default, loại identity từ client và chặn field lạ/trùng/thiếu; frontend không còn gửi Username cho năm API này. SQL đặt tham số mới `@Reason` ở cuối chữ ký Approve để không phá caller bind theo vị trí.
-- **Kết quả:** `verify_order_status_guard.js` **22/22 PASS**; `verify_promo_cfg002_gateway_identity.js` gọi encrypted `/api/gateway` runtime thật **14/14 PASS**, gồm payload đảo thứ tự, field lạ, field bắt buộc bị thiếu, token thiếu/hỏng, giả identity hai chiều và frontend nhận đúng dòng kết quả nghiệp vụ. `verify_promo_cfg002_permission_and_audit.js` **16/16 PASS** và `verify_promo_cfg001_fixes.js` **6/6 PASS**, đều rollback. Write probes Gateway dùng `Apply=0`, xác nhận `0 mutation`.
-- **Trạng thái deploy proc:** đối chiếu trực tiếp `sys.parameters` trên `medtest` xác nhận `API_PromotionProgram_Approve_AI` hiện có đủ năm tham số, bao gồm `@Reason`; nhận định “DB còn bản bốn tham số” đã lỗi thời.
-- **Evidence worktree cũ bị loại:** JSON còn credential UAT dạng rõ và PII; ảnh còn tên/avatar, thông báo không liên quan. Không nhập các artifact này vào nhánh chính. `medtest` còn 18 fixture mã `E2E_UI_MUT_*`, đều `REJECTED`; chỉ có thể nói không còn DRAFT đang hoạt động, không thể nói không còn dữ liệu test.
-- **Còn lại:** lớp ERP live hiện chưa chuyển được tham số thứ năm `Reason` dù source/proc đã đúng thứ tự. Phải xử lý metadata/cache của ERP, sau đó nghiệm thu REJECT/WITHDRAW qua UI thật, đối soát request ID/audit actor, tạo evidence tối giản đã che credential/PII và QA độc lập ký. Worktree cũ `promo-cfg-002-complete-work` không được merge/cherry-pick nguyên khối.
+- **Môi trường nghiệm thu cuối:** 23/08/2026, nhánh `hoangdang`, Chrome headless thao tác UI thật qua Gateway local kết nối `medtest`; mật khẩu lấy từ cấu hình UAT bị Git ignore, không hard-code và không ghi vào output.
+- **PROMO-CFG-002:** `verify_promo_cfg002_ui_trace.js` tạo dữ liệu test có marker riêng rồi thao tác REJECT và WITHDRAW tại `#/rag-admin`. Hai request HTTP đều thành công, lấy `X-Request-ID` từ response và tìm thấy đúng ID trong server log; audit ghi actor `demo` và lý do khớp nội dung nhập trên UI. Chương trình test của verifier được xóa trong `finally`.
+- **Bảo vệ Gateway và SQL:** ba API đọc lấy identity từ token; Upsert/Approve dùng allowlist và đúng thứ tự tham số ERP, không tin `Username` từ client. `verify_promo_cfg002_gateway_identity.js`, `verify_order_status_guard.js` và `verify_promo_cfg002_permission_and_audit.js` đều PASS; proc live có đủ `@Reason`, audit snapshot chứa rule và scope, audit fail-closed.
+- **PROMO-CFG-003:** `verify_promo_cfg003_config_race_e2e.js` chứng minh UI preview cấu hình A cho quà `3`; sau khi A bị thu hồi và B được duyệt, submit theo preview cũ trả `PROMOTION_CHANGED` và không tạo đơn. Tải lại màn hình lấy đúng cấu hình B cho quà `1`; double-click chỉ phát một mutation; gửi lại cùng `Idempotency-Key` trả replay; ba request ID đều khớp server log.
+- **Lỗi phát hiện trong lúc nghiệm thu và bản vá:** `ACTIVE_BY_ITEMS` từng dùng cache GET của `Http`, nên refresh vẫn có thể dùng cấu hình cũ. `create-order.js` nay gọi endpoint này với `{ cache: false }`; bundle production đã build lại. Verifier cũng chuẩn hóa các giá trị optional dạng chuỗi rỗng trong `promotion.js` để frontend và SQL chọn rule giống nhau.
+- **Dọn dữ liệu:** mỗi lượt verifier mới xóa chương trình CTBH tạm và hủy đơn test qua `API_DonHang_OwnerTransition_AI`. Ba fixture CTBH cũ `E2E_UI_MUT_*` đã xóa sau dry-run có khóa/guard; ba đơn nháp A014 cũ và đơn của lượt chốt đã chuyển `StatusID=10`. Không chạm các đơn M002 thuộc luồng khác. Raw ảnh/JSON cũ đã review rồi xóa khỏi thư mục local và không đưa vào Git.
+- **Kết luận:** `PROMO-CFG-002` và `PROMO-CFG-003` đều `DONE`; không còn blocker code, deploy, trace, concurrency hay cleanup đã biết trong phạm vi hai task.
+
+## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
 
 ### ORDER-APPROVAL-002/003/004
 

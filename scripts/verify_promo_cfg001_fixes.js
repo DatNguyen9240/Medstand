@@ -10,6 +10,7 @@
 const fs = require('fs');
 const sql = require('mssql');
 const promotion = require('../src/js/utils/promotion.js');
+const createOrderSource = fs.readFileSync('src/js/pages/create-order.js', 'utf8');
 
 const CONTRACT_VERSION = 'PROMOTION_BENEFIT_V3';
 
@@ -185,6 +186,15 @@ async function main() {
     const zeroBenefit = promotion.calculateFromConfigRules(helperRule, 4, 1000);
     assert(zeroBenefit && zeroBenefit.configAuthoritative === true && zeroBenefit.giftQuantity === 0,
       'Config có thật nhưng quyền lợi bằng 0 phải authoritative, không fallback note-text');
+    const stringOptionalRule = [{
+      ...helperRule[0],
+      MinimumQuantity: '10',
+      MaximumQuantity: '',
+      GiftQuantity: '2',
+      Priority: ''
+    }];
+    assert(promotion.calculateFromConfigRules(stringOptionalRule, 20, 1000).giftQuantity === 4,
+      'Frontend phải coi optional number dạng chuỗi rỗng là NULL, không phải số 0');
     const amountDiscount = promotion.calculateFromConfigRules([{
       PromotionBenefitContractVersion: CONTRACT_VERSION,
       PromotionItemRuleID: 2,
@@ -200,6 +210,9 @@ async function main() {
     assert(rounded.grossAmount === 999 && rounded.discountAmount === 25 && rounded.totalAmount === 974,
       'Tiền giảm phải làm tròn 1 đồng đồng nhất: 999 x 2.5% => 25, total 974');
     results.push(['FRONTEND_RATIO_AND_MAX_CLAMP', true, '4/5/9/10/15/20 + 80/100']);
+    assert(/ACTIVE_BY_ITEMS[\s\S]*?\{\s*cache:\s*false\s*\}/.test(createOrderSource),
+      'ACTIVE_BY_ITEMS phải bỏ qua Http session cache để refresh lấy config mới');
+    results.push(['ACTIVE_PROMOTION_FETCH_BYPASSES_HTTP_CACHE', true]);
 
     // ── Test 2: SQL candidate tính tỷ lệ 10+2 ─────────────────────────────
     const codeRatio = 'VERIFY_RATIO_' + Date.now();
