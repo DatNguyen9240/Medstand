@@ -22,9 +22,11 @@
 
 ## 2. Hướng dẫn và vòng góp ý
 
-- [ ] **CUSTOMER-DOC-001 — Phát hành hướng dẫn UAT khách hàng** · `P1` · `READY_TO_DRAFT_PENDING_UAT_DRY_RUN`
+- [ ] **CUSTOMER-DOC-001 — Phát hành hướng dẫn UAT khách hàng** · `P1` · `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN`
   - **Cần làm:** có thể soạn ngay hướng dẫn đăng nhập, chọn khách, dữ liệu test, lập/duyệt đơn, CTBH, báo lỗi và cách lấy request ID; bản phát hành cuối cần dry-run trên runtime UAT đã deploy.
   - **Điều kiện đóng:** người chưa tham gia phát triển tự chạy được kịch bản chỉ bằng tài liệu; có version, môi trường, ngày và biên bản dry-run.
+  - **Đã hoàn thành:** bản `DRAFT 0.1` và README của gói UAT đã được review nội dung, đối chiếu nhãn/chức năng với source, kiểm tra không chứa mật khẩu/token/dữ liệu khách và sửa 8 hàng tiêu đề bảng cho accessibility.
+  - **Còn mở:** điền release/commit đã deploy, cấp bộ tài khoản/dữ liệu UAT thật, chạy dry-run độc lập, xử lý phản hồi và phát hành bản không còn nhãn `DRAFT`.
 
 - [ ] **CUSTOMER-UAT-003 — Chạy test hẹp và thu feedback** · `P0` · `BLOCKED_BY_CUSTOMER_DOC_001_AND_CUSTOMER_UAT_002`
   - **Cần làm:** mở test cho nhóm nhỏ; chuẩn hóa mỗi lỗi với account, thời gian, input, bước tái hiện, thực tế/mong đợi, ảnh/log và request ID.

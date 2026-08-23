@@ -34,7 +34,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
 | `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
-| `CUSTOMER-DOC-001` | `READY_TO_DRAFT_PENDING_UAT_DRY_RUN` | Core đã ổn định để soạn; bản phát hành cuối chờ deploy và dry-run UAT |
+| `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
 | `CUSTOMER-BIZ-001` | `PENDING_CUSTOMER_CLARIFICATION` | Chưa rõ phạm vi “khóa chức năng” |
@@ -143,6 +143,14 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - Kết quả được ghi nhận: 13 PASS / 0 FAIL / 2 SKIPPED. Hai ca skip là thiếu CTBH config active và thiếu actor-config user không phải manager global; không được tính là PASS.
 - Hard-code scan gần nhất quét 554 file, `RuntimeFindings: []`; phạm vi scan chỉ bao phủ các token fixture đã khai báo.
 - Chưa nghiệm thu E2E vì cấu hình actor/customer hiện gắn với `demo`; phải dùng tài khoản có `EmployeeID` và dữ liệu do người dùng tạo.
+
+### CUSTOMER-DOC-001
+
+- Đã review `DRAFT 0.1` ngày 23/08/2026: hướng dẫn bao phủ đăng nhập/phạm vi, dữ liệu tối thiểu, lập–sửa–gửi duyệt/hủy/duyệt đơn, ba nhánh CTBH, chống retry, lấy `X-Request-ID`, ghi lỗi, smoke checklist và biên bản dry-run.
+- Đối chiếu source xác nhận các nhãn/hành vi chính đang tồn tại: `LƯU NHÁP`, `TẠO ĐƠN HÀNG`, `Gửi duyệt`, `Hủy đơn nháp`, `PROMOTION_CHANGED` và response header `X-Request-ID`.
+- Không phát hiện mật khẩu, token, cookie, tài khoản nội bộ cụ thể hoặc dữ liệu nhận diện khách trong nội dung. Accessibility audit sau sửa: **0 high / 0 medium / 0 low**; 8 bảng dữ liệu đã được đánh dấu hàng tiêu đề.
+- LibreOffice/Poppler không có trong môi trường kiểm tra; Microsoft Word automation không xuất được PDF ở phiên không tương tác, nên chưa tuyên bố PASS render trực quan. Gate cuối vẫn là một người độc lập chạy dry-run trên runtime UAT đã deploy.
+- **Kết luận:** bản nháp đã đủ điều kiện commit và bàn giao cho bước dry-run; `CUSTOMER-DOC-001` chưa `DONE` cho tới khi hoàn thành biên bản dry-run và phát hành bản cuối.
 
 ### PRODUCT-DIAG-001
 
