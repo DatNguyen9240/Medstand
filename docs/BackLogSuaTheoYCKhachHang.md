@@ -12,10 +12,6 @@
 
 ## 1. Test bằng dữ liệu mới
 
-- [ ] **PROMO-UAT-CLEANUP-001 — Kết thúc đơn nháp UAT còn sót** · `P1` · `TODO`
-  - **Cần làm:** xử lý đơn `DMB0826/17` do bài test `PROMO-CFG-003` tạo (`demo`, `M002`, mua `10`, tặng `1`, hiện `StatusID=-1`). Ưu tiên hủy qua `API_DonHang_OwnerTransition_AI` với `ExpectedStatusID=-1`; không xóa thẳng dữ liệu đơn hàng.
-  - **Điều kiện đóng:** đơn chuyển `StatusID=10`, audit ghi đúng actor/request ID và truy vấn xác nhận không còn đơn nháp của bài test; hoặc có quyết định business bằng văn bản cho phép giữ làm fixture. Việc này là vệ sinh dữ liệu UAT, không mở lại lỗi chức năng `PROMO-CFG-003`.
-
 - [ ] **CUSTOMER-UAT-001 — Xác minh readiness bằng dữ liệu người dùng tạo** · `P0` · `PENDING_USER_CREATED_DATA_E2E`
   - **Cần làm:** khách chốt tài khoản/chi nhánh UAT và người nhập sản phẩm, giá, tồn, CTBH; chạy bằng tài khoản có `EmployeeID` thật, không dùng cấu hình riêng của `demo` làm bằng chứng.
   - **Điều kiện đóng:** dữ liệu mới có manifest nguồn gốc; các nhánh có CTBH cấu hình, CTBH note-text và không CTBH đều được kiểm; thiếu giá/tồn/quyền trả đúng mã.
@@ -54,8 +50,7 @@
 
 ## 4. Thứ tự thực hiện
 
-1. `PROMO-UAT-CLEANUP-001` — kết thúc đúng một đơn nháp UAT đã xác định, không tác động các đơn M002 khác.
-2. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
+1. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
    Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
-3. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-4. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
+2. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
+3. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.

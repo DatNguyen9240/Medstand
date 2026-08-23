@@ -24,7 +24,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `PROMO-CFG-001` | `DONE` | Contract V3 đã đồng bộ frontend/API/SQL, deploy `medtest`, actual-order verifier và live Gateway đều PASS |
 | `PROMO-CFG-002` | `DONE` | UI REJECT/WITHDRAW qua live Gateway có request ID; actor/lý do audit khớp; identity, positional binding và regression đều PASS |
 | `PROMO-CFG-003` | `DONE` | Chức năng đã PASS: preview lấy config mới, config cũ bị chặn `PROMOTION_CHANGED`, double-click một mutation, retry là replay; một đơn nháp từ harness ngoài repo được theo dõi riêng để dọn |
-| `PROMO-UAT-CLEANUP-001` | `TODO` | Đơn UAT `DMB0826/17` còn `StatusID=-1`; cần hủy qua proc nghiệp vụ hoặc có quyết định giữ fixture |
+| `PROMO-UAT-CLEANUP-001` | `DONE` | Đã xác minh trên DB đơn test `DMB0826/17` chuyển `StatusID -1 → 10`; audit `ORDER_OWNER_TRANSITION` ghi actor `demo`, action `CANCEL`, `fromStatusID=-1`, `toStatusID=10`, `outcome=COMPLETED` |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
 | `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
 | `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
@@ -135,6 +135,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Verify chạy lại:** `verify_order_status_guard.js` **22/22 PASS**; `verify_order_edit_permission_normalization.js` **20/20 PASS**; `verify_order_edit_guard_ai.js` **11/11 PASS**, rollback; `verify_donhang_ownertransition_ai.js` PASS và rollback, một ca `CANCEL_BLOCKED_FROM_DELIVERED_STATUS` SKIP vì môi trường không có fixture `StatusID=7`. Lượt đầu của edit-guard gặp lỗi trạng thái connection pool tạm thời; chạy riêng lại ngay sau đó PASS đầy đủ và không có mutation tồn dư.
 - **Quyết định evidence ngày 22/08/2026:** chủ dự án không yêu cầu thu lại bộ ảnh/JSON công khai. Toàn bộ 19 artifact thô có dữ liệu nhận diện khách đã bị xóa khỏi cây file hiện hành; hồ sơ chỉ giữ kết luận QA tổng hợp không chứa tài khoản, mã đơn, request ID hoặc dữ liệu khách.
 - **Kết luận:** không còn lỗi code đã biết; QA chức năng 13/13 PASS và yêu cầu vệ sinh evidence đã hoàn tất bằng cách loại artifact thô. `ORDER-APPROVAL-005/006` chuyển `DONE`.
+- **PROMO-UAT-CLEANUP-001 (23/08/2026):** Đối chiếu DB xác nhận `AR_OrderTbl.StatusID` của `DMB0826/17` đã chuyển `-1 → 10`. `AI_AuditLog` LogID 3567 ghi `ActionType=ORDER_OWNER_TRANSITION`, `Username=demo`, `TargetID=DMB0826/17`; nội dung audit thể hiện `action=CANCEL`, `fromStatusID=-1`, `toStatusID=10`, `outcome=COMPLETED`. Screenshot không đủ điều kiện evidence và đã bị loại; không dùng ảnh hoặc tuyên bố replay chưa tái lập làm căn cứ nghiệm thu. `PROMO-UAT-CLEANUP-001` chuyển `DONE`.
 
 ### CUSTOMER-UAT-001
 
