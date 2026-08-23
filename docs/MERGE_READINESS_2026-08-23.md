@@ -2,13 +2,13 @@
 
 **Ngày kiểm tra:** 23/08/2026
 
-**Trạng thái:** `READY_TO_MERGE`
+**Trạng thái:** `READY_TO_MERGE_CODE` — còn một việc vệ sinh dữ liệu UAT không ảnh hưởng source
 
 ## Phạm vi và kết luận
 
 Nhánh `hoangdang` đã được rà soát trên nền `origin/develop` tại `8cbb7c7`. `origin/develop` là ancestor của nhánh hiện tại nên có thể fast-forward sau khi đồng bộ remote. Không còn worktree phụ hoặc nhánh worktree chờ gộp.
 
-Trạng thái `READY_TO_MERGE` xác nhận code, build, regression và vệ sinh Git của merge candidate đạt yêu cầu. `PROMO-CFG-002/003` đã hoàn tất trong lượt chốt này; trạng thái không tự đóng chuỗi `CUSTOMER-UAT-*` và các task phụ thuộc quyết định khách hàng còn nằm trong backlog.
+Trạng thái `READY_TO_MERGE_CODE` xác nhận code, build, regression và vệ sinh Git của merge candidate đạt yêu cầu. `PROMO-CFG-002/003` đã hoàn tất về chức năng; trạng thái không tự đóng việc vệ sinh dữ liệu UAT, chuỗi `CUSTOMER-UAT-*` hoặc các task phụ thuộc quyết định khách hàng còn nằm trong backlog.
 
 ## Kết quả kiểm tra cuối
 
@@ -28,7 +28,9 @@ Trạng thái `READY_TO_MERGE` xác nhận code, build, regression và vệ sinh
 
 UI `PRODUCT-DIAG-001` được chạy qua Chrome headless trên live Gateway. Chatbot dùng đúng click/input của người dùng, lấy sản phẩm từ request danh mục thật và đối chiếu `X-Request-ID` của response với server log. Artifact ảnh/JSON chỉ được sinh cục bộ để review rồi xóa.
 
-UI `PROMO-CFG-002/003` cũng được chạy lại trên Chrome thật. Verifier mới không lưu credential/PII, tự xóa chương trình CTBH tạm và hủy đơn test qua proc nghiệp vụ. Dry-run cleanup đã xác định đúng ba fixture CTBH cũ và ba đơn nháp A014; sau cleanup, truy vấn chốt trả `ActiveTestPrograms=0`, `ActiveTestDrafts=0`. Các đơn M002 của luồng khác không bị tác động.
+UI `PROMO-CFG-002/003` cũng được chạy lại trên Chrome thật. Verifier mới không lưu credential/PII, tự xóa chương trình CTBH tạm và hủy đơn test qua proc nghiệp vụ. Dry-run cleanup đã xác định đúng ba fixture CTBH cũ và ba đơn nháp A014; truy vấn theo marker của verifier trong repo trả `ActiveTestPrograms=0`, `ActiveTestDrafts=0`.
+
+Đối chiếu sau đó với báo cáo QA scratch phát hiện thêm `DMB0826/17`: đơn `demo`, `M002`, mua `10`, tặng `1`, còn `StatusID=-1` và không có marker trong `Memo`, nên truy vấn cleanup trước không bắt được. Đây là dữ liệu do bài test `PROMO-CFG-003` ngoài repo tạo, không phải đơn nghiệp vụ chưa xác định. Source vẫn sẵn sàng merge; trước khi bàn giao môi trường UAT cần đóng `PROMO-UAT-CLEANUP-001` bằng cách hủy đơn qua proc nghiệp vụ hoặc ghi nhận quyết định giữ fixture.
 
 ## Vệ sinh và an toàn phát hành
 

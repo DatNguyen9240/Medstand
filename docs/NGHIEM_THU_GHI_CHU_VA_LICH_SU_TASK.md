@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 23/08/2026 (nghiệm thu cuối `PROMO-CFG-002/003` và dọn fixture UAT)
+**Cập nhật:** 23/08/2026 (đối chiếu thêm báo cáo QA ngoài repo và fixture `DMB0826/17`)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -23,7 +23,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUST-SEARCH-003` | `DONE` | Race/stale, lỗi hiện tại + retry, đổi tài khoản thật, cô lập cache, khách ngoài scope và mapping đều PASS trên màn lập/sửa đơn; 0 mutation |
 | `PROMO-CFG-001` | `DONE` | Contract V3 đã đồng bộ frontend/API/SQL, deploy `medtest`, actual-order verifier và live Gateway đều PASS |
 | `PROMO-CFG-002` | `DONE` | UI REJECT/WITHDRAW qua live Gateway có request ID; actor/lý do audit khớp; identity, positional binding và regression đều PASS |
-| `PROMO-CFG-003` | `DONE` | UI preview lấy config mới, config cũ bị chặn `PROMOTION_CHANGED`, double-click chỉ tạo một mutation, retry là replay; đơn test đã hủy |
+| `PROMO-CFG-003` | `DONE` | Chức năng đã PASS: preview lấy config mới, config cũ bị chặn `PROMOTION_CHANGED`, double-click một mutation, retry là replay; một đơn nháp từ harness ngoài repo được theo dõi riêng để dọn |
+| `PROMO-UAT-CLEANUP-001` | `TODO` | Đơn UAT `DMB0826/17` còn `StatusID=-1`; cần hủy qua proc nghiệp vụ hoặc có quyết định giữ fixture |
 | `ORDER-APPROVAL-001` | `DONE` | Khảo sát runtime/DB hoàn tất |
 | `ORDER-APPROVAL-002` | `SUPERSEDED_BY_CURRENT_BUSINESS_DECISION` | Ma trận Sale/Kế toán cũ không còn là điều kiện đóng vì kế toán không dùng app; giữ làm lịch sử |
 | `ORDER-APPROVAL-003` | `SUPERSEDED_SAFETY_FINDINGS_ADDRESSED` | Năm điểm review đã được 005/006 xử lý, gồm ledger idempotency thật; không còn là task độc lập |
@@ -33,8 +34,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
 | `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
-| `CUSTOMER-DOC-001` | `BLOCKED` | Chờ runtime UAT ổn định |
-| `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn và core fixes |
+| `CUSTOMER-DOC-001` | `READY_TO_DRAFT_PENDING_UAT_DRY_RUN` | Core đã ổn định để soạn; bản phát hành cuối chờ deploy và dry-run UAT |
+| `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
 | `CUSTOMER-BIZ-001` | `PENDING_CUSTOMER_CLARIFICATION` | Chưa rõ phạm vi “khóa chức năng” |
 | `CUSTOMER-SEC-001` | `BLOCKED` | Chờ CUSTOMER-BIZ-001 |
@@ -99,8 +100,9 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - **Bảo vệ Gateway và SQL:** ba API đọc lấy identity từ token; Upsert/Approve dùng allowlist và đúng thứ tự tham số ERP, không tin `Username` từ client. `verify_promo_cfg002_gateway_identity.js`, `verify_order_status_guard.js` và `verify_promo_cfg002_permission_and_audit.js` đều PASS; proc live có đủ `@Reason`, audit snapshot chứa rule và scope, audit fail-closed.
 - **PROMO-CFG-003:** `verify_promo_cfg003_config_race_e2e.js` chứng minh UI preview cấu hình A cho quà `3`; sau khi A bị thu hồi và B được duyệt, submit theo preview cũ trả `PROMOTION_CHANGED` và không tạo đơn. Tải lại màn hình lấy đúng cấu hình B cho quà `1`; double-click chỉ phát một mutation; gửi lại cùng `Idempotency-Key` trả replay; ba request ID đều khớp server log.
 - **Lỗi phát hiện trong lúc nghiệm thu và bản vá:** `ACTIVE_BY_ITEMS` từng dùng cache GET của `Http`, nên refresh vẫn có thể dùng cấu hình cũ. `create-order.js` nay gọi endpoint này với `{ cache: false }`; bundle production đã build lại. Verifier cũng chuẩn hóa các giá trị optional dạng chuỗi rỗng trong `promotion.js` để frontend và SQL chọn rule giống nhau.
-- **Dọn dữ liệu:** mỗi lượt verifier mới xóa chương trình CTBH tạm và hủy đơn test qua `API_DonHang_OwnerTransition_AI`. Ba fixture CTBH cũ `E2E_UI_MUT_*` đã xóa sau dry-run có khóa/guard; ba đơn nháp A014 cũ và đơn của lượt chốt đã chuyển `StatusID=10`. Không chạm các đơn M002 thuộc luồng khác. Raw ảnh/JSON cũ đã review rồi xóa khỏi thư mục local và không đưa vào Git.
-- **Kết luận:** `PROMO-CFG-002` và `PROMO-CFG-003` đều `DONE`; không còn blocker code, deploy, trace, concurrency hay cleanup đã biết trong phạm vi hai task.
+- **Dọn dữ liệu của verifier trong repo:** mỗi lượt verifier mới xóa chương trình CTBH tạm và hủy đơn test qua `API_DonHang_OwnerTransition_AI`. Ba fixture CTBH cũ `E2E_UI_MUT_*` đã xóa sau dry-run có khóa/guard; ba đơn nháp A014 cũ và các đơn của lượt chốt đã chuyển `StatusID=10`.
+- **Đối chiếu báo cáo QA ngoài repo:** harness scratch dùng `M002` đã tạo đơn `DMB0826/17`. Truy vấn read-only ngày 23/08/2026 xác nhận đơn vẫn là nháp (`StatusID=-1`), actor `demo`, một dòng `M002`, số lượng `10`, quà `1`. Các file JSON/ảnh mà báo cáo dẫn chiếu không còn tồn tại do đã xóa theo chính sách evidence; cổng local `3000` cũng không còn tiến trình lắng nghe. Vì harness nằm ngoài repo nên bằng chứng có thể tái lập hiện dựa trên hai verifier chính thức đã commit.
+- **Kết luận:** `PROMO-CFG-002` và chức năng `PROMO-CFG-003` đều `DONE`; riêng việc kết thúc `DMB0826/17` được tách thành `PROMO-UAT-CLEANUP-001`, không được tiếp tục mô tả môi trường là “không còn dữ liệu test” cho tới khi mục đó đóng.
 
 ## 4. Task đã có kết quả kỹ thuật nhưng chưa `DONE`
 
