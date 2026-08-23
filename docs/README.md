@@ -10,6 +10,12 @@ Thư mục này chỉ giữ tài liệu còn được sử dụng. Báo cáo the
 2. [Backlog phát triển](BACKLOG_TASK_PHAT_TRIEN_MEDSTAND_AI_2026-07-27.md) — nguồn quản lý task, phụ thuộc và tiêu chí nghiệm thu.
 3. [Kế hoạch test 13 tài khoản](KE_HOACH_TEST_13_TAI_KHOAN.md) — tài khoản, câu hỏi mẫu và cách ghi kết quả.
 
+## Yêu cầu khách hàng đang xử lý
+
+- [Backlog cần chốt nghiệp vụ hoặc code](BackLogSuaTheoYCKhachHang.md)
+- [Hàng chờ chỉ cần QA/UAT nghiệm thu lại](QA_UAT_CAN_NGHIEM_THU_LAI.md)
+- [Nghiệm thu, ghi chú và lịch sử task](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md)
+
 ## Contract nghiệp vụ
 
 - [Tạo khách hàng qua chat](CORE-001_CONTRACT_CHAT_TAO_KHACH_HANG_2026-07-29.md)
@@ -27,7 +33,7 @@ Thư mục này chỉ giữ tài liệu còn được sử dụng. Báo cáo the
 
 ## Quy tắc duy trì tài liệu
 
-- Trạng thái task chỉ cập nhật trong backlog.
+- Trạng thái việc phát triển chỉ cập nhật trong backlog; trạng thái kiểm thử chỉ cập nhật trong hàng chờ QA/UAT.
 - Kết quả tổng hợp chỉ cập nhật trong baseline.
 - Quy tắc nghiệp vụ chỉ cập nhật trong contract tương ứng.
 - Kết quả mỗi lần chạy lưu dạng JSON/log trong `reports/`; không tạo thêm báo cáo Markdown theo ngày nếu không có quyết định mới.

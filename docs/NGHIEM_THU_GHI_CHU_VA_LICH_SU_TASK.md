@@ -1,7 +1,7 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
 **Cập nhật:** 23/08/2026 (đối chiếu thêm báo cáo QA ngoài repo và fixture `DMB0826/17`)
-**Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Danh sách việc đang cần làm nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md).
+**Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Việc còn phải chốt nghiệp vụ/code nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md); việc chỉ còn QA/UAT nằm tại [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md).
 
 ## 1. Quy tắc nghiệm thu
 
@@ -31,7 +31,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `ORDER-APPROVAL-004` | `SUPERSEDED_BY_ORDER_APPROVAL_005_006` | Phạm vi cũ đã được quyết định mới và 005/006 thay thế; UAT Sale/Kế toán trong app không còn phù hợp |
 | `ORDER-APPROVAL-005` | `DONE` | QA độc lập xác nhận 13/13 ca chức năng PASS; artifact thô có PII đã xóa theo quyết định chủ dự án |
 | `ORDER-APPROVAL-006` | `DONE` | Gửi duyệt/hủy riêng và chống double-click PASS; không lưu ảnh/JSON thô trong repo |
-| `CUSTOMER-UAT-001` | `PENDING_USER_DATA_E2E` | Readiness tool pass phần chạy được; chưa có chuỗi dữ liệu người dùng thật |
+| `CUSTOMER-UAT-001` | `PARTIAL_PASS_PENDING_REAL_ACCOUNT_AND_NEW_DATA` | Readiness bằng `demo`/MB cho `DL011` × `A008` pass với warning; chưa có tài khoản `EmployeeID` thật hoặc chuỗi dữ liệu mới để nghiệm thu cuối |
 | `PRODUCT-DIAG-001` | `DONE` | Code 17/17, live gateway identity 5/5 và UI 3/3 PASS; raw evidence đã loại khỏi Git |
 | `CUSTOMER-UAT-002` | `BLOCKED` | Chờ CUSTOMER-UAT-001 |
 | `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |

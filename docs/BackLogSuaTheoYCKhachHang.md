@@ -1,40 +1,47 @@
-# BACKLOG VIỆC CẦN LÀM THEO YÊU CẦU KHÁCH HÀNG
+# BACKLOG PHÁT TRIỂN THEO YÊU CẦU KHÁCH HÀNG
 
-**Cập nhật:** 23/08/2026 (sau đối chiếu báo cáo QA ngoài repo của `PROMO-CFG-003`)
-**Mục đích:** file này chỉ liệt kê việc còn phải làm. Kết quả đã chạy, ghi chú dài, task đã hoàn thành và lịch sử trạng thái nằm tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md).
+**Cập nhật:** 23/08/2026 (bổ sung yêu cầu khách hàng về khách mới, khách hợp đồng, CTKM và AI tra CTBH)
+
+**Mục đích:** file này chỉ giữ việc còn phải chốt nghiệp vụ, khảo sát kỹ thuật hoặc sửa/code logic. Những việc chức năng đã có, chỉ còn QA/UAT/dry-run được tách sang [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md). Kết quả đã hoàn thành và lịch sử quyết định nằm tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md).
 
 ## Cách đọc
 
-- `[ ]`: còn việc phải làm; không dùng file này để lưu nhật ký thực hiện.
-- `P0`: chặn UAT hoặc có rủi ro an toàn/nghiệp vụ trực tiếp.
+- `[ ]`: còn quyết định hoặc thay đổi sản phẩm phải thực hiện.
+- `P0`: chặn UAT hoặc có rủi ro quyền/dữ liệu/nghiệp vụ trực tiếp.
 - `P1`: quan trọng nhưng không phải điểm chặn tức thời.
-- Chỉ chuyển task sang hồ sơ nghiệm thu khi toàn bộ điều kiện đóng đã có bằng chứng hợp lệ.
+- Không ghi kết quả chạy QA dài trong file này. Nếu QA phát hiện lỗi code mới, tạo defect riêng rồi mới đưa lại vào backlog phát triển.
 
-## 1. Test bằng dữ liệu mới
+## 1. Khách mới và khách hợp đồng
 
-- [ ] **CUSTOMER-UAT-001 — Xác minh readiness bằng dữ liệu người dùng tạo** · `P0` · `PENDING_USER_CREATED_DATA_E2E`
-  - **Cần làm:** khách chốt tài khoản/chi nhánh UAT và người nhập sản phẩm, giá, tồn, CTBH; chạy bằng tài khoản có `EmployeeID` thật, không dùng cấu hình riêng của `demo` làm bằng chứng.
-  - **Điều kiện đóng:** dữ liệu mới có manifest nguồn gốc; các nhánh có CTBH cấu hình, CTBH note-text và không CTBH đều được kiểm; thiếu giá/tồn/quyền trả đúng mã.
+- [ ] **CUSTOMER-NEW-001 — Lọc khách mới mua hàng trong tháng** · `P0` · `PENDING_BUSINESS_CONTRACT`
+  - **Yêu cầu ban đầu:** khách không mua hàng trong khoảng `01/01/2026–31/07/2026`, sau đó phát sinh mua trong tháng xét và đạt tối thiểu `600.000đ` tại MB hoặc `500.000đ` tại MN.
+  - **Loại trừ:** không công nhận khách mới nếu chỉ đổi giấy tờ/mã khách, mã mới dùng chung chủ với mã cũ đang hoạt động hoặc thuộc trường hợp Công ty không công nhận; các mã liên quan được gom theo cột `Code chính` trong DMKH.
+  - **Cấu hình:** admin được thay đổi kỳ không mua hàng và ngưỡng doanh số theo vùng/tháng; cấu hình phải có version, ngày hiệu lực và audit, không hard-code riêng mốc tháng 08/2026.
+  - **Cần chốt trước khi code:** tháng xét; nguồn doanh số; trạng thái chứng từ được tính; VAT/chiết khấu/trả hàng; quy tắc xác định MB/MN; cách cộng doanh số theo `Code chính`; khách chưa từng mua; dữ liệu hiển thị/xuất báo cáo.
+  - **Điều kiện đóng:** có sign-off cùng bảng ví dụ dưới/bằng/trên ngưỡng và các ca đổi mã/chung chủ; frontend, API và SQL dùng cùng contract có version; quyền admin và audit được kiểm thử.
 
-- [ ] **CUSTOMER-UAT-002 — Chạy E2E bằng dữ liệu đội test tự tạo** · `P0` · `BLOCKED_BY_CUSTOMER_UAT_001`
-  - **Cần làm:** chạy chuỗi tạo dữ liệu → chọn khách/sản phẩm → giá/tồn/CTBH → lập đơn → gửi duyệt → duyệt/từ chối, gồm các ca âm.
-  - **Điều kiện đóng:** luồng chính không phụ thuộc fixture; có manifest, ảnh/video, request ID, mã thực thể và kế hoạch dọn dữ liệu.
+- [ ] **CUSTOMER-CONTRACT-001 — Thống kê số lượng KHHD theo Sale/QLBH** · `P1` · `DISCOVERY_AND_BUSINESS_DEFINITION_REQUIRED`
+  - **Yêu cầu ban đầu:** khai thác nguồn từ mục Quản lý hợp đồng tham gia năm 2026, thống kê số lượng khách hàng hợp đồng theo từng Sale và cấp QLBH.
+  - **Cần chốt trước khi code:** định nghĩa `KHHD`; hợp đồng còn hiệu lực hay phát sinh trong kỳ; đếm khách hay hợp đồng; loại trùng theo `Code chính`; Sale chuyển quản lý; cây Sale–QLBH; kỳ/snapshot báo cáo và quyền drill-down.
+  - **Điều kiện đóng:** có data dictionary và query oracle được business xác nhận; tổng theo Sale khớp tổng QLBH; không lộ khách ngoài phạm vi và có ví dụ đối soát cụ thể.
 
-## 2. Hướng dẫn và vòng góp ý
+- [ ] **CUSTOMER-CONTRACT-002 — Cảnh báo khách hợp đồng chưa phát sinh doanh số ba tháng** · `P1` · `BLOCKED_BY_CUSTOMER_CONTRACT_001`
+  - **Yêu cầu ban đầu:** từ tập khách hợp đồng năm 2026 theo từng nhóm Sale, cảnh báo khách không phát sinh doanh số trong ba tháng gần nhất.
+  - **Cần chốt trước khi code:** ba tháng lịch hoàn chỉnh hay 90 ngày; có tính tháng hiện tại; nguồn/trạng thái doanh số; xử lý đơn hủy/trả hàng; người nhận, kênh và tần suất cảnh báo; điều kiện tắt hoặc xác nhận đã xử lý.
+  - **Điều kiện đóng:** oracle danh sách cảnh báo khớp dữ liệu nguồn; Sale chỉ thấy khách của mình, QLBH chỉ thấy nhóm phụ trách; refresh/retry không tạo cảnh báo trùng.
 
-- [ ] **CUSTOMER-DOC-001 — Phát hành hướng dẫn UAT khách hàng** · `P1` · `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN`
-  - **Cần làm:** có thể soạn ngay hướng dẫn đăng nhập, chọn khách, dữ liệu test, lập/duyệt đơn, CTBH, báo lỗi và cách lấy request ID; bản phát hành cuối cần dry-run trên runtime UAT đã deploy.
-  - **Điều kiện đóng:** người chưa tham gia phát triển tự chạy được kịch bản chỉ bằng tài liệu; có version, môi trường, ngày và biên bản dry-run.
-  - **Đã hoàn thành:** bản `DRAFT 0.1` và README của gói UAT đã được review nội dung, đối chiếu nhãn/chức năng với source, kiểm tra không chứa mật khẩu/token/dữ liệu khách và sửa 8 hàng tiêu đề bảng cho accessibility.
-  - **Còn mở:** điền release/commit đã deploy, cấp bộ tài khoản/dữ liệu UAT thật, chạy dry-run độc lập, xử lý phản hồi và phát hành bản không còn nhãn `DRAFT`.
+## 2. Phân quyền CTKM và AI tra CTBH
 
-- [ ] **CUSTOMER-UAT-003 — Chạy test hẹp và thu feedback** · `P0` · `BLOCKED_BY_CUSTOMER_DOC_001_AND_CUSTOMER_UAT_002`
-  - **Cần làm:** mở test cho nhóm nhỏ; chuẩn hóa mỗi lỗi với account, thời gian, input, bước tái hiện, thực tế/mong đợi, ảnh/log và request ID.
-  - **Điều kiện đóng:** mọi lỗi đủ thông tin để tái hiện và giao sửa; có tổng PASS/FAIL/BLOCKED và owner.
+- [ ] **PROMO-AUTH-001 — Phân quyền khai báo CTKM** · `P0` · `GAP_ANALYSIS_AND_BUSINESS_MATRIX_REQUIRED`
+  - **Cần làm:** đối chiếu yêu cầu mới với quyền hiện có của `PROMO-CFG-002`, tránh tạo hệ phân quyền thứ hai; chốt ma trận `vai trò × hành động × chi nhánh/phạm vi` cho xem, tạo nháp, sửa, gửi duyệt, duyệt/từ chối, thu hồi và xem lịch sử.
+  - **Yêu cầu kỹ thuật:** quyền phải được server/SQL kiểm tra, identity lấy từ phiên đăng nhập, cấu hình có version/audit/rollback; UI chỉ phản ánh quyền, không phải lớp bảo vệ duy nhất.
+  - **Điều kiện đóng:** gap analysis xác định rõ phần tái sử dụng và phần phải code; có sign-off ma trận quyền; test giả identity/chi nhánh và mutation trái quyền bị chặn.
 
-- [ ] **CUSTOMER-UAT-004 — Regression sau feedback** · `P0` · `BLOCKED_BY_CUSTOMER_UAT_003`
-  - **Cần làm:** retest đúng ca lỗi và luồng liên quan trên bản deploy mới, kể cả refresh, đăng nhập lại và retry.
-  - **Điều kiện đóng:** không còn P0; P1 còn lại phải được business chấp nhận trước khi mở UAT rộng.
+- [ ] **PROMO-AI-001 — AI trả lời CTBH của sản phẩm bất kỳ** · `P1` · `BLOCKED_BY_PROMO_AUTH_001_AND_RESPONSE_CONTRACT`
+  - **Cần làm:** nhận diện mã/tên sản phẩm từ câu hỏi, gọi API CTBH có cấu trúc theo identity, chi nhánh, khách, ngày và số lượng; AI chỉ diễn giải dữ liệu trả về, không tự suy đoán hoặc dùng RAG làm nguồn quyết định quyền lợi.
+  - **Cần chốt trước khi code:** CTBH hiện hành hay cả sắp diễn ra; có bắt buộc chọn khách/số lượng; cách trình bày điều kiện, quà/chiết khấu, mức tối đa, ngày hiệu lực và lý do không áp dụng; quan hệ giữa thuật ngữ CTKM và CTBH.
+  - **Quy tắc đã có phải giữ:** vượt `MaximumQuantity` chỉ áp quyền lợi ở mức tối đa; không nhân tiếp và không fallback sai sang ghi chú ERP.
+  - **Điều kiện đóng:** câu trả lời khớp API/oracle cho ca có CTBH, note-text, không CTBH, ngoài phạm vi và vượt mức tối đa; không lộ CTBH ngoài quyền; mã lạ hoặc contract lạ phải fail-closed.
 
 ## 3. Khóa quyền/chức năng sau nghiệm thu
 
@@ -44,15 +51,13 @@
 
 - [ ] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `BLOCKED_BY_CUSTOMER_BIZ_001`
   - **Cần làm:** triển khai capability/role/config có version và audit; không hard-code account hoặc xóa dữ liệu.
-  - **Điều kiện đóng:** đúng vai trò bị chặn, đúng vai trò còn quyền và có thể rollback bằng config.
+  - **Điều kiện đóng:** đúng vai trò bị chặn, đúng vai trò còn quyền và có thể rollback bằng config. Phần QA âm được theo dõi riêng tại `CUSTOMER-SEC-002` trong file QA/UAT.
 
-- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `BLOCKED_BY_CUSTOMER_SEC_001`
-  - **Cần làm:** thử gọi UI/API bị khóa, sửa payload, dùng context cũ và retry; xác nhận server chặn thật.
-  - **Điều kiện đóng:** 100% ca âm bị chặn, có Network/request ID/audit và DB chứng minh không phát sinh mutation.
+## 4. Thứ tự phát triển
 
-## 4. Thứ tự thực hiện
+1. `CUSTOMER-NEW-001` — chốt contract rồi mới thiết kế/code.
+2. `CUSTOMER-CONTRACT-001` → `CUSTOMER-CONTRACT-002` — dùng chung tập khách hợp đồng và định nghĩa doanh số.
+3. `PROMO-AUTH-001` → `PROMO-AI-001` — chốt quyền và nguồn dữ liệu có cấu trúc trước khi mở AI hỏi đáp.
+4. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001`.
 
-1. `CUSTOMER-UAT-001` → `CUSTOMER-UAT-002` — vế `ORDER-APPROVAL-004` (UAT hai tài khoản
-   Sale/Kế toán) không còn đúng phạm vi (kế toán làm ở PMKT, không dùng app).
-2. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-3. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001` → `CUSTOMER-SEC-002`.
+Các luồng QA/UAT không yêu cầu sửa logic được điều phối độc lập trong [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md).
