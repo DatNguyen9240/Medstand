@@ -45,8 +45,9 @@
 
 ## 3. Khóa quyền/chức năng sau nghiệm thu
 
-- [ ] **CUSTOMER-BIZ-001 — Làm rõ yêu cầu “khóa chức năng”** · `P1` · `PENDING_CUSTOMER_CLARIFICATION`
-  - **Cần làm:** chốt chức năng cần khóa, vai trò, thời điểm, ngoại lệ, cách mở lại và rollback.
+- [ ] **CUSTOMER-BIZ-001 — Làm rõ yêu cầu “khóa chức năng”** · `P1` · `AWAITING_BUSINESS_SIGN_OFF`
+  - **Đã có:** ma trận đề xuất và gap analysis tại [CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md](CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md); chưa được tự coi là quyết định của khách hàng.
+  - **Cần làm:** business chốt chức năng cần khóa, vai trò, thời điểm, ngoại lệ, cách mở lại và rollback.
   - **Điều kiện đóng:** có sign-off và ma trận `vai trò × chức năng × trước/sau nghiệm thu`.
 
 - [ ] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `BLOCKED_BY_CUSTOMER_BIZ_001`

@@ -37,7 +37,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-DOC-001` | `DRAFT_V0_1_REVIEWED_PENDING_UAT_DRY_RUN` | Bản nháp và README đã review; nội dung khớp source, không chứa credential/PII, accessibility audit 0 finding; bản cuối chờ deploy và dry-run độc lập |
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
-| `CUSTOMER-BIZ-001` | `PENDING_CUSTOMER_CLARIFICATION` | Chưa rõ phạm vi “khóa chức năng” |
+| `CUSTOMER-BIZ-001` | `AWAITING_BUSINESS_SIGN_OFF` | Đã có ma trận đề xuất và gap analysis; chờ business xác nhận 6 quyết định, không dùng file report tự ghi sign-off |
 | `CUSTOMER-SEC-001` | `BLOCKED` | Chờ CUSTOMER-BIZ-001 |
 | `CUSTOMER-SEC-002` | `BLOCKED` | Chờ CUSTOMER-SEC-001 |
 
