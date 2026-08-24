@@ -35,10 +35,11 @@
 
 ## 3. Nghiệm thu chính sách khóa
 
-- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `LIVE_SQL_PASS_PENDING_BROWSER_HTTP_E2E`
+- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `LIVE_SQL_HTTP_PASS_PENDING_BROWSER_UI_EVIDENCE`
   - **Đã kiểm live 24/08/2026:** `scripts/verify_customer_sec002_policy.js --live` đạt `14/14 PASS` trên policy đã deploy; bao phủ Admin không ăn theo `Manager=1`, kế toán bị chặn cả owner-path, quản lý không `SUBMIT/CANCEL` nháp người khác, stale context, concurrent revoke và audit. Mọi mutation thử nghiệm `ROLLED_BACK`.
-  - **QA còn làm:** kiểm UI/HTTP bằng Browser được kết nối (identity giả, token thiếu/hỏng, ảnh và request ID).
-  - **Điều kiện đóng:** 100% ca âm bị chặn, có Network/request ID/audit và DB chứng minh không phát sinh mutation.
+  - **Đã kiểm HTTP live:** `scripts/verify_customer_sec002_gateway_e2e.js` đạt `8/8 PASS`; thiếu/hỏng token fail-closed, Sale và quản lý khác chi nhánh không leo quyền được bằng `Username/BranchID` giả, request ID được echo, không mutation và log không chứa credential.
+  - **QA còn làm:** thu ảnh/UI evidence bằng Browser được kết nối cho trạng thái được phép và bị chặn; không cần lặp lại mutation SQL.
+  - **Điều kiện đóng:** 100% ca âm bị chặn, có Network/request ID/audit, ảnh UI đã che dữ liệu và DB chứng minh không phát sinh mutation.
 
 ## 4. Nghiệm thu lại chức năng tồn kho khách hàng báo `Done`
 

@@ -39,7 +39,7 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
 | `CUSTOMER-BIZ-001` | `DONE` | Chủ yêu cầu đã xác nhận ma trận mặc định an toàn trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal |
 | `CUSTOMER-SEC-001` | `DONE` | Được chủ môi trường cho phép và deploy lên `medtest` ngày 24/08/2026; đúng 6 action-role, 4 transition; live policy verifier 14/14 PASS và regression đều xanh |
-| `CUSTOMER-SEC-002` | `LIVE_SQL_PASS_PENDING_BROWSER_HTTP_E2E` | Ca âm policy/race/audit live 14/14 PASS, mutation rollback; còn Browser E2E cho identity/token/HTTP và request ID |
+| `CUSTOMER-SEC-002` | `LIVE_SQL_HTTP_PASS_PENDING_BROWSER_UI_EVIDENCE` | Policy/race/audit live 14/14 PASS; HTTP identity/token 8/8 PASS, không mutation; còn ảnh UI bằng Browser được kết nối |
 
 ## 3. Task đã nghiệm thu `DONE`
 

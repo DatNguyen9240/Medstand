@@ -2,13 +2,13 @@
 
 **Ngày kiểm tra:** 23/08/2026
 
-**Trạng thái:** `PENDING_CUSTOMER_SEC_002_BROWSER_HTTP_E2E`
+**Trạng thái:** `PENDING_CUSTOMER_SEC_002_BROWSER_UI_EVIDENCE`
 
 ## Phạm vi và kết luận
 
 Nhánh `hoangdang` đã được rà soát trên nền `origin/develop` tại `8cbb7c7`. `origin/develop` là ancestor của nhánh hiện tại nên có thể fast-forward sau khi đồng bộ remote. Không còn worktree phụ hoặc nhánh worktree chờ gộp.
 
-`CUSTOMER-SEC-001` đã được chủ môi trường cho phép và deploy lên `medtest` ngày 24/08/2026. Live policy QA `14/14 PASS`, build và các regression gateway/edit/approval/product đều xanh. Merge còn chờ duy nhất phần Browser/HTTP E2E của `CUSTOMER-SEC-002` để thu Network request ID và chứng minh identity/token fail-closed qua runtime thật.
+`CUSTOMER-SEC-001` đã được chủ môi trường cho phép và deploy lên `medtest` ngày 24/08/2026. Live policy QA `14/14 PASS`, live HTTP identity/token `8/8 PASS`, build và các regression gateway/edit/approval/product đều xanh. Merge còn chờ ảnh/UI evidence của `CUSTOMER-SEC-002` bằng Browser được kết nối; Network request ID và fail-closed HTTP đã có bằng chứng tự động.
 
 ## Kết quả kiểm tra cuối
 
@@ -23,7 +23,7 @@ Nhánh `hoangdang` đã được rà soát trên nền `origin/develop` tại `8
 | `PROMO-CFG-002` | gateway identity `14/14`; permission/audit `16/16`; UI REJECT/WITHDRAW có request ID và audit actor/reason — đều PASS |
 | `PROMO-CFG-003` | UI config A/B, stale-config guard, double-click và idempotency replay PASS; đơn test cuối được hủy |
 | Order approval | transition `25/25 PASS`; edit guard `11/11 PASS`; normalization `20/20 PASS` |
-| `CUSTOMER-SEC-001/002` | Deploy `medtest` PASS; live SQL policy `14/14 PASS`, mutation rollback; còn Browser/HTTP E2E |
+| `CUSTOMER-SEC-001/002` | Deploy `medtest` PASS; live SQL policy `14/14`, HTTP identity/token `8/8` PASS, không mutation; còn Browser UI evidence |
 | Draft/owner transition | draft flag `5/5 PASS`; owner transition PASS với 1 ca SKIP do thiếu fixture trạng thái 7; các verifier rollback |
 | UAT readiness tool | `13 PASS / 0 FAIL / 2 SKIPPED`; hai ca thiếu tiền đề dữ liệu được giữ đúng là SKIPPED |
 
