@@ -1,6 +1,6 @@
 # NGHIỆM THU, GHI CHÚ VÀ LỊCH SỬ TASK
 
-**Cập nhật:** 23/08/2026 (đối chiếu thêm báo cáo QA ngoài repo và fixture `DMB0826/17`)
+**Cập nhật:** 24/08/2026 (deploy và live QA chính sách `CUSTOMER-SEC-001/002`)
 **Mục đích:** lưu trạng thái, bằng chứng, giới hạn kiểm thử và lịch sử quyết định. Việc còn phải chốt nghiệp vụ/code nằm tại [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md); việc chỉ còn QA/UAT nằm tại [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md).
 
 ## 1. Quy tắc nghiệm thu
@@ -156,6 +156,16 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 - Không phát hiện mật khẩu, token, cookie, tài khoản nội bộ cụ thể hoặc dữ liệu nhận diện khách trong nội dung. Accessibility audit sau sửa: **0 high / 0 medium / 0 low**; 8 bảng dữ liệu đã được đánh dấu hàng tiêu đề.
 - LibreOffice/Poppler không có trong môi trường kiểm tra; Microsoft Word automation không xuất được PDF ở phiên không tương tác, nên chưa tuyên bố PASS render trực quan. Gate cuối vẫn là một người độc lập chạy dry-run trên runtime UAT đã deploy.
 - **Kết luận:** bản nháp đã đủ điều kiện commit và bàn giao cho bước dry-run; `CUSTOMER-DOC-001` chưa `DONE` cho tới khi hoàn thành biên bản dry-run và phát hành bản cuối.
+
+### CUSTOMER-BIZ-001 / CUSTOMER-SEC-001 / CUSTOMER-SEC-002
+
+- Chủ yêu cầu chốt `CUSTOMER-BIZ-001 V1` ngày 23/08/2026: Sale chỉ thao tác nháp của mình; quản lý `QL/QLMN` cùng chi nhánh được `EDIT/APPROVE/REJECT`; không tự duyệt; không `SUBMIT/CANCEL` nháp người khác; Admin và kế toán không có quyền mutation đặc biệt.
+- `CUSTOMER-SEC-001` được chủ môi trường cho phép deploy lên `medtest` ngày 24/08/2026. Script deploy xác nhận đúng 6 action-role (`QL/QLMN × EDIT/APPROVE/REJECT`) và 4 transition (`APPROVE`, `REJECT`, `SUBMIT`, `CANCEL`); wildcard, role test và owner-path kế toán được retire/chặn fail-closed.
+- `verify_customer_sec002_policy.js --live`: **14/14 PASS**; bao phủ scope chi nhánh, self-approval, Sale/Admin/kế toán, stale context, concurrent revoke và audit. Mọi mutation thử nghiệm `ROLLED_BACK`.
+- `verify_customer_sec002_gateway_e2e.js`: **8/8 PASS** qua local Gateway nối `medtest`; token thiếu/hỏng trả 401, giả `Username/BranchID` không leo quyền, request ID được echo, đơn fixture không đổi và server log không chứa credential/token.
+- Regression sau deploy: build production PASS; gateway guard **22/22**, edit normalization **20/20**, edit guard **11/11**, approval transition **25/25**, product diagnostic **17/17**, hard-code scan **566 file / 0 runtime finding**.
+- Code và verifier nằm tại các commit `2b1b7cc` và `3a7e36c`; raw HTTP evidence nằm dưới `reports/uat/`, bị Git ignore và không dùng làm tài liệu phát hành.
+- **Kết luận:** `CUSTOMER-BIZ-001` và `CUSTOMER-SEC-001` `DONE`. `CUSTOMER-SEC-002` đạt live SQL/HTTP, còn Browser UI evidence nên giữ `LIVE_SQL_HTTP_PASS_PENDING_BROWSER_UI_EVIDENCE`.
 
 ### PRODUCT-DIAG-001
 

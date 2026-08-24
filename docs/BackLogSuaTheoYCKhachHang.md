@@ -1,6 +1,6 @@
 # BACKLOG PHÁT TRIỂN THEO YÊU CẦU KHÁCH HÀNG
 
-**Cập nhật:** 23/08/2026 (bổ sung yêu cầu khách hàng về khách mới, khách hợp đồng, CTKM và AI tra CTBH)
+**Cập nhật:** 24/08/2026 (chỉ giữ năm yêu cầu mới còn phải phân tích/chốt/code)
 
 **Mục đích:** file này chỉ giữ việc còn phải chốt nghiệp vụ, khảo sát kỹ thuật hoặc sửa/code logic. Những việc chức năng đã có, chỉ còn QA/UAT/dry-run được tách sang [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md). Kết quả đã hoàn thành và lịch sử quyết định nằm tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md).
 
@@ -43,22 +43,11 @@
   - **Quy tắc đã có phải giữ:** vượt `MaximumQuantity` chỉ áp quyền lợi ở mức tối đa; không nhân tiếp và không fallback sai sang ghi chú ERP.
   - **Điều kiện đóng:** câu trả lời khớp API/oracle cho ca có CTBH, note-text, không CTBH, ngoài phạm vi và vượt mức tối đa; không lộ CTBH ngoài quyền; mã lạ hoặc contract lạ phải fail-closed.
 
-## 3. Khóa quyền/chức năng sau nghiệm thu
-
-- [x] **CUSTOMER-BIZ-001 — Làm rõ yêu cầu “khóa chức năng”** · `P1` · `DONE`
-  - **Đã chốt:** ma trận `vai trò × chức năng × trạng thái` và rollback fail-closed tại [CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md](CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md).
-  - **Sign-off:** chủ yêu cầu xác nhận trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal.
-
-- [x] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `DONE`
-  - **Đã triển khai 24/08/2026:** retire wildcard/role kế toán, cấp riêng `EDIT/APPROVE/REJECT` cho `QL/QLMN`, chặn owner-path của kế toán, khóa race thu hồi policy, audit before/after và rollback fail-closed trên `medtest`.
-  - **Bằng chứng:** deploy script `PASS`; live policy verifier `14/14 PASS`, mọi mutation thử nghiệm `ROLLED_BACK`; regression build/gateway/edit/approval/product đều PASS.
-  - **Điều kiện đóng:** đúng vai trò bị chặn, đúng vai trò còn quyền và có thể rollback bằng config. Phần QA âm được theo dõi riêng tại `CUSTOMER-SEC-002` trong file QA/UAT.
-
-## 4. Thứ tự phát triển
+## 3. Thứ tự phát triển
 
 1. `CUSTOMER-NEW-001` — chốt contract rồi mới thiết kế/code.
 2. `CUSTOMER-CONTRACT-001` → `CUSTOMER-CONTRACT-002` — dùng chung tập khách hợp đồng và định nghĩa doanh số.
 3. `PROMO-AUTH-001` → `PROMO-AI-001` — chốt quyền và nguồn dữ liệu có cấu trúc trước khi mở AI hỏi đáp.
-4. `CUSTOMER-BIZ-001` → `CUSTOMER-SEC-001`.
 
 Các luồng QA/UAT không yêu cầu sửa logic được điều phối độc lập trong [QA_UAT_CAN_NGHIEM_THU_LAI.md](QA_UAT_CAN_NGHIEM_THU_LAI.md).
+Các task `CUSTOMER-BIZ-001` và `CUSTOMER-SEC-001` đã hoàn tất được lưu tại [NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md](NGHIEM_THU_GHI_CHU_VA_LICH_SU_TASK.md), không giữ trong backlog phát triển.

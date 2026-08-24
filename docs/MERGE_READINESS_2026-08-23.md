@@ -1,6 +1,7 @@
 # Biên bản sẵn sàng merge `hoangdang` → `develop`
 
-**Ngày kiểm tra:** 23/08/2026
+**Ngày kiểm tra ban đầu:** 23/08/2026
+**Cập nhật gần nhất:** 24/08/2026
 
 **Trạng thái:** `PENDING_CUSTOMER_SEC_002_BROWSER_UI_EVIDENCE`
 
@@ -16,7 +17,7 @@ Nhánh `hoangdang` đã được rà soát trên nền `origin/develop` tại `8
 | --- | --- |
 | Git hygiene | `8/8 PASS`; 0 `.tmp`, 0 raw evidence, 0 local env được track; chỉ còn 1 worktree |
 | Gateway/security guard | `22/22 PASS` |
-| Hard-code fixture scan | `PASS`, 556 file, 0 runtime finding |
+| Hard-code fixture scan | `PASS`, 566 file, 0 runtime finding |
 | Production build | `PASS` |
 | `PRODUCT-DIAG-001` | contract `17/17 PASS`; live identity `5/5 PASS`; UI thật `3/3 PASS` |
 | `PROMO-CFG-001` | rule/clamp/cache regression `8/8 PASS`; actual-order V3 PASS và rollback, `PersistentMutation=0` |

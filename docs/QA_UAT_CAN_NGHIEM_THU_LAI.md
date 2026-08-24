@@ -1,6 +1,6 @@
 # HÀNG CHỜ QA/UAT CẦN NGHIỆM THU LẠI
 
-**Cập nhật:** 23/08/2026
+**Cập nhật:** 24/08/2026
 
 **Mục đích:** file này chỉ giữ việc chưa cần sửa/code logic, nhưng còn phải QA, chạy E2E, dry-run hoặc thu bằng chứng độc lập. Nếu một ca FAIL chứng minh lỗi sản phẩm, tạo defect mới trong [BackLogSuaTheoYCKhachHang.md](BackLogSuaTheoYCKhachHang.md); không tự sửa code trong task QA.
 
@@ -53,4 +53,4 @@
 1. `STOCK-QA-001` có thể chạy độc lập ngay.
 2. `CUSTOMER-UAT-002` chạy từ manifest đã chốt của `CUSTOMER-UAT-001`.
 3. `CUSTOMER-DOC-001` → `CUSTOMER-UAT-003` → `CUSTOMER-UAT-004`.
-4. `CUSTOMER-SEC-002` chỉ chạy sau khi `CUSTOMER-SEC-001` được triển khai và deploy.
+4. `CUSTOMER-SEC-002` đã hoàn thành live SQL/HTTP; chỉ còn thu Browser UI evidence.
