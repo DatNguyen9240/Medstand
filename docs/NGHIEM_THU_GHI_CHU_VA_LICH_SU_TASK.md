@@ -38,8 +38,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ:
 | `CUSTOMER-UAT-003` | `BLOCKED` | Chờ hướng dẫn hoàn tất và chuỗi dữ liệu/E2E của CUSTOMER-UAT-001/002 |
 | `CUSTOMER-UAT-004` | `BLOCKED` | Chờ vòng feedback |
 | `CUSTOMER-BIZ-001` | `DONE` | Chủ yêu cầu đã xác nhận ma trận mặc định an toàn trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal |
-| `CUSTOMER-SEC-001` | `CODE_COMPLETE_PENDING_MEDTEST_DEPLOY` | SQL/deploy/rollback đã hoàn tất; candidate rollback verifier 15/15 PASS; deploy lâu dài lên DB dùng chung chưa được cấp quyền thực thi |
-| `CUSTOMER-SEC-002` | `CANDIDATE_PASS_PENDING_LIVE_DEPLOY` | Ca âm policy/race/audit 15/15 PASS trong transaction rollback; còn live DB và Browser E2E sau deploy |
+| `CUSTOMER-SEC-001` | `DONE` | Được chủ môi trường cho phép và deploy lên `medtest` ngày 24/08/2026; đúng 6 action-role, 4 transition; live policy verifier 14/14 PASS và regression đều xanh |
+| `CUSTOMER-SEC-002` | `LIVE_SQL_PASS_PENDING_BROWSER_HTTP_E2E` | Ca âm policy/race/audit live 14/14 PASS, mutation rollback; còn Browser E2E cho identity/token/HTTP và request ID |
 
 ## 3. Task đã nghiệm thu `DONE`
 

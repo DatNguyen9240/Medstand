@@ -49,9 +49,9 @@
   - **Đã chốt:** ma trận `vai trò × chức năng × trạng thái` và rollback fail-closed tại [CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md](CUSTOMER-BIZ-001_MA_TRAN_QUYEN_KHOA_CHUC_NANG.md).
   - **Sign-off:** chủ yêu cầu xác nhận trong phiên chat ngày 23/08/2026 và yêu cầu thực thi tới goal.
 
-- [ ] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `CODE_COMPLETE_PENDING_MEDTEST_DEPLOY`
-  - **Đã code:** retire wildcard/role kế toán, cấp riêng `EDIT/APPROVE/REJECT` cho `QL/QLMN`, chặn owner-path của kế toán, khóa race thu hồi policy, audit before/after và rollback fail-closed. Verifier ứng viên chạy rollback `15/15 PASS`.
-  - **Còn làm:** được chủ môi trường cho phép deploy lâu dài lên `medtest`, sau đó chạy `CUSTOMER-SEC-002 --live`.
+- [x] **CUSTOMER-SEC-001 — Triển khai khóa bằng cấu hình/phân quyền** · `P1` · `DONE`
+  - **Đã triển khai 24/08/2026:** retire wildcard/role kế toán, cấp riêng `EDIT/APPROVE/REJECT` cho `QL/QLMN`, chặn owner-path của kế toán, khóa race thu hồi policy, audit before/after và rollback fail-closed trên `medtest`.
+  - **Bằng chứng:** deploy script `PASS`; live policy verifier `14/14 PASS`, mọi mutation thử nghiệm `ROLLED_BACK`; regression build/gateway/edit/approval/product đều PASS.
   - **Điều kiện đóng:** đúng vai trò bị chặn, đúng vai trò còn quyền và có thể rollback bằng config. Phần QA âm được theo dõi riêng tại `CUSTOMER-SEC-002` trong file QA/UAT.
 
 ## 4. Thứ tự phát triển

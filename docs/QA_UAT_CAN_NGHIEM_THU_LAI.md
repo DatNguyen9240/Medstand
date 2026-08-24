@@ -35,9 +35,9 @@
 
 ## 3. Nghiệm thu chính sách khóa
 
-- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `CANDIDATE_PASS_PENDING_LIVE_DEPLOY`
-  - **Đã kiểm ứng viên:** `scripts/verify_customer_sec002_policy.js` chạy toàn bộ SQL trong transaction rollback, `15/15 PASS`; bao phủ Admin không ăn theo `Manager=1`, kế toán bị chặn cả owner-path, quản lý không `SUBMIT/CANCEL` nháp người khác, stale context và concurrent revoke.
-  - **QA còn làm:** sau khi deploy chính sách lên `medtest`, chạy lại với `--live`, rồi kiểm UI/HTTP bằng Browser được kết nối (identity giả, token thiếu/hỏng, ảnh và request ID).
+- [ ] **CUSTOMER-SEC-002 — UAT âm chính sách khóa** · `P0` · `LIVE_SQL_PASS_PENDING_BROWSER_HTTP_E2E`
+  - **Đã kiểm live 24/08/2026:** `scripts/verify_customer_sec002_policy.js --live` đạt `14/14 PASS` trên policy đã deploy; bao phủ Admin không ăn theo `Manager=1`, kế toán bị chặn cả owner-path, quản lý không `SUBMIT/CANCEL` nháp người khác, stale context, concurrent revoke và audit. Mọi mutation thử nghiệm `ROLLED_BACK`.
+  - **QA còn làm:** kiểm UI/HTTP bằng Browser được kết nối (identity giả, token thiếu/hỏng, ảnh và request ID).
   - **Điều kiện đóng:** 100% ca âm bị chặn, có Network/request ID/audit và DB chứng minh không phát sinh mutation.
 
 ## 4. Nghiệm thu lại chức năng tồn kho khách hàng báo `Done`
