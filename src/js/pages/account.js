@@ -26,6 +26,96 @@
       refreshPushState().catch(function () {});
     }
 
+    var telegramLinkButton = document.getElementById('btn-telegram-link');
+    var telegramOverlay = document.getElementById('telegram-link-overlay');
+    var telegramCloseButton = document.getElementById('btn-close-telegram-link');
+    var telegramGenerateButton = document.getElementById('btn-generate-telegram-code');
+    var telegramResult = document.getElementById('telegram-link-result');
+    var telegramCode = document.getElementById('telegram-link-code');
+    var telegramCommand = document.getElementById('telegram-link-command');
+    var telegramExpiry = document.getElementById('telegram-link-expiry');
+    var telegramCountdownTimer = null;
+
+    function stopTelegramCountdown() {
+      if (telegramCountdownTimer) clearInterval(telegramCountdownTimer);
+      telegramCountdownTimer = null;
+    }
+
+    function closeTelegramLink() {
+      stopTelegramCountdown();
+      if (telegramOverlay) telegramOverlay.classList.remove('active');
+    }
+
+    function startTelegramCountdown(seconds) {
+      stopTelegramCountdown();
+      var remaining = Math.max(0, Number(seconds || 300));
+      function render() {
+        if (!telegramExpiry) return;
+        if (remaining <= 0) {
+          telegramExpiry.textContent = 'Mã đã hết hạn. Hãy tạo mã mới.';
+          if (telegramCode) telegramCode.classList.add('expired');
+          stopTelegramCountdown();
+          return;
+        }
+        var minutes = Math.floor(remaining / 60);
+        var secondsPart = String(remaining % 60).padStart(2, '0');
+        telegramExpiry.textContent = 'Hết hạn sau ' + minutes + ':' + secondsPart;
+        remaining -= 1;
+      }
+      render();
+      telegramCountdownTimer = setInterval(render, 1000);
+    }
+
+    if (telegramLinkButton && telegramOverlay) {
+      telegramLinkButton.addEventListener('click', function () {
+        telegramOverlay.classList.add('active');
+      });
+      telegramCloseButton.addEventListener('click', closeTelegramLink);
+      telegramOverlay.addEventListener('click', function (event) {
+        if (event.target === telegramOverlay) closeTelegramLink();
+      });
+    }
+
+    if (telegramGenerateButton) {
+      telegramGenerateButton.addEventListener('click', function () {
+        telegramGenerateButton.disabled = true;
+        telegramGenerateButton.textContent = 'Đang tạo mã…';
+        Http.post('/webhook/telegram-link-code-issue', {})
+          .then(function (response) {
+            var payload = response && response.data && !response.linkCode ? response.data : response;
+            var code = String(payload && payload.linkCode || '');
+            if (!payload || payload.success !== true || !/^\d{6}$/.test(code)) {
+              throw new Error(payload && payload.message || 'Không thể tạo mã liên kết Telegram.');
+            }
+            telegramCode.textContent = code;
+            telegramCode.classList.remove('expired');
+            telegramCommand.textContent = '/login ' + code;
+            telegramResult.hidden = false;
+            telegramGenerateButton.textContent = 'Tạo mã mới';
+            startTelegramCountdown(payload.expiresInSeconds || 300);
+          })
+          .catch(function (error) {
+            telegramGenerateButton.textContent = 'Thử tạo lại';
+            Alert.error(error.message || 'Không thể tạo mã liên kết Telegram.');
+          })
+          .finally(function () {
+            telegramGenerateButton.disabled = false;
+          });
+      });
+    }
+
+    if (telegramCode) {
+      telegramCode.addEventListener('click', function () {
+        var value = String(telegramCode.textContent || '').trim();
+        if (!/^\d{6}$/.test(value) || telegramCode.classList.contains('expired')) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText('/login ' + value)
+            .then(function () { Alert.success('Đã sao chép lệnh /login.'); })
+            .catch(function () {});
+        }
+      });
+    }
+
     // Chặn luồng: Hiển thị Quản lý RAG nếu người dùng là admin
     try {
         var userStr = localStorage.getItem('auth_user');

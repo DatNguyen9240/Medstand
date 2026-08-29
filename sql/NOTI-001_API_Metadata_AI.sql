@@ -12,21 +12,36 @@ DECLARE @ProcedureName SYSNAME = N'API_ThongBao_AI';
 IF COL_LENGTH('dbo.API_Definition', 'ApiCode') IS NOT NULL
    AND COL_LENGTH('dbo.API_Definition', 'ProcedureName') IS NOT NULL
 BEGIN
-    IF EXISTS (SELECT 1 FROM dbo.API_Definition WHERE ApiCode = @ApiCode)
-        UPDATE dbo.API_Definition
-        SET ProcedureName = @ProcedureName
-        WHERE ApiCode = @ApiCode;
-    ELSE
-        INSERT dbo.API_Definition (ApiCode, ProcedureName)
-        VALUES (@ApiCode, @ProcedureName);
+    EXEC sys.sp_executesql N'
+        IF EXISTS (SELECT 1 FROM dbo.API_Definition WHERE ApiCode=@Code)
+            UPDATE dbo.API_Definition SET ProcedureName=@Procedure WHERE ApiCode=@Code;
+        ELSE
+            INSERT dbo.API_Definition (ApiCode,ProcedureName) VALUES (@Code,@Procedure);',
+        N'@Code NVARCHAR(100),@Procedure SYSNAME',@ApiCode,@ProcedureName;
 END
 ELSE IF COL_LENGTH('dbo.API_Definition', 'APIName') IS NOT NULL
         AND COL_LENGTH('dbo.API_Definition', 'StoreName') IS NOT NULL
 BEGIN
-    IF EXISTS (SELECT 1 FROM dbo.API_Definition WHERE APIName = @ApiCode)
-        UPDATE dbo.API_Definition SET StoreName = @ProcedureName WHERE APIName = @ApiCode;
-    ELSE
-        INSERT dbo.API_Definition (APIName, StoreName) VALUES (@ApiCode, @ProcedureName);
+    EXEC sys.sp_executesql N'
+        IF EXISTS (SELECT 1 FROM dbo.API_Definition WHERE APIName=@Code)
+            UPDATE dbo.API_Definition SET StoreName=@Procedure WHERE APIName=@Code;
+        ELSE
+            INSERT dbo.API_Definition (APIName,StoreName) VALUES (@Code,@Procedure);',
+        N'@Code NVARCHAR(100),@Procedure SYSNAME',@ApiCode,@ProcedureName;
+END
+ELSE IF COL_LENGTH('dbo.API_Definition', 'ApiCode') IS NOT NULL
+        AND COL_LENGTH('dbo.API_Definition', 'StoredProcedure') IS NOT NULL
+BEGIN
+    EXEC sys.sp_executesql N'
+        IF EXISTS (SELECT 1 FROM dbo.API_Definition WHERE ApiCode=@Code)
+            UPDATE dbo.API_Definition SET StoredProcedure=@Procedure,IsActive=1 WHERE ApiCode=@Code;
+        ELSE
+            INSERT dbo.API_Definition
+                (ApiCode,ApiName,ApiDescription,StoredProcedure,Category,UiTemplate,IconEmoji,IsActive,OrderIndex)
+            VALUES
+                (@Code,N''Thông báo'',N''Danh sách thông báo theo phạm vi tài khoản'',@Procedure,
+                 N''HỆ THỐNG'',''DEFAULT'',N''🔔'',1,240);',
+        N'@Code NVARCHAR(100),@Procedure SYSNAME',@ApiCode,@ProcedureName;
 END
 ELSE
     THROW 51331, N'Unsupported API_Definition metadata schema.', 1;

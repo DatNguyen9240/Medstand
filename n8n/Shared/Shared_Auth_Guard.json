@@ -49,7 +49,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://medtest.bms79.com/api/API_UserInfo",
+        "url": "={{ /^telegram_[0-9a-f]{64}$/.test($json._authInternal.token) ? 'http://127.0.0.1:5678/webhook/telegram-auth-verify' : 'https://medtest.bms79.com/api/API_UserInfo' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -59,12 +59,22 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(/^telegram_[0-9a-f]{64}$/.test($json._authInternal.token) ? { ticket: $json._authInternal.token } : {}) }}"
       },
       "id": "17a7d69a-71cc-40e3-98fb-4eb12860c978",
       "name": "Verify Token with API UserInfo",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
+      "typeVersion": 4.2,
       "position": [
         80,
         -100
@@ -165,4 +175,3 @@
   },
   "tags": []
 }
-

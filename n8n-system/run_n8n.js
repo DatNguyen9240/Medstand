@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 const rootEnvPath = path.join(__dirname, '..', '.env');
 if (fs.existsSync(rootEnvPath)) {
@@ -19,6 +20,18 @@ process.env.NODE_PATH = path.join(__dirname, 'n8n_data', 'npm_global', 'node_mod
 const setDefault = (key, value) => {
   if (process.env[key] === undefined || process.env[key] === '') process.env[key] = value;
 };
+
+// Local trust key for TG workflow -> MAIN. It is domain-separated from the
+// poller key and never exposes the Telegram bot token to workflow headers.
+if (!String(process.env.TELEGRAM_INTERNAL_BRIDGE_KEY || '').trim()) {
+  const telegramBotToken = String(process.env.TELEGRAM_CHATBOT_BOT_TOKEN || '').trim();
+  if (telegramBotToken) {
+    process.env.TELEGRAM_INTERNAL_BRIDGE_KEY = crypto
+      .createHash('sha256')
+      .update(`medstand-telegram-main-bridge\0${telegramBotToken}`, 'utf8')
+      .digest('hex');
+  }
+}
 
 setDefault('N8N_PORT', '5678');
 setDefault('N8N_HOST', '127.0.0.1');

@@ -1,0 +1,227 @@
+{
+  "id": "medstandTelegramSystemAnnouncement",
+  "name": "TG-05 · Telegram System Announcement",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-system-announcement",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "tg-system-announcement-webhook",
+      "name": "Local Announcement Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        0
+      ],
+      "webhookId": "82a67b35-c21a-4c77-935c-c8eeefb740e9",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "medstandTelegramPollerHeader",
+          "name": "Telegram Poller Local Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || {};\nconst icons = { INFO: 'ℹ️', MAINTENANCE: '🛠', INCIDENT: '⚠️', RESOLVED: '✅', RELEASE: '🚀' };\nconst type = String(body.type || 'INFO').trim().toUpperCase();\nconst title = String(body.title || '').replace(/\\s+/g, ' ').trim();\nconst message = String(body.message || '').replace(/\\r\\n/g, '\\n').trim();\nconst channelChatId = String($env.TELEGRAM_ANNOUNCEMENT_CHAT_ID || '').trim();\nconst escapeHtml = (value) => String(value)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst errors = [];\nif (!Object.prototype.hasOwnProperty.call(icons, type)) errors.push('TYPE_INVALID');\nif (!title || title.length > 120) errors.push('TITLE_INVALID');\nif (!message || message.length > 2500) errors.push('MESSAGE_INVALID');\nif (!/^-100\\d{6,16}$/.test(channelChatId)) errors.push('CHANNEL_NOT_CONFIGURED');\nconst telegramText = errors.length ? '' : [\n  icons[type] + ' <b>' + escapeHtml(title) + '</b>',\n  '',\n  escapeHtml(message),\n  '',\n  '<i>Medstand · Thông báo hệ thống</i>'\n].join('\\n');\nreturn [{ json: {\n  valid: errors.length === 0,\n  errors,\n  type,\n  channelChatId,\n  telegramText\n} }];"
+      },
+      "id": "tg-system-announcement-validate",
+      "name": "Validate and Format Announcement",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -460,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-system-announcement-valid-condition",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-system-announcement-valid",
+      "name": "Announcement Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.channelChatId }}",
+        "text": "={{ $json.telegramText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "tg-system-announcement-send",
+      "name": "Publish Channel Announcement",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -20,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "telegramApi": {
+          "id": "medstandTelegramChatbotDemo",
+          "name": "Telegram Chatbot Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:true, status:'PUBLISHED', messageId:String($json.message_id || $json.result?.message_id || '') }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "tg-system-announcement-success",
+      "name": "Respond Announcement Published",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        220,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:false, status:'TELEGRAM_SEND_FAILED', message:String($json.error?.message || $json.message || 'Không thể đăng thông báo lên channel.').slice(0,300) }) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "tg-system-announcement-send-error",
+      "name": "Respond Announcement Send Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:false, status:'VALIDATION_ERROR', errors:$json.errors || [] }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "tg-system-announcement-invalid",
+      "name": "Respond Announcement Invalid",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -20,
+        140
+      ]
+    }
+  ],
+  "connections": {
+    "Local Announcement Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate and Format Announcement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate and Format Announcement": {
+      "main": [
+        [
+          {
+            "node": "Announcement Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Announcement Valid?": {
+      "main": [
+        [
+          {
+            "node": "Publish Channel Announcement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Announcement Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Channel Announcement": {
+      "main": [
+        [
+          {
+            "node": "Respond Announcement Published",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Announcement Send Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

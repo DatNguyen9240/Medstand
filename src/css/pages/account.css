@@ -130,3 +130,124 @@
       opacity: .55;
       cursor: wait;
     }
+
+    .account-telegram-link {
+      width: 100%;
+      border: 0;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .telegram-link-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9990;
+      padding: 20px;
+      background: rgba(15, 23, 42, .58);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .telegram-link-overlay.active {
+      display: flex;
+      animation: fadeIn .2s ease;
+    }
+
+    .telegram-link-sheet {
+      position: relative;
+      width: min(100%, 420px);
+      padding: 26px 22px 22px;
+      border-radius: var(--radius-xl);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-lg);
+      text-align: center;
+      animation: scaleIn .2s ease;
+    }
+
+    .telegram-link-sheet h3 {
+      margin: 0 28px 8px;
+      color: var(--color-text);
+      font-size: var(--font-size-lg);
+    }
+
+    .telegram-link-description,
+    .telegram-link-security,
+    .telegram-link-command,
+    .telegram-link-expiry {
+      color: var(--color-text-muted);
+      font-size: var(--font-size-sm);
+      line-height: 1.5;
+    }
+
+    .telegram-link-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: var(--radius-full);
+      background: transparent;
+      color: var(--color-text-muted);
+      font-size: 26px;
+      cursor: pointer;
+    }
+
+    .telegram-link-result {
+      margin: 18px 0;
+      padding: 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      background: var(--color-background);
+    }
+
+    .telegram-link-label {
+      display: block;
+      color: var(--color-text-muted);
+      font-size: var(--font-size-xs);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .telegram-link-code {
+      margin: 8px 0;
+      border: 0;
+      background: transparent;
+      color: var(--color-primary);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: .16em;
+      cursor: copy;
+    }
+
+    .telegram-link-code.expired {
+      color: var(--color-text-muted);
+      opacity: .65;
+      cursor: default;
+    }
+
+    .telegram-link-command,
+    .telegram-link-expiry,
+    .telegram-link-security {
+      margin: 6px 0 0;
+    }
+
+    .telegram-link-generate {
+      width: 100%;
+      padding: 13px 16px;
+      border: 0;
+      border-radius: var(--radius-md);
+      background: var(--color-primary);
+      color: #fff;
+      font: inherit;
+      font-weight: var(--font-weight-semibold);
+      cursor: pointer;
+    }
+
+    .telegram-link-generate:disabled {
+      opacity: .6;
+      cursor: wait;
+    }

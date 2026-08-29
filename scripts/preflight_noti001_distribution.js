@@ -51,7 +51,8 @@ const checks = [
     && env.includes("DETAIL: '/api/API_ThongBao_AI'")
     && env.includes("MARK_READ: '/api/API_ThongBao_AI'")],
   ['BADGE_ENDPOINT_CONFIGURED', env.includes("UNREAD_COUNT: '/api/API_ThongBao_UnreadCount_AI'")],
-  ['BADGE_BYPASSES_CACHE', home.includes('{ cache: false }') && router.includes('{ cache: false }')],
+  ['BADGE_BYPASSES_CACHE', home.includes('{ cache: false }')
+    && /\{\s*cache:\s*false(?:,\s*silent:\s*true)?\s*\}/.test(router)],
   ['NO_MISSING_HERO_BADGE', !home.includes('hero-notif-badge')],
   ['URGENT_NOTIFICATION_ONCE_PER_SESSION', home.includes('loadUrgentNotification')
     && home.includes('sessionStorage.getItem(sessionKey)')

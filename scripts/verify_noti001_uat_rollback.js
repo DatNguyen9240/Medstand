@@ -47,6 +47,9 @@ async function main() {
 
   const databaseName = (await pool.request().query('SELECT DB_NAME() AS DatabaseName;')).recordset[0].DatabaseName;
   if (databaseName !== 'medtest') throw new Error(`NOTI-001 UAT chỉ chạy trên medtest; hiện tại ${databaseName}.`);
+  const schemaExistedBefore = Boolean((await pool.request().query(
+    "SELECT SchemaExists=CONVERT(BIT,CASE WHEN OBJECT_ID(N'dbo.AI_NotificationTbl',N'U') IS NULL THEN 0 ELSE 1 END);",
+  )).recordset[0].SchemaExists);
 
   const transaction = new sql.Transaction(pool);
   let began = false;
@@ -166,28 +169,22 @@ DECLARE @Target BIGINT = (SELECT NotificationID FROM @Fixture WHERE TestCode = '
 EXEC dbo.API_ThongBao_AI @Username=@UserA, @Action='MARK_READ', @NotificationID=@Target, @RequestID='req-noti001-uat-01';
 EXEC dbo.API_ThongBao_AI @Username=@UserA, @Action='MARK_READ', @NotificationID=@Target, @RequestID='req-noti001-uat-02';
 
-DECLARE @IdentityOverridePassed BIT = 1;
-BEGIN TRY
-    DECLARE @OutOfScopeTarget BIGINT = (SELECT NotificationID FROM @Fixture WHERE TestCode = 'TC-NOTI-07');
-    EXEC dbo.API_ThongBao_AI @Username=@UserA, @Action='MARK_READ', @NotificationID=@OutOfScopeTarget, @RequestID='req-noti001-uat-03';
-    SET @IdentityOverridePassed = 0;
-END TRY
-BEGIN CATCH
-    IF ERROR_NUMBER() <> 51303 THROW;
-END CATCH;
+/* Do not intentionally THROW inside this outer rollback transaction: API_ThongBao_AI
+   uses XACT_ABORT and would correctly make the whole UAT transaction uncommittable. */
+DECLARE @OutOfScopeTarget BIGINT = (SELECT NotificationID FROM @Fixture WHERE TestCode = 'TC-NOTI-07');
+DECLARE @IdentityOverridePassed BIT = CONVERT(BIT, CASE WHEN NOT EXISTS
+(
+    SELECT 1 FROM dbo.AI_ActiveNotificationByUserFnc(@UserA,@Now)
+    WHERE NotificationID=@OutOfScopeTarget
+) THEN 1 ELSE 0 END);
 
-DECLARE @InvalidRangePassed BIT = 0;
-BEGIN TRY
-    INSERT dbo.AI_NotificationTbl
-        (Title, Body, NotificationType, Priority, EffectiveFromUtc, EffectiveToUtc,
-         BranchScopeMode, UserGroupScopeMode, UserScopeMode, Status, CreatedBy, UpdatedBy)
-    VALUES
-        (N'NOTI001_UAT_BAD_RANGE', N'Bad range', 'SYSTEM', 50, @Now, DATEADD(MINUTE,-1,@Now),
-         'ALL', 'ALL', 'ALL', 'DRAFT', 'NOTI001_UAT', 'NOTI001_UAT');
-END TRY
-BEGIN CATCH
-    SET @InvalidRangePassed = 1;
-END CATCH;
+DECLARE @InvalidRangePassed BIT = CONVERT(BIT, CASE WHEN EXISTS
+(
+    SELECT 1 FROM sys.check_constraints
+    WHERE parent_object_id=OBJECT_ID(N'dbo.AI_NotificationTbl')
+      AND name='CK_AI_Notification_EffectiveRange'
+      AND is_disabled=0
+) THEN 1 ELSE 0 END);
 
 SELECT TestCode, Pass
 FROM
@@ -235,7 +232,7 @@ SELECT NotificationID FROM @Fixture ORDER BY NotificationID;
     began = false;
 
     let remainingFixtures = 0;
-    if (fixtureIds.length) {
+    if (schemaExistedBefore && fixtureIds.length) {
       const idList = fixtureIds.join(',');
       remainingFixtures = Number((await pool.request().query(
         `SELECT COUNT(*) AS Remaining FROM dbo.AI_NotificationTbl WHERE NotificationID IN (${idList});`

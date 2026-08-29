@@ -1,0 +1,223 @@
+{
+  "id": "medstandTelegramAuthVerify",
+  "name": "TG-01 · Telegram Auth Verify",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-auth-verify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "tg-auth-webhook",
+      "name": "Webhook Telegram Auth Verify",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        0
+      ],
+      "webhookId": "cb0db2a7-bfc8-4e66-ae61-b74e0fce6b9f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json || {};\nconst ticket = String(body.ticket || '').trim().toLowerCase();\nreturn [{ json: {\n  ticket,\n  valid: /^telegram_[0-9a-f]{64}$/.test(ticket)\n} }];"
+      },
+      "id": "tg-auth-normalize",
+      "name": "Normalize Ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-ticket-valid-condition",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-auth-if-valid",
+      "name": "Ticket Shape Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"EXEC dbo.API_TelegramAuthTicket_Verify_AI @Ticket='\" + $json.ticket.replace(/'/g, \"''\") + \"';\" }}"
+      },
+      "id": "tg-auth-query",
+      "name": "Verify Ticket in SQL",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        200,
+        -40
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $json || {};\nconst ok = String(row.AuthStatus || '').toUpperCase() === 'AUTHENTICATED'\n  && String(row.username || row.UserName || '').trim();\nreturn [{ json: ok ? { ...row, StatusCode: 200 } : {\n  AuthStatus: 'AUTH_TOKEN_INVALID',\n  StatusCode: 401,\n  error: 'Telegram authentication ticket is invalid or expired.'\n} }];"
+      },
+      "id": "tg-auth-format",
+      "name": "Format Auth Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { AuthStatus: 'AUTH_TOKEN_INVALID', StatusCode: 401, error: 'Telegram authentication ticket is invalid.' } }];"
+      },
+      "id": "tg-auth-invalid",
+      "name": "Reject Invalid Ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": "={{ Number($json.StatusCode || 401) }}",
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "tg-auth-respond",
+      "name": "Respond Auth Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        920,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Telegram Auth Verify": {
+      "main": [
+        [
+          {
+            "node": "Normalize Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Ticket": {
+      "main": [
+        [
+          {
+            "node": "Ticket Shape Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticket Shape Valid?": {
+      "main": [
+        [
+          {
+            "node": "Verify Ticket in SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Invalid Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Ticket in SQL": {
+      "main": [
+        [
+          {
+            "node": "Format Auth Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Auth Result": {
+      "main": [
+        [
+          {
+            "node": "Respond Auth Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Invalid Ticket": {
+      "main": [
+        [
+          {
+            "node": "Respond Auth Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,973 @@
+{
+  "id": "medstandTelegramChatbotDemo",
+  "name": "TG-02 · Telegram ChatBot Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-poll-ingest",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "tg-chat-trigger",
+      "name": "Local Poller Ingest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1160,
+        0
+      ],
+      "webhookId": "a3f8aa75-c7b2-447b-9272-68f38e7fe55d",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "medstandTelegramPollerHeader",
+          "name": "Telegram Poller Local Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const update = $json.body || $json || {};\nconst callback = update.callback_query || {};\nconst isCallback = Boolean(String(callback.id || '').trim());\nconst message = update.message || update.edited_message || callback.message || {};\nconst chat = message.chat || {};\nconst from = isCallback ? (callback.from || {}) : (message.from || {});\nconst chatId = String(chat.id ?? '').trim();\nconst userId = String(from.id ?? '').trim();\nconst updateId = String(update.update_id ?? '').trim();\nconst callbackQueryId = String(callback.id || '').trim();\nconst callbackData = String(callback.data || '').trim();\nconst callbackActions = {\n  'menu:sales_today': 'Hôm nay doanh số của tôi bao nhiêu?',\n  'menu:sales_month': 'Doanh số tháng này của tôi bao nhiêu?',\n  'menu:route_today': 'Hôm nay tôi nên ghé khách nào?',\n  'menu:notifications': 'Thông báo chưa đọc của tôi',\n  'menu:draft_order': '/draft',\n  'menu:whoami': '/whoami',\n  'menu:help': '/help'\n};\nconst draftCallback = /^draft:(save|cancel):([0-9a-f]{32})$/.exec(callbackData);\nif (draftCallback) callbackActions[callbackData] = '/draft-' + draftCallback[1] + ' ' + draftCallback[2];\nconst messageText = typeof message.text === 'string' ? message.text.replace(/\\s+/g, ' ').trim() : '';\nconst foldIntent = (value) => String(value || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd')\n  .replace(/[^a-z0-9._-]+/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\nconst canonicalizeBusinessText = (value) => {\n  const folded = foldIntent(value);\n  const code = String(value || '').match(/\\b[A-Za-z][A-Za-z0-9._-]*\\d{2,}[A-Za-z0-9._-]*\\b/)?.[0]?.toUpperCase() || '';\n  const today = /\\b(hom nay|ngay nay|today)\\b/.test(folded);\n  const routeVerb = /\\b(ghe|di|tham|cham soc|gap|tuyen|lich trinh|lich ghe)\\b/.test(folded);\n  const customerWord = /\\b(khach|khach hang|nha thuoc|quay thuoc)\\b/.test(folded);\n  if ((today && routeVerb && customerWord)\n      || /\\b(tuyen|lich trinh|lich ghe)\\s+(hom nay|ngay nay)\\b/.test(folded)\n      || /\\b(hom nay|ngay nay)\\s+(toi|minh|em)?\\s*(nen|can|phai)?\\s*(di|ghe|tham)\\b/.test(folded)) {\n    return 'Hôm nay tôi nên ghé khách nào?';\n  }\n  if (today && /\\b(doanh so|doanh thu|ban duoc|dat duoc)\\b/.test(folded)) {\n    return 'Hôm nay doanh số của tôi bao nhiêu?';\n  }\n  if (/\\b(thang nay|trong thang)\\b/.test(folded) && /\\b(doanh so|doanh thu|ban duoc|dat duoc)\\b/.test(folded)) {\n    return 'Doanh số tháng này của tôi bao nhiêu?';\n  }\n  if (/\\b(thong bao|tin moi|canh bao)\\b/.test(folded)\n      && /\\b(xem|co gi|moi|chua doc|cua toi|cho toi)\\b/.test(folded)) {\n    return 'Thông báo chưa đọc của tôi';\n  }\n  if (code && /\\b(ton kho|con hang|con bao nhieu|kiem tra kho|trong kho)\\b/.test(folded)) {\n    return 'Tồn kho sản phẩm ' + code;\n  }\n  if (code && /\\b(cong no|con no|no bao nhieu|khoan no|du no)\\b/.test(folded)) {\n    return 'Cho tôi xem công nợ khách hàng ' + code;\n  }\n  return value;\n};\nconst text = isCallback\n  ? String(callbackActions[callbackData] || '')\n  : canonicalizeBusinessText(messageText);\nconst isLoginCommand = /^\\/login(?:@[A-Za-z0-9_]+)?(?:\\s|$)/i.test(text);\nconst numeric = (value) => /^\\d{1,20}$/.test(value);\nconst privateChat = chat.type === 'private' && numeric(chatId) && chatId === userId;\nconst callbackAllowed = !isCallback || Boolean(callbackActions[callbackData]);\nconst canIssueTicket = privateChat\n  && numeric(userId)\n  && /^\\d{1,20}$/.test(updateId)\n  && callbackAllowed\n  && text.length > 0\n  && text.length <= 2000;\nconst now = Date.now();\nconst lockTtlMs = 60000;\nglobal.__MEDSTAND_TELEGRAM_USER_LOCKS__ ||= Object.create(null);\nconst locks = global.__MEDSTAND_TELEGRAM_USER_LOCKS__;\nfor (const key of Object.keys(locks)) {\n  if (!locks[key] || Number(locks[key].expiresAtMs || 0) <= now) delete locks[key];\n}\nconst currentLock = locks[userId];\nlet processingAccepted = true;\nlet ownsProcessingSlot = false;\nif (canIssueTicket) {\n  if (currentLock && currentLock.ownerUpdateId !== updateId && currentLock.expiresAtMs > now) {\n    processingAccepted = false;\n  } else {\n    locks[userId] = { ownerUpdateId: updateId, expiresAtMs: now + lockTtlMs };\n    ownsProcessingSlot = true;\n  }\n}\nconst canProcess = canIssueTicket && processingAccepted;\nlet rejectionText = '';\nif (!privateChat) rejectionText = 'Bot demo Medstand chỉ hỗ trợ chat riêng. Vui lòng mở bot và nhắn trực tiếp.';\nelse if (isCallback && !callbackAllowed) rejectionText = 'Nút thao tác không hợp lệ hoặc đã hết hạn.';\nelse if (!text) rejectionText = 'Hiện bot demo chỉ nhận tin nhắn văn bản.';\nelse if (text.length > 2000) rejectionText = 'Tin nhắn quá dài. Vui lòng rút gọn còn tối đa 2.000 ký tự.';\nelse if (!processingAccepted) rejectionText = 'Yêu cầu trước đang được xử lý. Vui lòng chờ kết quả rồi thử lại.';\nelse if (!canIssueTicket) rejectionText = 'Tin nhắn Telegram không hợp lệ.';\nreturn [{ json: {\n  chatId, userId, updateId, text, originalText: messageText, privateChat, canIssueTicket, canProcess,\n  processingAccepted, ownsProcessingSlot, rejectionText,\n  isCallback, callbackQueryId, callbackData, isLoginCommand,\n  conversationId: 'tgconv-' + userId\n} }];"
+      },
+      "id": "tg-chat-normalize",
+      "name": "Normalize Telegram Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -940,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-is-callback-condition",
+              "leftValue": "={{ $json.isCallback }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-callback",
+      "name": "Is Callback Query?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "operation": "answerQuery",
+        "queryId": "={{ $json.callbackQueryId }}",
+        "additionalFields": {
+          "text": "={{ $json.processingAccepted ? 'Đang xử lý yêu cầu…' : 'Yêu cầu trước vẫn đang được xử lý.' }}",
+          "cache_time": 0
+        }
+      },
+      "id": "tg-chat-ack-callback",
+      "name": "Acknowledge Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -480,
+        260
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "telegramApi": {
+          "id": "medstandTelegramChatbotDemo",
+          "name": "Telegram Chatbot Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-can-issue-condition",
+              "leftValue": "={{ $json.canProcess }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-input",
+      "name": "Private Text Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-is-login-command-condition",
+              "leftValue": "={{ $json.isLoginCommand }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-login",
+      "name": "Is Login Command?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -500,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Update').first().json || {};\nconst match = /^\\/login(?:@[A-Za-z0-9_]+)?\\s+(\\d{6})$/i.exec(String(source.text || '').trim());\nconst code = match ? match[1] : '';\nconst userId = String(source.userId || '');\nconst chatId = String(source.chatId || '');\nif (!/^\\d{1,20}$/.test(userId) || chatId !== userId) throw new Error('PRIVATE_TELEGRAM_ID_INVALID');\nconst query = \"EXEC dbo.API_TelegramLinkCode_Consume_AI @TelegramUserID='\" + userId\n  + \"', @TelegramChatID='\" + chatId + \"', @LinkCode='\" + code + \"';\";\nreturn [{ json: { ...source, query } }];"
+      },
+      "id": "tg-chat-build-login-sql",
+      "name": "Build Telegram Login SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "tg-chat-execute-login",
+      "name": "Consume One-time Link Code",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        80
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Update').first().json || {};\nconst row = $json || {};\nconst status = String(row.LinkStatus || '').toUpperCase();\nlet telegramText = String(row.Message || '').trim();\nif (status === 'LINKED') {\n  telegramText = '✅ Liên kết thành công.'\n    + '\\nTài khoản Medstand: ' + String(row.UserName || '')\n    + '\\nVai trò: ' + String(row.UserGroupID || 'Chưa khai báo')\n    + '\\nChi nhánh: ' + String(row.BranchID || 'Theo hệ thống')\n    + '\\n\\nBạn có thể dùng /menu hoặc /whoami ngay bây giờ.';\n} else if (status === 'RATE_LIMITED') {\n  telegramText = 'Đã nhập sai quá nhiều lần. Vui lòng chờ 15 phút hoặc tạo mã mới trên web.';\n} else if (status === 'INVALID_FORMAT') {\n  telegramText = 'Cú pháp đúng: /login 123456';\n} else if (!telegramText) {\n  telegramText = 'Mã không đúng, đã hết hạn hoặc đã được sử dụng. Hãy tạo mã mới trên web Medstand.';\n}\nreturn [{ json: { ...source, shouldCallMain: false, telegramText } }];"
+      },
+      "id": "tg-chat-format-login",
+      "name": "Format Telegram Login Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ \"EXEC dbo.API_TelegramAuthTicket_Issue_AI @TelegramUserID='\" + $json.userId + \"', @TelegramChatID='\" + $json.chatId + \"', @TelegramUpdateID=\" + $json.updateId + \";\" }}"
+      },
+      "id": "tg-chat-issue-ticket",
+      "name": "Issue Read-only Ticket",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -100
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Update').first().json;\nconst row = $json || {};\nconst command = source.text.toLowerCase().split(/\\s+/)[0].replace(/@[^\\s]+$/, '');\nconst authorized = String(row.AuthStatus || '').toUpperCase() === 'AUTHORIZED'\n  && /^telegram_[0-9a-f]{64}$/.test(String(row.AuthTicket || ''));\nlet telegramText = '';\nlet shouldCallMain = false;\nlet actionMode = 'STATIC';\nlet draftPayload = null;\nconst capabilities = new Set(String(row.Capabilities || '').toLowerCase().split(',').map((value) => value.trim()).filter(Boolean));\nconst canWriteDraft = capabilities.has('orders.draft.write') || capabilities.has('*');\nif (!authorized) {\n  telegramText = 'Telegram của bạn chưa liên kết với Medstand.'\n    + '\\n\\nMở web Medstand → Tài khoản → Liên kết Telegram để lấy mã 6 số.'\n    + '\\nSau đó gửi: /login 123456'\n    + '\\n\\nMã Telegram của bạn: ' + source.userId;\n} else if (command === '/start') {\n  telegramText = 'Medstand AI Demo đã sẵn sàng.\\nTài khoản: ' + row.UserName + '\\nPhạm vi: ' + (row.BranchID || 'theo phân quyền hệ thống') + '\\n\\nGõ /help để xem hướng dẫn.';\n} else if (command === '/help') {\n  telegramText = 'Bạn có thể xem doanh số, công nợ, tồn kho, tuyến bán hàng và lưu đơn nháp.'\n    + '\\n\\nLiên kết tài khoản: /login 123456'\n    + '\\n\\nVí dụ tra cứu:\\n• Hôm nay doanh số của tôi bao nhiêu?\\n• Tồn kho sản phẩm A003'\n    + '\\n\\nLưu đơn nháp:\\n/draft MÃ_KH | MÃ_SP x SỐ_LƯỢNG'\n    + '\\nVí dụ: /draft NDB001 | A003x2, A008x1'\n    + '\\n\\nĐơn chỉ được lưu nháp; gửi duyệt vẫn thực hiện trên web.';\n} else if (command === '/whoami') {\n  telegramText = 'Tài khoản Medstand: ' + row.UserName\n    + '\\nVai trò: ' + (row.UserGroupID || 'Chưa khai báo')\n    + '\\nChi nhánh: ' + (row.BranchID || 'Theo hệ thống');\n} else if (command === '/draft') {\n  const rest = source.text.includes(' ') ? source.text.slice(source.text.indexOf(' ') + 1).trim() : '';\n  if (!rest) {\n    telegramText = 'Nhập đơn theo mẫu:\\n/draft MÃ_KH | MÃ_SP x SỐ_LƯỢNG\\n\\nVí dụ:\\n/draft NDB001 | A003x2, A008x1\\n\\nBot sẽ cho xem trước; chỉ khi bấm “Lưu nháp” mới ghi đơn nháp.';\n  } else if (!canWriteDraft) {\n    telegramText = 'Tài khoản chưa được cấp quyền lưu đơn nháp trên Telegram.';\n  } else {\n    const parts = rest.split('|');\n    const customerId = String(parts[0] || '').trim().toUpperCase();\n    const rawItems = String(parts[1] || '').split(',').map((value) => value.trim()).filter(Boolean);\n    const parsedItems = [];\n    const seen = new Set();\n    let valid = parts.length === 2 && /^[A-Z0-9._-]{1,50}$/.test(customerId) && rawItems.length >= 1 && rawItems.length <= 10;\n    for (const rawItem of rawItems) {\n      const match = /^([A-Za-z0-9._-]{1,50})\\s*[xX*]\\s*(\\d{1,3})$/.exec(rawItem);\n      if (!match) { valid = false; break; }\n      const itemId = match[1].toUpperCase();\n      const quantity = Number(match[2]);\n      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 999 || seen.has(itemId)) { valid = false; break; }\n      seen.add(itemId);\n      parsedItems.push({ ItemID: itemId, Quantity: quantity });\n    }\n    if (!valid) {\n      telegramText = 'Cú pháp chưa đúng. Dùng mẫu:\\n/draft MÃ_KH | A003x2, A008x1\\nMỗi sản phẩm nhập một lần, tối đa 10 sản phẩm.';\n    } else {\n      actionMode = 'DRAFT_PREVIEW';\n      draftPayload = { customerId, items: parsedItems };\n    }\n  }\n} else if ((command === '/draft-save' || command === '/draft-cancel') && source.isCallback) {\n  const token = String(source.text.split(/\\s+/)[1] || '').toLowerCase();\n  if (!canWriteDraft) {\n    telegramText = 'Tài khoản chưa được cấp quyền lưu đơn nháp trên Telegram.';\n  } else if (!/^[0-9a-f]{32}$/.test(token)) {\n    telegramText = 'Nút xác nhận không hợp lệ hoặc đã hết hạn.';\n  } else {\n    actionMode = command === '/draft-save' ? 'DRAFT_SAVE' : 'DRAFT_CANCEL';\n    draftPayload = { token };\n  }\n} else if (command.startsWith('/')) {\n  telegramText = 'Lệnh chưa được hỗ trợ. Dùng /help để xem hướng dẫn.';\n} else {\n  shouldCallMain = true;\n  actionMode = 'CHAT';\n}\nreturn [{ json: {\n  ...source,\n  authTicket: String(row.AuthTicket || ''),\n  medstandUserName: String(row.UserName || ''),\n  medstandDisplayName: String(row.DisplayName || ''),\n  medstandRole: String(row.UserGroupID || ''),\n  medstandBranch: String(row.BranchID || ''),\n  medstandEmployee: String(row.EmployeeID || ''),\n  medstandManager: Boolean(row.Manager),\n  medstandServerSessionId: 'tg-' + String(source.userId || '').padStart(40, '0').slice(-40),\n  actionMode,\n  draftPayload,\n  shouldCallMain,\n  telegramText\n} }];"
+      },
+      "id": "tg-chat-authorized-action",
+      "name": "Prepare Authorized Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Update').first().json;\nreturn [{ json: {\n  ...source,\n  shouldCallMain: false,\n  telegramText: source.rejectionText || 'Tin nhắn không được hỗ trợ.'\n} }];"
+      },
+      "id": "tg-chat-reject-input",
+      "name": "Prepare Input Rejection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-call-main-condition",
+              "leftValue": "={{ $json.shouldCallMain }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-main",
+      "name": "Call Chatbot?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:5678/webhook/hook-ai-dainao",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.authTicket }}"
+            },
+            {
+              "name": "X-Medstand-Channel",
+              "value": "telegram-demo"
+            },
+            {
+              "name": "X-Medstand-Bridge-Key",
+              "value": "={{ $env.TELEGRAM_INTERNAL_BRIDGE_KEY }}"
+            },
+            {
+              "name": "X-Medstand-TG-User",
+              "value": "={{ $json.medstandUserName }}"
+            },
+            {
+              "name": "X-Medstand-TG-User-ID",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "X-Medstand-TG-Display-Name",
+              "value": "={{ encodeURIComponent($json.medstandDisplayName || \"\") }}"
+            },
+            {
+              "name": "X-Medstand-TG-Role",
+              "value": "={{ $json.medstandRole }}"
+            },
+            {
+              "name": "X-Medstand-TG-Branch",
+              "value": "={{ $json.medstandBranch }}"
+            },
+            {
+              "name": "X-Medstand-TG-Employee",
+              "value": "={{ $json.medstandEmployee }}"
+            },
+            {
+              "name": "X-Medstand-TG-Manager",
+              "value": "={{ $json.medstandManager ? \"1\" : \"0\" }}"
+            },
+            {
+              "name": "X-Medstand-TG-Session",
+              "value": "={{ $json.medstandServerSessionId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ message: $json.text, conversationId: $json.conversationId, historyContext: '' }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 45000
+        }
+      },
+      "id": "tg-chat-call-main",
+      "name": "Call MAIN ChatBot",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        -140
+      ],
+      "onError": "continueRegularOutput",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Prepare Authorized Action').first().json;\nconst raw = $json || {};\nconst technical = /^(success|status|code|errorcode|apicode|contractversion|requestid|metadata|ruleversion|rulesource|revenuebasis|revenuerecognition|cache_id|notificationid|objecttype|rowid|internalid|stt|r|f|m|c)$/i;\nconst fold = (value) => String(value || '')\n  .toLowerCase()\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/đ/g, 'd')\n  .replace(/[^a-z0-9]+/g, ' ')\n  .trim();\nconst displayValue = (value) => {\n  if (value === null || value === undefined || value === '') return '';\n  if (typeof value === 'object') return JSON.stringify(value);\n  const text = String(value).trim();\n  return text.length > 300 ? text.slice(0, 297) + '…' : text;\n};\nconst parseNumber = (value) => {\n  if (typeof value === 'number' && Number.isFinite(value)) return value;\n  const normalized = String(value ?? '').trim();\n  if (!/^-?\\d+(?:\\.\\d+)?$/.test(normalized)) return null;\n  const parsed = Number(normalized);\n  return Number.isFinite(parsed) ? parsed : null;\n};\nconst formatNumber = (value) => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(value);\nconst isMoneyKey = (key) => /(?:doanh so|doanh thu|cong no|tong no|du no|so tien|gia ban|gia tri|don gia|thanh tien|amount|revenue|outstanding|debit|credit|remaining|paid|unitprice|price)/.test(fold(key));\nconst isStockKey = (key) => /(?:ton kho|so luong ton|quantity in stock|quantityinstock|available stock|availablestock)/.test(fold(key));\nconst compactKey = (key) => fold(key).replace(/\\s+/g, '');\nconst semanticAliases = {\n  objectid: 'customerid', customerid: 'customerid', makhachhang: 'customerid',\n  objectname: 'customername', customername: 'customername', tencuahang: 'customername', tenkhachhang: 'customername',\n  itemid: 'itemid', masanpham: 'itemid', itemname: 'itemname', tensanpham: 'itemname',\n  documentid: 'documentid', sochungtu: 'documentid', sohoadon: 'documentid', sodonhang: 'documentid',\n  documentdate: 'documentdate', ngaychungtu: 'documentdate', ngayhoadon: 'documentdate', ngaydonhang: 'documentdate',\n  machungtu: 'documentid', mahd: 'documentid', invoicenumber: 'documentid', invoiceid: 'documentid',\n  ngaykhoancongno: 'debtdate', debtdate: 'debtdate',\n  loaikhoancongno: 'debttype', documenttype: 'debttype',\n  giatribandau: 'originalamount', debitamount: 'originalamount', sotien: 'originalamount',\n  dathanhtoantra: 'paidamount', creditamount: 'paidamount',\n  trangthaithanhtoan: 'paymentstatus', collectionstatus: 'paymentstatus',\n  trangthaicongno: 'debtstatus', paymentstatus: 'debtstatus',\n  songayquahan: 'overduedays', overduedays: 'overduedays',\n  phone: 'phone', dienthoai: 'phone', sodienthoai: 'phone',\n  address: 'address', diachi: 'address',\n  lastpurchasedate: 'lastpurchasedate', lanmuacuoidate: 'lastpurchasedate'\n};\nconst semanticKey = (key) => semanticAliases[compactKey(key)] || compactKey(key);\nconst isDateKey = (key) => /(?:date|ngay|thoi gian|createdat|updatedat|effectivefrom|effectiveto|asofdate|lastpurchase|expiry)/.test(fold(key));\nconst formatDate = (key, value) => {\n  if (!isDateKey(key)) return '';\n  const text = String(value ?? '').trim();\n  const match = text.match(/^(\\d{4})-(\\d{2})-(\\d{2})(?:[T\\s](\\d{2}):(\\d{2}))?/);\n  if (!match) return '';\n  const date = match[3] + '/' + match[2] + '/' + match[1];\n  const showTime = /(?:thoi gian|createdat|updatedat)/.test(fold(key)) && match[4];\n  return showTime ? date + ' ' + match[4] + ':' + match[5] : date;\n};\nconst friendlyLabels = {\n  itemid: 'Mã sản phẩm',\n  itemname: 'Tên sản phẩm',\n  objectid: 'Mã khách hàng',\n  objectname: 'Tên khách hàng',\n  customerid: 'Mã khách hàng',\n  customername: 'Tên khách hàng',\n  tencuahang: 'Tên khách hàng',\n  phone: 'Điện thoại',\n  address: 'Địa chỉ',\n  lichghe: 'Lịch ghé',\n  tuyen: 'Tuyến',\n  asofdate: 'Tính đến',\n  warehouseid: 'Mã kho',\n  warehousename: 'Kho',\n  unit: 'ĐVT',\n  quantityinstock: 'Tồn kho',\n  availablestock: 'Tồn có thể bán',\n  stockdatastatus: 'Trạng thái tồn',\n  documentid: 'Số chứng từ',\n  documentdate: 'Ngày chứng từ',\n  machungtu: 'Số chứng từ',\n  mahd: 'Số chứng từ',\n  invoicenumber: 'Số chứng từ',\n  invoiceid: 'Số chứng từ',\n  ngaykhoancongno: 'Ngày công nợ',\n  debtdate: 'Ngày công nợ',\n  loaikhoancongno: 'Loại khoản',\n  documenttype: 'Loại khoản',\n  giatribandau: 'Giá trị ban đầu',\n  debitamount: 'Giá trị ban đầu',\n  sotien: 'Giá trị ban đầu',\n  dathanhtoantra: 'Đã thanh toán',\n  creditamount: 'Đã thanh toán',\n  trangthaithanhtoan: 'Thanh toán',\n  collectionstatus: 'Thanh toán',\n  trangthaicongno: 'Trạng thái công nợ',\n  paymentstatus: 'Trạng thái công nợ',\n  songayquahan: 'Số ngày quá hạn',\n  overduedays: 'Số ngày quá hạn',\n  totalamount: 'Tổng tiền',\n  paidamount: 'Đã thanh toán',\n  remainingamount: 'Còn nợ',\n  unitprice: 'Đơn giá',\n  quantity: 'Số lượng',\n  recommendedquantity: 'Số lượng gợi ý',\n  risklevel: 'Mức rủi ro',\n  lastpurchasedate: 'Lần mua cuối',\n  reason: 'Lý do',\n  programname: 'Chương trình',\n  currentsales: 'Doanh số hiện tại',\n  nextmilestone: 'Mốc kế tiếp',\n  remainingtonewmilestone: 'Còn thiếu',\n  gift: 'Quà tặng',\n  expirydate: 'Hạn dùng',\n  lotnumber: 'Số lô',\n  questionid: 'Mã câu hỏi',\n  questiontext: 'Câu hỏi',\n  answer: 'Câu trả lời',\n  surveydate: 'Ngày khảo sát',\n  title: 'Tiêu đề',\n  content: 'Nội dung',\n  createdat: 'Thời gian',\n  updatedat: 'Cập nhật lúc',\n  summary: 'Tóm tắt',\n  body: 'Nội dung',\n  notificationtype: 'Loại thông báo',\n  priority: 'Mức ưu tiên',\n  effectivefromutc: 'Hiệu lực từ',\n  effectivetoutc: 'Hiệu lực đến',\n  type: 'Loại',\n  name: 'Tên',\n  lanmuacuoidate: 'Lần mua cuối',\n  medicaldisclaimer: 'Lưu ý chuyên môn'\n};\nconst displayKey = (key) => friendlyLabels[compactKey(key)] || friendlyLabels[semanticKey(key)] || key;\nconst enumLabels = {\n  OTHER_RECEIVABLE: 'Khoản phải thu khác',\n  OPENING_BALANCE: 'Số dư đầu kỳ',\n  UNPAID: 'Chưa thanh toán',\n  PARTIALLY_PAID: 'Thanh toán một phần',\n  PAID: 'Đã thanh toán',\n  DUE_DATE_UNKNOWN: 'Chưa xác định hạn',\n  OVERDUE: 'Quá hạn',\n  NOT_DUE: 'Chưa đến hạn'\n};\nconst formatFieldValue = (key, value) => {\n  const formattedDate = formatDate(key, value);\n  if (formattedDate) return formattedDate;\n  const numeric = parseNumber(value);\n  const moneySemantic = ['originalamount', 'paidamount', 'remainingamount', 'totalamount'];\n  if ((isMoneyKey(key) || moneySemantic.includes(semanticKey(key))) && numeric !== null) return formatNumber(numeric) + ' đ';\n  if (isStockKey(key) && numeric !== null && numeric < 0) return '⚠️ ' + formatNumber(numeric);\n  if (numeric !== null && typeof value === 'number') return formatNumber(numeric);\n  const enumValue = enumLabels[String(value || '').trim().toUpperCase()];\n  if (enumValue) return enumValue;\n  return displayValue(value);\n};\nconst profiles = {\n  '@danh_sach_tonkho': {\n    title: 'Kết quả tồn kho',\n    noData: 'Không tìm thấy tồn kho phù hợp trong phạm vi tài khoản của bạn.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','Kho','WarehouseName','ĐVT','Unit','Tồn Kho','Số Lượng Tồn','QuantityInStock','AvailableStock','StockDataStatus','Giá Bán']\n  },\n  '@tra_cuu_san_pham': {\n    title: 'Thông tin sản phẩm',\n    noData: 'Không tìm thấy sản phẩm phù hợp.',\n    fields: ['Mã Sản Phẩm','ItemID','Mã','Tên Sản Phẩm','ItemName','Tên','ĐVT','Unit','Quy Cách','Nhóm','Giá Bán','Tồn Kho']\n  },\n  '@cong_no_khach_hang': {\n    title: 'Danh sách công nợ',\n    noData: 'Không ghi nhận công nợ trong phạm vi tài khoản của bạn.',\n    fields: ['Mã Khách Hàng','ObjectID','CustomerID','Mã','Tên Khách Hàng','ObjectName','CustomerName','Tên','Tổng Nợ','Công Nợ','Đã Thanh Toán','Còn Nợ','Hạn Thanh Toán','AsOfDate']\n  },\n  '@cong_no_chi_tiet': {\n    title: 'Chi tiết công nợ',\n    noData: 'Khách hàng này không có khoản công nợ phù hợp trong phạm vi của bạn.',\n    fields: ['Mã Khách Hàng','ObjectID','CustomerID','Tên Khách Hàng','ObjectName','CustomerName','Số Chứng Từ','DocumentID','MaChungTu','InvoiceNumber','Ngày Công Nợ','NgayKhoanCongNo','DebtDate','Loại Khoản','LoaiKhoanCongNo','DocumentType','Giá Trị Ban Đầu','GiaTriBanDau','DebitAmount','Đã Thanh Toán','DaThanhToanTra','CreditAmount','Còn Nợ','RemainingAmount','Thanh Toán','TrangThaiThanhToan','CollectionStatus','Trạng Thái Công Nợ','TrangThaiCongNo','PaymentStatus','Số Ngày Quá Hạn','SoNgayQuaHan','OverdueDays']\n  },\n  '@tuyen_ban_hang': {\n    title: 'Tuyến bán hàng đề xuất',\n    noData: 'Hôm nay chưa có khách hàng đạt điều kiện ưu tiên trong phạm vi của bạn.',\n    fields: ['Mã Khách Hàng','ObjectID','CustomerID','Tên Khách Hàng','ObjectName','CustomerName','TenCuaHang','Phone','Địa Chỉ','Address','Tuyến','Tuyen','Lịch Ghé','LichGhe','Số Ngày Chưa Mua','Lần Mua Cuối','LastPurchaseDate','LanMuaCuoiDate','Lý Do','Ưu Tiên','Công Nợ']\n  },\n  '@goi_ydon_hang': {\n    title: 'Gợi ý đơn hàng',\n    noData: 'Chưa có đủ dữ liệu để gợi ý đơn hàng cho khách hàng này.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Số Lượng Gợi Ý','Quantity','Giá Bán','Thành Tiền','Lý Do']\n  },\n  '@upsell_goi_y': {\n    title: 'Gợi ý bán kèm',\n    noData: 'Chưa có sản phẩm bán kèm phù hợp cho khách hàng này.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Giá Bán','Tồn Kho','Lý Do','Mức Độ Phù Hợp']\n  },\n  '@hoa_don': {\n    title: 'Danh sách hóa đơn',\n    noData: 'Không tìm thấy hóa đơn phù hợp trong phạm vi của bạn.',\n    fields: ['Số Hóa Đơn','DocumentID','Ngày Hóa Đơn','DocumentDate','Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Tổng Tiền','Đã Thanh Toán','Còn Nợ','Trạng Thái']\n  },\n  '@hoa_don_chi_tiet': {\n    title: 'Chi tiết hóa đơn',\n    noData: 'Không tìm thấy chi tiết hóa đơn hoặc hóa đơn nằm ngoài phạm vi của bạn.',\n    fields: ['Số Hóa Đơn','DocumentID','Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Số Lượng','Đơn Giá','Thành Tiền']\n  },\n  '@don_hang': {\n    title: 'Danh sách đơn hàng',\n    noData: 'Không tìm thấy đơn hàng phù hợp trong phạm vi của bạn.',\n    fields: ['Số Đơn Hàng','DocumentID','Ngày Đơn Hàng','DocumentDate','Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Tổng Tiền','Trạng Thái']\n  },\n  '@cham_diem_kh': {\n    title: 'Phân loại khách hàng',\n    noData: 'Chưa có đủ dữ liệu để phân loại khách hàng trong phạm vi của bạn.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Nhóm','Tier','Mức Rủi Ro','RiskLevel','Doanh Số','Lần Mua Cuối','Lý Do']\n  },\n  '@tich_luy': {\n    title: 'Tiến độ tích lũy',\n    noData: 'Chưa có dữ liệu tích lũy phù hợp cho khách hàng này.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Chương Trình','ProgramName','Doanh Số Hiện Tại','CurrentSales','Mốc Kế Tiếp','NextMilestone','Còn Thiếu','Quà Kế Tiếp','Gift']\n  },\n  '@goi_ydon_thuoc': {\n    title: 'Sản phẩm liên quan tham khảo',\n    noData: 'Chưa tìm thấy sản phẩm liên quan phù hợp.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Tồn Kho','AvailableStock','Giá Bán','Lý Do','MedicalDisclaimer']\n  },\n  '@san_pham_trong_tam': {\n    title: 'Sản phẩm trọng tâm',\n    noData: 'Hiện chưa có chương trình sản phẩm trọng tâm phù hợp.',\n    fields: ['Chương Trình','ProgramName','Từ Ngày','Đến Ngày','Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Tồn Kho','Giá Bán']\n  },\n  '@de_xuat_khuyen_mai': {\n    title: 'Sản phẩm cần xem xét khuyến mãi',\n    noData: 'Chưa có sản phẩm cần xem xét khuyến mãi trong phạm vi của bạn.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','Số Lô','LotNumber','Hạn Dùng','ExpiryDate','Tồn Kho','Giá Bán','Lý Do','Trạng Thái']\n  },\n  '@danh_muc': {\n    title: 'Kết quả danh mục',\n    noData: 'Không tìm thấy dữ liệu danh mục phù hợp.',\n    fields: ['Mã','ID','Tên','Name','Loại','Type','Địa Chỉ','Trạng Thái','Chi Nhánh','Kho']\n  },\n  '@khao_sat360': {\n    title: 'Khảo sát 360°',\n    noData: 'Chưa có dữ liệu khảo sát 360° cho khách hàng này.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Mã Câu Hỏi','QuestionID','Câu Hỏi','QuestionText','Câu Trả Lời','Answer','Ngày Khảo Sát','SurveyDate']\n  },\n  '@danh_sach_cau_hoi_khao_sat': {\n    title: 'Danh sách câu hỏi khảo sát',\n    noData: 'Hiện chưa có câu hỏi khảo sát phù hợp.',\n    fields: ['Mã Câu Hỏi','QuestionID','Câu Hỏi','QuestionText','Loại Câu Hỏi','Bắt Buộc','Thứ Tự']\n  },\n  '@kiem_tra_khao_sat': {\n    title: 'Trạng thái khảo sát',\n    noData: 'Khách hàng này chưa có trạng thái khảo sát.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Trạng Thái','Tiến Độ','Số Câu Đã Trả Lời','Tổng Số Câu','Ngày Khảo Sát']\n  },\n  '@kiem_tra_khao_sat_ngay': {\n    title: 'Khảo sát trong ngày',\n    noData: 'Hôm nay chưa có khảo sát phù hợp trong phạm vi của bạn.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Trạng Thái','Ngày Khảo Sát','SurveyDate','Nhân Viên']\n  },\n  '@lich_su_khao_sat': {\n    title: 'Lịch sử khảo sát',\n    noData: 'Chưa có lịch sử khảo sát cho khách hàng này.',\n    fields: ['Mã Khách Hàng','ObjectID','Tên Khách Hàng','ObjectName','Ngày Khảo Sát','SurveyDate','Trạng Thái','Điểm','Nhân Viên']\n  },\n  '@thong_bao': {\n    title: 'Thông báo',\n    noData: 'Hiện chưa có thông báo mới trong phạm vi của bạn.',\n    fields: ['Tiêu Đề','Title','Tóm Tắt','Summary','Nội Dung','Content','Body','Loại','Type','NotificationType','Mức Ưu Tiên','Priority','Thời Gian','CreatedAt','EffectiveFromUtc','Trạng Thái']\n  },\n  '@tim_san_pham_theo_trieu_chung': {\n    title: 'Sản phẩm tham khảo theo từ khóa',\n    noData: 'Không tìm thấy sản phẩm còn hàng phù hợp với từ khóa này.',\n    fields: ['Mã Sản Phẩm','ItemID','Tên Sản Phẩm','ItemName','ĐVT','Unit','Tồn Có Thể Bán','AvailableStock','Kho','Giá Bán','Lý Do','MedicalDisclaimer']\n  }\n};\nconst rawError = raw.error;\nconst errorText = typeof rawError === 'string'\n  ? rawError\n  : String(rawError?.message || rawError?.description || '').trim();\nlet text = String(raw.message || raw.reply || errorText || '').trim();\nif (!text && (rawError || Number(raw.statusCode || 0) >= 400)) {\n  text = 'Chatbot tạm thời chưa thể xử lý yêu cầu. Vui lòng thử lại.';\n}\nconst rows = Array.isArray(raw.data) ? raw.data : [];\nconst apiCode = String(raw.ApiCode || raw.apiCode || '').toLowerCase();\nconst profile = profiles[apiCode] || null;\nconst account = displayValue(source.medstandUserName);\nconst question = fold(source.text);\nif (apiCode === '@doanh_so' && rows.length) {\n  const parseMoney = (value) => parseNumber(value) || 0;\n  const formatMoney = (value) => formatNumber(value) + ' đ';\n  const groupOf = (row) => fold(row?.['Nhóm'] || row?.Group || '');\n  const scopedRows = rows.filter((row) => groupOf(row).includes('nhan vien'));\n  const summaryRows = scopedRows.length ? scopedRows : [rows[0]];\n  const sumField = (key) => summaryRows.reduce((sum, row) => sum + parseMoney(row?.[key]), 0);\n  const first = summaryRows[0] || rows[0] || {};\n  const fromDateRaw = displayValue(first['Từ Ngày']);\n  const toDateRaw = displayValue(first['Đến Ngày']);\n  const fromDate = formatDate('Ngày', fromDateRaw) || fromDateRaw;\n  const toDate = formatDate('Ngày', toDateRaw) || toDateRaw;\n  const period = fromDate && toDate\n    ? (fromDate === toDate ? 'ngày ' + toDate : 'từ ' + fromDate + ' đến ' + toDate)\n    : 'trong kỳ đã chọn';\n  text = 'Doanh số ' + period + (account ? ' của ' + account : '') + ':'\n    + '\\n• Tổng doanh số: ' + formatMoney(sumField('Doanh Số'))\n    + '\\n• Đã xuất/giao: ' + formatMoney(sumField('Doanh Số Đã Xuất/Giao'))\n    + '\\n• Đã thu: ' + formatMoney(sumField('Doanh Thu Đã Thu'));\n} else if (apiCode === '@doanh_so' && !rows.length && raw.success !== false) {\n  text = question.includes('hom nay')\n    ? 'Hôm nay chưa ghi nhận doanh số trong phạm vi' + (account ? ' của ' + account : ' tài khoản của bạn') + '.'\n    : 'Không tìm thấy dữ liệu doanh số trong khoảng thời gian bạn yêu cầu.';\n} else if (profile && !rows.length && raw.success !== false) {\n  const target = String(source.text || '').match(/\\b[A-Za-z][A-Za-z0-9._-]*\\d{2,}[A-Za-z0-9._-]*\\b/)?.[0] || '';\n  text = profile.noData;\n  if (apiCode === '@danh_sach_tonkho' && target) {\n    text = 'Không tìm thấy tồn kho cho sản phẩm ' + target + ' trong phạm vi tài khoản của bạn.';\n  }\n} else if (rows.length) {\n  const signatureOf = (row) => {\n    if (!row || typeof row !== 'object') return 'value:' + displayValue(row);\n    return Object.entries(row)\n      .filter(([key, value]) => !technical.test(key) && displayValue(value))\n      .map(([key, value]) => [semanticKey(key), displayValue(value)])\n      .sort(([left], [right]) => left.localeCompare(right))\n      .map(([key, value]) => key + '=' + value)\n      .join('|');\n  };\n  const seenRows = new Set();\n  const uniqueRows = rows.filter((row) => {\n    const signature = signatureOf(row);\n    if (seenRows.has(signature)) return false;\n    seenRows.add(signature);\n    return true;\n  });\n  const preferred = (profile?.fields || []).map(semanticKey);\n  const preferredSet = new Set(preferred);\n  const blocks = uniqueRows.slice(0, 8).map((row, index) => {\n    if (!row || typeof row !== 'object') return (index + 1) + '. ' + displayValue(row);\n    const seenFields = new Set();\n    const available = Object.entries(row)\n      .filter(([key, value]) => {\n        if (technical.test(key) || !displayValue(value)) return false;\n        const semantic = semanticKey(key);\n        if (seenFields.has(semantic)) return false;\n        const knownLabel = Boolean(friendlyLabels[compactKey(key)] || friendlyLabels[semantic]);\n        if (profile && !preferredSet.has(semantic) && !knownLabel) return false;\n        seenFields.add(semantic);\n        return true;\n      });\n    const ranked = available.sort(([left], [right]) => {\n      const leftIndex = preferred.indexOf(semanticKey(left));\n      const rightIndex = preferred.indexOf(semanticKey(right));\n      const leftRank = leftIndex === -1 ? 999 : leftIndex;\n      const rightRank = rightIndex === -1 ? 999 : rightIndex;\n      return leftRank - rightRank;\n    });\n    const fieldLimit = apiCode === '@cong_no_chi_tiet' ? 8 : 6;\n    const fields = ranked.slice(0, fieldLimit)\n      .map(([key, value]) => displayKey(key) + ': ' + formatFieldValue(key, value));\n    if (!fields.length) return '';\n    return (index + 1) + '. ' + fields.join('\\n   • ');\n  }).filter(Boolean);\n  text = profile?.title || text || 'Kết quả tra cứu';\n  if (blocks.length) text += ' (' + uniqueRows.length + ')' + '\\n\\n' + blocks.join('\\n\\n');\n  if (uniqueRows.length > 8) text += '\\n… và ' + (uniqueRows.length - 8) + ' kết quả khác.';\n}\nif (!text) text = 'Chatbot chưa trả dữ liệu. Vui lòng thử lại.';\nreturn [{ json: { ...source, telegramText: text } }];"
+      },
+      "id": "tg-chat-format-main",
+      "name": "Format Chatbot Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -140
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = String($json.chatId || '');\nconst input = String($json.telegramText || 'Không có nội dung phản hồi.').trim();\nconst limit = 3500;\nconst chunks = [];\nconst escapeHtml = (value) => String(value)\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;');\nlet remaining = input;\nwhile (remaining.length > limit) {\n  let cut = remaining.lastIndexOf('\\n', limit);\n  if (cut < Math.floor(limit * 0.6)) cut = remaining.lastIndexOf(' ', limit);\n  if (cut < Math.floor(limit * 0.6)) cut = limit;\n  chunks.push(remaining.slice(0, cut).trim());\n  remaining = remaining.slice(cut).trim();\n}\nif (remaining) chunks.push(remaining);\nreturn chunks.map((text, index) => ({ json: {\n  chatId,\n  text: escapeHtml(text),\n  showDraftButtons: Boolean($json.showDraftButtons) && index === chunks.length - 1,\n  draftToken: String($json.draftToken || '')\n} }));"
+      },
+      "id": "tg-chat-split",
+      "name": "Split Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-show-draft-buttons-condition",
+              "leftValue": "={{ $json.showDraftButtons }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-draft-buttons",
+      "name": "Show Draft Confirmation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💾 Lưu nháp",
+                    "additionalFields": {
+                      "callback_data": "={{ 'draft:save:' + $json.draftToken }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Hủy",
+                    "additionalFields": {
+                      "callback_data": "={{ 'draft:cancel:' + $json.draftToken }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "tg-chat-send-draft-preview",
+      "name": "Send Draft Order Preview",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1160,
+        -100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "telegramApi": {
+          "id": "medstandTelegramChatbotDemo",
+          "name": "Telegram Chatbot Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📊 Hôm nay",
+                    "additionalFields": {
+                      "callback_data": "menu:sales_today"
+                    }
+                  },
+                  {
+                    "text": "📅 Tháng này",
+                    "additionalFields": {
+                      "callback_data": "menu:sales_month"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🗺 Tuyến hôm nay",
+                    "additionalFields": {
+                      "callback_data": "menu:route_today"
+                    }
+                  },
+                  {
+                    "text": "📝 Lên đơn nháp",
+                    "additionalFields": {
+                      "callback_data": "menu:draft_order"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "👤 Tài khoản",
+                    "additionalFields": {
+                      "callback_data": "menu:whoami"
+                    }
+                  },
+                  {
+                    "text": "🔔 Thông báo",
+                    "additionalFields": {
+                      "callback_data": "menu:notifications"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "❓ Hướng dẫn",
+                    "additionalFields": {
+                      "callback_data": "menu:help"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "tg-chat-send",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1160,
+        100
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "telegramApi": {
+          "id": "medstandTelegramChatbotDemo",
+          "name": "Telegram Chatbot Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Normalize Telegram Update').first().json || {};\nconst userId = String(source.userId || '');\nconst updateId = String(source.updateId || '');\nconst locks = global.__MEDSTAND_TELEGRAM_USER_LOCKS__ || {};\nif (source.ownsProcessingSlot && locks[userId]?.ownerUpdateId === updateId) delete locks[userId];\nreturn $input.all();"
+      },
+      "id": "tg-chat-release-lock",
+      "name": "Release Processing Slot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-is-draft-action-condition",
+              "leftValue": "={{ $json.actionMode }}",
+              "rightValue": "DRAFT_",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-chat-if-draft",
+      "name": "Is Draft Order Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json || {};\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst userId = esc(source.userId, 20);\nconst username = esc(source.medstandUserName, 50);\nconst mode = String(source.actionMode || '');\nlet query = '';\nif (mode === 'DRAFT_PREVIEW') {\n  const customerId = esc(source.draftPayload?.customerId, 50);\n  const requested = esc(JSON.stringify(source.draftPayload?.items || []), 4000);\n  query = \"EXEC dbo.API_TelegramOrderDraft_Preview_AI @TelegramUserID='\" + userId\n    + \"', @Username='\" + username + \"', @ObjectID='\" + customerId\n    + \"', @RequestedItemsJson=N'\" + requested + \"';\";\n} else if (mode === 'DRAFT_SAVE') {\n  const token = esc(source.draftPayload?.token, 32);\n  const requestId = 'req-tg-' + esc(source.updateId, 20);\n  query = \"EXEC dbo.API_TelegramOrderDraft_Save_AI @TelegramUserID='\" + userId\n    + \"', @Username='\" + username + \"', @DraftToken='\" + token\n    + \"', @RequestID='\" + requestId + \"';\";\n} else if (mode === 'DRAFT_CANCEL') {\n  const token = esc(source.draftPayload?.token, 32);\n  query = \"EXEC dbo.API_TelegramOrderDraft_Cancel_AI @TelegramUserID='\" + userId\n    + \"', @Username='\" + username + \"', @DraftToken='\" + token + \"';\";\n} else {\n  throw new Error('DRAFT_ACTION_NOT_SUPPORTED');\n}\nreturn [{ json: { ...source, query } }];"
+      },
+      "id": "tg-chat-build-draft-sql",
+      "name": "Build Draft Order SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "tg-chat-execute-draft-sql",
+      "name": "Execute Draft Order Action",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        440,
+        -300
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Build Draft Order SQL').first().json || {};\nconst rows = $input.all().map((item) => item.json || {});\nconst first = rows[0] || {};\nconst mode = String(source.actionMode || '');\nconst money = (value) => new Intl.NumberFormat('vi-VN').format(Number(value || 0)) + ' đ';\nconst errorRow = rows.find((row) => Number(row.MsgType || 0) > 0);\nif (errorRow) {\n  return [{ json: { ...source, telegramText: String(errorRow.Msg || 'Không thể xử lý đơn nháp.'), showDraftButtons: false } }];\n}\nif (mode === 'DRAFT_PREVIEW') {\n  const token = String(first.DraftToken || '');\n  if (!/^[0-9a-f]{32}$/.test(token) || !rows.length) {\n    return [{ json: { ...source, telegramText: 'Không thể tạo bản xem trước đơn nháp.', showDraftButtons: false } }];\n  }\n  const details = rows.map((row, index) => {\n    let line = (index + 1) + '. ' + row.ItemID + ' — ' + row.ItemName\n      + '\\n   SL: ' + row.Quantity + (row.Unit ? ' ' + row.Unit : '')\n      + ' × ' + money(row.UnitPrice) + ' = ' + money(row.LineTotal);\n    if (Number(row.GiftQuantity || 0) > 0) line += ' | Tặng: ' + row.GiftQuantity;\n    if (Number(row.DiscountPercent || 0) > 0) line += ' | CK: ' + row.DiscountPercent + '%';\n    return line;\n  });\n  const total = rows.reduce((sum, row) => sum + Number(row.LineTotal || 0), 0);\n  const text = 'XEM TRƯỚC ĐƠN NHÁP\\nKhách hàng: ' + first.ObjectID + ' — ' + first.ObjectName\n    + '\\n\\n' + details.join('\\n')\n    + '\\n\\nTạm tính: ' + money(total)\n    + '\\nHiệu lực xác nhận: 15 phút.'\n    + '\\n\\nBấm “Lưu nháp” để ghi đơn Status -1. Đơn chưa được gửi duyệt.';\n  return [{ json: { ...source, telegramText: text, showDraftButtons: true, draftToken: token } }];\n}\nif (mode === 'DRAFT_SAVE' && Number(first.MsgType || 0) === 5 && first.DocumentID) {\n  const replay = Boolean(first.IsReplay);\n  const text = (replay ? 'Đơn này đã được lưu nháp trước đó.' : 'Đã lưu đơn nháp thành công.')\n    + '\\nMã đơn: ' + first.DocumentID\n    + '\\nTrạng thái: Nháp (chưa gửi duyệt)'\n    + '\\nBạn có thể mở web Medstand để chỉnh sửa hoặc gửi duyệt.';\n  return [{ json: { ...source, telegramText: text, showDraftButtons: false } }];\n}\nreturn [{ json: { ...source, telegramText: String(first.Msg || 'Đã xử lý bản xem trước.'), showDraftButtons: false } }];"
+      },
+      "id": "tg-chat-format-draft",
+      "name": "Format Draft Order Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        -300
+      ]
+    }
+  ],
+  "connections": {
+    "Local Poller Ingest": {
+      "main": [
+        [
+          {
+            "node": "Normalize Telegram Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Telegram Update": {
+      "main": [
+        [
+          {
+            "node": "Is Callback Query?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Private Text Message?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Callback Query?": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge Callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Private Text Message?": {
+      "main": [
+        [
+          {
+            "node": "Is Login Command?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Input Rejection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Login Command?": {
+      "main": [
+        [
+          {
+            "node": "Build Telegram Login SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Issue Read-only Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Telegram Login SQL": {
+      "main": [
+        [
+          {
+            "node": "Consume One-time Link Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consume One-time Link Code": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Login Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Login Reply": {
+      "main": [
+        [
+          {
+            "node": "Split Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Issue Read-only Ticket": {
+      "main": [
+        [
+          {
+            "node": "Prepare Authorized Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Authorized Action": {
+      "main": [
+        [
+          {
+            "node": "Is Draft Order Action?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input Rejection": {
+      "main": [
+        [
+          {
+            "node": "Split Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Draft Order Action?": {
+      "main": [
+        [
+          {
+            "node": "Build Draft Order SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call Chatbot?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Draft Order SQL": {
+      "main": [
+        [
+          {
+            "node": "Execute Draft Order Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Draft Order Action": {
+      "main": [
+        [
+          {
+            "node": "Format Draft Order Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Draft Order Reply": {
+      "main": [
+        [
+          {
+            "node": "Split Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Chatbot?": {
+      "main": [
+        [
+          {
+            "node": "Call MAIN ChatBot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Split Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call MAIN ChatBot": {
+      "main": [
+        [
+          {
+            "node": "Format Chatbot Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Chatbot Reply": {
+      "main": [
+        [
+          {
+            "node": "Split Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Show Draft Confirmation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Draft Confirmation?": {
+      "main": [
+        [
+          {
+            "node": "Send Draft Order Preview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Draft Order Preview": {
+      "main": [
+        [
+          {
+            "node": "Release Processing Slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Reply": {
+      "main": [
+        [
+          {
+            "node": "Release Processing Slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

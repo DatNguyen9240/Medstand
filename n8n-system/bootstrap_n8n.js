@@ -54,6 +54,9 @@ function resolveInside(baseDir, relativePath) {
 function valueFromEnv(spec) {
   const raw = process.env[spec.env];
   const value = raw === undefined || raw === '' ? spec.default : raw;
+  if (spec.transform === 'sha256') {
+    return crypto.createHash('sha256').update(String(value || ''), 'utf8').digest('hex');
+  }
   if (spec.type === 'number') {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) fail(`${spec.env} phai la mot so hop le.`);
@@ -220,6 +223,64 @@ function buildCredentials(definitions) {
   });
 }
 
+function readExistingCredentials(tempDir) {
+  const outputPath = path.join(tempDir, 'existing-credentials.json');
+  const result = spawnSync(nodeExe, [n8nBin, 'export:credentials', '--all', `--output=${outputPath}`], {
+    cwd: rootDir,
+    env: process.env,
+    encoding: 'utf8',
+    windowsHide: true,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+
+  if (result.error) fail(`Khong kiem tra duoc credentials n8n hien co: ${result.error.message}`);
+  if (result.status !== 0 || !fs.existsSync(outputPath)) return [];
+
+  const credentials = readJson(outputPath);
+  if (!Array.isArray(credentials)) fail('Danh sach credentials n8n hien co khong hop le.');
+  return credentials.map(({ id, name, type }) => ({ id, name, type }));
+}
+
+function resolveCredentialPlan(definitions, existingCredentials) {
+  const importDefinitions = [];
+  const idMap = new Map();
+
+  for (const definition of definitions) {
+    const key = `${definition.type}:${definition.id}`;
+    const missing = (definition.requiredEnv || []).filter((envName) => !String(process.env[envName] || '').trim());
+    if (!missing.length) {
+      importDefinitions.push(definition);
+      idMap.set(key, definition.id);
+      continue;
+    }
+
+    const exact = existingCredentials.find((credential) => credential.id === definition.id && credential.type === definition.type);
+    const sameNameAndType = existingCredentials.filter((credential) => (
+      credential.type === definition.type && credential.name === definition.name
+    ));
+    const preserved = exact || (sameNameAndType.length === 1 ? sameNameAndType[0] : null);
+    if (!preserved) {
+      fail(`Thieu bien moi truong cho credential ${definition.name}: ${missing.join(', ')}. Khong tim thay credential cu de giu lai.`);
+    }
+
+    idMap.set(key, preserved.id);
+    console.warn(`[bootstrap] WARN: Giu credential ma hoa cu cho ${definition.name}; thieu ${missing.join(', ')}.`);
+  }
+
+  return { importDefinitions, idMap };
+}
+
+function remapWorkflowCredentialIds(workflow, idMap) {
+  const cloned = JSON.parse(JSON.stringify(workflow));
+  for (const node of cloned.nodes || []) {
+    for (const [type, credential] of Object.entries(node.credentials || {})) {
+      const replacement = credential && idMap.get(`${type}:${credential.id}`);
+      if (replacement) credential.id = replacement;
+    }
+  }
+  return cloned;
+}
+
 function getManifestHash(manifest, workflows) {
   const hash = crypto.createHash('sha256');
   hash.update(JSON.stringify(manifest));
@@ -233,9 +294,12 @@ function getManifestHash(manifest, workflows) {
 
 function listWorkflowIds() {
   const result = runN8n(['list:workflow'], { quiet: true });
-  return new Set(`${result.stdout}\n${result.stderr}`.split(/\r?\n/)
-    .filter((line) => /^[A-Za-z0-9_-]+\|/.test(line))
-    .map((line) => line.split('|', 1)[0]));
+  const output = `${result.stdout}\n${result.stderr}`
+    .replace(/\x1B\[[0-?]*[ -\/]*[@-~]/g, '');
+  return new Set(output.split(/\r?\n/)
+    .map((line) => line.match(/([A-Za-z0-9_-]+)\|/))
+    .filter(Boolean)
+    .map((match) => match[1]));
 }
 
 function getMarker() {
@@ -274,7 +338,6 @@ async function main() {
   const manifest = readJson(manifestPath);
   const validated = validateManifest(manifest);
   validateN8nVersion();
-  if (!dryRun) buildCredentials(validated.credentials);
   console.log(`[bootstrap] Manifest hop le: ${validated.workflows.length} workflows, ${validated.credentials.length} credentials, ${validated.webhookPaths.size} webhooks.`);
   if (dryRun) return;
 
@@ -295,7 +358,13 @@ async function main() {
   if (marker && marker.schemaVersion === 1 && marker.manifestHash === manifestHash) {
     const importedIds = listWorkflowIds();
     if (validated.workflows.every((entry) => importedIds.has(entry.id))) {
-      console.log('[bootstrap] Workflow source khong doi; bo qua import.');
+      // Importing or publishing one workflow from the CLI can leave other
+      // workflows unpublished. Source equality therefore lets us skip the
+      // import, but it must never skip publication reconciliation.
+      for (const entry of validated.workflows) {
+        runN8n([entry.publish ? 'publish:workflow' : 'unpublish:workflow', `--id=${entry.id}`]);
+      }
+      console.log('[bootstrap] Workflow source khong doi; bo qua import va da dong bo trang thai publish.');
       return;
     }
   }
@@ -304,15 +373,20 @@ async function main() {
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'medstand-n8n-bootstrap-'));
   try {
+    const existingCredentials = readExistingCredentials(tempDir);
+    const credentialPlan = resolveCredentialPlan(validated.credentials, existingCredentials);
     const credentialsPath = path.join(tempDir, 'credentials.json');
-    fs.writeFileSync(credentialsPath, JSON.stringify(buildCredentials(validated.credentials)), { encoding: 'utf8', mode: 0o600 });
-    console.log('[bootstrap] Import/cap nhat credentials tu .env...');
-    runN8n(['import:credentials', `--input=${credentialsPath}`]);
+    if (credentialPlan.importDefinitions.length) {
+      fs.writeFileSync(credentialsPath, JSON.stringify(buildCredentials(credentialPlan.importDefinitions)), { encoding: 'utf8', mode: 0o600 });
+      console.log('[bootstrap] Import/cap nhat credentials co cau hinh trong .env...');
+      runN8n(['import:credentials', `--input=${credentialsPath}`]);
+    }
 
     for (let index = 0; index < validated.workflows.length; index += 1) {
       const entry = validated.workflows[index];
       const importPath = path.join(tempDir, `${String(index).padStart(2, '0')}-${entry.id}.json`);
-      fs.writeFileSync(importPath, JSON.stringify(entry.workflow), 'utf8');
+      const workflow = remapWorkflowCredentialIds(entry.workflow, credentialPlan.idMap);
+      fs.writeFileSync(importPath, JSON.stringify(workflow), 'utf8');
       console.log(`[bootstrap] Import ${entry.id}: ${entry.file}`);
       runN8n(['import:workflow', `--input=${importPath}`]);
     }

@@ -1,0 +1,243 @@
+{
+  "id": "medstandTelegramNotificationDispatch",
+  "name": "TG-03 · Telegram Notification Dispatch",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "tg-notification-schedule",
+      "name": "Every Minute",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "EXEC dbo.API_TelegramNotification_Claim_AI @BatchSize=20;"
+      },
+      "id": "tg-notification-claim",
+      "name": "Claim Telegram Notifications",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        -540,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const escapeHtml = (value) => String(value ?? '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst icons = { URGENT: '🚨', POLICY: '📜', SYSTEM: '⚙️', ANNOUNCEMENT: '📢' };\nreturn $input.all().map((item) => {\n  const row = item.json || {};\n  const type = String(row.NotificationType || 'ANNOUNCEMENT').toUpperCase();\n  const title = String(row.Title || 'Thông báo Medstand').trim().slice(0, 180);\n  const content = String(row.Summary || row.Body || '').replace(/\\s+/g, ' ').trim().slice(0, 1200);\n  const lines = [\n    (icons[type] || '🔔') + ' <b>' + escapeHtml(title) + '</b>',\n    content ? escapeHtml(content) : '',\n    '',\n    'Mở web Medstand → Thông báo để xem chi tiết.'\n  ].filter((line, index) => line || index === 2);\n  return { json: { ...row, telegramText: lines.join('\\n') } };\n});"
+      },
+      "id": "tg-notification-format",
+      "name": "Format Telegram Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.TelegramUserID }}",
+        "text": "={{ $json.telegramText }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
+        }
+      },
+      "id": "tg-notification-send",
+      "name": "Send Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -100,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "telegramApi": {
+          "id": "medstandTelegramChatbotDemo",
+          "name": "Telegram Chatbot Demo"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Format Telegram Notification').item.json || {};\nconst messageId = $json.message_id ?? $json.result?.message_id ?? '';\nreturn [{ json: { ...source, deliverySucceeded: true, telegramMessageId: String(messageId), deliveryError: '' } }];"
+      },
+      "id": "tg-notification-success",
+      "name": "Prepare Delivery Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $('Format Telegram Notification').item.json || {};\nconst error = $json.error || $json;\nconst message = String(error?.message || error?.description || 'Gửi Telegram thất bại.').slice(0, 500);\nreturn [{ json: { ...source, deliverySucceeded: false, telegramMessageId: '', deliveryError: message } }];"
+      },
+      "id": "tg-notification-failure",
+      "name": "Prepare Delivery Failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        120,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst notificationId = Number($json.NotificationID);\nconst contentVersion = Number($json.ContentVersion);\nif (!Number.isSafeInteger(notificationId) || notificationId <= 0) throw new Error('NOTIFICATION_ID_INVALID');\nif (!Number.isInteger(contentVersion) || contentVersion <= 0) throw new Error('CONTENT_VERSION_INVALID');\nconst telegramUserId = esc($json.TelegramUserID, 20);\nif (!/^\\d{1,20}$/.test(telegramUserId)) throw new Error('TELEGRAM_USER_ID_INVALID');\nconst succeeded = $json.deliverySucceeded ? 1 : 0;\nconst messageId = esc($json.telegramMessageId, 50);\nconst error = esc($json.deliveryError, 500);\nconst query = \"EXEC dbo.API_TelegramNotification_Complete_AI @NotificationID=\" + notificationId\n  + \", @TelegramUserID='\" + telegramUserId + \"', @ContentVersion=\" + contentVersion\n  + \", @Succeeded=\" + succeeded + \", @TelegramMessageID='\" + messageId\n  + \"', @LastError=N'\" + error + \"';\";\nreturn [{ json: { query } }];"
+      },
+      "id": "tg-notification-build-complete",
+      "name": "Build Delivery Completion SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "tg-notification-complete",
+      "name": "Complete Telegram Delivery",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        560,
+        0
+      ],
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Minute": {
+      "main": [
+        [
+          {
+            "node": "Claim Telegram Notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claim Telegram Notifications": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Notification": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Notification": {
+      "main": [
+        [
+          {
+            "node": "Prepare Delivery Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Delivery Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Delivery Success": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Completion SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Delivery Failure": {
+      "main": [
+        [
+          {
+            "node": "Build Delivery Completion SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Delivery Completion SQL": {
+      "main": [
+        [
+          {
+            "node": "Complete Telegram Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

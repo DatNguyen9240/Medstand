@@ -12,7 +12,12 @@
     { "file": "API_Services/API_GetConfig.json", "id": "sGPz8LMQQHVp0IiL", "publish": true },
     { "file": "API_Services/API_ListActive.json", "id": "FRbuGdI9jz0ZZIvU", "publish": true },
     { "file": "API_Services/API_SystemMeta.json", "id": "YAiRyFqcyVmMU5c3", "publish": true },
+    { "file": "Telegram/TG_Auth_Verify.json", "id": "medstandTelegramAuthVerify", "publish": true },
     { "file": "AI_Core/MAIN_ChatBot_V5.json", "id": "mQ2X8ubexBpqD3Ru", "publish": true },
+    { "file": "Telegram/TG_ChatBot_Demo.json", "id": "medstandTelegramChatbotDemo", "publish": true },
+    { "file": "Telegram/TG_Notification_Dispatch.json", "id": "medstandTelegramNotificationDispatch", "publish": true },
+    { "file": "Telegram/TG_Link_Code_Issue.json", "id": "medstandTelegramLinkCodeIssue", "publish": true },
+    { "file": "Telegram/TG_System_Announcement.json", "id": "medstandTelegramSystemAnnouncement", "publish": true },
     { "file": "Cron_Jobs/CRON_CleanupRAG.json", "id": "medstandCronCleanupRag", "publish": true },
     { "file": "Cron_Jobs/CRON_DailyReport.json", "id": "medstandCronDailyReport", "publish": false }
   ],
@@ -70,6 +75,26 @@
         "database": { "env": "REDIS_DATABASE", "default": 0, "type": "number" },
         "ssl": { "env": "REDIS_SSL", "default": false, "type": "boolean" },
         "disableTlsVerification": { "env": "REDIS_DISABLE_TLS_VERIFICATION", "default": false, "type": "boolean" }
+      }
+    },
+    {
+      "id": "medstandTelegramChatbotDemo",
+      "name": "Telegram Chatbot Demo",
+      "type": "telegramApi",
+      "requiredEnv": ["TELEGRAM_CHATBOT_BOT_TOKEN"],
+      "data": {
+        "accessToken": { "env": "TELEGRAM_CHATBOT_BOT_TOKEN" },
+        "baseUrl": { "env": "TELEGRAM_CHATBOT_API_BASE", "default": "https://api.telegram.org" }
+      }
+    },
+    {
+      "id": "medstandTelegramPollerHeader",
+      "name": "Telegram Poller Local Auth",
+      "type": "httpHeaderAuth",
+      "requiredEnv": ["TELEGRAM_CHATBOT_BOT_TOKEN"],
+      "data": {
+        "name": { "default": "x-medstand-telegram-poller-key" },
+        "value": { "env": "TELEGRAM_CHATBOT_BOT_TOKEN", "transform": "sha256" }
       }
     }
   ]

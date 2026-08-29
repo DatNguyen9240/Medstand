@@ -1,0 +1,18 @@
+{
+  "environment": "medtest",
+  "links": [
+    { "userName": "QLBH013.MED", "telegramUserId": "" },
+    { "userName": "NAMDINHB.MED", "telegramUserId": "" },
+    { "userName": "QLBH016.MED", "telegramUserId": "" },
+    { "userName": "BACNINHA.MED", "telegramUserId": "" },
+    { "userName": "QLBH005.MED", "telegramUserId": "" },
+    { "userName": "HUEB.MED", "telegramUserId": "" },
+    { "userName": "QLBH010.MED", "telegramUserId": "" },
+    { "userName": "DANANGA.MED", "telegramUserId": "" },
+    { "userName": "QLMN2", "telegramUserId": "" },
+    { "userName": "CanThoA", "telegramUserId": "" },
+    { "userName": "QLMD1", "telegramUserId": "" },
+    { "userName": "BinhPhuocA", "telegramUserId": "" },
+    { "userName": "QLBH024.MED", "telegramUserId": "" }
+  ]
+}

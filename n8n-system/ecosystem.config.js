@@ -40,6 +40,16 @@ module.exports = {
       max_memory_restart: "2G"
     },
     {
+      name: "Medstand_TelegramPoller",
+      script: path.join(rootDir, 'scripts', 'telegram_polling_bridge.js'),
+      interpreter: nodeExe,
+      cwd: rootDir,
+      watch: false,
+      autorestart: true,
+      max_restarts: 20,
+      restart_delay: 5000
+    },
+    {
       name: "Medstand_WebGateway",
       script: path.join(rootDir, 'server.js'),
       interpreter: nodeExe,

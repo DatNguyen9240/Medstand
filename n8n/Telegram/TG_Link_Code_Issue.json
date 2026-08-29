@@ -1,0 +1,250 @@
+{
+  "id": "medstandTelegramLinkCodeIssue",
+  "name": "TG-04 · Telegram Link Code Issue",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "telegram-link-code-issue",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "tg-link-code-webhook",
+      "name": "Issue Link Code Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        0
+      ],
+      "webhookId": "8e62c1ad-c501-46bc-9820-51aaec0d8207"
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "9UxECqxRaPGMF8EM",
+          "mode": "list",
+          "cachedResultName": "K0-0 · Shared Auth Guard",
+          "cachedResultUrl": "/workflow/9UxECqxRaPGMF8EM"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "tg-link-code-auth",
+      "name": "Verify Web Login",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "tg-link-auth-ok-condition",
+              "leftValue": "={{ $json.auth.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "tg-link-code-if-auth",
+      "name": "Web Login Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const auth = $json || {};\nconst username = String(auth.verifiedIdentity?.internalUserId || '').trim();\nconst requestId = String(auth.auth?.requestId || '').trim();\nif (!/^[A-Za-z0-9._-]{2,50}$/.test(username)) throw new Error('VERIFIED_USERNAME_INVALID');\nconst esc = (value, max) => String(value ?? '').replace(/'/g, \"''\").slice(0, max);\nconst query = \"EXEC dbo.API_TelegramLinkCode_Issue_AI @UserName='\" + esc(username, 50)\n  + \"', @RequestID='\" + esc(requestId, 100) + \"';\";\nreturn [{ json: { query } }];"
+      },
+      "id": "tg-link-code-build-sql",
+      "name": "Build Link Code SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ $json.query }}"
+      },
+      "id": "tg-link-code-execute",
+      "name": "Issue One-time Link Code",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1,
+      "position": [
+        120,
+        -100
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "microsoftSql": {
+          "id": "5ixwpwlPHaQhoThr",
+          "name": "Microsoft SQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $json || {};\nconst linkCode = String(row.LinkCode || '');\nconst issued = String(row.LinkStatus || '') === 'CODE_ISSUED' && /^\\d{6}$/.test(linkCode);\nconst statusCode = issued ? 200 : Math.max(400, Math.min(599, Number(row.StatusCode || 500)));\nreturn [{ json: {\n  httpStatus: statusCode,\n  body: {\n    success: issued,\n    status: issued ? 'CODE_ISSUED' : String(row.LinkStatus || 'SYSTEM_ERROR'),\n    linkCode: issued ? linkCode : '',\n    expiresInSeconds: issued ? Number(row.ExpiresInSeconds || 300) : 0,\n    expiresAtUtc: issued ? String(row.ExpiresAtUtc || '') : '',\n    message: String(row.Message || (issued ? 'Mã liên kết đã được tạo.' : 'Không thể tạo mã liên kết.'))\n  }\n} }];"
+      },
+      "id": "tg-link-code-format",
+      "name": "Format Link Code Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        340,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.httpStatus }}"
+        }
+      },
+      "id": "tg-link-code-respond",
+      "name": "Respond Link Code",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        560,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success:false, status:$json.auth?.code || 'AUTHENTICATION_FAILED', message:'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.' }) }}",
+        "options": {
+          "responseCode": "={{ $json.auth?.httpStatus || 401 }}"
+        }
+      },
+      "id": "tg-link-code-auth-error",
+      "name": "Respond Web Login Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        -100,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "Issue Link Code Webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify Web Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Web Login": {
+      "main": [
+        [
+          {
+            "node": "Web Login Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Login Valid?": {
+      "main": [
+        [
+          {
+            "node": "Build Link Code SQL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Web Login Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Link Code SQL": {
+      "main": [
+        [
+          {
+            "node": "Issue One-time Link Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Issue One-time Link Code": {
+      "main": [
+        [
+          {
+            "node": "Format Link Code Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Link Code Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Link Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

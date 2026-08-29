@@ -71,6 +71,7 @@ n8n-system/.logs/
 .env.*.local
 !.env.example
 !.env.uat.example
+config/telegram/uat-links.local.json
 
 # LaTeX generated files
 *.aux
