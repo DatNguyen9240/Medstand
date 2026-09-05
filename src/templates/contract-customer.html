@@ -1,0 +1,47 @@
+<header class="app-header">
+  <a href="#/orders" class="header-back" aria-label="Quay lại">←</a>
+  <span class="header-title">Khách hàng hợp đồng</span>
+  <div id="theme-toggle-container"></div>
+</header>
+<main class="app-main">
+  <div class="app-content contract-dashboard">
+    <section class="contract-filter-card">
+      <label>Năm hợp đồng
+        <input id="contract-year" type="number" min="2000" max="2100" value="2026">
+      </label>
+      <label>Ngày chốt số liệu
+        <input id="contract-as-of" type="date">
+      </label>
+      <button id="contract-refresh" type="button" class="btn btn-primary">Làm mới</button>
+    </section>
+
+    <div id="contract-message" class="contract-message" role="status" aria-live="polite"></div>
+
+    <section class="contract-summary" aria-label="Tổng hợp">
+      <article><span>KH tham gia hợp đồng</span><strong id="contract-total">—</strong></article>
+      <article><span>Hợp đồng còn hiệu lực</span><strong id="contract-active">—</strong></article>
+      <article class="is-warning"><span>Chưa có DS trong 3 tháng</span><strong id="contract-no-sales">—</strong></article>
+      <article><span>Doanh số ròng 3 tháng</span><strong id="contract-revenue">—</strong></article>
+    </section>
+
+    <section class="contract-panel">
+      <div class="contract-panel-heading">
+        <div><h2>Theo Sale / QLBH</h2><p id="contract-period"></p></div>
+      </div>
+      <div class="contract-table-wrap">
+        <table class="contract-table">
+          <thead><tr><th>QLBH</th><th>Sale</th><th>KH HĐ</th><th>Còn hiệu lực</th><th>Chưa có DS</th><th>DS 3 tháng</th></tr></thead>
+          <tbody id="contract-stats-body"><tr><td colspan="6">-Đang tải...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="contract-panel">
+      <div class="contract-panel-heading">
+        <div><h2>Cảnh báo khách chưa phát sinh doanh số</h2><p>Ba tháng lịch hoàn chỉnh gần nhất, doanh số đã trừ trả hàng.</p></div>
+        <input id="contract-warning-search" type="search" placeholder="Tìm mã, tên khách hoặc Sale">
+      </div>
+      <div id="contract-warning-list" class="contract-warning-list"><p>Đang tải...</p></div>
+    </section>
+  </div>
+</main>

@@ -42,7 +42,12 @@ const READ_IDENTITY_POLICY = Object.freeze({
      */
     '/api/API_PromotionProgram_List_AI': Object.freeze({ identityField: 'Username' }),
     '/api/API_PromotionProgram_Detail_AI': Object.freeze({ identityField: 'Username' }),
-    '/api/API_PromotionActiveByItems_AI': Object.freeze({ identityField: 'Username' })
+    '/api/API_PromotionActiveByItems_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_PromotionPermissionContext_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_PromotionProgram_History_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_CTBHSanPham_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_ContractCustomerStats_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_ContractCustomerNoSales_AI': Object.freeze({ identityField: 'Username' })
 });
 
 /**

@@ -26,7 +26,10 @@
     "noti:deploy:apply": "node scripts/deploy_noti001_schema.js --apply",
     "noti:deploy:metadata": "node scripts/deploy_noti001_schema.js --apply --metadata",
     "noti:uat": "node scripts/verify_noti001_uat_rollback.js",
-    "noti:push": "node scripts/dispatch_noti001_push.js"
+    "noti:push": "node scripts/dispatch_noti001_push.js",
+    "customer-requests:preflight": "node scripts/deploy_customer_requirements.js",
+    "customer-requests:apply": "node scripts/deploy_customer_requirements.js --apply",
+    "customer-requests:n8n:verify": "node scripts/verify_customer_requirements_n8n.js"
   },
   "dependencies": {
     "compression": "^1.8.1",

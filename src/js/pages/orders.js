@@ -6,6 +6,7 @@
       "Doanh số": "💸",
       "Kế hoạch bán hàng": "📅",
       "Kế hoạch": "📅",
+      "Khách hàng hợp đồng": "📋",
       "Hạng mục sản phẩm cảnh báo": "⚠️",
       "Cảnh báo": "⚠️"
     };
@@ -18,6 +19,7 @@
       "Doanh số": "#/revenue",
       "Kế hoạch bán hàng": "#/sales-plan",
       "Kế hoạch": "#/sales-plan",
+      "Khách hàng hợp đồng": "#/contract-customer",
       "Hạng mục sản phẩm cảnh báo": "#/product-warning",
       "Cảnh báo": "#/product-warning"
     };
@@ -64,8 +66,7 @@
         var data = res.data || res;
         var records = data.records || [];
 
-        $('#orders-grid').html(
-          records.map(function (item) {
+        var cards = records.map(function (item) {
             var hl = item.Highlight === "1" || item.Highlight === 1;
             var icon = ICON_MAP[item.Memo] || "📊";
             var href = HREF_MAP[item.Memo] || "#";
@@ -73,8 +74,12 @@
               '<div class="menu-icon">' + icon + '</div>' +
               '<span class="menu-label">' + item.Memo + '</span>' +
               '</a>';
-          }).join('')
-        );
+          });
+        if (!records.some(function (item) { return item.Memo === 'Khách hàng hợp đồng'; })) {
+          cards.push('<a href="#/contract-customer" class="order-menu-card highlighted">' +
+            '<div class="menu-icon">📋</div><span class="menu-label">Khách hàng hợp đồng</span></a>');
+        }
+        $('#orders-grid').html(cards.join(''));
       })
       .catch(function (err) {
         console.error('Failed to load orders data', err);

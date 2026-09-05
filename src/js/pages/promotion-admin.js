@@ -4,7 +4,23 @@
   var _rules = [];
   var _selectedProgramId = null;
   var _selectedStatus = null;
+  var _selectedCreatedBy = null;
   var _isNewEntry = true;
+  var _permission = { CanView: 0, CanCreate: 0, CanEdit: 0, CanApprove: 0, CanReject: 0, CanWithdraw: 0, CanViewHistory: 0, ScopeMode: 'OWN_BRANCH', BranchID: '' };
+
+  function can(name) { return Number(_permission[name] || 0) === 1; }
+
+  function loadPermissionContext() {
+    return Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.PERMISSION_CONTEXT, { q: JSON.stringify({}) }, { cache: false })
+      .then(function (res) {
+        var body = res && res.data !== undefined ? res.data : res;
+        var rows = (body && body.records) || body || [];
+        if (!rows.length || Number(rows[0].MsgType) === 1) throw new Error((rows[0] && rows[0].Msg) || 'Không đọc được quyền CTKM.');
+        _permission = rows[0];
+        $('#btn-new-promo').toggle(can('CanCreate'));
+        return _permission;
+      });
+  }
 
   var RULE_TYPE_HINT = {
     QUANTITY_DISCOUNT: 'Cần: Số lượng tối thiểu + % giảm giá.',
@@ -81,6 +97,7 @@
   function resetForm() {
     _selectedProgramId = null;
     _selectedStatus = null;
+    _selectedCreatedBy = null;
     _isNewEntry = true;
     _rules = [];
     $('#pf-code').val('').prop('readonly', false);
@@ -91,11 +108,12 @@
     $('#pf-to').val('');
     $('#pf-source').val('');
     $('#pf-desc').val('');
-    $('#pf-branch-scope').val('ALL').trigger('change');
+    var ownBranch = _permission.ScopeMode === 'OWN_BRANCH';
+    $('#pf-branch-scope').val(ownBranch ? 'INCLUDE' : 'ALL').prop('disabled', ownBranch).trigger('change');
     $('#pf-group-scope').val('ALL').trigger('change');
-    $('#pf-branch-ids').val('');
+    $('#pf-branch-ids').val(ownBranch ? (_permission.BranchID || '') : '').prop('readonly', ownBranch);
     $('#pf-group-ids').val('');
-    setFormEditable(true);
+    setFormEditable(can('CanCreate'));
     updateActionButtons();
     renderRules();
     $('.promo-item').removeClass('is-selected');
@@ -104,7 +122,11 @@
   function setFormEditable(editable) {
     $('#promo-editor input, #promo-editor select, #promo-editor textarea').prop('disabled', !editable);
     $('#pf-code').prop('readonly', !_isNewEntry);
-    $('#btn-add-rule, #btn-save-draft-promo').toggle(!!editable);
+    if (_permission.ScopeMode === 'OWN_BRANCH' && editable) {
+      $('#pf-branch-scope').val('INCLUDE').prop('disabled', true).trigger('change');
+      $('#pf-branch-ids').val(_permission.BranchID || '').prop('disabled', false).prop('readonly', true);
+    }
+    $('#btn-add-rule, #btn-save-draft-promo').toggle(!!editable && (_isNewEntry ? can('CanCreate') : can('CanEdit')));
   }
 
   function updateActionButtons() {
@@ -112,8 +134,11 @@
     if (!_selectedStatus) { $badge.text(''); }
     else { $badge.text(statusLabel(_selectedStatus)).attr('class', 'promo-status-badge ' + statusBadgeClass(_selectedStatus)); }
 
-    $('#btn-approve-promo, #btn-reject-promo').toggle(_selectedStatus === 'DRAFT');
-    $('#btn-withdraw-promo').toggle(_selectedStatus === 'APPROVED');
+    var ownDraft = String(_selectedCreatedBy || '').toLowerCase() === String(user.UserName || '').toLowerCase();
+    $('#btn-approve-promo').toggle(_selectedStatus === 'DRAFT' && can('CanApprove') && !ownDraft);
+    $('#btn-reject-promo').toggle(_selectedStatus === 'DRAFT' && can('CanReject') && !ownDraft);
+    $('#btn-withdraw-promo').toggle(_selectedStatus === 'APPROVED' && can('CanWithdraw'));
+    $('#btn-history-promo').toggle(!!_selectedProgramId && can('CanViewHistory'));
   }
 
   function selectProgram(id) {
@@ -128,6 +153,7 @@
       var header = rows[0];
       _selectedProgramId = header.PromotionProgramID;
       _selectedStatus = header.Status;
+      _selectedCreatedBy = header.CreatedBy || '';
       _isNewEntry = false;
 
       $('#pf-code').val(header.PromotionCode).prop('readonly', true);
@@ -153,7 +179,8 @@
         };
       });
 
-      setFormEditable(header.Status === 'DRAFT');
+      setFormEditable(header.Status === 'DRAFT' && can('CanEdit') &&
+        (_permission.ScopeMode === 'ALL' || String(header.CreatedBy || '').toLowerCase() === String(user.UserName || '').toLowerCase()));
       updateActionButtons();
       renderRules();
       renderList();
@@ -357,10 +384,32 @@
   $(document).on('click', '#btn-reject-promo', function () { runApproveAction('REJECT', 'Nhập lý do từ chối bản DRAFT này:', { requireReason: true }); });
   $(document).on('click', '#btn-withdraw-promo', function () { runApproveAction('WITHDRAW', 'Nhập lý do thu hồi chương trình đã duyệt này:', { requireReason: true }); });
 
+  $(document).on('click', '#btn-history-promo', function () {
+    if (!_selectedProgramId || !can('CanViewHistory')) return;
+    Http.get(API_CONFIG.ENDPOINTS.PROMOTION_ADMIN.HISTORY, {
+      q: JSON.stringify({ PromotionProgramID: _selectedProgramId })
+    }, { cache: false }).then(function (res) {
+      var body = res && res.data !== undefined ? res.data : res;
+      var rows = (body && body.records) || body || [];
+      if (rows[0] && Number(rows[0].MsgType) === 1) { Alert.error(rows[0].Msg); return; }
+      var text = rows.slice(0, 20).map(function (row) {
+        return (row.LogTime || '') + ' · ' + (row.Username || '') + ' · ' + (row.ActionType || '');
+      }).join('\n');
+      window.alert(text || 'Chưa có lịch sử thay đổi.');
+    }).catch(function () { Alert.error('Không thể tải lịch sử CTKM.'); });
+  });
+
   $(document).on('click', '#btn-new-promo', resetForm);
   $(document).on('click', '#btn-refresh-promo-list', loadList);
   $(document).on('click', '.promo-item', function () { selectProgram($(this).attr('data-id')); });
 
-  resetForm();
-  loadList();
+  loadPermissionContext().then(function () {
+    if (!can('CanView')) { showMessage('Tài khoản không có quyền xem cấu hình CTKM.', true); return; }
+    resetForm();
+    loadList();
+  }).catch(function (error) {
+    setFormEditable(false);
+    $('#btn-new-promo').hide();
+    showMessage(error.message || 'Không thể xác minh quyền CTKM.', true);
+  });
 })();

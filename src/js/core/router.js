@@ -31,6 +31,7 @@ const Router = (() => {
     { path: 'revenue', template: 'src/templates/revenue.html', scripts: ['src/js/pages/revenue.js'], css: ['src/css/components/segment.css', 'src/css/components/data-table.css', 'src/css/pages/revenue.css'], auth: true, nav: 'orders', title: 'Doanh số' },
     { path: 'sales-plan', template: 'src/templates/sales-plan.html', scripts: ['src/js/pages/sales-plan.js'], css: ['src/css/pages/sales-plan.css'], auth: true, nav: 'orders', title: 'Kế hoạch bán hàng' },
     { path: 'sales-plan-detail', template: 'src/templates/sales-plan-detail.html', scripts: ['src/js/pages/sales-plan-detail.js'], css: ['src/css/pages/sales-plan-detail.css'], auth: true, nav: 'orders', title: 'Chi tiết kế hoạch' },
+    { path: 'contract-customer', template: 'src/templates/contract-customer.html', scripts: ['src/js/pages/contract-customer.js'], css: ['src/css/pages/contract-customer.css'], auth: true, nav: 'orders', title: 'Khách hàng hợp đồng' },
     { path: 'product-warning', template: 'src/templates/product-warning.html', scripts: ['src/js/pages/product-warning.js'], css: ['src/css/components/segment.css', 'src/css/components/data-table.css', 'src/css/pages/product-warning.css'], auth: true, nav: 'orders', title: 'Sản phẩm cảnh báo' },
     { path: 'contract-point', template: 'src/templates/contract-point.html', scripts: ['src/js/pages/contract-point.js'], css: ['src/css/components/segment.css', 'src/css/components/data-table.css', 'src/css/pages/contract-point.css'], auth: true, nav: 'account', title: 'Điểm hợp đồng' },
 

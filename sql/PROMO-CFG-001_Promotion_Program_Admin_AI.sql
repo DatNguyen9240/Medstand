@@ -24,21 +24,12 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @IsManager BIT = 0, @IsGlobal BIT = 0, @Found BIT = 0;
-    SELECT @Found = 1,
-           @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) IN ('QL', 'QLMN') THEN 1 ELSE 0 END,
-           @IsGlobal  = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END
-    FROM dbo.SY_User WITH (NOLOCK)
-    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
-
-    IF @Found = 0
+    DECLARE @CanView BIT = 0, @ViewScope VARCHAR(20) = 'OWN_BRANCH', @ActorBranchID VARCHAR(50) = '';
+    SELECT @CanView = IsAllowed, @ViewScope = ScopeMode, @ActorBranchID = COALESCE(ActorBranchID, '')
+    FROM dbo.AI_PromotionPermissionFnc(@Username, 'VIEW');
+    IF @CanView = 0
     BEGIN
-        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
-    IF @IsManager = 0 AND @IsGlobal = 0
-    BEGIN
-        SELECT N'Chỉ cấp quản lý trở lên mới được xem cấu hình CTBH.' AS Msg, 1 AS MsgType;
+        SELECT N'Tài khoản không có quyền xem cấu hình CTKM.' AS Msg, 1 AS MsgType;
         RETURN;
     END
 
@@ -60,6 +51,12 @@ BEGIN
           OR L.PromotionCode LIKE '%' + @SearchText + '%'
           OR L.PromotionName LIKE '%' + @SearchText + '%'
       )
+      AND
+      (
+          @ViewScope = 'ALL'
+          OR L.BranchScopeMode = 'ALL'
+          OR EXISTS (SELECT 1 FROM dbo.AI_PromotionBranchScopeTbl B WHERE B.PromotionProgramID=L.PromotionProgramID AND B.BranchID=@ActorBranchID)
+      )
     ORDER BY L.UpdatedAt DESC;
 END
 GO
@@ -74,26 +71,28 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @IsManager BIT = 0, @IsGlobal BIT = 0, @Found BIT = 0;
-    SELECT @Found = 1,
-           @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) IN ('QL', 'QLMN') THEN 1 ELSE 0 END,
-           @IsGlobal  = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END
-    FROM dbo.SY_User WITH (NOLOCK)
-    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
-
-    IF @Found = 0
+    DECLARE @CanView BIT = 0, @ViewScope VARCHAR(20) = 'OWN_BRANCH', @ActorBranchID VARCHAR(50) = '';
+    SELECT @CanView = IsAllowed, @ViewScope = ScopeMode, @ActorBranchID = COALESCE(ActorBranchID, '')
+    FROM dbo.AI_PromotionPermissionFnc(@Username, 'VIEW');
+    IF @CanView = 0
     BEGIN
-        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
-    IF @IsManager = 0 AND @IsGlobal = 0
-    BEGIN
-        SELECT N'Chỉ cấp quản lý trở lên mới được xem cấu hình CTBH.' AS Msg, 1 AS MsgType;
+        SELECT N'Tài khoản không có quyền xem cấu hình CTKM.' AS Msg, 1 AS MsgType;
         RETURN;
     END
     IF NOT EXISTS (SELECT 1 FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID = @PromotionProgramID)
     BEGIN
         SELECT N'Không tìm thấy chương trình CTBH.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF @ViewScope = 'OWN_BRANCH' AND NOT EXISTS
+    (
+        SELECT 1 FROM dbo.AI_PromotionProgramTbl P
+        WHERE P.PromotionProgramID=@PromotionProgramID
+          AND (P.BranchScopeMode='ALL' OR EXISTS
+              (SELECT 1 FROM dbo.AI_PromotionBranchScopeTbl B WHERE B.PromotionProgramID=P.PromotionProgramID AND B.BranchID=@ActorBranchID))
+    )
+    BEGIN
+        SELECT N'CTKM nằm ngoài phạm vi chi nhánh.' AS Msg, 1 AS MsgType;
         RETURN;
     END
 
@@ -147,21 +146,25 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @IsManager BIT = 0, @IsGlobal BIT = 0, @Found BIT = 0;
-    SELECT @Found = 1,
-           @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) IN ('QL', 'QLMN') THEN 1 ELSE 0 END,
-           @IsGlobal  = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END
-    FROM dbo.SY_User WITH (NOLOCK)
-    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
-
-    IF @Found = 0
+    DECLARE @MutationAction VARCHAR(20) = CASE WHEN COALESCE(@PromotionProgramID,0)>0 THEN 'EDIT' ELSE 'CREATE' END;
+    DECLARE @CanMutate BIT = 0, @MutationScope VARCHAR(20) = 'OWN_BRANCH', @ActorBranchID VARCHAR(50) = '';
+    SELECT @CanMutate = IsAllowed, @MutationScope = ScopeMode, @ActorBranchID = COALESCE(ActorBranchID, '')
+    FROM dbo.AI_PromotionPermissionFnc(@Username, @MutationAction);
+    IF @CanMutate = 0
     BEGIN
-        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
+        SELECT N'Tài khoản không có quyền ' + CASE WHEN @MutationAction='CREATE' THEN N'tạo' ELSE N'sửa' END + N' CTKM.' AS Msg, 1 AS MsgType;
         RETURN;
     END
-    IF @IsManager = 0 AND @IsGlobal = 0
+    IF @MutationScope='OWN_BRANCH'
+       AND
+       (
+           @ActorBranchID=''
+           OR @BranchScopeMode<>'INCLUDE'
+           OR NOT EXISTS (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@JsonBranchIDs)=1 THEN @JsonBranchIDs ELSE N'[]' END) WHERE CONVERT(VARCHAR(50),value)=@ActorBranchID)
+           OR EXISTS (SELECT 1 FROM OPENJSON(CASE WHEN ISJSON(@JsonBranchIDs)=1 THEN @JsonBranchIDs ELSE N'[]' END) WHERE CONVERT(VARCHAR(50),value)<>@ActorBranchID)
+       )
     BEGIN
-        SELECT N'Chỉ cấp quản lý trở lên mới được tạo/sửa cấu hình CTBH.' AS Msg, 1 AS MsgType;
+        SELECT N'Quản lý chỉ được khai báo CTKM cho đúng chi nhánh của mình.' AS Msg, 1 AS MsgType;
         RETURN;
     END
     IF COALESCE(@PromotionCode, '') = '' OR COALESCE(@PromotionName, '') = '' OR COALESCE(@SourceDocument, '') = ''
@@ -229,6 +232,16 @@ BEGIN
         IF @TargetID IS NULL
         BEGIN
             SELECT N'Chỉ được sửa trực tiếp bản DRAFT. Bản đã duyệt/hết hạn phải tạo version mới.' AS Msg, 1 AS MsgType;
+            RETURN;
+        END
+        IF @MutationScope='OWN_BRANCH'
+           AND
+           (
+               NOT EXISTS (SELECT 1 FROM dbo.AI_PromotionBranchScopeTbl B WHERE B.PromotionProgramID=@TargetID AND B.BranchID=@ActorBranchID)
+               OR EXISTS (SELECT 1 FROM dbo.AI_PromotionProgramTbl P WHERE P.PromotionProgramID=@TargetID AND P.CreatedBy<>@Username)
+           )
+        BEGIN
+            SELECT N'Chỉ người tạo mới được sửa bản nháp CTKM trong chi nhánh của mình.' AS Msg, 1 AS MsgType;
             RETURN;
         END
         SET @IsNewVersion = 0;
@@ -403,21 +416,13 @@ BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
 
-    DECLARE @IsManager BIT = 0, @IsGlobal BIT = 0, @Found BIT = 0;
-    SELECT @Found = 1,
-           @IsManager = CASE WHEN COALESCE(Manager, 0) = 1 OR UPPER(COALESCE(UserGroupID, '')) IN ('QL', 'QLMN') THEN 1 ELSE 0 END,
-           @IsGlobal  = CASE WHEN UPPER(COALESCE(UserGroupID, '')) IN ('ADMIN', 'SADM', 'BGD', 'GD') THEN 1 ELSE 0 END
-    FROM dbo.SY_User WITH (NOLOCK)
-    WHERE UserName = @Username AND COALESCE(Disable, 0) = 0;
-
-    IF @Found = 0
+    DECLARE @PermissionAction VARCHAR(20) = UPPER(COALESCE(@Action,''));
+    DECLARE @CanAction BIT = 0, @ActionScope VARCHAR(20) = 'OWN_BRANCH', @ActorBranchID VARCHAR(50) = '';
+    SELECT @CanAction=IsAllowed,@ActionScope=ScopeMode,@ActorBranchID=COALESCE(ActorBranchID,'')
+    FROM dbo.AI_PromotionPermissionFnc(@Username,@PermissionAction);
+    IF @CanAction = 0
     BEGIN
-        SELECT N'Tài khoản không hợp lệ hoặc đã bị khóa.' AS Msg, 1 AS MsgType;
-        RETURN;
-    END
-    IF @IsManager = 0 AND @IsGlobal = 0
-    BEGIN
-        SELECT N'Chỉ cấp quản lý trở lên mới được duyệt cấu hình CTBH.' AS Msg, 1 AS MsgType;
+        SELECT N'Tài khoản không có quyền thực hiện hành động này trên CTKM.' AS Msg, 1 AS MsgType;
         RETURN;
     END
     IF @Action NOT IN ('APPROVE', 'REJECT', 'WITHDRAW')
@@ -437,6 +442,23 @@ BEGIN
     IF @CurrentStatus IS NULL
     BEGIN
         SELECT N'Không tìm thấy chương trình CTBH.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF @ActionScope='OWN_BRANCH' AND NOT EXISTS
+    (
+        SELECT 1 FROM dbo.AI_PromotionProgramTbl P
+        WHERE P.PromotionProgramID=@PromotionProgramID
+          AND (P.BranchScopeMode='ALL' OR EXISTS
+              (SELECT 1 FROM dbo.AI_PromotionBranchScopeTbl B WHERE B.PromotionProgramID=P.PromotionProgramID AND B.BranchID=@ActorBranchID))
+    )
+    BEGIN
+        SELECT N'CTKM nằm ngoài phạm vi chi nhánh.' AS Msg, 1 AS MsgType;
+        RETURN;
+    END
+    IF @Action IN ('APPROVE','REJECT') AND EXISTS
+       (SELECT 1 FROM dbo.AI_PromotionProgramTbl WHERE PromotionProgramID=@PromotionProgramID AND CreatedBy=@Username)
+    BEGIN
+        SELECT N'Người tạo CTKM không được tự duyệt hoặc tự từ chối chương trình của mình.' AS Msg, 1 AS MsgType;
         RETURN;
     END
     IF (@Action IN ('APPROVE', 'REJECT') AND @CurrentStatus <> 'DRAFT')

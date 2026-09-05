@@ -173,7 +173,10 @@ check('PROMOTION_READ_IDENTITY_IS_SERVER_OWNED', () => {
   const endpoints = [
     '/api/API_PromotionProgram_List_AI',
     '/api/API_PromotionProgram_Detail_AI',
-    '/api/API_PromotionActiveByItems_AI'
+    '/api/API_PromotionActiveByItems_AI',
+    '/api/API_PromotionPermissionContext_AI',
+    '/api/API_PromotionProgram_History_AI',
+    '/api/API_CTBHSanPham_AI'
   ];
   for (const endpoint of endpoints) {
     const policy = guard.READ_IDENTITY_POLICY[endpoint];
@@ -191,6 +194,27 @@ check('PROMOTION_READ_IDENTITY_IS_SERVER_OWNED', () => {
     assert.strictEqual(filters.USERNAME, undefined);
     assert.strictEqual(filters.username, undefined);
     assert.strictEqual(filters.PromotionProgramID, 17, 'Không được làm rơi field nghiệp vụ');
+  }
+});
+
+check('CONTRACT_ANALYTICS_IDENTITY_IS_SERVER_OWNED', () => {
+  for (const endpoint of [
+    '/api/API_ContractCustomerStats_AI',
+    '/api/API_ContractCustomerNoSales_AI'
+  ]) {
+    const policy = guard.READ_IDENTITY_POLICY[endpoint];
+    assert.ok(policy, endpoint + ' thiếu READ_IDENTITY_POLICY');
+    const forged = endpoint + '?q=' + encodeURIComponent(JSON.stringify({
+      Username: 'director', username: 'director', ContractYear: 2026, AsOfDate: '2026-09-04'
+    }));
+    const filters = JSON.parse(new URL(
+      guard.withServerOwnedQueryIdentity(forged, policy.identityField, 'sale01'),
+      'http://x.local'
+    ).searchParams.get('q'));
+    assert.strictEqual(filters.Username, 'sale01');
+    assert.strictEqual(filters.username, undefined);
+    assert.strictEqual(filters.ContractYear, 2026);
+    assert.strictEqual(filters.AsOfDate, '2026-09-04');
   }
 });
 

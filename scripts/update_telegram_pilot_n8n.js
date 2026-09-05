@@ -830,6 +830,18 @@ const friendlyLabels = {
   lastpurchasedate: 'Lần mua cuối',
   reason: 'Lý do',
   programname: 'Chương trình',
+  promotionname: 'Tên CTBH',
+  promotionsummary: 'Ưu đãi',
+  activepromotioncount: 'Số CTBH đang áp dụng',
+  ghichu: 'Ghi chú CTBH',
+  ruletype: 'Loại điều kiện',
+  minimumquantity: 'SL tối thiểu',
+  maximumquantity: 'SL tối đa',
+  discountpercent: '% giảm',
+  giftitemid: 'Mã hàng tặng',
+  giftquantity: 'SL tặng',
+  effectivefrom: 'Từ ngày',
+  effectiveto: 'Đến ngày',
   currentsales: 'Doanh số hiện tại',
   nextmilestone: 'Mốc kế tiếp',
   remainingtonewmilestone: 'Còn thiếu',
@@ -888,6 +900,11 @@ const profiles = {
     title: 'Thông tin sản phẩm',
     noData: 'Không tìm thấy sản phẩm phù hợp.',
     fields: ['Mã Sản Phẩm','ItemID','Mã','Tên Sản Phẩm','ItemName','Tên','ĐVT','Unit','Quy Cách','Nhóm','Giá Bán','Tồn Kho']
+  },
+  '@ctbh_san_pham': {
+    title: 'Chương trình bán hàng theo sản phẩm',
+    noData: 'Không tìm thấy sản phẩm hoặc CTBH phù hợp trong phạm vi tài khoản của bạn.',
+    fields: ['Mã sp','Mã Sản Phẩm','ItemID','Sản Phẩm','Tên Sản Phẩm','ItemName','Đơn Giá','AvailableStock','Tên CTBH','PromotionName','Ưu đãi','PromotionSummary','Số CTBH đang áp dụng','ActivePromotionCount','Ghi chú CTBH','GhiChu','Từ ngày','EffectiveFrom','Đến ngày','EffectiveTo','SL tối thiểu','MinimumQuantity','SL tối đa','MaximumQuantity','% giảm','DiscountPercent','Mã hàng tặng','GiftItemID','SL tặng','GiftQuantity']
   },
   '@cong_no_khach_hang': {
     title: 'Danh sách công nợ',

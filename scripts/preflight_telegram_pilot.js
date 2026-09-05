@@ -292,16 +292,38 @@ function main() {
     '@hoa_don', '@hoa_don_chi_tiet', '@don_hang', '@cham_diem_kh',
     '@cong_no_khach_hang', '@cong_no_chi_tiet', '@tich_luy', '@tuyen_ban_hang',
     '@goi_ydon_hang', '@upsell_goi_y', '@goi_ydon_thuoc', '@danh_sach_tonkho',
-    '@tra_cuu_san_pham', '@san_pham_trong_tam', '@de_xuat_khuyen_mai', '@danh_muc',
+    '@tra_cuu_san_pham', '@ctbh_san_pham', '@san_pham_trong_tam', '@de_xuat_khuyen_mai', '@danh_muc',
     '@khao_sat360', '@danh_sach_cau_hoi_khao_sat', '@kiem_tra_khao_sat',
     '@kiem_tra_khao_sat_ngay', '@lich_su_khao_sat', '@thong_bao',
     '@tim_san_pham_theo_trieu_chung',
   ];
   const missingProfiles = profileApiCodes.filter((apiCode) => !formatReplyCode.includes(`'${apiCode}':`));
   assert(
-    'Telegram formatter covers all 24 approved read-only APIs',
+    'Telegram formatter covers all 25 approved read-only APIs',
     missingProfiles.length === 0 && formatReplyCode.includes("apiCode === '@doanh_so'"),
-    missingProfiles.length ? `Missing: ${missingProfiles.join(', ')}` : '24/24 API routes covered.',
+    missingProfiles.length ? `Missing: ${missingProfiles.join(', ')}` : '25/25 API routes covered.',
+  );
+  const promotionDataText = executeFormatter(
+    formatReplyCode,
+    { text: 'CTBH sản phẩm A003', medstandUserName: 'QLBH013.MED' },
+    {
+      success: true,
+      status: 'SUCCESS',
+      ApiCode: '@ctbh_san_pham',
+      data: [{
+        ItemID: 'A003', ItemName: 'Antrinano Plus', ActivePromotionCount: 1,
+        PromotionSummary: 'Mua 10 tặng 1', GhiChu: 'Áp dụng trong tháng 9',
+        ContractVersion: 'PROMOTION_BENEFIT_V3'
+      }]
+    },
+  );
+  assert(
+    'Telegram CTBH reply shows product and promotion benefit without internal metadata',
+    promotionDataText.includes('A003')
+      && promotionDataText.includes('Mua 10 tặng 1')
+      && promotionDataText.includes('Áp dụng trong tháng 9')
+      && !promotionDataText.includes('ContractVersion'),
+    promotionDataText,
   );
   const inventoryNoDataText = executeFormatter(
     formatReplyCode,

@@ -150,6 +150,7 @@ Chạy cho 13/13 tài khoản:
 | TG-SCOPE-02 | Hỏi khách của miền khác | Không lộ dữ liệu |
 | TG-READ-01 | `Hôm nay doanh số của tôi bao nhiêu?` | Đúng tài khoản đang map |
 | TG-READ-02 | `Tồn kho sản phẩm A003` | Kết quả theo scope kho hiện hành |
+| TG-READ-03 | `CTBH sản phẩm A003` và `Sản phẩm Antrinano Plus có khuyến mãi gì?` | Đi đúng `@ctbh_san_pham`, hiển thị ưu đãi theo scope; không có sản phẩm thì hỏi lại, không rơi sang đề xuất khuyến mãi |
 | TG-DRAFT-01 | `/draft MÃ_KH \| A003x1` | Trả bản xem trước và nút Lưu nháp/Hủy |
 | TG-DRAFT-02 | Bấm `Lưu nháp` hai lần | Cùng một mã đơn, `StatusID=-1`, không tạo trùng |
 | TG-NOTI-01 | Bấm `🔔 Thông báo` | Chỉ hiện thông báo chưa đọc trong đúng phạm vi tài khoản |

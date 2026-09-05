@@ -78,6 +78,10 @@ window.API_CONFIG = {
             LIST: '/api/API_DoanhSo',
             PLAN: '/api/API_KeHoachBanHang',
         },
+        CONTRACT_ANALYTICS: {
+            STATS: '/api/API_ContractCustomerStats_AI',
+            NO_SALES: '/api/API_ContractCustomerNoSales_AI',
+        },
         CONTRACT_POINT: { LIST: '/api/API_DiemHopDong' },
         SURVEY: {
             START: '/api/API_BatDauBaiKhaoSat',
@@ -101,6 +105,8 @@ window.API_CONFIG = {
             UPSERT: '/api/API_PromotionProgram_Upsert_AI',
             APPROVE: '/api/API_PromotionProgram_Approve_AI',
             ACTIVE_BY_ITEMS: '/api/API_PromotionActiveByItems_AI',
+            PERMISSION_CONTEXT: '/api/API_PromotionPermissionContext_AI',
+            HISTORY: '/api/API_PromotionProgram_History_AI',
         },
         FILTER: {
             BRANCHES: '/api/API_ChiNhanhList',
