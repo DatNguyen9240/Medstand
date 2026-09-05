@@ -29,31 +29,28 @@ BEGIN
 END;
 GO
 
-IF OBJECT_ID('dbo.API_TelegramPilot_Status_AI', 'P') IS NULL
-BEGIN
-    MERGE dbo.AI_TelegramPilotAllowedAccount AS Target
-    USING (VALUES
-        ('QLBH013.MED',  'MANAGER', 'MB'),
-        ('NAMDINHB.MED', 'SALE',    'MB'),
-        ('QLBH016.MED',  'MANAGER', 'MB'),
-        ('BACNINHA.MED', 'SALE',    'MB'),
-        ('QLBH005.MED',  'MANAGER', 'MT'),
-        ('HUEB.MED',     'SALE',    'MT'),
-        ('QLBH010.MED',  'MANAGER', 'MT'),
-        ('DANANGA.MED',  'SALE',    'MT'),
-        ('QLMN2',        'MANAGER', 'MN'),
-        ('CanThoA',      'SALE',    'MN'),
-        ('QLMD1',        'MANAGER', 'MN'),
-        ('BinhPhuocA',   'SALE',    'MN'),
-        ('QLBH024.MED',  'MANAGER', 'MN')
-    ) AS Source (UserName, ExpectedRole, RegionCode)
-    ON Target.UserName = Source.UserName
-    WHEN MATCHED THEN UPDATE SET
-        ExpectedRole = Source.ExpectedRole,
-        RegionCode = Source.RegionCode
-    WHEN NOT MATCHED THEN INSERT (UserName, ExpectedRole, RegionCode)
-    VALUES (Source.UserName, Source.ExpectedRole, Source.RegionCode);
-END;
+MERGE dbo.AI_TelegramPilotAllowedAccount AS Target
+USING (VALUES
+    ('QLBH013.MED',  'MANAGER', 'MB'),
+    ('NAMDINHB.MED', 'SALE',    'MB'),
+    ('QLBH016.MED',  'MANAGER', 'MB'),
+    ('BACNINHA.MED', 'SALE',    'MB'),
+    ('QLBH005.MED',  'MANAGER', 'MT'),
+    ('HUEB.MED',     'SALE',    'MT'),
+    ('QLBH010.MED',  'MANAGER', 'MT'),
+    ('DANANGA.MED',  'SALE',    'MT'),
+    ('QLMN2',        'MANAGER', 'MN'),
+    ('CanThoA',      'SALE',    'MN'),
+    ('QLMD1',        'MANAGER', 'MN'),
+    ('BinhPhuocA',   'SALE',    'MN'),
+    ('QLBH024.MED',  'MANAGER', 'MN')
+) AS Source (UserName, ExpectedRole, RegionCode)
+ON Target.UserName = Source.UserName
+WHEN MATCHED THEN UPDATE SET
+    ExpectedRole = Source.ExpectedRole,
+    RegionCode = Source.RegionCode
+WHEN NOT MATCHED THEN INSERT (UserName, ExpectedRole, RegionCode)
+VALUES (Source.UserName, Source.ExpectedRole, Source.RegionCode);
 GO
 
 IF OBJECT_ID('dbo.AI_TelegramAccountLink', 'U') IS NULL
