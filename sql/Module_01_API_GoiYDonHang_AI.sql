@@ -187,45 +187,44 @@ BEGIN
         ELSE
         BEGIN
             DECLARE @CleanSearch NVARCHAR(100) = dbo.ufn_clean_customer_name(@MaKhachHang)
+            -- SEARCH-005: mỗi tầng dưới đây đếm số khớp trước khi chọn — không
+            -- còn tự lấy TOP 1 khi >1 khách cùng khớp. Chỉ rơi xuống tầng kế
+            -- tiếp khi tầng hiện tại KHÔNG có khớp nào (giữ đúng thứ tự fallback
+            -- gốc: branch fast → branch slow → toàn quốc fast → toàn quốc slow,
+            -- hai tầng toàn quốc chỉ chạy khi tài khoản không giới hạn chi nhánh).
+            DECLARE @MatchCount INT
 
             -- 1. Fast Path (Branch-filtered)
-            SELECT TOP 1 @ResolvedID = ObjectID 
+            SELECT @MatchCount = COUNT(DISTINCT ObjectID)
             FROM CF_ObjectTbl WITH (NOLOCK)
             WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
               AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
-            ORDER BY 
-                CASE WHEN ObjectID = @CleanSearch THEN 1
-                     WHEN ObjectName = @CleanSearch THEN 2
-                     WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
-                     ELSE 4
-                END,
-                COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-                LEN(ObjectName) ASC;
-                
-            -- 2. Slow Path (Branch-filtered, fallback)
-            IF @ResolvedID = ''
-            BEGIN
-                SELECT TOP 1 @ResolvedID = ObjectID 
-                FROM CF_ObjectTbl WITH (NOLOCK)
-                WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
-                  AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
-                ORDER BY 
-                    CASE WHEN ObjectID = @CleanSearch THEN 1
-                         WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
-                         WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
-                         ELSE 4
-                    END,
-                    COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-                    LEN(ObjectName) ASC;
-            END
 
-            -- 3. Fast Path (Nationwide fallback - Only for admin/cross-branch user)
-            IF @ResolvedID = '' AND @SYS_BranchID = ''
+            IF @MatchCount > 1
             BEGIN
-                SELECT TOP 1 @ResolvedID = ObjectID 
+                DECLARE @CandidateJson1 NVARCHAR(MAX) =
+                (
+                    SELECT TOP 8 ObjectID AS id, ObjectName AS label, Phone AS phone
+                    FROM CF_ObjectTbl WITH (NOLOCK)
+                    WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
+                      AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
+                      AND ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)) /* SEARCH-005-SCOPE */
+                    ORDER BY ObjectName FOR JSON PATH
+                )
+                IF @CandidateJson1 IS NOT NULL /* SEARCH-005-SCOPE-GUARD */
+                BEGIN
+                    SELECT N'Có nhiều khách hàng trùng khớp, vui lòng chọn.' AS Msg, 2 AS MsgType,
+                       'NEEDS_SELECTION' AS Code, @CandidateJson1 AS CandidateJson
+                RETURN
+                END
+            END
+            ELSE IF @MatchCount = 1
+            BEGIN
+                SELECT TOP 1 @ResolvedID = ObjectID
                 FROM CF_ObjectTbl WITH (NOLOCK)
                 WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
-                ORDER BY 
+                  AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
+                ORDER BY
                     CASE WHEN ObjectID = @CleanSearch THEN 1
                          WHEN ObjectName = @CleanSearch THEN 2
                          WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
@@ -235,20 +234,127 @@ BEGIN
                     LEN(ObjectName) ASC;
             END
 
-            -- 4. Slow Path (Nationwide fallback, final - Only for admin/cross-branch user)
-            IF @ResolvedID = '' AND @SYS_BranchID = ''
+            -- 2. Slow Path (Branch-filtered, fallback)
+            IF @ResolvedID = '' AND @MatchCount = 0
             BEGIN
-                SELECT TOP 1 @ResolvedID = ObjectID 
+                SELECT @MatchCount = COUNT(DISTINCT ObjectID)
                 FROM CF_ObjectTbl WITH (NOLOCK)
                 WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
-                ORDER BY 
-                    CASE WHEN ObjectID = @CleanSearch THEN 1
-                         WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
-                         WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
-                         ELSE 4
-                    END,
-                    COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
-                    LEN(ObjectName) ASC;
+                  AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
+
+                IF @MatchCount > 1
+                BEGIN
+                    DECLARE @CandidateJson2 NVARCHAR(MAX) =
+                    (
+                        SELECT TOP 8 ObjectID AS id, ObjectName AS label, Phone AS phone
+                        FROM CF_ObjectTbl WITH (NOLOCK)
+                        WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                          AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
+                          AND ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)) /* SEARCH-005-SCOPE */
+                        ORDER BY ObjectName FOR JSON PATH
+                    )
+                    IF @CandidateJson2 IS NOT NULL /* SEARCH-005-SCOPE-GUARD */
+                    BEGIN
+                        SELECT N'Có nhiều khách hàng trùng khớp, vui lòng chọn.' AS Msg, 2 AS MsgType,
+                           'NEEDS_SELECTION' AS Code, @CandidateJson2 AS CandidateJson
+                    RETURN
+                    END
+                END
+                ELSE IF @MatchCount = 1
+                BEGIN
+                    SELECT TOP 1 @ResolvedID = ObjectID
+                    FROM CF_ObjectTbl WITH (NOLOCK)
+                    WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                      AND (ISNULL(@SYS_BranchID, '') = '' OR BranchID = @SYS_BranchID)
+                    ORDER BY
+                        CASE WHEN ObjectID = @CleanSearch THEN 1
+                             WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                             WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                             ELSE 4
+                        END,
+                        COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                        LEN(ObjectName) ASC;
+                END
+            END
+
+            -- 3. Fast Path (Nationwide fallback - Only for admin/cross-branch user)
+            IF @ResolvedID = '' AND @MatchCount = 0 AND @SYS_BranchID = ''
+            BEGIN
+                SELECT @MatchCount = COUNT(DISTINCT ObjectID)
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
+
+                IF @MatchCount > 1
+                BEGIN
+                    DECLARE @CandidateJson3 NVARCHAR(MAX) =
+                    (
+                        SELECT TOP 8 ObjectID AS id, ObjectName AS label, Phone AS phone
+                        FROM CF_ObjectTbl WITH (NOLOCK)
+                        WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
+                          AND ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)) /* SEARCH-005-SCOPE */
+                        ORDER BY ObjectName FOR JSON PATH
+                    )
+                    IF @CandidateJson3 IS NOT NULL /* SEARCH-005-SCOPE-GUARD */
+                    BEGIN
+                        SELECT N'Có nhiều khách hàng trùng khớp, vui lòng chọn.' AS Msg, 2 AS MsgType,
+                           'NEEDS_SELECTION' AS Code, @CandidateJson3 AS CandidateJson
+                    RETURN
+                    END
+                END
+                ELSE IF @MatchCount = 1
+                BEGIN
+                    SELECT TOP 1 @ResolvedID = ObjectID
+                    FROM CF_ObjectTbl WITH (NOLOCK)
+                    WHERE (ObjectID LIKE '%' + @CleanSearch + '%' OR ObjectName LIKE '%' + @CleanSearch + '%')
+                    ORDER BY
+                        CASE WHEN ObjectID = @CleanSearch THEN 1
+                             WHEN ObjectName = @CleanSearch THEN 2
+                             WHEN ObjectName LIKE @CleanSearch + '%' THEN 3
+                             ELSE 4
+                        END,
+                        COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                        LEN(ObjectName) ASC;
+                END
+            END
+
+            -- 4. Slow Path (Nationwide fallback, final - Only for admin/cross-branch user)
+            IF @ResolvedID = '' AND @MatchCount = 0 AND @SYS_BranchID = ''
+            BEGIN
+                SELECT @MatchCount = COUNT(DISTINCT ObjectID)
+                FROM CF_ObjectTbl WITH (NOLOCK)
+                WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+
+                IF @MatchCount > 1
+                BEGIN
+                    DECLARE @CandidateJson4 NVARCHAR(MAX) =
+                    (
+                        SELECT TOP 8 ObjectID AS id, ObjectName AS label, Phone AS phone
+                        FROM CF_ObjectTbl WITH (NOLOCK)
+                        WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                          AND ObjectID IN (SELECT ObjectID FROM dbo.AR_GetObjectByUserFnc(@Username)) /* SEARCH-005-SCOPE */
+                        ORDER BY ObjectName FOR JSON PATH
+                    )
+                    IF @CandidateJson4 IS NOT NULL /* SEARCH-005-SCOPE-GUARD */
+                    BEGIN
+                        SELECT N'Có nhiều khách hàng trùng khớp, vui lòng chọn.' AS Msg, 2 AS MsgType,
+                           'NEEDS_SELECTION' AS Code, @CandidateJson4 AS CandidateJson
+                    RETURN
+                    END
+                END
+                ELSE IF @MatchCount = 1
+                BEGIN
+                    SELECT TOP 1 @ResolvedID = ObjectID
+                    FROM CF_ObjectTbl WITH (NOLOCK)
+                    WHERE (dbo.ufn_clean_customer_name(ObjectName) LIKE '%' + @CleanSearch + '%' OR ObjectID LIKE '%' + @CleanSearch + '%')
+                    ORDER BY
+                        CASE WHEN ObjectID = @CleanSearch THEN 1
+                             WHEN dbo.ufn_clean_customer_name(ObjectName) = @CleanSearch THEN 2
+                             WHEN dbo.ufn_clean_customer_name(ObjectName) LIKE @CleanSearch + '%' THEN 3
+                             ELSE 4
+                        END,
+                        COALESCE((SELECT MAX(DocumentDate) FROM AR_InvoiceTbl WITH (NOLOCK) WHERE ObjectID = CF_ObjectTbl.ObjectID), '1900-01-01') DESC,
+                        LEN(ObjectName) ASC;
+                END
             END
         END
 

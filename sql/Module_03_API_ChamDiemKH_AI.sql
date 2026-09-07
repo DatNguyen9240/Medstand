@@ -312,10 +312,24 @@ BEGIN
                OR dbo.ufn_clean_customer_name(O.ObjectName) LIKE '%' + @CleanSearch + '%';
         END;
 
+        -- SEARCH-005: đồng bộ hợp đồng NEEDS_SELECTION (MsgType=2 + CandidateJson)
+        -- với các API tra cứu khác thay vì chỉ báo lỗi chung chung — client/n8n
+        -- dựa vào đúng một hợp đồng để dựng danh sách cho người dùng chọn.
         IF @MatchCount > 1
         BEGIN
-            SELECT N'Tìm thấy nhiều khách hàng phù hợp. Vui lòng chọn đúng mã khách hàng.' AS Msg,
-                   1 AS MsgType, 'CUSTOMER_AMBIGUOUS' AS Code;
+            DECLARE @CandidateJsonChamDiem NVARCHAR(MAX) =
+            (
+                SELECT TOP 8 O.ObjectID AS id, O.ObjectName AS label, O.Phone AS phone
+                FROM dbo.CF_ObjectTbl O
+                JOIN #AllowedObjects AO ON AO.ObjectID = O.ObjectID
+                WHERE O.ObjectID LIKE '%' + @CleanSearch + '%'
+                   OR O.ObjectName LIKE '%' + @MaKhachHang + '%'
+                   OR dbo.ufn_clean_customer_name(O.ObjectName) LIKE '%' + @CleanSearch + '%'
+                ORDER BY O.ObjectName
+                FOR JSON PATH
+            );
+            SELECT N'Có nhiều khách hàng trùng khớp, vui lòng chọn.' AS Msg, 2 AS MsgType,
+                   'NEEDS_SELECTION' AS Code, @CandidateJsonChamDiem AS CandidateJson;
             DROP TABLE #RecognizedStatus;
             DROP TABLE #SalesStatus;
             DROP TABLE #AllowedObjects;

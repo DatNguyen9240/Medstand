@@ -237,20 +237,28 @@
           // theo từng lượt gõ, và FormSelect._openPicker chỉ render response còn là lượt mới
           // nhất. Bật toast ở đây cho cả lượt đã bị bỏ qua sẽ doạ người dùng bằng lỗi của thứ
           // họ không còn xem. done([]) đủ để picker tự hiện "Không tìm thấy kết quả".
+          //
+          // SEARCH-003: dùng API tìm gần đúng có xếp hạng + giới hạn phạm vi thay cho
+          // API_KhachHangList — nhiều khách trùng tên (SEARCH-05) giờ được ghép thêm SĐT/chi
+          // nhánh vào label để phân biệt được ngay trong danh sách, không cần mở từng dòng.
           searchFn: function (keyword, done) {
-            Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
-              q: JSON.stringify({
-                User: user.UserName || '', ManagerID: '', EmployeeID: '',
-                ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: keyword || '',
-                SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || ''
-              })
+            Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMER_SEARCH, {
+              q: JSON.stringify({ Username: user.UserName || '', SearchText: keyword || '', TopN: 8 })
             }).then(function (res) {
               var records = (res.data || res).records || res.data || res || [];
+              if (records.length === 1 && Number(records[0].MsgType) === 1) records = [];
               var existing = window._customerRecords || [];
-              window._customerRecords = existing.concat(records).filter(function (item, index, list) {
+              var mapped = records.map(function (r) {
+                return { ObjectID: r.ObjectID, ObjectName: r.ObjectName, Phone: r.Phone, XaPhuong: '', Address: '' };
+              });
+              window._customerRecords = existing.concat(mapped).filter(function (item, index, list) {
                 return list.findIndex(function (x) { return x.ObjectID === item.ObjectID; }) === index;
               });
-              done(records.map(function (r) { return { value: r.ObjectID || '', label: r.DisplayName || r.ObjectName || '' }; }));
+              done(records.map(function (r) {
+                var extra = [r.Phone, r.BranchID].filter(Boolean).join(' · ');
+                var label = (r.ObjectID || '') + ' - ' + (r.ObjectName || '') + (extra ? ' (' + extra + ')' : '');
+                return { value: r.ObjectID || '', label: label };
+              }));
             }).catch(function () {
               done([]);
             });
@@ -312,15 +320,16 @@
     }
 
     function searchProducts(keyword) {
-      return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
-        q: JSON.stringify({ Username: user.UserName || '', Type: 'sanpham', timkiem: keyword || '' })
+      return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCT_SEARCH, {
+        q: JSON.stringify({ Username: user.UserName || '', SearchText: keyword || '', TopN: 8, RequireSellable: 1 })
       }).then(function (res) {
         var data = res && res.data !== undefined ? res.data : res;
         var rows = (data && data.records) || data || [];
+        if (rows.length === 1 && Number(rows[0].MsgType) === 1) rows = [];
         return rows.map(function (item) {
           return {
-            value: item.MaDanhMuc || item.ItemID || '',
-            name: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
+            value: item.ItemID || '',
+            name: item.ItemName || item.ItemID || ''
           };
         }).filter(function (item) { return item.value && item.name; });
       });
