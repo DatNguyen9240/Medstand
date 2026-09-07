@@ -4379,7 +4379,10 @@
                 var cellHtml = '';
                 var lowerK = k.toLowerCase().replace(/_/g, '');
 
-                if (lowerK === 'stockdatastatus' && String(val || '').trim().toUpperCase() === 'STOCK_RECONCILIATION_REQUIRED') {
+                if (normalizedApiCode === '@danh_sach_tonkho' && lowerK === 'availablestock' && Number(val) <= 0) {
+                    // STOCK-COMPACT-001: tồn khả dụng = 0 hiển thị "Hết hàng" thay vì số 0.
+                    cellHtml = '<span class="ai-stock-status-warning">Hết hàng</span>';
+                } else if (lowerK === 'stockdatastatus' && String(val || '').trim().toUpperCase() === 'STOCK_RECONCILIATION_REQUIRED') {
                     cellHtml = '<span class="ai-stock-status-warning">' + _esc(_formatBusinessCell(k, val, apiCode)) + '</span>';
                 } else if (_isNegativeStockCell(k, val)) {
                     cellHtml = '<span class="ai-stock-negative" title="Tồn ERP đang âm; cần đối soát trước khi bán.">' + _esc(_formatBusinessCell(k, val, apiCode)) + '</span>';
