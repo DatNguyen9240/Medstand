@@ -331,6 +331,8 @@ async function main() {
   process.env.N8N_PORT ||= '5678';
   process.env.N8N_PROTOCOL ||= 'http';
   process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE ||= 'false';
+  process.env.N8N_DISABLE_TASK_RUNNERS ||= 'true';
+  process.env.NODE_PATH ||= path.join(userFolder, 'npm_global', 'node_modules');
 
   if (!dryRun && process.env.N8N_BOOTSTRAP !== '1') {
     fail('Tu choi chay import truc tiep. Hay dung n8n-system\\start_n8n.bat de bootstrap khi n8n da dung.');
@@ -370,11 +372,12 @@ async function main() {
     }
   }
 
-  await ensureOwner();
-
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'medstand-n8n-bootstrap-'));
   try {
     const existingCredentials = readExistingCredentials(tempDir);
+    if (!existingCredentials.length) {
+      await ensureOwner();
+    }
     const credentialPlan = resolveCredentialPlan(validated.credentials, existingCredentials);
     const credentialsPath = path.join(tempDir, 'credentials.json');
     if (credentialPlan.importDefinitions.length) {
