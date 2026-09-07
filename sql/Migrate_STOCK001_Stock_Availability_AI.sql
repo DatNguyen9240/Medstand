@@ -196,6 +196,7 @@ RETURN
         JOIN dbo.SY_User Child
           ON Child.ManagerID = U.EmployeeID
          AND COALESCE(Child.Disable, 0) = 0
+         AND Child.BranchID = U.BranchID
         JOIN dbo.SY_UserStoreHouseTbl M ON M.UserName = Child.UserName
         JOIN ConfiguredWarehouse W ON W.StoreHouseID = M.StoreHouseID
         CROSS JOIN (SELECT TOP (1) RuleVersion FROM Config) C
@@ -209,6 +210,13 @@ RETURN
            CAST(N'AUTHORIZED_CONFIGURED_STORE' AS NVARCHAR(50)) AS WarehouseScope,
            E.RuleVersion
     FROM EffectiveWarehouse E
+    LEFT JOIN dbo.CF_StoreHouseTbl SH ON SH.StoreHouseID = E.StoreHouseID
+    -- STOCK-SCOPE-001: a warehouse mapping cannot override the actor's branch.
+    -- Global roles stay unrestricted; every other actor is confined to stores
+    -- whose CF_StoreHouseTbl branch equals their own SY_User.BranchID.
+    WHERE E.IsGlobal = 1
+       OR (NULLIF(LTRIM(RTRIM(E.BranchID)), '') IS NOT NULL
+           AND LTRIM(RTRIM(SH.BranchID)) = LTRIM(RTRIM(E.BranchID)))
 );
 GO
 
