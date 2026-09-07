@@ -47,7 +47,13 @@ const READ_IDENTITY_POLICY = Object.freeze({
     '/api/API_PromotionProgram_History_AI': Object.freeze({ identityField: 'Username' }),
     '/api/API_CTBHSanPham_AI': Object.freeze({ identityField: 'Username' }),
     '/api/API_ContractCustomerStats_AI': Object.freeze({ identityField: 'Username' }),
-    '/api/API_ContractCustomerNoSales_AI': Object.freeze({ identityField: 'Username' })
+    '/api/API_ContractCustomerNoSales_AI': Object.freeze({ identityField: 'Username' }),
+    /*
+     * SEARCH-003/004: kết quả tìm kiếm phải giới hạn đúng phạm vi người gọi thật. Nếu tin
+     * Username trong q thì Sale giả tên quản lý là dò được toàn bộ khách/sản phẩm ngoài phạm vi.
+     */
+    '/api/API_CustomerSearch_AI': Object.freeze({ identityField: 'Username' }),
+    '/api/API_ProductSearch_AI': Object.freeze({ identityField: 'Username' })
 });
 
 /**
@@ -82,6 +88,24 @@ const IDENTITY_ONLY_MUTATION_POLICY = Object.freeze({
             'PromotionProgramID', 'Action', 'Username', 'Apply', 'Reason'
         ]),
         defaults: Object.freeze({ Apply: 0, Reason: null })
+    }),
+    /*
+     * SEARCH-001: token chọn kết quả gắn với danh tính đã xác thực + phiên hội thoại. Nếu tin
+     * Username từ payload thì một tài khoản có thể phát hành/tiêu thụ token thay tài khoản khác.
+     */
+    '/api/API_SelectionToken_Issue_AI': Object.freeze({
+        identityField: 'Username',
+        orderedFields: Object.freeze([
+            'Username', 'ChannelType', 'ChannelSessionID', 'EntityType', 'CandidateJson', 'PendingRequestJson'
+        ]),
+        defaults: Object.freeze({ PendingRequestJson: null })
+    }),
+    '/api/API_SelectionToken_Consume_AI': Object.freeze({
+        identityField: 'Username',
+        orderedFields: Object.freeze([
+            'Username', 'ChannelType', 'ChannelSessionID', 'SelectionToken', 'ChosenEntityID', 'ChosenIndex'
+        ]),
+        defaults: Object.freeze({ ChosenEntityID: '', ChosenIndex: null })
     })
 });
 

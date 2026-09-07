@@ -112,6 +112,11 @@ window.API_CONFIG = {
             BRANCHES: '/api/API_ChiNhanhList',
             CUSTOMERS: '/api/API_KhachHangList',
             PRODUCTS: '/api/API_HangHoaList_AI',
+            // SEARCH-003/004 — tìm gần đúng có xếp hạng, giới hạn đúng phạm vi tài khoản.
+            // Dùng cho ô tìm khách/sản phẩm trên màn lên đơn thay cho API_KhachHangList /
+            // API_DanhMuc_AI (không có ranking, không phân biệt có dấu/không dấu đồng bộ).
+            CUSTOMER_SEARCH: '/api/API_CustomerSearch_AI',
+            PRODUCT_SEARCH: '/api/API_ProductSearch_AI',
             STATUSES: '/api/API_OrderStatusList',
             PROVINCES: '/api/API_TinhThanh',
             DISTRICTS: '/api/API_QuanHuyen',

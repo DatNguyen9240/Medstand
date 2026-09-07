@@ -32,6 +32,15 @@ var FormSelect = (function () {
 
   var arrowSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>';
 
+  // SEARCH-003/004: option value/label bắt đầu chứa dữ liệu khách hàng/sản phẩm thật.
+  function _escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
   function FormSelect(options) {
     this.$container = $(options.container);
     this._fields = {};   // { id: { type, label, placeholder, value, listValue } }
@@ -141,7 +150,11 @@ var FormSelect = (function () {
           var isSelected = String(field.value).trim().toLowerCase() === String(val).trim().toLowerCase();
           var selected = isSelected ? ' class="selected"' : '';
 
-          return '<li data-value="' + val + '"' + selected + '>' + lbl + '</li>';
+          // SEARCH-003/004: val/lbl giờ đến từ dữ liệu khách hàng/sản phẩm thật (tên khách có
+          // thể chứa &, <, >, "). Phải escape cả thuộc tính lẫn nội dung — trước đây picker chỉ
+          // hiển thị danh mục nội bộ ít rủi ro nên chưa cần, giờ không escape là mở đường HTML/
+          // attribute injection qua chính tên khách hàng.
+          return '<li data-value="' + _escapeHtml(val) + '"' + selected + '>' + _escapeHtml(lbl) + '</li>';
         }).join('');
 
       var html = '<div class="filter-modal-header">' +
@@ -188,7 +201,10 @@ var FormSelect = (function () {
               if (requestSeq !== searchSeq) return;
               $overlay.remove();
               _renderModal(remoteOptions || []);
-              setTimeout(function () { $('#picker-search').val(rawKw).focus(); }, 0);
+              setTimeout(function () {
+                var searchInput = document.getElementById('picker-search');
+                if (searchInput) { searchInput.value = rawKw; searchInput.focus(); }
+              }, 0);
             });
           }, 300);
         }

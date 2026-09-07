@@ -153,17 +153,43 @@ function mapCustomerOptions(records) {
   });
 }
 
+// SEARCH-003: hàng trả về khi không có/không xác định được phạm vi là MỘT dòng
+// Msg/MsgType=1 (NO_MATCH, SCOPE_UNRESOLVED...), không phải danh sách rỗng —
+// phải nhận diện để không hiển thị dòng thông báo lỗi đó như một lựa chọn.
+function isSearchMessageRow(rows) {
+  return rows.length === 1 && Number(rows[0].MsgType) === 1;
+}
+
+function mapCustomerSearchOptions(records) {
+  _customersCache = _customersCache.concat(
+    (records || []).map(function (r) {
+      return { ObjectID: r.ObjectID, ObjectName: r.ObjectName, Phone: r.Phone, DisplayName: (r.ObjectID || '') + ' - ' + (r.ObjectName || '') };
+    })
+  ).filter(function (item, index, list) {
+    return list.findIndex(function (x) { return x.ObjectID === item.ObjectID; }) === index;
+  });
+  return (records || []).map(function (r) {
+    // Nhiều khách có thể trùng tên (SEARCH-05) — ghép thêm SĐT/chi nhánh vào
+    // label để người dùng phân biệt được ngay trong danh sách chọn, không cần
+    // mở từng dòng ra xem.
+    var extra = [r.Phone, r.BranchID].filter(Boolean).join(' · ');
+    var label = (r.ObjectID || '') + ' - ' + (r.ObjectName || '') + (extra ? ' (' + extra + ')' : '');
+    return { value: r.ObjectID || '', label: label };
+  });
+}
+
 // CUST-SEARCH-003: KHÔNG gọi Alert.error ở đây. Đây là searchFn của picker — mỗi lượt gõ có
 // thể tạo một request riêng, và FormSelect._openPicker chỉ render response nào còn là lượt
 // tìm mới nhất. Nếu request của một lượt gõ đã bị bỏ qua (lượt sau đến trước) lại lỗi mạng,
 // bật toast ở đây vẫn cứ hiện — người dùng bị doạ bởi lỗi của thứ họ không còn xem nữa.
 // done([]) là đủ: picker (đã được bảo vệ theo thứ tự) sẽ tự hiện "Không tìm thấy kết quả".
 function loadCustomers(searchText, done) {
-  Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMERS, {
-    q: JSON.stringify({ User: user.UserName || '', ManagerID: '', EmployeeID: '', ObjectID: '', LoaiKhachHang: '', KenhBan: '', SearchText: searchText || '', SYSManagerID: user.ManagerID || '', SYSEmployeeID: user.EmployeeID || '' })
+  Http.get(API_CONFIG.ENDPOINTS.FILTER.CUSTOMER_SEARCH, {
+    q: JSON.stringify({ Username: user.UserName || '', SearchText: searchText || '', TopN: 8 })
   }).then(function (res) {
     var records = (res.data || res).records || res.data || res || [];
-    done(mapCustomerOptions(records));
+    if (isSearchMessageRow(records)) records = [];
+    done(mapCustomerSearchOptions(records));
   }).catch(function () {
     done([]);
   });
@@ -330,17 +356,20 @@ function responseRows(res) {
 }
 
 function searchProductCatalog(keyword) {
-  return Http.get(API_CONFIG.ENDPOINTS.AI.CATALOG, {
+  return Http.get(API_CONFIG.ENDPOINTS.FILTER.PRODUCT_SEARCH, {
     q: JSON.stringify({
       Username: user.UserName || '',
-      Type: 'sanpham',
-      timkiem: keyword || ''
+      SearchText: keyword || '',
+      TopN: 8,
+      RequireSellable: 1
     })
   }).then(function (res) {
-    return responseRows(res).map(function (item) {
+    var rows = responseRows(res);
+    if (isSearchMessageRow(rows)) rows = [];
+    return rows.map(function (item) {
       return {
-        value: item.MaDanhMuc || item.ItemID || '',
-        name: item.Name || item.ItemName || item.MaDanhMuc || item.ItemID || ''
+        value: item.ItemID || '',
+        name: item.ItemName || item.ItemID || ''
       };
     }).filter(function (item) { return item.value && item.name; });
   });

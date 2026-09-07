@@ -1711,6 +1711,51 @@
 
 
 
+    function _renderSelectionReply(res) {
+        var selection = res.selection || {};
+        var candidates = Array.isArray(res.data) ? res.data.slice(0, 8) : [];
+        if (!/^[a-f0-9]{32}$/.test(selection.token || '') || !candidates.length) {
+            _addMessage('ai', 'Không thể mở danh sách lựa chọn. Vui lòng tìm lại.');
+            return;
+        }
+        _addMessage('ai', res.message || 'Có nhiều kết quả trùng khớp. Vui lòng chọn một kết quả.');
+        var panel = document.createElement('div');
+        panel.className = 'chat-selection-options';
+        panel.setAttribute('role', 'group');
+        panel.setAttribute('aria-label', 'Chọn kết quả tìm kiếm');
+        var conversationId = _getConversationId();
+        var expiresAt = Date.parse(selection.expiresAt);
+        candidates.forEach(function (candidate) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'chat-selection-option';
+            button.textContent = [candidate.id, candidate.label, candidate.phone, candidate.branch || candidate.BranchID].filter(Boolean).join(' · ');
+            button.addEventListener('click', function () {
+                if (panel.dataset.used === 'true') return;
+                panel.dataset.used = 'true';
+                panel.querySelectorAll('button').forEach(function (item) { item.disabled = true; });
+                if (conversationId !== _getConversationId() || !isFinite(expiresAt) || Date.now() >= expiresAt) {
+                    _addMessage('ai', 'Phiên lựa chọn đã hết hạn. Vui lòng tìm lại.');
+                    return;
+                }
+                _addMessage('user', 'Chọn ' + (candidate.label || candidate.id));
+                _showTyping();
+                abortController = new AbortController();
+                _setStopMode(true);
+                _gatewayRequest('POST', CHAT_API.replace(_cfg.N8N_BASE || '', ''), {
+                    action: 'select_result',
+                    conversationId: conversationId,
+                    session_id: conversationId,
+                    selection: { token: selection.token, id: candidate.id }
+                }, abortController.signal).then(_handleReply).catch(_handleError);
+            });
+            panel.appendChild(button);
+        });
+        // Keep token-bearing controls out of persisted HTML chat history.
+        $messages.appendChild(panel);
+        _scrollBottom();
+    }
+
     function _handleReply(res) {
 
         console.log('API Response:', res);
@@ -1722,6 +1767,11 @@
         _hideTyping();
 
         _setStopMode(false);
+
+        if (responseStatus === 'NEEDS_SELECTION') {
+            _renderSelectionReply(res);
+            return;
+        }
 
 
 
