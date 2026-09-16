@@ -11,6 +11,7 @@ const n8n = path.join(root, 'n8n-system', 'n8n_data', 'npm_global', 'node_module
 const workflows = [
   { id: 'HQa6xx7flcNcC1oU', file: 'n8n/AI_Core/AI_Upload_Reader.json', activate: true },
   { id: 'actVwBhqMGLQ6cSH', file: 'n8n/AI_Core/AI_RAG_Query.json', activate: true },
+  { id: 'medstandCronCleanupRag', file: 'n8n/Cron_Jobs/CRON_CleanupRAG.json', activate: true },
 ];
 
 function run(args) {

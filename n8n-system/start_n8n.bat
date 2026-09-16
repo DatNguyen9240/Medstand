@@ -109,6 +109,10 @@ set "N8N_BLOCK_ENV_ACCESS_IN_NODE=false"
 set "N8N_DISABLE_TASK_RUNNERS=true"
 set "NODES_EXCLUDE=[]"
 set "N8N_BOOTSTRAP=1"
+set "RAG_QUARANTINE_DIR=%N8N_USER_FOLDER%\rag-quarantine"
+set "RAG_SCAN_SCRIPT=%BASE_DIR%\..\scripts\rag001_scan_file.ps1"
+set "N8N_RESTRICT_FILE_ACCESS_TO=%RAG_QUARANTINE_DIR%"
+set "NODE_FUNCTION_ALLOW_BUILTIN=fs,path"
 
 :: Nap toan bo cau hinh runtime tu .env. File nay bi git-ignore.
 call "%BASE_DIR%\load_env.bat" "%BASE_DIR%\..\.env"

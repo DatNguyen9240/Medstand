@@ -284,6 +284,7 @@ $(function() {
     try {
       const result = await Http.post(reviewEndpoint, payload);
       const row = recordsOf(result)[0] || result.data || result;
+      if (!row || row.status === 'error') throw new Error(row?.message || 'Không thể xử lý tài liệu.');
       showReviewMessage(row.message || 'Đã xử lý tài liệu.');
       selectedReview = null;
       $reviewEditor.prop('hidden', true);
@@ -349,6 +350,7 @@ $(function() {
     try {
       const result = await Http.post(reviewEndpoint, { operation: 'WITHDRAW_DOCUMENT', documentID: documentID, reason: reason.trim(), username: authUserName() });
       const row = recordsOf(result)[0] || result.data || result;
+      if (!row || row.status === 'error') throw new Error(row?.message || 'Không thể thu hồi tài liệu.');
       $lifecycleMessage.text(row.message || 'Đã thu hồi tài liệu.').removeClass('is-error');
       await loadLifecycle();
     } catch (error) {

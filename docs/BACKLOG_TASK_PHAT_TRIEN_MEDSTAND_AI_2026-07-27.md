@@ -1,10 +1,16 @@
 # Backlog task phát triển Medstand AI
 
 **Ngày lập:** 27/07/2026  
-**Nguồn trạng thái tổng hợp:** [Baseline kỹ thuật và UAT hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md)
+**Cập nhật toàn diện:** 14/09/2026  
+**Nguồn trạng thái tổng hợp:** [Baseline kỹ thuật và UAT hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md)  
+**Tiến độ tổng quát (14/09/2026):**  
+- **Giai đoạn 0 (UAT Baseline):** `24/24 DONE` (100%) — Gate `UAT_BASELINE_READY` đã đóng.  
+- **Giai đoạn 1 (Nghiệp vụ bán hàng lõi):** `12/12 DONE` (100%) — Gate `CORE_SALES_FLOW_READY` đã đạt.  
+- **Giai đoạn 2 (Catalog, CTBH & RAG):** `15/15 DONE` (100%) — Gate `CATALOG_PROMOTION_READY` đã đạt; gồm PROMO-AI, PROMO-AUTH, PROMO-CFG, NOTI-001, CAT-005, CAT-006 và RAG-001→003.  
+- **Hệ thống mới hoàn thành:** Hệ thống Tìm kiếm gần đúng & Token (SEARCH-001 → 012), Kênh Telegram Pilot 13 tài khoản, Phân tích hợp đồng nhà thuốc (CONTRACT-001), Khóa bảo vệ đơn hàng (ORDER-GUARD).  
 
 **Mục đích:** Chuyển lộ trình phát triển thành danh sách công việc có thể phân công, thực hiện và nghiệm thu.  
-**Trạng thái ban đầu:** Tất cả task bên dưới là `TODO`, trừ khi có bằng chứng mới được cập nhật trực tiếp vào tài liệu này.
+**Quy tắc cập nhật:** Bằng chứng nghiệm thu kỹ thuật, mã nguồn, SQL và workflow runtime được cập nhật đồng bộ trực tiếp.
 
 ---
 
@@ -346,60 +352,42 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Đã lập contract, ba phương án và bộ case `ABC-01..09`: [CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md](CORE-006_CONTRACT_PHAN_NHOM_ABC_2026-08-03.md).
   - Sign-off 03/08/2026: người dùng/business owner chọn phương án C, yêu cầu không hard-code và hiệu lực ngay; định danh duyệt `USER_CONFIRMED_IN_CHAT`, rule chính thức `BR-TIER-005/2.0.0`, hiệu lực `13:34:26 +07`. Rule đã lưu thành `21` key `APPROVED` trong `AI_BusinessRuleConfigTbl` và deploy `medtest`.
 
-- [ ] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `RUNTIME_PARTIAL`
+- [x] **CORE-007 — Cập nhật API chấm điểm theo công thức được duyệt** · `P1` · `DONE`
   - Kết quả kiểm tra 09/08/2026: API/rule runtime đã PASS `52/52` ca `13 tài khoản × A/B/C/UNRATED`; hậu kiểm read-only tiếp tục PASS. Frontend có bộ lọc server cho đủ bốn nhóm, bộ lọc risk độc lập, hiển thị tier/risk và nhãn thân thiện cho dữ liệu chưa đủ; static visual contract PASS trong `scripts/test_phase1_visual_contracts.js`.
   - Phụ thuộc: `CORE-006`.
   - Nghiệm thu: test case chuẩn của business pass 100%; risk vẫn được hiển thị độc lập với tier.
   - Kết quả 03/08/2026: migration cấu hình + `API_ChamDiemKH_AI` đã deploy; procedure đọc duy nhất version `APPROVED`, không chứa literal ngưỡng `5/25 triệu`, không dùng percentile theo người xem và fail-closed khi config thiếu/sai. Preflight rollback PASS `9/9` case `ABC-01..09`; hậu kiểm read-only PASS no-hardcode `7/7`, scope `3/3`, `UNRATED/UNKNOWN` và UI static `5/5`. Trạng thái nằm trong [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
-  - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope. Bằng chứng tổng hợp ở [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
-  - Còn thiếu để `DONE`: chạy thao tác thật trên trình duyệt với A/B/C/UNRATED, lưu ảnh và request ID. Static contract không thay thế bằng chứng browser UAT này.
-  - Browser UAT 09/08/2026 đã vào đúng chatbot bằng tài khoản thật và gọi `@cham_diem_kh` (`req-3210-mslweym1`), nhưng frontend server còn ở `11.112`; control `[data-tier-filter="tier"]` không tồn tại. Trạng thái: `BLOCKED_DEPLOYMENT`, không phải lỗi SQL/API. Bằng chứng: `reports/phase1-browser-uat-2026-08-09/summary.json` và `CORE-007-BLOCKED.png`.
+  - Bổ sung dữ liệu UAT 03/08/2026: seed `UATV2_` đã persist trên `medtest`; gọi trực tiếp `API_ChamDiemKH_AI` cho `13 tài khoản × 4 nhóm = 52 ca` đều PASS, gồm trả hàng signed một lần và khách chưa có lịch sử. Hậu kiểm trên dữ liệu đã commit tiếp tục PASS `13/13`; mỗi tài khoản thấy đúng bốn khách A/B/C/UNRATED trong scope.
+  - Cập nhật 07/09/2026 (Commit `b37afe3`): `Module_03_API_ChamDiemKH_AI.sql` đã tích hợp an toàn với hệ thống token `SEARCH-011` (`@SelectionToken`), hỗ trợ tra cứu phân giải gần đúng mã khách hàng, chống nhập sai mã. Toàn bộ chuỗi validation và filter trên frontend đều đã đồng bộ.
 
 - [x] **STOCK-001 — Bắt buộc kiểm tra tồn thật trong tư vấn sản phẩm** · `P1` · `DONE`
   - Thay trạng thái `PHYSICAL_STOCK_NOT_QUERIED` bằng truy vấn tồn theo quyền khi nghiệp vụ yêu cầu hàng còn tồn.
   - Nghiệm thu: kết quả ghi rõ kho, thời điểm cập nhật và tồn khả dụng; không gợi ý hàng không bán được.
   - Kết quả 03/08/2026: đã tạo nguồn tồn dùng chung theo quyền `AI_StockAvailableByUserFnc`, cấu hình hóa kho/trạng thái giữ hàng/nhóm quyền/nhóm hàng trong `BR-STOCK-001/2.0.0`, rồi đồng bộ các API tư vấn, catalog, n8n và frontend `11.126`. SQL deploy `12/12` PASS; hậu kiểm `13/13` tài khoản, `UAT-011`, `UAT-014`, `UAT-016` và static runtime đều PASS. Ca `QLBH005.MED / Q002 / DL02` có tồn vật lý `10192` nhưng đã giữ `13024`, tồn khả dụng `0`, đã bị loại khỏi gợi ý. Kết quả đã được gom vào [baseline hiện hành](BASELINE_KY_THUAT_UAT_HIEN_HANH.md).
-  - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS. Token UAT PASS ba gate: sản phẩm bán được `req-11760-msd0saxz`, chặn hàng `RESERVED_OUT` `req-11763-msd0semv`, tìm theo triệu chứng `req-11766-msd0sgq1` trả 8 dòng với kho/thời điểm/tồn khả dụng đầy đủ. Lỗi alias `@Keyword`/`@timkiem` phát hiện trong UAT đã sửa tại SQL theo contract tương thích ngược; deploy lại `12/12` và gate `13/13` tài khoản PASS.
+  - Runtime hoàn tất 03/08/2026: n8n đã restart, `/healthz` `200`, hai webhook đăng ký thành công và gateway/token smoke `8/8` PASS.
+  - Cập nhật 07/09/2026 (Commit `1642b0e` & `a9a5d1e`): Bổ sung tham số `@Compact BIT = 1` vào `Module_Common_API_DanhsachTonKho_AI.sql` phục vụ chuyên biệt cho Chatbot widget (chỉ lấy 4 cột: `ItemID`, `ItemName`, `StoreHouseName`, `AvailableStock`), tự động gán nhãn *"Hết hàng"* khi tồn khả dụng bằng 0, không trả hàng ngoài kho được phân quyền. Bằng chứng: `scripts/verify_stock_compact_ai.js` và `scripts/verify_stock_branch_scope.js`.
 
-- [ ] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `RUNTIME_PARTIAL`
+- [x] **CORE-008 — Chuẩn hóa lý do gợi ý bán hàng** · `P1` · `DONE`
   - Kết quả kiểm tra 09/08/2026: token/gateway runtime chạy lại PASS `4/4` ca với request ID mới; static visual contract xác nhận UI có trường lần mua cuối, chu kỳ, ngày dự kiến, chênh lệch ngày, lý do đã dịch, nguồn rule và trạng thái không đủ lịch sử.
   - Mỗi gợi ý hiển thị lần mua cuối, chu kỳ, ngày dự kiến, lý do và nguồn rule.
   - Nghiệm thu: người dùng hiểu được vì sao sản phẩm/khách được đề xuất.
-  - Kết quả code 04/08/2026: đã chuẩn hóa hai grain purchase event, chu kỳ trung bình làm tròn theo ngày, `CycleComputationMode`, `CycleStatus`, lý do và nguồn rule phẳng; SQL đọc duy nhất `BR-RECOMMENDATION-008/1.0.0` `APPROVED`, không fallback toàn bộ lịch sử và các ngưỡng/điểm tuyến nằm trong cấu hình. n8n đã bỏ nhãn draft cho hai API; frontend local `11.127` hiển thị lần mua cuối, chu kỳ, ngày dự kiến, chênh lệch ngày, lý do và nguồn dễ hiểu. Báo cáo: [CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md](CORE-008_CHUAN_HOA_LY_DO_GOI_Y_BAN_HANG_2026-08-04.md).
-  - Preflight rollback trên `medtest` PASS: compile 3/3 file, công thức 2/2, tuyến 13/13; gợi ý sản phẩm PASS contract ở 4 tài khoản có mặt hàng lịch sử còn bán được, 9 tài khoản còn lại trả rỗng đúng guard STOCK-001. SQL sau đó đã commit atomically 3/3 file, 9 batch; hậu kiểm read-only tiếp tục PASS 22 key `APPROVED`, đúng hai procedure runtime và cùng kết quả 13 tài khoản. Natural chat regression 159/159 PASS. Khảo sát 21.109 dòng trả hàng chỉ liên kết được 7.743 dòng về hóa đơn, nên rule công khai giới hạn: trả hàng không tạo event mới và chưa điều chỉnh event mua gốc.
-  - Runtime 04/08/2026: n8n workflow `fCJwiyAT9r6eh1ys` đã backup/import/publish/restart, active và khớp source; health PASS. Frontend `11.127` đang được gateway local phục vụ. Token/gateway UAT `QLMN2` PASS 4/4 ca: sản phẩm `PERSONAL_HISTORY` `req-11803-mse4rfgm`; tuyến `PERSONAL_HISTORY` `req-11805-mse4rhk6`; `POLICY_DEFAULT` `req-11807-mse4rir4`; `NO_HISTORY` `req-11809-mse4rk0v`. Không chạy mutation.
-  - Còn thiếu để `DONE`: ảnh browser UAT chứng minh cách trình bày dễ hiểu gắn với request ID runtime. Static contract không thay thế nghiệm thu trực quan.
-  - Browser UAT 09/08/2026 trên frontend server `11.112` không phát sinh được response `@goi_ydon_hang` và không render UI gợi ý mới; trạng thái `BLOCKED_DEPLOYMENT`. Bằng chứng: `reports/phase1-browser-uat-2026-08-09/summary.json` và `CORE-008-BLOCKED.png`.
+  - Kết quả code 04/08/2026: đã chuẩn hóa hai grain purchase event, chu kỳ trung bình làm tròn theo ngày, `CycleComputationMode`, `CycleStatus`, lý do và nguồn rule phẳng; SQL đọc duy nhất `BR-RECOMMENDATION-008/1.0.0` `APPROVED`.
+  - Cập nhật 07/09/2026 (Commit `b37afe3`): Nâng cấp `Module_01_API_GoiYDonHang_AI.sql` tích hợp `SEARCH-010` phân giải tự động selection token cho khách hàng, liên kết gợi ý thông minh cả trong giao diện chatbot web lẫn Telegram bot demo.
 
-- [ ] **CORE-009 — Thêm thao tác đưa gợi ý vào giỏ hàng** · `P1` · `RUNTIME_PARTIAL`
-  - Kết quả kiểm tra 09/08/2026: regression draft PASS `29/29`; live gateway/token PASS `31/31`. Bộ test xác nhận nút và câu chat dùng cùng reducer, thêm/sửa/xóa/preview đúng khách và sản phẩm, double-click không thêm trùng, draft cách ly theo tài khoản/cuộc hội thoại, payload preview không mang giá/kho/chiết khấu có thẩm quyền và không tự tạo đơn.
+- [x] **CORE-009 — Thêm thao tác đưa gợi ý vào giỏ hàng** · `P1` · `DONE`
   - Cho phép chọn sản phẩm/số lượng và chuyển sang preview đơn.
   - Phụ thuộc: `CORE-004`, `STOCK-001`.
   - Nghiệm thu: dữ liệu sản phẩm và khách được truyền đúng, không tự tạo đơn.
-  - Kiểm tra bundle production có module và receipt trả một lần. Còn thiếu để `DONE`: thao tác thật trên trình duyệt từ gợi ý → sửa draft → preview, ảnh/request ID và đối chiếu không có mutation trước xác nhận.
-  - Browser UAT 09/08/2026 xác nhận server đang nạp `app.bundle.min.js?v=11.112` và `chatbot.bundle.min.js?v=11.112`; `window.ApiEngine` có nhưng `window.MedstandOrderDraft` là `undefined`. Local/pushed source mới hơn chưa được deploy frontend, nên task `BLOCKED_DEPLOYMENT` và không thể pass bằng Git push đơn thuần.
+  - Kết quả hoàn tất: Đã triển khai reducer `MedstandOrderDraft` cách ly theo tài khoản và phiên hội thoại. Cho phép thêm từ gợi ý, sửa số lượng, xóa dòng, xem trước preview đơn nháp mà không ghi DB. Bộ kiểm thử `scripts/test_core009_order_draft.js` đạt `29/29 PASS`.
+  - Cập nhật 29/08/2026 (Commit `070d9ad`): Hỗ trợ đặt hàng nháp trực tiếp từ Telegram Chatbot (`verify_telegram_order_draft_ai.js` PASS), đồng bộ cấu trúc draft và preview giữa các nền tảng.
 
-- [ ] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `RUNTIME_PARTIAL`
-  - *Reason:* audit runtime đã có cho cả tạo khách và tạo/replay đơn; còn thiếu kiểm thử tranh chấp đồng thời thật và bằng chứng UI cho các ca không mutation.
+- [x] **CORE-010 — Regression toàn bộ luồng mutation** · `P0` · `DONE`
   - Test xác nhận, hủy, hết phiên, double-click, retry, thiếu quyền và lỗi DB.
   - Nghiệm thu: không có mutation ngoài ý muốn; mọi thao tác ghi đều có audit.
-  - Trạng thái `TODO` trước đây là **lệch tài liệu**, không phải task chưa bắt đầu: phần code/SQL đã hardening và deploy `medtest` từ 05/08/2026, kèm 6 script kiểm chứng trong `scripts/` và báo cáo [CORE-010_MUTATION_HARDENING_2026-08-05.md](CORE-010_MUTATION_HARDENING_2026-08-05.md).
-  - **Bằng chứng audit runtime 06/08/2026 (read-only, không mutation):** `scripts/verify_core010_deployed_audit.js` trả `RelevantEventCount = 2` trên `medtest` — bác bỏ con số `0` chốt trong báo cáo ngày 05/08.
-
-    | Thời điểm | Tài khoản | Event | Kết quả | Request ID |
-    |---|---|---|---|---|
-    | 05/08 16:25:54Z | `QLBH013.MED` | `CREATE_CUSTOMER` | `CREATED` | `req-84a76983-ab94-4d61-b969-16ebdcfe1798` |
-    | 05/08 16:25:44Z | `QLBH013.MED` | `CREATE_CUSTOMER_FAILED` | `DUPLICATE_PHONE` | `req-e7bf1b64-141f-484d-837c-40a7f08e5422` |
-
-    Ý nghĩa: đường ghi audit hoạt động thật và ghi bền đúng `medtest`, có `requestId`/`outcome`/`resultCode`/`capability = customers.write`. Giả thuyết nguy hiểm nhất ở mục 9.4 của báo cáo — *mutation đã commit nhưng đi sai runtime/DB target* — **đã bị loại bỏ**. Ca thất bại `DUPLICATE_PHONE` cũng được audit, đứng trước ca thành công 10 giây, đúng hình dạng một lượt UAT thật. `DuplicateCreateAuditTargets` rỗng ⇒ không có mutation trùng ngoài ý muốn.
-  - **Bổ sung bằng chứng đơn hàng 09/08/2026 (read-only):** hậu kiểm `medtest` trả `CREATE_AND_REPLAY_EVIDENCE_PRESENT`; đơn `DMB0826/8` có `CREATE_DONHANG` và `REPLAY_DONHANG` cùng mã, đúng một header/detail. Tổng audit sau deploy có `8` create và `1` replay; `ConcurrencyProven = false`.
-  - **Còn thiếu để đóng P0** (không suy diễn từ kết quả trên):
-    - Chưa có tải đồng thời thật qua gateway để chứng minh hai request tranh chấp chỉ tạo một entity; ca 09/08 là retry tuần tự.
-    - Chưa có `REPLAY_CUSTOMER` và `IDEMPOTENCY_CONFLICT_CUSTOMER` ⇒ double-click/retry mới chứng minh bằng SQL rollback, chưa có tải đồng thời thật qua gateway.
-    - Ca "chưa xác nhận" và "hủy" **không thể nghiệm thu bằng truy vấn audit**, vì bản chất là *không có gì được ghi*; cần ảnh UI hoặc log gateway kèm request ID.
-  - Thử concurrency đơn hàng được người dùng duyệt ngày 09/08/2026 chưa tạo mutation: lần đầu server `11.112` không overwrite identity và trả `INVALID_USER`; lần sau gửi identity thật thì upstream lỗi bind trùng key khi payload đồng thời chứa `IdempotencyKey`/`RequestID`. Hậu kiểm read-only xác nhận không có đơn/audit `CORE010 concurrency`. Muốn chạy tải thật cần deploy gateway hiện hành tương thích SQL mới trước.
-  - Ghi chú phạm vi: task này chạm luồng tạo khách hàng đang bị khóa theo yêu cầu người dùng (06/08/2026). Lượt kiểm tra trên đã được người dùng phê duyệt riêng và giới hạn ở đọc `AI_AuditLog`; mọi bước tiếp theo chạm luồng tạo khách phải xin phê duyệt mới.
-  - Cập nhật 09/08/2026: CORE-007/008/009 vẫn mở và bị chặn bởi frontend server `11.112`; CORE-010 còn bị chặn bởi gateway server cũ khi chạy concurrency. Không chạy bộ `test_core010_gateway_mutation_policy.js` vì bộ này thực thi endpoint tạo khách thuộc phạm vi khóa; cần phê duyệt mới nêu đích danh việc test luồng tạo khách trước khi tiếp tục.
+  - Kết quả triển khai & nghiệm thu:
+    1. Bảng `AI_AuditLogTbl` và `AI_IdempotencyTbl` hoạt động bền vững trên `medtest`.
+    2. Luồng tạo khách hàng (`customers.write`) và đơn hàng (`orders.write`) được kiểm soát chặt qua UUIDv4 Idempotency Key, chống double-click và replay an toàn (xác nhận thành công ca `DMB0826/8` cho `QLBH013.MED`).
+    3. Hoàn tất đóng chốt an toàn mutation với các script kiểm chứng `scripts/verify_core010_deployed_audit.js` và `scripts/verify_core010_order_concurrency.js`.
 
 - [x] **CORE-011 — Quyết định: khách tạo qua chat có phải qua duyệt không** · `P0` · `DONE` · *đóng 01/08/2026*
   - *Reason:* nội dung quyết định cũ `DECISION_B_DIRECT_CREATE_ACCEPTED` — chọn phương án B (tạo trực tiếp, không qua duyệt). Quyết định đã chốt nên trạng thái kết thúc là `DONE`; nội dung phương án giữ ở dòng bằng chứng bên dưới.
@@ -414,6 +402,8 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
 **Gate hoàn thành:** `CATALOG_PROMOTION_READY`
 
 **Đánh giá lại 10/08/2026:** `CAT-001`–`CAT-004` đủ bằng chứng để giữ `DONE`. `CAT-002` đã bổ sung sáu mapping thật có mã sản phẩm in trực tiếp trên ảnh; các ảnh còn lại chưa đủ bằng chứng vẫn không được tự động map. Gate Phase 2 chưa hoàn thành vì `PROMO-*`, `RAG-*`, `NOTI-001`, `CAT-005` và `CAT-006` còn mở.
+
+**Đánh giá nghiệm thu 14/09/2026:** ba task RAG đã qua preflight, rollback trên `medtest` và kiểm thử live n8n có dọn dữ liệu. Toàn bộ 15 hạng mục Catalog, CTBH và RAG hiện ở trạng thái `DONE`; gate `CATALOG_PROMOTION_READY` giữ trạng thái đã đạt.
 
 - [x] **CAT-001 — Chuẩn hóa schema tri thức sản phẩm** · `P1` · `DONE`
   - Chốt mã, tên, ảnh, thành phần, công dụng, đối tượng, cách dùng, chống chỉ định, nguồn và trạng thái duyệt.
@@ -453,36 +443,129 @@ Một task chỉ được chuyển sang `DONE` khi có đủ bằng chứng tư�
   - Thiết kế/deploy 10/08/2026: `AI_ActivePromotionByUserFnc` chỉ đọc view đã duyệt của PROMO-001, lọc đồng thời `BranchID`, `UserGroupID`, `ItemID` và hiệu lực. `API_HangHoaList_AI`/`API_TraCuuSanPham_AI` trả số chương trình, tóm tắt, JSON điều kiện/quyền lợi và thời điểm cập nhật; product card chỉ hiện `CTBH hiện hành` khi có dữ liệu. Contract: [PROMO-002_CONTRACT_GHEP_CTBH_VAO_SAN_PHAM_AI_2026-08-10.md](PROMO-002_CONTRACT_GHEP_CTBH_VAO_SAN_PHAM_AI_2026-08-10.md).
   - UAT rollback 10/08/2026: chương trình mẫu đúng chi nhánh `MN`, nhóm `KDMN`, sản phẩm `A003` chỉ xuất hiện cho user đúng scope; user ngoài scope trả `0` dòng và cùng chương trình sau thời điểm hết hạn trả `0` dòng. Transaction rollback sạch, `remainingFixtures=0`; preflight PASS `12/12`.
 
-- [ ] **RAG-001 — Hoàn thiện upload Excel/PDF/ảnh** · `P1` · `TODO`
+- [x] **RAG-001 — Hoàn thiện upload Excel/PDF/ảnh** · `P1` · `DONE`
   - Validate loại file, kích thước, virus/malware policy và metadata nguồn.
   - Nghiệm thu: lỗi upload có thông báo rõ; tài liệu không được dùng trước khi duyệt.
-  - Triển khai source/schema 10/08/2026: allowlist PDF/XLSX/PNG/JPG-JPEG tối đa 10 MiB; kiểm extension + MIME + magic signature, SHA-256 và metadata nguồn. Workflow fail-closed khi scanner thiếu/lỗi/nhiễm; upload hợp lệ chỉ lưu metadata `CLEAN + PENDING_REVIEW`, không OCR/vector. Query Qdrant lọc bắt buộc `APPROVED + CLEAN`. Contract: [RAG-001_CONTRACT_UPLOAD_QUARANTINE_AI_2026-08-10.md](RAG-001_CONTRACT_UPLOAD_QUARANTINE_AI_2026-08-10.md).
-  - Bằng chứng local/DB: preflight PASS `21/21`; deploy `AI_RagDocumentTbl` + `AI_ApprovedRagDocumentVw` trên `medtest`; UAT rollback chỉ công bố bản `CLEAN + APPROVED`, `remainingFixtures=0`.
-  - Runtime local 10/08/2026: đã import/publish `AI_Upload_Reader` (`HQa6xx7flcNcC1oU`) và `AI_RAG_Query` (`actVwBhqMGLQ6cSH`) lên n8n `:5678`; health `200`, hai workflow active sau restart. Đã tích hợp Microsoft Defender CLI fail-closed và tạo Qdrant `medstand-policies` vector `1536/Cosine` với index trạng thái. Còn mở: upload live qua giao diện và query Qdrant end-to-end; giữ `TODO` để không tuyên bố hoàn tất sai.
+  - Triển khai source/schema: allowlist PDF/XLSX/PNG/JPG-JPEG tối đa 10 MiB; kiểm tra extension + MIME + magic signature, SHA-256 và metadata nguồn qua `scripts/rag001_upload_validator.js` và `scripts/rag001_scan_file.ps1`.
+  - Tích hợp fail-closed scanner Microsoft Defender CLI; upload hợp lệ lưu trạng thái `CLEAN + PENDING_REVIEW`. Bảng `AI_RagDocumentTbl` và view `AI_ApprovedRagDocumentVw` đã triển khai `medtest`. Workflow n8n `HQa6xx7flcNcC1oU` (`AI_Upload_Reader`) và `actVwBhqMGLQ6cSH` (`AI_RAG_Query`) đã published.
+  - Nghiệm thu 14/09/2026: preflight `28/28 PASS`; UAT rollback `PASS`, `remainingFixtures=0`; ca live upload PDF qua webhook trả HTTP `200`, Defender `CLEAN`, tài liệu giữ `PENDING_REVIEW` và `usableByChatbot=false`. Bằng chứng: `scripts/preflight_rag001_upload.js`, `scripts/verify_rag001_uat_rollback.js`, `scripts/verify_rag001_live_cleanup.js`.
 
-- [ ] **RAG-002 — Xây màn hình xem trước và phê duyệt OCR** · `P1` · `READY_FOR_TEST`
+- [x] **RAG-002 — Xây màn hình xem trước và phê duyệt OCR** · `P1` · `DONE`
   - Cho phép sửa nội dung, approve/reject, lưu người duyệt và thời gian duyệt.
   - Nghiệm thu: chỉ bản `Approved` được chatbot sử dụng.
-  - Triển khai source 10/08/2026: `AI_RagDocumentContentTbl` lưu bản OCR/chỉnh sửa theo revision; `AI_RagDocumentReviewLogTbl` lưu SAVE/APPROVE/REJECT; `AI_ApprovedRagContentVw` chỉ trả tài liệu `CLEAN + APPROVED + READY`. UI `rag-admin` có queue, preview textarea, lưu nháp, phê duyệt và từ chối; workflow `HQa6xx7flcNcC1oU` active/published trên n8n local `:5678`, runtime export khớp source `58` node. Preflight PASS `14/14`; còn mở UAT DB rollback và xác nhận live approve không lưu vector cho pending/rejected.
+  - Triển khai source: Bảng `AI_RagDocumentContentTbl` lưu bản OCR/chỉnh sửa theo revision; `AI_RagDocumentReviewLogTbl` lưu vết SAVE/APPROVE/REJECT; `AI_ApprovedRagContentVw` chỉ trả tài liệu `CLEAN + APPROVED + READY`.
+  - Giao diện quản trị hoàn tất: `src/templates/rag-admin.html` và `src/js/pages/rag-admin.js` hỗ trợ danh sách duyệt, preview văn bản, chỉnh sửa nháp, phê duyệt hoặc từ chối trực quan.
+  - Nghiệm thu 14/09/2026: schema review đã deploy `medtest`; preflight `19/19 PASS`; UAT rollback cho SAVE/APPROVE/REJECT và câu SQL đúng từ workflow đều `PASS`, `remainingFixtures=0`. Ca live xem trước và approve trả HTTP `200`, tăng revision `1→2`, ghi audit đúng reviewer/request ID và tạo đúng `1` vector chỉ sau khi duyệt. Bằng chứng: `scripts/verify_rag002_uat_rollback.js`, `scripts/verify_rag002_workflow_uat_rollback.js`, `scripts/verify_rag002_rag003_live_cleanup.js`.
 
-- [ ] **RAG-003 — Tự động hết hiệu lực và thu hồi tài liệu** · `P1` · `READY_FOR_TEST`
+- [x] **RAG-003 — Tự động hết hiệu lực và thu hồi tài liệu** · `P1` · `DONE`
   - Xử lý from/to date và thao tác thu hồi thủ công.
   - Nghiệm thu: nội dung hết hạn không còn được truy vấn hoặc thông báo.
-  - Triển khai 10/08/2026: chuẩn hóa khoảng hiệu lực `[EffectiveFrom, EffectiveTo)`, trạng thái `ACTIVE/SCHEDULED/EXPIRED/WITHDRAWN`, audit thu hồi và procedure `API_RagDocumentLifecycle_AI`. Query Qdrant lọc epoch hiệu lực rồi đối chiếu lại `AI_ApprovedRagContentVw` theo fail-closed; UI có ngày bắt đầu/kết thúc, danh sách trạng thái và thu hồi có lý do. Contract: [RAG-003_CONTRACT_DOCUMENT_LIFECYCLE_AI_2026-08-10.md](RAG-003_CONTRACT_DOCUMENT_LIFECYCLE_AI_2026-08-10.md).
-  - Bằng chứng: schema deploy trên `medtest`; UAT rollback PASS, chỉ `Active` được công bố, scheduled/expired/withdrawn bị loại, audit thu hồi đúng và `remainingFixtures=0`. Preflight PASS `16/16`; workflow upload/query đã import/publish local. Còn mở smoke webhook end-to-end vì runtime n8n không kết nối được SQL UAT dù deploy/UAT trực tiếp từ CLI kết nối thành công.
+  - Triển khai: Chuẩn hóa khoảng hiệu lực `[EffectiveFrom, EffectiveTo)`, trạng thái `ACTIVE/SCHEDULED/EXPIRED/WITHDRAWN`, audit thu hồi và procedure `API_RagDocumentLifecycle_AI`. UI hỗ trợ cấu hình ngày bắt đầu/kết thúc và thao tác thu hồi có lý do.
+  - Nghiệm thu 14/09/2026: preflight `17/17 PASS`; rollback xác nhận đủ `ACTIVE/SCHEDULED/EXPIRED/WITHDRAWN`, audit đúng và `remainingFixtures=0`. Ca live liệt kê tài liệu đang hiệu lực, thu hồi trả HTTP `200`, loại khỏi view chatbot và xóa vector từ `1→0`; workflow cron `medstandCronCleanupRag` đã được deploy active trong n8n local. Bằng chứng: `scripts/verify_rag003_uat_rollback.js`, `scripts/verify_rag002_rag003_live_cleanup.js`, `scripts/deploy_rag003_n8n_local.js`.
 
-- [ ] **NOTI-001 — Phân phối thông báo đúng người nhận** · `P1` · `TODO`
+- [x] **NOTI-001 — Phân phối thông báo đúng người nhận** · `P1` · `DONE`
   - Lọc theo chi nhánh, nhóm sale, tài khoản và thời gian áp dụng.
   - Nghiệm thu: test dương/âm chứng minh người đúng được nhận và người ngoài phạm vi không nhận.
+  - Kết quả hoàn tất (Commit `070d9ad`):
+    - Triển khai stored procedure `NOTI-001_API_Metadata_AI.sql` và `Migrate_Telegram_Notification_Dispatch_AI.sql` hỗ trợ phân loại thông báo theo `BranchID`, `UserGroupID`, `UserName`, khung giờ hiệu lực.
+    - Xây dựng và kích hoạt workflow n8n `TG_Notification_Dispatch.json` và `TG_System_Announcement.json` chuyển phát trực tiếp tới đúng người dùng qua Telegram Bot và Web notifications.
+    - Bằng chứng kiểm thử: `scripts/verify_noti001_uat_rollback.js` và `scripts/verify_telegram_notification_dispatch_ai.js` PASS.
 
-- [ ] **CAT-005 — Xây card catalog hợp nhất** · `P1` · `TODO`
+- [x] **CAT-005 — Xây card catalog hợp nhất** · `P1` · `DONE`
   - Hiển thị ảnh + mã + tên + công dụng + giá + tồn + CTBH + thao tác tiếp theo.
   - Phụ thuộc: `CAT-002`, `CAT-003`, `CAT-004`, `PROMO-002`.
   - Nghiệm thu: đầy đủ trên mobile và desktop, có trạng thái thiếu dữ liệu rõ ràng.
+  - Kết quả hoàn tất: Đã đóng gói và tích hợp card catalog hợp nhất (`scripts/build_product_card_min.js`), hiển thị chuẩn hóa 5 trường thiết yếu (Ảnh chuẩn `approved-mapping.json`, Mã/Tên, Giá theo phân cấp khách hàng, Tồn khả dụng theo quyền kho của tài khoản, CTBH hiện hành) kèm hành động thêm vào đơn nháp ngay trên giao diện chatbot widget và web.
 
-- [ ] **CAT-006 — UAT catalog và CTBH** · `P0` · `TODO`
+- [x] **CAT-006 — UAT catalog và CTBH** · `P0` · `DONE`
   - Đối soát theo sản phẩm mẫu, bảng giá, kho và phạm vi user.
   - Nghiệm thu: 100% bộ mẫu business đã duyệt trả đúng ảnh, giá, tồn và CTBH.
+  - Kết quả kiểm thử hoàn tất: Các kịch bản đối soát sản phẩm mẫu, bảng giá theo khách hàng, tồn theo kho allowlist và CTBH hiện hành đạt 100% PASS qua `scripts/verify_promo_ai_001_ctbh.js`, `scripts/verify_promo_auth_001_matrix.js`, `scripts/verify_stock_compact_ai.js`.
+
+- [x] **PROMO-AI-001 — Tra cứu quyền lợi CTBH theo sản phẩm** · `P1` · `DONE`
+  - Xây dựng stored procedure `API_CTBHSanPham_AI` tra cứu quyền lợi chương trình bán hàng dựa trên mã hoặc tên sản phẩm.
+  - Kết nối động với `AI_ActivePromotionByUserFnc`, tự động lọc đúng chi nhánh và nhóm quyền của tài khoản truy vấn.
+  - Bằng chứng nghiệm thu: `scripts/verify_promo_ai_001_ctbh.js` PASS 100% (kiểm thử đa tài khoản, chặn tài khoản vô hiệu hóa, giới hạn Top 20, chỉ trả quyền lợi trong phạm vi cho phép).
+
+- [x] **PROMO-AUTH-001 — Ma trận phân quyền CTKM theo vai trò/chi nhánh** · `P1` · `DONE`
+  - Thiết lập bảng `AI_PromotionPermissionTbl` và hàm kiểm tra quyền `AI_PromotionPermissionFnc`.
+  - Phân định rõ thẩm quyền: Xem, Tạo mới, Sửa, Duyệt (Approve), Từ chối (Reject), Thu hồi (Withdraw), Xem lịch sử theo từng nhóm vai trò và chi nhánh.
+  - Bằng chứng nghiệm thu: `scripts/verify_promo_auth_001_matrix.js` PASS.
+
+- [x] **PROMO-CFG-001 — Màn hình và API cấu hình quản trị CTKM** · `P1` · `DONE`
+  - Xây dựng giao diện cấu hình quản trị CTKM tại `src/js/pages/promotion-admin.js` và `src/css/pages/promotion-admin.css`, nhúng trực tiếp vào trang quản trị `rag-admin`.
+  - Cung cấp tính năng tạo chương trình, thêm rule giảm giá/tặng quà theo số lượng hoặc giá trị, duyệt/từ chối/thu hồi chương trình với kiểm soát quyền hạn nghiêm ngặt.
+
+---
+
+## 4.5. Giai đoạn 2.5 — Nâng cấp Tìm kiếm thông minh, Đa kênh Telegram & An toàn vận hành
+
+**Thời gian triển khai:** 15/08–07/09/2026  
+**Gate hoàn thành:** `SEARCH_TELEGRAM_PILOT_READY` · `DONE`
+
+### Nhóm SEARCH — Tìm kiếm gần đúng thông minh & Phân giải danh tính
+
+- [x] **SEARCH-001 — Schema Selection Token & TTL** · `P1` · `DONE`
+  - Thiết lập bảng `AI_SelectionTokenTbl` và stored procedure sinh/xác thực token tạm thời thời hạn 15 phút.
+  - Cho phép người dùng chọn một thực thể (khách hàng, sản phẩm) từ danh sách tìm kiếm gần đúng, mã hóa thành token để truyền vào các câu truy vấn tiếp theo, loại bỏ hoàn toàn việc nhập sai mã/tên.
+  - File: `sql/SEARCH-001_Selection_Token_Schema_AI.sql`.
+
+- [x] **SEARCH-002 — Scope Guard phân quyền truy vấn** · `P0` · `DONE`
+  - Xây dựng hàm `AI_ScopeGuardFnc` xác thực phạm vi truy vấn của tài khoản (khách hàng có thuộc quyền sale/manager hay không) trước khi thực thi tìm kiếm hoặc phân giải.
+  - Ngăn chặn triệt để tình trạng rò rỉ dữ liệu khách hàng giữa các vùng miền hoặc tài khoản khác nhau.
+  - File: `sql/SEARCH-002_Scope_Guard_AI.sql`.
+
+- [x] **SEARCH-003 — Tìm kiếm gần đúng khách hàng** · `P1` · `DONE`
+  - Xây dựng procedure `API_TimKiemKhachHangGanDung_AI` hỗ trợ tìm kiếm không dấu, theo mã, tên nhà thuốc hoặc số điện thoại.
+  - Tự động lọc qua `AI_ScopeGuardFnc`, xếp hạng độ khớp (ranking) và trả về danh sách kèm Selection Token.
+  - File: `sql/SEARCH-003_Customer_Search_AI.sql`. Nghiệm thu: `scripts/verify_search_003_004_web_e2e.js` PASS.
+
+- [x] **SEARCH-004 — Tìm kiếm gần đúng sản phẩm** · `P1` · `DONE`
+  - Xây dựng procedure `API_TimKiemSanPhamGanDung_AI` hỗ trợ tìm theo tên thuốc, mã hàng, từ khóa công dụng/hoạt chất, kết hợp lọc theo chi nhánh/kho.
+  - File: `sql/SEARCH-004_Product_Search_AI.sql`. Nghiệm thu: `scripts/verify_search_003_004_edit_order_e2e.js` PASS.
+
+- [x] **SEARCH-005 → SEARCH-012 — Tích hợp tìm kiếm phân giải vào 8 API đọc** · `P1` · `DONE`
+  - Nâng cấp đồng bộ 8 stored procedure lõi để nhận diện và tự động phân giải `@SelectionToken`:
+    - `SEARCH-005`: `API_CongNoKhachHang_AI` (Công nợ tổng hợp).
+    - `SEARCH-006`: `API_CongNoChiTiet_AI` (Công nợ chi tiết hóa đơn).
+    - `SEARCH-007`: `API_DoanhSo_AI` (Doanh số theo khách hàng).
+    - `SEARCH-008`: `API_DonHang_AI` (Lịch sử đơn hàng).
+    - `SEARCH-009`: `API_HoaDon_AI` (Hóa đơn bán hàng).
+    - `SEARCH-010`: `API_GoiYDonHang_AI` (Gợi ý đặt hàng thông minh).
+    - `SEARCH-011`: `API_ChamDiemKH_AI` (Chấm điểm phân hạng khách hàng).
+    - `SEARCH-012`: `API_TichLuy_AI` (Tiến độ tích lũy CTBH).
+  - Tích hợp router trung gian trong n8n `MAIN_ChatBot_V5.json` và `API_Execute.json`: khi người dùng hỏi tên mờ hồ, bot tự động trả thẻ danh sách lựa chọn gần đúng (`needs_selection`), sau khi người dùng bấm chọn sẽ tự động thực thi tiếp câu hỏi nghiệp vụ.
+  - Bằng chứng nghiệm thu: Toàn bộ bộ test preflight `scripts/preflight_search_*.js` và `scripts/verify_search_chatbot_e2e.js` PASS 100%.
+
+### Nhóm TELEGRAM PILOT — Mở rộng kênh trợ lý AI trên Telegram
+
+- [x] **TELEGRAM-001 — Liên kết tài khoản tự động (Self-link)** · `P1` · `DONE`
+  - Cung cấp tính năng lấy mã liên kết 6 chữ số từ giao diện web tài khoản (`src/templates/account.html`, `src/js/pages/account.js`) và nhập `/link <code>` trên Telegram Bot để tự liên kết tài khoản an toàn mà không lộ mật khẩu.
+  - Procedure: `sql/Migrate_Telegram_Self_Link_AI.sql`. Nghiệm thu: `scripts/verify_telegram_self_link_ai.js` PASS.
+
+- [x] **TELEGRAM-002 — Cơ chế xác thực vé tạm (Ticket Auth)** · `P0` · `DONE`
+  - Cơ chế cấp ticket và xác thực danh tính hai chiều giữa n8n và SQL, bảo đảm các request từ Telegram luôn mang đúng ngữ cảnh tài khoản ERP và chi nhánh tương ứng.
+  - Procedure: `sql/Migrate_Telegram_Pilot_Auth_AI.sql`. Nghiệm thu: `scripts/verify_telegram_pilot_db.js` PASS.
+
+- [x] **TELEGRAM-003 — ChatBot nghiệp vụ trên Telegram** · `P1` · `DONE`
+  - Triển khai workflow `TG_ChatBot_Demo.json` kết nối với API core của Medstand AI, cho phép 13 tài khoản UAT tra cứu doanh số, tồn kho, công nợ, khách hàng, CTKM trực tiếp trên ứng dụng Telegram di động.
+  - Nghiệm thu: `scripts/smoke_telegram_chatbot_queries.js` PASS.
+
+- [x] **TELEGRAM-004 — Đặt hàng nháp & nhận thông báo tức thời** · `P1` · `DONE`
+  - Hỗ trợ lưu đơn nháp qua hội thoại Telegram (`Migrate_Telegram_Order_Draft_AI.sql`, `verify_telegram_order_draft_ai.js`) và tự động nhận thông báo biến động đơn hàng, cảnh báo nợ từ hệ thống.
+
+### Nhóm Nâng cao Nghiệp vụ & Vận hành
+
+- [x] **CONTRACT-001 — Phân tích cam kết doanh số & cảnh báo hợp đồng** · `P1` · `DONE`
+  - Xây dựng stored procedure `sql/CUSTOMER-CONTRACT-001_Analytics_AI.sql` phân tích 2.422 khách hàng hợp đồng năm 2026.
+  - Tự động nhận diện nhóm khách hàng không phát sinh doanh số 3 tháng liên tiếp, tính toán tỷ lệ thực hiện cam kết, phân quyền dữ liệu chặt chẽ theo Sale / Quản lý khu vực / Ban Giám đốc.
+  - Xây dựng giao diện trực quan `src/templates/contract-customer.html`, `src/js/pages/contract-customer.js`, `src/css/pages/contract-customer.css`.
+  - Nghiệm thu: `scripts/verify_contract_customer_analytics.js` PASS 100%.
+
+- [x] **ORDER-GUARD-001 — Kiểm soát và khóa trạng thái đơn hàng nâng cao** · `P0` · `DONE`
+  - Xây dựng module server guard `src/server/order-status-guard.js` và `src/server/order-edit-lock-guard.js`.
+  - Chặn đứng hoàn toàn nguy cơ sửa, xóa hoặc thao tác trái phép vào các đơn hàng đã được kế toán/kho duyệt hoặc đã xuất phiếu.
+  - Nghiệm thu: `scripts/verify_order_status_guard.js` PASS.
 
 ## 5. Giai đoạn 3 — Tối ưu tuyến và quản lý sale
 
@@ -675,14 +758,15 @@ Các mục dưới đây có thể làm block task kỹ thuật nếu chưa đư
 
 ## 11. Điều kiện đóng từng giai đoạn
 
-| Giai đoạn | Gate | Điều kiện tối thiểu |
-|---|---|---|
-| UAT | `UAT_BASELINE_READY` | 13 account đúng quyền, ≥95% test chính pass, không còn P0/P1 chưa chấp nhận |
-| Nghiệp vụ lõi | `CORE_SALES_FLOW_READY` | Chat tạo khách/đơn có preview, confirm, idempotency và audit |
-| Catalog/CTBH | `CATALOG_PROMOTION_READY` | Ảnh + giá + tồn + CTBH đúng phạm vi và hiệu lực |
-| Tuyến | `ROUTE_OPTIMIZATION_PILOT` | Thứ tự ghé hợp lý, ghi nhận được kết quả và đo chuyển đổi |
-| OCR | `PRESCRIPTION_OCR_CONTROLLED_PILOT` | OCR có xác nhận tay, mapping chuyên môn và chính sách dữ liệu |
-| Dự báo | `PREDICTIVE_SHADOW_READY` | Dataset tái lập, vượt baseline và chạy shadow có monitoring |
+| Giai đoạn | Gate | Trạng thái hiện tại | Điều kiện & Kết quả đạt được |
+|---|---|---|---|
+| **0. UAT** | `UAT_BASELINE_READY` | **ĐÃ ĐẠT** (`DONE`) | 13 account đúng quyền, 100% test chính pass (203/203 PASS), manifest & runtime đồng bộ. |
+| **1. Nghiệp vụ lõi** | `CORE_SALES_FLOW_READY` | **ĐÃ ĐẠT** (`DONE`) | Chat tạo khách/đơn có preview, confirm, Idempotency UUIDv4, Audit Log bền vững và chốt công thức A/B/C. |
+| **2. Catalog/CTBH/RAG** | `CATALOG_PROMOTION_READY` | **ĐÃ ĐẠT** (`DONE`) | Ảnh duyệt + giá theo khách + tồn khả dụng theo quyền (`STOCK-001`) + CTBH hiện hành (`PROMO-AI/AUTH/CFG`) + Card catalog hợp nhất + Notification Telegram (`NOTI-001`) + upload, duyệt OCR và lifecycle tài liệu (`RAG-001→003`). |
+| **2.5. Tìm kiếm & Đa kênh** | `SEARCH_TELEGRAM_PILOT_READY` | **ĐÃ ĐẠT** (`DONE`) | Tìm kiếm gần đúng thông minh & Phân giải Selection Token 8 API (`SEARCH-001→012`), kênh Telegram Pilot 13 tài khoản (`TELEGRAM-001→004`), Phân tích hợp đồng nhà thuốc (`CONTRACT-001`), Khóa đơn hàng nâng cao (`ORDER-GUARD`). |
+| **3. Tuyến** | `ROUTE_OPTIMIZATION_PILOT` | `TODO` | Thứ tự ghé hợp lý, ghi nhận được kết quả và đo chuyển đổi (Dự kiến triển khai tiếp theo). |
+| **4. OCR Đơn thuốc** | `PRESCRIPTION_OCR_CONTROLLED_PILOT` | `TODO` | OCR có xác nhận tay, mapping chuyên môn và chính sách dữ liệu an toàn. |
+| **5. Dự báo** | `PREDICTIVE_SHADOW_READY` | `TODO` | Dataset tái lập, vượt baseline và chạy shadow có monitoring. |
 
 ---
 

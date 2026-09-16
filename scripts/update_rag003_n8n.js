@@ -47,8 +47,30 @@ function addOperationRule(routeRules, operation) {
   });
 }
 
+function keepFirstMatchingLine(source, predicate) {
+  let seen = false;
+  return source.split('\n').filter((line) => {
+    if (!predicate(line)) return true;
+    if (seen) return false;
+    seen = true;
+    return true;
+  }).join('\n');
+}
+
+function dedupeExactLine(source, fragment) {
+  return keepFirstMatchingLine(source, (line) => line.includes(fragment));
+}
+
 const sqlCredentials = nodeOf(upload, 'RAG002 Review Action DB').credentials;
+const openAiCredentials = nodeOf(upload, 'OpenAI Vision OCR').credentials;
 const managedNames = new Set([
+  'RAG002 Approved Document Loader',
+  'RAG002 Approved Embeddings',
+  'RAG002 Approved Vector Store',
+  'RAG002 Create Approved Embedding',
+  'RAG002 Ensure Qdrant Collection',
+  'RAG002 Build Qdrant Point',
+  'RAG002 Upsert Approved Point',
   'RAG003 Lifecycle DB',
   'RAG003 If Withdraw Success',
   'RAG003 Delete Withdrawn Vectors',
@@ -78,6 +100,37 @@ authNode.parameters.jsCode = authLines.filter((line) => {
   }
   return true;
 }).join('\n');
+authNode.parameters.jsCode = authNode.parameters.jsCode
+  .replace("const actor = String(headers['x-verified-user'] || body.username || '').trim();", "const actor = String(headers['x-verified-user'] || '').trim();")
+  .replace("const uploadedBy = String(headers['x-verified-user'] || body.username || '').trim();", "const uploadedBy = String(headers['x-verified-user'] || '').trim();")
+  .replace(
+    'const documentID = globalThis.crypto.randomUUID();',
+    "const documentID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => { const random = Math.floor(Math.random() * 16); return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16); });",
+  )
+  .replace("passes: true,\n  isReviewOperation: false,", "passes: true,\n  hasFile: true,\n  isReviewOperation: false,");
+authNode.parameters.jsCode = authNode.parameters.jsCode
+  .replace(/const quarantineDir =[\s\S]*?fs\.closeSync\(fs\.openSync\(quarantinePath, 'wx'\)\);\n/, "const safeFileName = documentID + '.' + (ext === 'jpeg' ? 'jpg' : ext);\n")
+  .replace("safeFileName: documentID + '.' + (ext === 'jpeg' ? 'jpg' : ext),", 'safeFileName,');
+
+const quarantineWriter = nodeOf(upload, 'RAG001 Write Quarantine Binary');
+quarantineWriter.type = 'n8n-nodes-base.code';
+quarantineWriter.typeVersion = 2;
+quarantineWriter.parameters = {
+  jsCode: `const input = $input.first();
+const quarantineDir = String($env.RAG_QUARANTINE_DIR || '').trim();
+if (!quarantineDir) throw new Error('QUARANTINE_NOT_CONFIGURED');
+const buffer = await this.helpers.getBinaryDataBuffer(0, 'file');
+const targetPath = quarantineDir.replace(/[\\\\/]+$/, '') + '/' + input.json.safeFileName;
+const fs = require('fs');
+fs.writeFileSync(targetPath, buffer, { flag: 'wx' });
+return [input];`,
+};
+const malwareScanner = nodeOf(upload, 'RAG001 Scan with Defender');
+malwareScanner.parameters.command = `={{ 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $env.RAG_SCAN_SCRIPT + '" -LiteralPath "' + $env.RAG_QUARANTINE_DIR.replace(/"/g, '') + '/' + $json.safeFileName + '"' }}`;
+const normalizePdf = nodeOf(upload, 'RAG002 Normalize PDF');
+normalizePdf.parameters.jsCode = normalizePdf.parameters.jsCode.replace("extracted.text.join('\n\n')", 'extracted.text.join(String.fromCharCode(10, 10))');
+const normalizeXlsx = nodeOf(upload, 'RAG002 Normalize XLSX');
+normalizeXlsx.parameters.jsCode = normalizeXlsx.parameters.jsCode.replace("fullText += line + '\n'", 'fullText += line + String.fromCharCode(10)');
 const firstDateValidation = authNode.parameters.jsCode.indexOf('  else {\n    const datePattern = ');
 if (firstDateValidation >= 0) {
   const secondDateValidation = authNode.parameters.jsCode.indexOf('  else {\n    const datePattern = ', firstDateValidation + 1);
@@ -121,27 +174,42 @@ authNode.parameters.jsCode = authNode.parameters.jsCode
   );
 
 const reviewList = nodeOf(upload, 'RAG002 Review List');
-reviewList.parameters.query = reviewList.parameters.query.replace(
-  'D.ReviewStatus AS reviewStatus,',
-  "D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,",
-);
+reviewList.parameters.query = dedupeExactLine(reviewList.parameters.query, 'AS effectiveFromDate');
+reviewList.parameters.query = dedupeExactLine(reviewList.parameters.query, 'AS effectiveToDate');
+if (!reviewList.parameters.query.includes('AS effectiveFromDate')) {
+  reviewList.parameters.query = reviewList.parameters.query.replace(
+    'D.ReviewStatus AS reviewStatus,',
+    "D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,",
+  );
+}
 
 const reviewDetail = nodeOf(upload, 'RAG002 Review Detail');
-reviewDetail.parameters.query = reviewDetail.parameters.query.replace(
-  'D.ReviewStatus AS reviewStatus,',
-  "D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,",
-);
+reviewDetail.parameters.query = dedupeExactLine(reviewDetail.parameters.query, 'AS effectiveFromDate');
+reviewDetail.parameters.query = dedupeExactLine(reviewDetail.parameters.query, 'AS effectiveToDate');
+if (!reviewDetail.parameters.query.includes('AS effectiveFromDate')) {
+  reviewDetail.parameters.query = reviewDetail.parameters.query.replace(
+    'D.ReviewStatus AS reviewStatus,',
+    "D.ReviewStatus AS reviewStatus,\n  CONVERT(VARCHAR(10),D.EffectiveFrom,23) AS effectiveFromDate,\n  CONVERT(VARCHAR(10),CASE WHEN D.EffectiveTo IS NULL THEN NULL ELSE DATEADD(DAY,-1,D.EffectiveTo) END,23) AS effectiveToDate,",
+  );
+}
 
 const reviewAction = nodeOf(upload, 'RAG002 Review Action DB');
-reviewAction.parameters.query = reviewAction.parameters.query
-  .replace(
+reviewAction.parameters.query = dedupeExactLine(reviewAction.parameters.query, 'DECLARE @EffectiveFrom DATETIME2');
+reviewAction.parameters.query = dedupeExactLine(reviewAction.parameters.query, 'DECLARE @EffectiveTo DATETIME2');
+reviewAction.parameters.query = dedupeExactLine(reviewAction.parameters.query, "@Error='INVALID_EFFECTIVE_RANGE'");
+if (!reviewAction.parameters.query.includes('DECLARE @EffectiveFrom DATETIME2')) {
+  reviewAction.parameters.query = reviewAction.parameters.query.replace(
     "DECLARE @RequestID VARCHAR(100)=NULLIF('{{ $json.requestID.replace(/'/g, \"''\") }}','');",
     "DECLARE @RequestID VARCHAR(100)=NULLIF('{{ $json.requestID.replace(/'/g, \"''\") }}','');\nDECLARE @EffectiveFrom DATETIME2(0)=TRY_CONVERT(DATETIME2(0),NULLIF('{{ $json.effectiveFromDate }}',''));\nDECLARE @EffectiveTo DATETIME2(0)=CASE WHEN NULLIF('{{ $json.effectiveToDate }}','') IS NULL THEN NULL ELSE DATEADD(DAY,1,TRY_CONVERT(DATETIME2(0),'{{ $json.effectiveToDate }}')) END;",
-  )
-  .replace(
+  );
+}
+if (!reviewAction.parameters.query.includes("@Error='INVALID_EFFECTIVE_RANGE'")) {
+  reviewAction.parameters.query = reviewAction.parameters.query.replace(
     "ELSE IF @Operation='REJECT_REVIEW' AND LEN(LTRIM(RTRIM(@Reason)))=0 BEGIN SET @Error='REJECT_REASON_REQUIRED'; SET @Message=N'Vui lòng nhập lý do từ chối.'; END",
     "ELSE IF @Operation='REJECT_REVIEW' AND LEN(LTRIM(RTRIM(@Reason)))=0 BEGIN SET @Error='REJECT_REASON_REQUIRED'; SET @Message=N'Vui lòng nhập lý do từ chối.'; END\nELSE IF @Operation='APPROVE_REVIEW' AND @EffectiveTo IS NOT NULL AND @EffectiveFrom IS NOT NULL AND @EffectiveTo<=@EffectiveFrom BEGIN SET @Error='INVALID_EFFECTIVE_RANGE'; SET @Message=N'Khoảng hiệu lực không hợp lệ.'; END",
-  )
+  );
+}
+reviewAction.parameters.query = reviewAction.parameters.query
   .replace(
     "SET ReviewStatus='APPROVED',ReviewedBy=@Actor,ReviewedAt=SYSUTCDATETIME(),ReviewNote=NULL,UpdatedAt=SYSUTCDATETIME()",
     "SET ReviewStatus='APPROVED',ReviewedBy=@Actor,ReviewedAt=SYSUTCDATETIME(),ReviewNote=NULL,EffectiveFrom=@EffectiveFrom,EffectiveTo=@EffectiveTo,UpdatedAt=SYSUTCDATETIME()",
@@ -152,38 +220,117 @@ reviewAction.parameters.query = reviewAction.parameters.query
   );
 
 const prepareApproved = nodeOf(upload, 'RAG002 Prepare Approved Document');
-prepareApproved.parameters.jsCode = prepareApproved.parameters.jsCode.replace(
-  "malwareScanStatus: 'CLEAN'",
-  "malwareScanStatus: 'CLEAN',\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799",
-);
+for (const fragment of ['effectiveFrom: row.effectiveFrom', 'effectiveTo: row.effectiveTo', 'effectiveFromEpoch:', 'effectiveToEpoch:']) {
+  prepareApproved.parameters.jsCode = dedupeExactLine(prepareApproved.parameters.jsCode, fragment);
+}
+if (!prepareApproved.parameters.jsCode.includes('effectiveFromEpoch:')) {
+  prepareApproved.parameters.jsCode = prepareApproved.parameters.jsCode.replace(
+    "malwareScanStatus: 'CLEAN'",
+    "malwareScanStatus: 'CLEAN',\n  effectiveFrom: row.effectiveFrom || '',\n  effectiveTo: row.effectiveTo || '',\n  effectiveFromEpoch: row.effectiveFrom ? Math.floor(Date.parse(row.effectiveFrom) / 1000) : 0,\n  effectiveToEpoch: row.effectiveTo ? Math.floor(Date.parse(row.effectiveTo) / 1000) : 253402300799",
+  );
+}
+prepareApproved.parameters.jsCode = prepareApproved.parameters.jsCode
+  .replace("const buffer = Buffer.from(content, 'utf8');\n", '')
+  .replace("const approvedFile = await this.helpers.prepareBinaryData(buffer, row.documentID + '.txt', 'text/plain');\n", '')
+  .replace('}, binary: { approved_file: approvedFile } }];', '} }];')
+  .replace(/, binary: \{ approved_file: \{ data: buffer\.toString\('base64'\), mimeType: 'text\/plain', fileName: row\.documentID \+ '\.txt' \} \} \}\];/, ' }];');
+if (!prepareApproved.parameters.jsCode.includes('approvedContent: content')) {
+  prepareApproved.parameters.jsCode = prepareApproved.parameters.jsCode.replace(
+    "  reviewStatus: 'APPROVED',",
+    "  approvedContent: content,\n  reviewStatus: 'APPROVED',",
+  );
+}
 
-const approvedLoader = nodeOf(upload, 'RAG002 Approved Document Loader');
-approvedLoader.parameters.options.metadata = `={
-  "documentID": "{{ $json.documentID }}",
-  "title": "{{ $json.title }}",
-  "sourceType": "{{ $json.sourceType }}",
-  "sourceReference": "{{ $json.sourceReference }}",
-  "contentVersion": {{ $json.contentVersion }},
-  "editRevision": {{ $json.editRevision }},
-  "reviewStatus": "APPROVED",
-  "malwareScanStatus": "CLEAN",
-  "effectiveFrom": "{{ $json.effectiveFrom }}",
-  "effectiveTo": "{{ $json.effectiveTo }}",
-  "effectiveFromEpoch": {{ $json.effectiveFromEpoch }},
-  "effectiveToEpoch": {{ $json.effectiveToEpoch }}
-}`;
+const createApprovedEmbedding = {
+  parameters: {
+    authentication: 'predefinedCredentialType',
+    nodeCredentialType: 'openAiApi',
+    method: 'POST',
+    url: 'https://openrouter.ai/api/v1/embeddings',
+    sendBody: true,
+    specifyBody: 'json',
+    jsonBody: "={{ { model: 'text-embedding-3-small', input: $json.approvedContent } }}",
+    options: { response: { response: { responseFormat: 'json' } }, timeout: 45000 },
+  },
+  id: 'rag002-create-approved-embedding', name: 'RAG002 Create Approved Embedding',
+  type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1580, 920],
+  credentials: openAiCredentials,
+};
+const ensureQdrantCollection = {
+  parameters: {
+    method: 'PUT',
+    url: "={{ ($env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333') + '/collections/medstand-policies' }}",
+    sendBody: true,
+    specifyBody: 'json',
+    jsonBody: "={{ { vectors: { size: $('RAG002 Create Approved Embedding').first().json.data[0].embedding.length, distance: 'Cosine' } } }}",
+    options: { response: { response: { neverError: true, responseFormat: 'json' } }, timeout: 30000 },
+  },
+  id: 'rag002-ensure-qdrant-collection', name: 'RAG002 Ensure Qdrant Collection',
+  type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [1800, 920],
+};
+const buildQdrantPoint = {
+  parameters: {
+    jsCode: `const approved = $('RAG002 Prepare Approved Document').first().json;
+const vector = $('RAG002 Create Approved Embedding').first().json?.data?.[0]?.embedding;
+if (!Array.isArray(vector) || vector.length === 0) throw new Error('APPROVED_EMBEDDING_EMPTY');
+return [{ json: { points: [{
+  id: approved.documentID,
+  vector,
+  payload: {
+    content: approved.approvedContent,
+    metadata: {
+      documentID: approved.documentID,
+      title: approved.title,
+      sourceType: approved.sourceType,
+      sourceReference: approved.sourceReference,
+      contentVersion: approved.contentVersion,
+      editRevision: approved.editRevision,
+      reviewStatus: 'APPROVED',
+      malwareScanStatus: 'CLEAN',
+      effectiveFrom: approved.effectiveFrom,
+      effectiveTo: approved.effectiveTo,
+      effectiveFromEpoch: approved.effectiveFromEpoch,
+      effectiveToEpoch: approved.effectiveToEpoch,
+    },
+  },
+}] } }];`,
+  },
+  id: 'rag002-build-qdrant-point', name: 'RAG002 Build Qdrant Point',
+  type: 'n8n-nodes-base.code', typeVersion: 2, position: [2020, 920],
+};
+const upsertApprovedPoint = {
+  parameters: {
+    method: 'PUT',
+    url: "={{ ($env.QDRANT_URL ? $env.QDRANT_URL : 'http://127.0.0.1:6333') + '/collections/medstand-policies/points?wait=true' }}",
+    sendBody: true,
+    specifyBody: 'json',
+    jsonBody: '={{ $json }}',
+    options: { response: { response: { responseFormat: 'json' } }, timeout: 30000 },
+  },
+  id: 'rag002-upsert-approved-point', name: 'RAG002 Upsert Approved Point',
+  type: 'n8n-nodes-base.httpRequest', typeVersion: 4.2, position: [2240, 920],
+};
+upload.nodes.push(createApprovedEmbedding, ensureQdrantCollection, buildQdrantPoint, upsertApprovedPoint);
+upload.connections['RAG002 Prepare Approved Document'] = { main: [[mainEdge('RAG002 Create Approved Embedding')]] };
+upload.connections['RAG002 Create Approved Embedding'] = { main: [[mainEdge('RAG002 Ensure Qdrant Collection')]] };
+upload.connections['RAG002 Ensure Qdrant Collection'] = { main: [[mainEdge('RAG002 Build Qdrant Point')]] };
+upload.connections['RAG002 Build Qdrant Point'] = { main: [[mainEdge('RAG002 Upsert Approved Point')]] };
+upload.connections['RAG002 Upsert Approved Point'] = { main: [[mainEdge('RAG002 Respond Review Action')]] };
 
 const route = nodeOf(upload, 'RAG002 Route Review Operation');
 const routeRules = route.parameters.rules.values;
 for (const operation of ['LIST_LIFECYCLE', 'WITHDRAW_DOCUMENT']) addOperationRule(routeRules, operation);
 
 const lifecycleDb = sqlNode('rag003-lifecycle-db', 'RAG003 Lifecycle DB', `DECLARE @DocumentID UNIQUEIDENTIFIER=TRY_CONVERT(UNIQUEIDENTIFIER,NULLIF('{{ $json.documentID }}',''));
+DECLARE @Actor VARCHAR(100)=NULLIF('{{ $json.actor.replace(/'/g, "''") }}','');
+DECLARE @Reason NVARCHAR(1000)=NULLIF(N'{{ $json.reason.replace(/'/g, "''") }}',N'');
+DECLARE @RequestID VARCHAR(100)=NULLIF('{{ $json.requestID.replace(/'/g, "''") }}','');
 EXEC dbo.API_RagDocumentLifecycle_AI
   @Operation='{{ $json.operation }}',
   @DocumentID=@DocumentID,
-  @Actor=NULLIF('{{ $json.actor.replace(/'/g, "''") }}',''),
-  @Reason=NULLIF(N'{{ $json.reason.replace(/'/g, "''") }}',N''),
-  @RequestID=NULLIF('{{ $json.requestID.replace(/'/g, "''") }}','');`, [900, 1040], sqlCredentials);
+  @Actor=@Actor,
+  @Reason=@Reason,
+  @RequestID=@RequestID;`, [900, 1040], sqlCredentials);
 
 const ifWithdrawSuccess = {
   parameters: { conditions: { boolean: [{ value1: "={{ $json.status === 'success' && $json.code === 'WITHDRAW_DOCUMENT' }}", value2: true }] } },
@@ -212,8 +359,18 @@ return [{ json: dbRows.length > 1 || first.code === 'LIFECYCLE_LIST'
 };
 
 upload.nodes.push(lifecycleDb, ifWithdrawSuccess, deleteWithdrawnVectors, respondLifecycle);
-const routeConnections = upload.connections['RAG002 Route Review Operation'].main;
-routeConnections.splice(routeConnections.length - 1, 0, [mainEdge('RAG003 Lifecycle DB')], [mainEdge('RAG003 Lifecycle DB')]);
+upload.connections['RAG002 Route Review Operation'] = {
+  main: [
+    [mainEdge('RAG002 Review List')],
+    [mainEdge('RAG002 Review Detail')],
+    [mainEdge('RAG002 Review Action DB')],
+    [mainEdge('RAG002 Review Action DB')],
+    [mainEdge('RAG002 Review Action DB')],
+    [mainEdge('RAG003 Lifecycle DB')],
+    [mainEdge('RAG003 Lifecycle DB')],
+    [mainEdge('Respond Error')],
+  ],
+};
 upload.connections['RAG003 Lifecycle DB'] = { main: [[mainEdge('RAG003 If Withdraw Success')]] };
 upload.connections['RAG003 If Withdraw Success'] = { main: [[mainEdge('RAG003 Delete Withdrawn Vectors')], [mainEdge('RAG003 Respond Lifecycle')]] };
 upload.connections['RAG003 Delete Withdrawn Vectors'] = { main: [[mainEdge('RAG003 Respond Lifecycle')]] };

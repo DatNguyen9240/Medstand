@@ -5,7 +5,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql/RAG-003_Document_Lifecycle_AI.sql'), 'utf8');
-const contract = fs.readFileSync(path.join(root, 'docs/RAG-003_CONTRACT_DOCUMENT_LIFECYCLE_AI_2026-08-10.md'), 'utf8');
+const rollbackTest = fs.readFileSync(path.join(root, 'scripts/verify_rag003_uat_rollback.js'), 'utf8');
 const upload = fs.readFileSync(path.join(root, 'n8n/AI_Core/AI_Upload_Reader.json'), 'utf8');
 const query = fs.readFileSync(path.join(root, 'n8n/AI_Core/AI_RAG_Query.json'), 'utf8');
 const queryWorkflow = JSON.parse(query);
@@ -21,6 +21,7 @@ const checks = [
   ['LIFECYCLE_AUDIT', sql.includes('AI_RagDocumentLifecycleLogTbl') && sql.includes("Action IN ('WITHDRAW')")],
   ['ACTIVE_VIEW', sql.includes('AI_RagDocumentLifecycleVw') && sql.includes("THEN 'SCHEDULED'") && sql.includes("THEN 'EXPIRED'")],
   ['WITHDRAW_ATOMIC', sql.includes('API_RagDocumentLifecycle_AI') && sql.includes('UPDLOCK, HOLDLOCK') && sql.includes("ReviewStatus = 'WITHDRAWN'")],
+  ['LIFECYCLE_EXEC_VARIABLES', upload.includes('DECLARE @Actor VARCHAR(100)') && upload.includes('@Actor=@Actor')],
   ['NO_ERP_MUTATION', !/(CF_|AR_|API_KhachHang|API_DonHang|AI_ProductKnowledgeTbl)/i.test(sql)],
   ['NO_BINARY_IN_DB', !/(VARBINARY|FILESTREAM|\bIMAGE\s+(?:NULL|NOT\s+NULL))/i.test(sql)],
   ['APPROVAL_DATE_RANGE', upload.includes('effectiveFromDate') && upload.includes('effectiveToDate') && upload.includes('INVALID_EFFECTIVE_RANGE')],
@@ -32,7 +33,7 @@ const checks = [
   ['QUERY_SQL_CREDENTIAL', Boolean(validateNode?.credentials?.microsoftSql?.id)],
   ['AUTOMATIC_CLEANUP', cleanup.includes('metadata.effectiveToEpoch') && cleanup.includes('points/delete')],
   ['LIFECYCLE_UI', template.includes('rag-effective-from') && template.includes('rag-lifecycle-list') && page.includes('LIST_LIFECYCLE') && page.includes('WITHDRAW_DOCUMENT')],
-  ['CONTRACT_ROLLBACK', contract.includes('remainingFixtures=0') && contract.includes('fail-closed')],
+  ['ROLLBACK_AND_FAIL_CLOSED', rollbackTest.includes('remainingFixtures === 0') && query.includes('AI_ApprovedRagContentVw')],
 ];
 
 let failed = 0;

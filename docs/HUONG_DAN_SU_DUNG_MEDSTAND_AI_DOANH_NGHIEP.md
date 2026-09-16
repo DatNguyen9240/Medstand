@@ -1,97 +1,84 @@
 # Hướng dẫn sử dụng Medstand AI cho doanh nghiệp
 
-> Tài liệu nguồn rút gọn. Bản Word và HTML có hình để gửi người dùng nằm trong thư mục `docs/GOI_UAT_KHACH_HANG`.
+> Tài liệu hướng dẫn sử dụng hệ sinh thái Trợ lý Medstand AI dành cho đội ngũ kinh doanh và quản lý. Bản Word và HTML có hình gửi khách hàng nằm tại `docs/GOI_UAT_KHACH_HANG`.
 
 | Thông tin | Nội dung |
 |---|---|
-| Môi trường thử nghiệm | `https://medtest.bms7.net/#/chatbot` |
-| Cập nhật | 01/08/2026 — frontend 11.121 |
-| Người dùng | Nhân viên kinh doanh, Quản lý và người điều phối |
-| Tài liệu chính | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` và `.html` |
+| Môi trường thử nghiệm Web | `https://medtest.bms7.net/#/chatbot` |
+| Kênh thử nghiệm Telegram | Bot Telegram `@MedstandAIBot` (Hỗ trợ 13 tài khoản UAT) |
+| Cập nhật phiên bản | **09/09/2026 — frontend 11.144** |
+| Đối tượng người dùng | Trình dược viên (TDV/Sale), Quản lý khu vực (ASM/Manager) và Ban Giám đốc |
+| Tài liệu bàn giao | `01_HUONG_DAN_SU_DUNG_MEDSTAND_AI.docx` và `.html` |
+
+---
 
 ## 1. Bắt đầu nhanh
 
-1. Mở đường dẫn thử nghiệm bằng Chrome hoặc Microsoft Edge.
-2. Đăng nhập và kiểm tra đúng tên, vai trò ở góc trái dưới.
-3. Chọn **Trợ lý AI** trong menu bên trái.
-4. Nhập `Xin chào`, sau đó nhập `Tôi là ai?`.
-5. Bắt đầu với câu `Doanh số hôm nay của tôi là bao nhiêu?`.
+### Trên Giao diện Web
+1. Truy cập hệ thống bằng trình duyệt Chrome hoặc Microsoft Edge.
+2. Đăng nhập và kiểm tra họ tên, vai trò hiển thị ở góc trái màn hình.
+3. Nhấp chọn **AI Trợ lý** trên menu điều hướng.
+4. Nhập câu chào `Xin chào`, hoặc `Tôi là ai?` để bot xác nhận danh tính và phân quyền.
+5. Thử nghiệm câu hỏi: `Doanh số hôm nay của tôi là bao nhiêu?`.
 
-Kết quả kiểm tra gần nhất cho thấy đa số câu trả lời dưới 1 giây, nhưng thời gian có thể tăng theo dữ liệu. Nếu quá 15 giây, ghi nhận phản hồi chậm; không nhấn gửi liên tục.
+### Trên Ứng dụng Telegram (Di động)
+1. Trên giao diện Web, vào menu **Tài khoản** (`#/account`), chọn **Liên kết Telegram**.
+2. Nhấn nút **Lấy mã liên kết** để nhận mã OTP 6 chữ số (hiệu lực 15 phút).
+3. Mở Telegram, tìm bot và gửi tin nhắn: `/link <mã_6_số>` (ví dụ: `/link 123456`).
+4. Sau khi bot xác nhận liên kết thành công, bạn có thể chat tra cứu mọi số liệu kinh doanh ngay trên điện thoại.
 
-## 2. Công thức đặt câu hỏi
+---
 
-Sử dụng: **Hành động + đối tượng + mã hoặc tên + khoảng thời gian nếu cần**.
+## 2. Tìm kiếm gần đúng thông minh (Selection Token)
+
+Hệ thống đã hỗ trợ công nghệ **Tìm kiếm gần đúng thông minh**. Bạn không cần nhớ chính xác mã khách hàng hay mã sản phẩm:
+- **Gõ theo tên:** `Xem công nợ nhà thuốc Phương Mai`, `Tồn kho thuốc ho Bảo Thanh`
+- **Gõ theo số điện thoại:** `Doanh số khách hàng 0988123456`
+- **Gõ theo hoạt chất/công dụng:** `Tìm thuốc hạ sốt paracetamol`
+
+Khi có nhiều kết quả tương tự, Trợ lý AI sẽ tự động hiển thị thẻ danh sách lựa chọn gần đúng (`needs_selection`). Bạn chỉ cần bấm chọn đúng nhà thuốc hoặc sản phẩm mong muốn, bot sẽ tự động trả lời câu hỏi nghiệp vụ mà không cần gõ lại.
+
+---
+
+## 3. Công thức đặt câu hỏi mẫu
+
+Cấu trúc chuẩn: **Hành động + Đối tượng + Tên hoặc mã gần đúng + Khoảng thời gian (nếu có)**.
 
 ```text
-Doanh số của tôi từ 01/07/2026 đến 27/07/2026
-Chi tiết công nợ khách NDB001 đến ngày 27/07/2026
-Tồn kho sản phẩm A003
-Gợi ý bán kèm cho khách NDB001
-Xem chi tiết hóa đơn U13S1_MB13_4
+Doanh số của tôi từ 01/08/2026 đến 31/08/2026
+Chi tiết công nợ nhà thuốc An Khang đến hôm nay
+Tồn kho sản phẩm Aquamed Plus
+Gợi ý bán hàng cho khách hàng Mai Hương
+Xem chi tiết đơn hàng DMB0826/8
+Chương trình khuyến mãi hiện có của Hoạt huyết Medstand
 ```
 
-Nếu hệ thống hỏi thêm thông tin, hãy bổ sung đúng mã khách hàng, sản phẩm, hóa đơn hoặc khoảng ngày được yêu cầu.
+---
 
-## 3. Phạm vi dữ liệu
+## 4. Các nhóm chức năng chính
 
-- Nhân viên kinh doanh chỉ xem khách hàng, tuyến, kho và số liệu được giao.
-- Quản lý chỉ xem nhân viên và khu vực thuộc phạm vi phụ trách.
-- Nếu thấy dữ liệu ngoài phạm vi, dừng thao tác, không mở chi tiết và báo lỗi nghiêm trọng.
+1. **Doanh số & Hóa đơn:** Tra cứu doanh số ngày/tháng, bảng kê hóa đơn bán hàng, chi tiết từng dòng hóa đơn.
+2. **Công nợ & Tích lũy:** Báo cáo công nợ tổng hợp, công nợ chi tiết từng chứng từ, theo dõi tiến độ tích lũy quà tặng CTBH.
+3. **Phân hạng & Chăm sóc khách hàng:** Chấm điểm phân nhóm khách hàng (A, B, C, UNRATED), cảnh báo nguy cơ giảm mua hoặc bỏ tuyến.
+4. **Phân tích Khách hàng Hợp đồng:** Đánh giá mức độ hoàn thành hợp đồng năm 2026, cảnh báo các nhà thuốc không phát sinh đơn 3 tháng liên tiếp.
+5. **Gợi ý đặt hàng & Bán thêm (Upsell):** Dự báo mặt hàng khách sắp hết dựa trên chu kỳ mua thực tế và gợi ý hàng bán kèm phù hợp.
+6. **Tồn kho khả dụng & Bảng giá:** Kiểm tra số lượng tồn thật có thể bán theo từng kho phân quyền, tra cứu giá bán phân cấp theo từng nhóm khách.
+7. **Chương trình bán hàng & Ưu đãi:** Xem các CTBH đang áp dụng, quà tặng theo số lượng/giá trị cho từng sản phẩm.
+8. **Lập đơn hàng nháp:** Đưa sản phẩm từ gợi ý vào giỏ hàng hội thoại, xem trước chiết khấu/quà tặng và xác nhận tạo đơn an toàn qua cơ chế chống gửi lặp (Idempotency).
 
-## 4. Các nhóm chức năng
+---
 
-- Doanh số, hóa đơn, chi tiết hóa đơn và đơn hàng.
-- Chấm điểm khách hàng, công nợ tổng/chi tiết và tích lũy.
-- Tuyến bán hàng, gợi ý đơn hàng và gợi ý bán kèm.
-- Tồn kho, tra cứu sản phẩm và danh mục.
-- Sản phẩm trọng tâm và đề xuất khuyến mãi.
-- Khảo sát 360, câu hỏi, trạng thái, theo ngày và lịch sử.
-- Thông báo và tìm sản phẩm theo triệu chứng.
-- Tạo khách hàng và tạo đơn chỉ thực hiện sau bước xem lại/xác nhận; gửi lại cùng yêu cầu không được tạo thêm bản ghi.
+## 5. Phạm vi phân quyền dữ liệu
 
-## 5. Cách đọc kết quả
+- **Trình dược viên (Sale):** Chỉ xem được danh sách khách hàng, công nợ, đơn hàng và kho hàng thuộc phạm vi phụ trách được công ty giao.
+- **Quản lý (Manager):** Xem được toàn bộ số liệu tổng hợp và chi tiết của nhân viên dưới quyền trong khu vực quản lý.
+- **Quy tắc an toàn:** Hệ thống trang bị lớp bảo vệ Scope Guard (`AI_ScopeGuardFnc`), tuyệt đối ngăn chặn rò rỉ dữ liệu chéo vùng miền giữa các chi nhánh miền Bắc, miền Trung, miền Nam.
 
-- Kiểm tra đúng tiêu đề, tài khoản/vai trò và khoảng thời gian.
-- Đọc các thẻ tổng quan có nhãn và đơn vị rõ ràng.
-- Khi đổi nhóm Nhân viên/Khách hàng/Sản phẩm, dữ liệu bên dưới phải đổi theo.
-- Mã, tên, số điện thoại và số liệu không được lộn cột hoặc định dạng sai.
-- “Dữ liệu thực tế” là dữ liệu hiện có trên môi trường thử nghiệm tại thời điểm truy vấn, không phải chứng từ tài chính chính thức.
+---
 
-## 6. Hiểu đúng dữ liệu nghiệp vụ
+## 6. Xử lý sự cố thường gặp
 
-- Doanh số phụ thuộc khoảng ngày và phạm vi tài khoản.
-- Công nợ là phát sinh tăng trừ phát sinh giảm đến ngày chốt.
-- Tồn kho là số hệ thống ghi nhận, chưa luôn đồng nghĩa số chắc chắn bán được.
-- Nhóm A/B/C là phân khúc giá trị, không phải mức rủi ro.
-- Gợi ý bán hàng và đề xuất khuyến mãi chỉ để tham khảo, không phải quyết định đã duyệt.
-- Tìm theo triệu chứng không thay thế chẩn đoán hoặc tư vấn chuyên môn.
-
-## 7. Khi gặp lỗi
-
-1. Kiểm tra tài khoản và vai trò.
-2. Kiểm tra mã khách hàng/sản phẩm/hóa đơn và khoảng ngày.
-3. Đăng xuất, đăng nhập lại và nhấn `Ctrl + F5`.
-4. Thử lại đúng một lần.
-5. Nếu còn lỗi, gửi tài khoản, vai trò, thời gian, câu hỏi nguyên văn, mã liên quan, kết quả thực tế, kết quả mong đợi và ảnh toàn màn hình.
-
-Không gửi mật khẩu, token hoặc thông tin xác thực.
-
-## 8. Quy tắc an toàn UAT
-
-- Chỉ dùng dữ liệu UAT được cấp.
-- Không tự áp giá hoặc phát hành khuyến mãi.
-- Nếu được phép thử tạo khách/đơn trên UAT, dùng tiền tố `UAT_TEST` và kiểm tra màn hình xác nhận trước khi gửi.
-- Không thực hiện thao tác ghi dữ liệu trên môi trường khác nếu chưa được phê duyệt.
-
-## 9. Trạng thái vòng UAT ngày 01/08/2026
-
-- Bộ hội thoại live đạt `31/31`; smoke đạt `8/8`.
-- Phạm vi khách hàng và kho đạt `13/13` tài khoản UAT.
-- Tạo đơn đã kiểm tra chống double-click/retry và không tạo trùng.
-- Hệ thống vẫn ở trạng thái **UAT có kiểm soát**, chưa phải production. Quản trị viên còn phải dọn workflow n8n active trùng và chốt endpoint/secret trước khi công bố hoàn tất UAT.
-- Nếu cùng một câu hỏi bất ngờ cho kết quả khác nhau giữa các lần gửi, ghi lại thời gian và ảnh toàn màn hình; không tiếp tục gửi lặp nhiều lần.
-
-## 10. Tài liệu kiểm thử 13 tài khoản
-
-Các bản Word và HTML dành cho kiểm thử 13 tài khoản được giữ riêng trong `docs/GOI_UAT_KHACH_HANG`. Không thay thế chúng bằng hướng dẫn sử dụng này vì mục đích của hai bộ tài liệu khác nhau.
+1. **Dữ liệu chưa cập nhật:** Nhấn tổ hợp phím `Ctrl + F5` để trình duyệt tải bundle mới nhất (`11.144`).
+2. **Không thấy khách hàng/sản phẩm:** Kiểm tra lại từ khóa tìm kiếm hoặc kiểm tra xem khách hàng có thuộc danh sách phân quyền của bạn hay không.
+3. **Mã liên kết Telegram hết hạn:** Mã OTP chỉ có giá trị trong 15 phút. Nếu hết hạn, hãy nhấn lấy lại mã mới trên trang Web Tài khoản.
+4. **Lỗi hệ thống hoặc phản hồi chậm:** Nếu câu hỏi xử lý quá 15 giây, vui lòng ghi lại câu hỏi, thời gian và chụp ảnh màn hình gửi bộ phận kỹ thuật (không nhấn gửi lặp nhiều lần).

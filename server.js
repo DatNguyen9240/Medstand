@@ -522,6 +522,17 @@ app.post('/api/gateway', async (req, res) => {
                 'Máy chủ chưa được cấu hình khóa quản trị upload. Vui lòng liên hệ quản trị viên.'
             );
         }
+        let verifiedAdminIdentity = null;
+        if (requiresAdminUploadKey) {
+            try {
+                verifiedAdminIdentity = await resolveVerifiedGatewayIdentity(authorization);
+            } catch (identityError) {
+                console.error(`[RAG Admin Identity Error] requestId=${requestId}; cause=${identityError.name || 'UNKNOWN'}`);
+            }
+            if (!verifiedAdminIdentity || !verifiedAdminIdentity.username) {
+                return sendGatewayError(res, 401, requestId, 'AUTH_IDENTITY_VERIFICATION_FAILED', 'Không thể xác minh tài khoản quản trị. Vui lòng đăng nhập lại.');
+            }
+        }
 
         // Mutation không được tin identity do trình duyệt gửi. Xác minh lại token
         // bằng API_UserInfo, sau đó gateway gắn identity, request ID và khóa
@@ -721,7 +732,7 @@ app.post('/api/gateway', async (req, res) => {
             ...(req.headers['idempotency-key'] ? { 'Idempotency-Key': req.headers['idempotency-key'] } : {}),
             ...(isN8n ? { 'x-api-key': process.env.CHAT_API_KEY || '' } : {}),
             ...(requiresAdminUploadKey
-                ? { 'x-admin-key': adminUploadKey }
+                ? { 'x-admin-key': adminUploadKey, 'x-verified-user': verifiedAdminIdentity.username, 'x-request-id': requestId }
                 : {})
         };
 

@@ -56,6 +56,8 @@ setDefault('NODES_EXCLUDE', '[]');
 setDefault('RAG_MALWARE_SCANNER_READY', 'true');
 setDefault('RAG_SCAN_SCRIPT', path.join(__dirname, '..', 'scripts', 'rag001_scan_file.ps1'));
 setDefault('RAG_QUARANTINE_DIR', path.join(__dirname, 'n8n_data', 'rag-quarantine'));
+setDefault('N8N_RESTRICT_FILE_ACCESS_TO', process.env.RAG_QUARANTINE_DIR);
+setDefault('NODE_FUNCTION_ALLOW_BUILTIN', 'fs,path');
 fs.mkdirSync(process.env.RAG_QUARANTINE_DIR, { recursive: true });
 
 const { spawn } = require('child_process');

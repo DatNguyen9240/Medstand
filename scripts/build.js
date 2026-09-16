@@ -255,7 +255,6 @@ var _dec = function(b64) {
         'env.js',
         'src/js/services/http.js',
         'src/js/services/auth.service.js',
-        'src/js/services/notification-push.service.js',
         'src/js/components/Alert.js',
         'src/js/components/AuthThemeToggle.js',
         'src/js/components/PasswordToggle.js'
@@ -343,7 +342,6 @@ var _dec = function(b64) {
     console.log('\nĐang tiến hành đóng gói các UI script bổ trợ của Chatbot...');
     const chatbotUIScripts = [
         'src/js/utils/promotion.js',
-        'src/js/utils/product-orderability.js',
         'chatbot-widget/js/chatbot-suggestions.js',
         'chatbot-widget/js/chatbot-order-draft.js',
         'chatbot-widget/js/chatbot-api-engine.js',

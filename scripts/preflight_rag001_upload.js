@@ -6,7 +6,8 @@ const { MAX_FILE_BYTES, validateRagUpload } = require('./rag001_upload_validator
 
 const root = path.resolve(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql/RAG-001_Document_Quarantine_AI.sql'), 'utf8');
-const contract = fs.readFileSync(path.join(root, 'docs/RAG-001_CONTRACT_UPLOAD_QUARANTINE_AI_2026-08-10.md'), 'utf8');
+const gateway = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+const n8nRuntime = fs.readFileSync(path.join(root, 'n8n-system/run_n8n.js'), 'utf8');
 const uploadWorkflow = JSON.parse(fs.readFileSync(path.join(root, 'n8n/AI_Core/AI_Upload_Reader.json'), 'utf8'));
 const queryWorkflow = JSON.parse(fs.readFileSync(path.join(root, 'n8n/AI_Core/AI_RAG_Query.json'), 'utf8'));
 const workflowText = JSON.stringify(uploadWorkflow);
@@ -53,6 +54,8 @@ const rejectionCases = [
   ['MALWARE_SCAN_UNAVAILABLE', { ...fixture('sample.pdf', 'application/pdf', '%PDF-'), malwareScan: { scannerReady: false, status: '', scanner: '' } }],
 ];
 const uploadReachable = reachableMainNodes(uploadWorkflow, 'admin-upload');
+const quarantineWriter = uploadWorkflow.nodes.find((node) => node.name === 'RAG001 Write Quarantine Binary');
+const malwareScannerNode = uploadWorkflow.nodes.find((node) => node.name === 'RAG001 Scan with Defender');
 
 const checks = [];
 for (const input of validCases) {
@@ -74,8 +77,13 @@ checks.push(
   ['DEFENDER_SCAN_GATE', uploadReachable.has('RAG001 Write Quarantine Binary') && uploadReachable.has('RAG001 Scan with Defender') && uploadReachable.has('RAG001 If Scan Clean')],
   ['SCANNER_FAIL_CLOSED', workflowText.includes('MALWARE_SCAN_UNAVAILABLE') && workflowText.includes('MALWARE_DETECTED')],
   ['QUERY_APPROVED_FILTER', queryText.includes('reviewStatus') && queryText.includes('malwareScanStatus')],
-  ['CONTRACT_FAIL_CLOSED', contract.includes('fail-closed') && contract.includes('MALWARE_SCAN_UNAVAILABLE')],
-  ['CONTRACT_SERVER_BOUNDARY', contract.includes('Không sửa `server.js`')],
+  ['FAIL_CLOSED_SCAN_POLICY', workflowText.includes('MALWARE_SCAN_UNAVAILABLE') && workflowText.includes('MALWARE_DETECTED')],
+  ['GATEWAY_VERIFIED_IDENTITY', gateway.includes("'x-verified-user': verifiedAdminIdentity.username") && gateway.includes('AUTH_IDENTITY_VERIFICATION_FAILED')],
+  ['N8N_COMPATIBLE_DOCUMENT_ID', !workflowText.includes('globalThis.crypto.randomUUID') && workflowText.includes("'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'")],
+  ['UPLOAD_SUCCESS_HAS_FILE_FLAG', workflowText.includes('hasFile: true')],
+  ['QUARANTINE_PATH_ALLOWED', n8nRuntime.includes("setDefault('N8N_RESTRICT_FILE_ACCESS_TO', process.env.RAG_QUARANTINE_DIR)")],
+  ['WINDOWS_SAFE_QUARANTINE_WRITE', quarantineWriter?.type === 'n8n-nodes-base.code' && quarantineWriter?.parameters?.jsCode.includes("fs.writeFileSync(targetPath, buffer, { flag: 'wx' })") && n8nRuntime.includes("setDefault('NODE_FUNCTION_ALLOW_BUILTIN', 'fs,path')")],
+  ['SCANNER_COMMAND_EXPRESSION', malwareScannerNode?.parameters?.command.startsWith('={{') && malwareScannerNode?.parameters?.command.includes('$env.RAG_SCAN_SCRIPT')],
 );
 
 let failed = 0;
